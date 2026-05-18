@@ -1,0 +1,453 @@
+// School Management System — Prisma Schema
+// DB: PostgreSQL (local, on-premises)
+// GDPR: AuditLog covers all sensitive data access
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  SUPER_ADMIN
+  HEADMASTER
+  HEADTEACHER_A
+  HEADTEACHER_B
+  STUDENT_COUNSELOR
+  TEACHER
+  SCHOOL_ADMIN
+  STUDENT
+  PARENT
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+enum ReferralStatus {
+  PENDING
+  ASSIGNED
+  RESOLVED
+}
+
+enum ResolutionAction {
+  DETENTION
+  PEDAGOGICAL_DIALOGUE
+  WRITTEN_AGREEMENT
+  WARNING
+  OTHER
+}
+
+// ─── NextAuth ─────────────────────────────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expires      DateTime
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Users ────────────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  nameEl       String?
+  passwordHash String?  // Parents only — staff use Entra ID
+  image        String?
+  role         Role
+  entraId      String?  @unique
+  isActive     Boolean  @default(true)
+
+  accounts Account[]
+  sessions Session[]
+
+  staffProfile   StaffProfile?
+  studentProfile StudentProfile?
+  parentProfile  ParentProfile?
+
+  auditLogs AuditLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model StaffProfile {
+  id         String  @id @default(cuid())
+  userId     String  @unique
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone      String?
+  department String?
+
+  homeroomGroup     Group?            @relation("HomeroomTeacher")
+  courseAssignments CourseAssignment[]
+  filedReferrals    Referral[]        @relation("ReferralFiler")
+  attendanceRecords Attendance[]      @relation("AttendanceTeacher")
+  issuedPermits     ExitPermit[]      @relation("PermitIssuer")
+  filedActivities   Activity[]        @relation("ActivityFiler")
+  timetableSlots    TimetableSlot[]
+  testSchedules     TestSchedule[]
+}
+
+model StudentProfile {
+  id        String  @id @default(cuid())
+  userId    String  @unique
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studentId String  @unique
+  groupId   String?
+  group     Group?  @relation(fields: [groupId], references: [id])
+
+  parents                ParentStudent[]
+  attendance             Attendance[]
+  grades                 Grade[]
+  referrals              Referral[]           @relation("StudentReferrals")
+  exitPermits            ExitPermit[]
+  activityParticipations ActivityParticipant[]
+}
+
+model ParentProfile {
+  id     String  @id @default(cuid())
+  userId String  @unique
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone  String?
+
+  children ParentStudent[]
+}
+
+model ParentStudent {
+  id               String         @id @default(cuid())
+  parentProfileId  String
+  parentProfile    ParentProfile  @relation(fields: [parentProfileId], references: [id], onDelete: Cascade)
+  studentProfileId String
+  studentProfile   StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([parentProfileId, studentProfileId])
+}
+
+// ─── Groups ───────────────────────────────────────────────────────────────────
+
+model Group {
+  id                String        @id @default(cuid())
+  name              String        @unique
+  grade             Int           // 1, 2, or 3
+  homeroomTeacherId String?       @unique
+  homeroomTeacher   StaffProfile? @relation("HomeroomTeacher", fields: [homeroomTeacherId], references: [id])
+
+  students       StudentProfile[]
+  timetableSlots TimetableSlot[]
+  referrals      Referral[]
+  testSchedules  TestSchedule[]
+}
+
+// ─── Curriculum ───────────────────────────────────────────────────────────────
+
+model Course {
+  id     String @id @default(cuid())
+  name   String
+  nameEl String
+  code   String @unique
+
+  assignments    CourseAssignment[]
+  grades         Grade[]
+  timetableSlots TimetableSlot[]
+  testSchedules  TestSchedule[]
+}
+
+model CourseAssignment {
+  id       String       @id @default(cuid())
+  courseId String
+  course   Course       @relation(fields: [courseId], references: [id])
+  staffId  String
+  staff    StaffProfile @relation(fields: [staffId], references: [id])
+  groupId  String?
+
+  @@unique([courseId, staffId, groupId])
+}
+
+// ─── Timetable ────────────────────────────────────────────────────────────────
+
+model TimetableSlot {
+  id        String       @id @default(cuid())
+  groupId   String
+  group     Group        @relation(fields: [groupId], references: [id])
+  courseId  String
+  course    Course       @relation(fields: [courseId], references: [id])
+  staffId   String
+  staff     StaffProfile @relation(fields: [staffId], references: [id])
+  dayOfWeek Int          // 1=Mon … 5=Fri
+  period    Int          // 1-based
+  room      String?
+
+  attendance Attendance[]
+
+  @@unique([groupId, dayOfWeek, period])
+}
+
+// ─── Attendance ───────────────────────────────────────────────────────────────
+
+model Attendance {
+  id              String           @id @default(cuid())
+  studentId       String
+  student         StudentProfile   @relation(fields: [studentId], references: [id])
+  timetableSlotId String
+  timetableSlot   TimetableSlot    @relation(fields: [timetableSlotId], references: [id])
+  staffId         String
+  staff           StaffProfile     @relation("AttendanceTeacher", fields: [staffId], references: [id])
+  date            DateTime         @db.Date
+  status          AttendanceStatus
+  minutesDelayed  Int              @default(0)
+  isAutoAbsent    Boolean          @default(false)
+  smsSent         Boolean          @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, timetableSlotId, date])
+  @@index([date])
+  @@index([studentId, date])
+}
+
+// ─── Exit Permits ─────────────────────────────────────────────────────────────
+
+model ExitPermit {
+  id        String         @id @default(cuid())
+  studentId String
+  student   StudentProfile @relation(fields: [studentId], references: [id])
+  issuerId  String
+  issuer    StaffProfile   @relation("PermitIssuer", fields: [issuerId], references: [id])
+  reason    String
+  issuedAt  DateTime       @default(now())
+  expiresAt DateTime?
+  active    Boolean        @default(true)
+}
+
+// ─── Activities ───────────────────────────────────────────────────────────────
+
+model Activity {
+  id          String       @id @default(cuid())
+  name        String
+  filerId     String
+  filer       StaffProfile @relation("ActivityFiler", fields: [filerId], references: [id])
+  date        DateTime     @db.Date
+  startPeriod Int
+  endPeriod   Int
+  location    String?
+
+  participants ActivityParticipant[]
+}
+
+model ActivityParticipant {
+  id         String         @id @default(cuid())
+  activityId String
+  activity   Activity       @relation(fields: [activityId], references: [id])
+  studentId  String
+  student    StudentProfile @relation(fields: [studentId], references: [id])
+
+  @@unique([activityId, studentId])
+}
+
+// ─── Grades ───────────────────────────────────────────────────────────────────
+
+model Grade {
+  id        String         @id @default(cuid())
+  studentId String
+  student   StudentProfile @relation(fields: [studentId], references: [id])
+  courseId  String
+  course    Course         @relation(fields: [courseId], references: [id])
+  staffId   String
+  value     Decimal        @db.Decimal(4, 2)
+  period    String
+  notes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, courseId, period])
+}
+
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
+model TestSchedule {
+  id        String       @id @default(cuid())
+  courseId  String
+  course    Course       @relation(fields: [courseId], references: [id])
+  groupId   String
+  group     Group        @relation(fields: [groupId], references: [id])
+  staffId   String
+  staff     StaffProfile @relation(fields: [staffId], references: [id])
+  date      DateTime     @db.Date
+  period    Int
+
+  createdAt DateTime @default(now())
+
+  @@index([groupId, date])
+}
+
+// ─── Referrals ────────────────────────────────────────────────────────────────
+
+model Referral {
+  id          String         @id @default(cuid())
+  studentId   String
+  student     StudentProfile @relation("StudentReferrals", fields: [studentId], references: [id])
+  filerId     String
+  filer       StaffProfile   @relation("ReferralFiler", fields: [filerId], references: [id])
+  groupId     String?
+  group       Group?         @relation(fields: [groupId], references: [id])
+  description String         @db.Text
+  date        DateTime
+  status      ReferralStatus @default(PENDING)
+  counselorNotes String?     @db.Text
+
+  resolution ReferralResolution?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([studentId])
+  @@index([status])
+}
+
+model ReferralResolution {
+  id          String           @id @default(cuid())
+  referralId  String           @unique
+  referral    Referral         @relation(fields: [referralId], references: [id])
+  action      ResolutionAction
+  notes       String?          @db.Text
+
+  parentContacted     Boolean   @default(false)
+  parentContactDate   DateTime?
+  parentContactMethod String?
+
+  resolvedById String
+  resolvedAt   DateTime @default(now())
+}
+
+// ─── Noticeboard ──────────────────────────────────────────────────────────────
+
+model Notice {
+  id           String      @id @default(cuid())
+  title        String
+  titleEl      String?
+  body         String      @db.Text
+  bodyEl       String?     @db.Text
+  uploadedById String
+  fileId       String?
+  file         StoredFile? @relation(fields: [fileId], references: [id])
+  urgent       Boolean     @default(false)
+  staffOnly    Boolean     @default(false)
+  gradeTarget  Int?
+
+  tags            NoticeTag[]
+  acknowledgments NoticeAcknowledgment[]
+
+  createdAt DateTime @default(now())
+}
+
+model NoticeTag {
+  id       String @id @default(cuid())
+  noticeId String
+  notice   Notice @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  tag      String
+}
+
+model NoticeAcknowledgment {
+  id       String   @id @default(cuid())
+  noticeId String
+  notice   Notice   @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  userId   String
+  readAt   DateTime @default(now())
+
+  @@unique([noticeId, userId])
+}
+
+// ─── File Storage ─────────────────────────────────────────────────────────────
+
+model StoredFile {
+  id           String   @id @default(cuid())
+  filename     String
+  path         String
+  mimeType     String
+  size         Int
+  uploadedById String
+  category     String?
+
+  notices Notice[]
+
+  createdAt DateTime @default(now())
+}
+
+// ─── SMS Log ──────────────────────────────────────────────────────────────────
+
+model SmsLog {
+  id              String   @id @default(cuid())
+  studentId       String
+  phoneNumber     String
+  message         String
+  status          String
+  gatewayResponse String?
+
+  sentAt DateTime @default(now())
+}
+
+// ─── Global Settings ──────────────────────────────────────────────────────────
+
+model GlobalSetting {
+  key   String @id
+  value String
+}
+
+// ─── Audit Log ────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String  @id @default(cuid())
+  userId     String
+  user       User    @relation(fields: [userId], references: [id])
+  action     String
+  resource   String
+  resourceId String?
+  details    Json?
+  ipAddress  String?
+  userAgent  String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([resource, resourceId])
+  @@index([createdAt])
+}

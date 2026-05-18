@@ -1,0 +1,111 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { cn } from "@/lib/utils";
+import type { Role } from "@/generated/prisma";
+import {
+  LayoutDashboard, ClipboardList, AlertTriangle, BookOpen,
+  Calendar, FileText, Bell, Users, Settings, Shield,
+  Search, GraduationCap, Home,
+} from "lucide-react";
+
+interface NavItem {
+  key: string;
+  href: string;
+  icon: React.ElementType;
+  roles: Role[];
+}
+
+const NAV_ITEMS: NavItem[] = [
+  // Admin / Staff
+  { key: "dashboard",   href: "dashboard",         icon: LayoutDashboard, roles: ["SUPER_ADMIN","HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER","SCHOOL_ADMIN"] },
+  { key: "locate",      href: "attendance/locate",  icon: Search,          roles: ["SUPER_ADMIN","HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER","SCHOOL_ADMIN"] },
+  { key: "attendance",  href: "attendance",         icon: ClipboardList,   roles: ["SUPER_ADMIN","HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","TEACHER","SCHOOL_ADMIN"] },
+  { key: "referrals",   href: "referrals",          icon: AlertTriangle,   roles: ["SUPER_ADMIN","HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
+  { key: "grades",      href: "grades",             icon: BookOpen,        roles: ["SUPER_ADMIN","HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","TEACHER"] },
+  { key: "timetable",   href: "timetable",          icon: Calendar,        roles: ["SUPER_ADMIN","HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","SCHOOL_ADMIN","TEACHER"] },
+  { key: "tests",       href: "tests",              icon: FileText,        roles: ["SUPER_ADMIN","HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","TEACHER"] },
+  { key: "noticeboard", href: "noticeboard",        icon: Bell,            roles: ["SUPER_ADMIN","HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER","SCHOOL_ADMIN"] },
+  { key: "students",    href: "students",           icon: GraduationCap,   roles: ["SUPER_ADMIN","HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","SCHOOL_ADMIN"] },
+  { key: "groups",      href: "groups",             icon: Home,            roles: ["SUPER_ADMIN","HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","SCHOOL_ADMIN"] },
+  { key: "staff",       href: "staff",              icon: Users,           roles: ["SUPER_ADMIN","HEADMASTER"] },
+  { key: "auditLog",    href: "audit-log",          icon: Shield,          roles: ["SUPER_ADMIN","HEADMASTER"] },
+  { key: "settings",    href: "settings",           icon: Settings,        roles: ["SUPER_ADMIN"] },
+  // Student portal
+  { key: "myAttendance", href: "attendance",        icon: ClipboardList,   roles: ["STUDENT"] },
+  { key: "myGrades",     href: "grades",            icon: BookOpen,        roles: ["STUDENT"] },
+  // Parent portal
+  { key: "children",    href: "children",           icon: GraduationCap,   roles: ["PARENT"] },
+  { key: "noticeboard", href: "noticeboard",        icon: Bell,            roles: ["PARENT"] },
+];
+
+interface SidebarContentProps {
+  role: Role;
+  locale: string;
+  portal: string;
+  userName?: string;
+  onNavigate?: () => void;
+}
+
+export function SidebarContent({ role, locale, portal, userName, onNavigate }: SidebarContentProps) {
+  const t = useTranslations("nav");
+  const pathname = usePathname();
+  const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(role));
+
+  return (
+    <div className="flex flex-col h-full bg-slate-900">
+      {/* Logo */}
+      <div className="flex items-center gap-3 px-5 py-5 border-b border-slate-800 flex-shrink-0">
+        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-blue-600 flex-shrink-0">
+          <GraduationCap className="w-5 h-5 text-white" />
+        </div>
+        <span className="font-semibold text-white text-sm leading-tight">
+          School<br />
+          <span className="text-slate-400 font-normal text-xs">Management System</span>
+        </span>
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+        {visibleItems.map((item) => {
+          const href = `/${locale}/${portal}/${item.href}`;
+          const isActive = pathname.startsWith(href);
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.key}
+              href={href}
+              onClick={onNavigate}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-blue-600 text-white"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800"
+              )}
+            >
+              <Icon className="w-4 h-4 flex-shrink-0" />
+              {t(item.key as Parameters<typeof t>[0])}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* User */}
+      <div className="px-4 py-4 border-t border-slate-800 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0">
+            <span className="text-slate-300 text-xs font-medium">
+              {userName?.[0]?.toUpperCase() ?? "?"}
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-white truncate">{userName}</p>
+            <p className="text-xs text-slate-500 truncate">{role.replace(/_/g, " ")}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
