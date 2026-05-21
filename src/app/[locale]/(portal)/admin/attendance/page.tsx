@@ -63,7 +63,7 @@ export default async function AttendancePage({
         </div>
         <Link
           href={`/${locale}/admin/attendance/mark`}
-          className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+          className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
         >
           <ClipboardList className="w-4 h-4" />
           Mark Attendance
@@ -76,19 +76,19 @@ export default async function AttendancePage({
           type="date"
           name="date"
           defaultValue={selectedDateStr}
-          className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
         />
         <select
           name="groupId"
           defaultValue={groupId ?? ""}
-          className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
         >
           <option value="">All groups</option>
           {groups.map((g) => (
             <option key={g.id} value={g.id}>{g.name}</option>
           ))}
         </select>
-        <button type="submit" className="h-9 px-4 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">
+        <button type="submit" className="h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700">
           Apply
         </button>
       </form>

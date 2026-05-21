@@ -60,7 +60,7 @@ export default async function StudentAttendancePage({
   const statusColor = (status: string, isAuto: boolean) => {
     if (isAuto || status === "ABSENT") return "bg-red-50 text-red-700 border-red-200";
     if (status === "LATE") return "bg-amber-50 text-amber-700 border-amber-200";
-    return "bg-blue-50 text-blue-700 border-blue-200";
+    return "bg-emerald-50 text-emerald-700 border-emerald-200";
   };
 
   return (
@@ -105,7 +105,7 @@ export default async function StudentAttendancePage({
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-blue-600">{excused}</p>
+            <p className="text-2xl font-bold text-emerald-600">{excused}</p>
             <p className="text-xs text-slate-500 mt-1">Excused</p>
           </CardContent>
         </Card>

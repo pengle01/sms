@@ -1,14 +1,24 @@
 import { db } from "@/server/db";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/server/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { GraduationCap, Search } from "lucide-react";
+import { GraduationCap, Search, Upload } from "lucide-react";
+import Link from "next/link";
+import { StudentRow } from "./student-row";
 
 export default async function StudentsPage({
+  params,
   searchParams,
 }: {
+  params: Promise<{ locale: string }>;
   searchParams: Promise<{ search?: string; groupId?: string; page?: string }>;
 }) {
-  const { search, groupId, page: pageStr } = await searchParams;
+  const [{ locale }, { search, groupId, page: pageStr }, session] = await Promise.all([
+    params,
+    searchParams,
+    getServerSession(authOptions),
+  ]);
   const page = Math.max(1, parseInt(pageStr ?? "1"));
   const limit = 30;
 
@@ -43,6 +53,24 @@ export default async function StudentsPage({
           <h2 className="text-2xl font-bold text-slate-900">Students</h2>
           <p className="text-slate-500 text-sm mt-1">{total} students enrolled</p>
         </div>
+        {session?.user?.role === "SUPER_ADMIN" && (
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/${locale}/admin/students/import`}
+              className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50"
+            >
+              <Upload className="w-4 h-4" />
+              Import students
+            </Link>
+            <Link
+              href={`/${locale}/admin/students/enrollment`}
+              className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
+            >
+              <Upload className="w-4 h-4" />
+              Import enrollment
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Filters */}
@@ -53,13 +81,13 @@ export default async function StudentsPage({
             name="search"
             defaultValue={search}
             placeholder="Search by name..."
-            className="w-full h-9 pl-9 pr-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full h-9 pl-9 pr-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
         <select
           name="groupId"
           defaultValue={groupId ?? ""}
-          className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
         >
           <option value="">All groups</option>
           {groups.map((g) => (
@@ -68,7 +96,7 @@ export default async function StudentsPage({
         </select>
         <button
           type="submit"
-          className="h-9 px-4 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+          className="h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
         >
           Filter
         </button>
@@ -89,7 +117,7 @@ export default async function StudentsPage({
             </thead>
             <tbody className="divide-y divide-slate-50">
               {students.map((s) => (
-                <tr key={s.id} className="hover:bg-slate-50 transition-colors">
+                <StudentRow key={s.id} href={`/${locale}/admin/students/${s.id}`}>
                   <td className="px-5 py-3.5 font-medium text-slate-900">{s.user.name}</td>
                   <td className="px-5 py-3.5 text-slate-600 font-mono text-xs">{s.studentId}</td>
                   <td className="px-5 py-3.5">
@@ -110,7 +138,7 @@ export default async function StudentsPage({
                       {s.user.isActive ? "Active" : "Inactive"}
                     </Badge>
                   </td>
-                </tr>
+                </StudentRow>
               ))}
               {students.length === 0 && (
                 <tr>

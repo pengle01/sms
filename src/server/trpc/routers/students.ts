@@ -119,6 +119,7 @@ export const parentsRouter = createTRPCRouter({
           passwordHash,
           parentProfile: {
             create: {
+              role: "OTHER" as const,
               phone: input.phone,
               children: {
                 create: input.studentProfileIds.map((id) => ({ studentProfileId: id })),

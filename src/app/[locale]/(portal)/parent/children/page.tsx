@@ -84,8 +84,8 @@ export default async function ParentChildrenPage({
             <Card key={s.id}>
               <CardContent className="p-5 space-y-4">
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                    <GraduationCap className="w-5 h-5 text-blue-600" />
+                  <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                    <GraduationCap className="w-5 h-5 text-emerald-600" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-slate-900">{s.user.name}</h3>

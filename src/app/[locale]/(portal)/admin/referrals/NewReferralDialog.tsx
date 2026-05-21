@@ -40,7 +40,7 @@ export function NewReferralDialog({ students, locale }: { students: Student[]; l
     return (
       <Button
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+        className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
       >
         <Plus className="w-4 h-4" />
         New Referral
@@ -65,7 +65,7 @@ export function NewReferralDialog({ students, locale }: { students: Student[]; l
               value={studentId}
               onChange={(e) => setStudentId(e.target.value)}
               required
-              className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
             >
               <option value="">Select student…</option>
               {students.map((s) => (
@@ -85,7 +85,7 @@ export function NewReferralDialog({ students, locale }: { students: Student[]; l
               minLength={10}
               rows={4}
               placeholder="Describe the incident or behavior (min. 10 characters)…"
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
             />
           </div>
 
@@ -101,7 +101,7 @@ export function NewReferralDialog({ students, locale }: { students: Student[]; l
             <Button
               type="submit"
               disabled={isPending || !studentId || description.length < 10}
-              className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white"
+              className="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white"
             >
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Submit

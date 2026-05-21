@@ -21,8 +21,16 @@ export default async function GroupDetailPage({
     include: {
       homeroomTeacher: { include: { user: { select: { name: true, email: true } } } },
       students: {
-        include: { user: { select: { name: true, email: true, isActive: true } } },
+        include: { user: { select: { name: true, isActive: true } } },
         orderBy: { user: { name: "asc" } },
+      },
+      studentGroups: {
+        include: {
+          studentProfile: {
+            include: { user: { select: { name: true, isActive: true } } },
+          },
+        },
+        orderBy: { studentProfile: { user: { name: "asc" } } },
       },
       timetableSlots: {
         include: {
@@ -70,7 +78,9 @@ export default async function GroupDetailPage({
         <div>
           <h2 className="text-2xl font-bold text-slate-900">{group.name}</h2>
           <p className="text-slate-500 text-sm mt-1">
-            Grade {group.grade} · {group.students.length} students
+            Grade {group.grade}
+            {group.students.length > 0 && ` · ${group.students.length} homeroom`}
+            {group.studentGroups.length > 0 && ` · ${group.studentGroups.length} enrolled`}
             {group.homeroomTeacher && ` · ${group.homeroomTeacher.user.name}`}
           </p>
         </div>
@@ -90,12 +100,13 @@ export default async function GroupDetailPage({
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
-        {/* Student roster */}
+        {/* Homeroom roster */}
+        {group.students.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Users className="w-4 h-4" />
-              Students ({group.students.length})
+              Homeroom students ({group.students.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0 overflow-x-auto">
@@ -122,13 +133,51 @@ export default async function GroupDetailPage({
                 ))}
                 {group.students.length === 0 && (
                   <tr>
-                    <td colSpan={2} className="px-5 py-10 text-center text-slate-400">No students enrolled</td>
+                    <td colSpan={2} className="px-5 py-10 text-center text-slate-400">No homeroom students</td>
                   </tr>
                 )}
               </tbody>
             </table>
           </CardContent>
         </Card>
+        )}
+
+        {/* Subject-enrolled students */}
+        {group.studentGroups.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <GraduationCap className="w-4 h-4" />
+              Enrolled students ({group.studentGroups.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Name</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {group.studentGroups.map(({ studentProfile: s }) => (
+                  <tr key={s.id} className="hover:bg-slate-50">
+                    <td className="px-5 py-3 font-medium text-slate-900">{s.user.name}</td>
+                    <td className="px-5 py-3">
+                      <Badge
+                        variant="outline"
+                        className={`text-xs ${s.user.isActive ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}
+                      >
+                        {s.user.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+        )}
 
         {/* Timetable */}
         <Card>
@@ -149,7 +198,7 @@ export default async function GroupDetailPage({
                       <div key={slot.id} className="flex items-center gap-3 text-sm px-3 py-2 rounded-lg bg-slate-50">
                         <span className="text-slate-400 w-6 text-center font-mono text-xs">{slot.period}</span>
                         <span className="font-medium text-slate-900 flex-1">{slot.course.name}</span>
-                        <span className="text-slate-500 text-xs">{slot.staff.user.name}</span>
+                        <span className="text-slate-500 text-xs">{slot.staff?.user.name ?? slot.staffName ?? "—"}</span>
                         {slot.room && (
                           <span className="text-slate-400 text-xs">Rm {slot.room}</span>
                         )}

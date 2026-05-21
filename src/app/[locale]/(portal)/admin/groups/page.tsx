@@ -50,8 +50,8 @@ export default async function GroupsPage({
                       <CardTitle className="text-lg font-bold text-slate-900">
                         {group.name}
                       </CardTitle>
-                      <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
-                        <GraduationCap className="w-5 h-5 text-blue-600" />
+                      <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center">
+                        <GraduationCap className="w-5 h-5 text-emerald-600" />
                       </div>
                     </div>
                   </CardHeader>

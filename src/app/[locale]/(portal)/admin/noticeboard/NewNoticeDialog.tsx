@@ -36,7 +36,7 @@ export function NewNoticeDialog({ locale }: { locale: string }) {
     return (
       <Button
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+        className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
       >
         <Plus className="w-4 h-4" />
         Post Notice
@@ -62,7 +62,7 @@ export function NewNoticeDialog({ locale }: { locale: string }) {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
-              className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
@@ -73,7 +73,7 @@ export function NewNoticeDialog({ locale }: { locale: string }) {
               onChange={(e) => setBody(e.target.value)}
               required
               rows={5}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
             />
           </div>
 
@@ -84,7 +84,7 @@ export function NewNoticeDialog({ locale }: { locale: string }) {
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}
               placeholder="e.g. exam, holiday, meeting"
-              className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
@@ -103,7 +103,7 @@ export function NewNoticeDialog({ locale }: { locale: string }) {
             <Button type="button" variant="outline" onClick={() => setOpen(false)} className="h-9 px-4">
               Cancel
             </Button>
-            <Button type="submit" disabled={isPending || !title || !body} className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white">
+            <Button type="submit" disabled={isPending || !title || !body} className="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white">
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Post
             </Button>

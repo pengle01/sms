@@ -64,8 +64,8 @@ export default async function AdminDashboardPage({
       title: t("unreadNotices"),
       value: unreadNotices,
       icon: Bell,
-      color: "text-blue-600",
-      bg: "bg-blue-50",
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
     },
     {
       title: "Total Students",

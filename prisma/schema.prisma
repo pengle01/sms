@@ -25,6 +25,18 @@ enum Role {
   PARENT
 }
 
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum ParentRole {
+  FATHER
+  MOTHER
+  GUARDIAN
+  OTHER
+}
+
 enum AttendanceStatus {
   PRESENT
   ABSENT
@@ -102,7 +114,9 @@ model User {
   studentProfile StudentProfile?
   parentProfile  ParentProfile?
 
-  auditLogs AuditLog[]
+  uploadedNotices   Notice[]
+  resolvedReferrals ReferralResolution[]
+  auditLogs         AuditLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -115,25 +129,35 @@ model StaffProfile {
   phone      String?
   department String?
 
-  homeroomGroup     Group?            @relation("HomeroomTeacher")
+  homeroomGroup     Group?             @relation("HomeroomTeacher")
   courseAssignments CourseAssignment[]
-  filedReferrals    Referral[]        @relation("ReferralFiler")
-  attendanceRecords Attendance[]      @relation("AttendanceTeacher")
-  issuedPermits     ExitPermit[]      @relation("PermitIssuer")
-  filedActivities   Activity[]        @relation("ActivityFiler")
+  filedReferrals    Referral[]         @relation("ReferralFiler")
+  attendanceRecords Attendance[]       @relation("AttendanceTeacher")
+  issuedPermits     ExitPermit[]       @relation("PermitIssuer")
+  filedActivities   Activity[]         @relation("ActivityFiler")
   timetableSlots    TimetableSlot[]
   testSchedules     TestSchedule[]
+  grades            Grade[]
 }
 
 model StudentProfile {
-  id        String  @id @default(cuid())
-  userId    String  @unique
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  studentId String  @unique
-  groupId   String?
-  group     Group?  @relation(fields: [groupId], references: [id])
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studentId      String    @unique
+  groupId        String?
+  group          Group?    @relation(fields: [groupId], references: [id])
+  gender         Gender?
+  dateOfBirth    DateTime? @db.Date
+  placeOfBirth   String?
+  nationality    String?
+  idCardNumber   String?
+  passportNumber String?
 
   parents                ParentStudent[]
+  subjectGroups          StudentGroup[]
+  smsContacts            SmsContact[]
+  smsLogs                SmsLog[]
   attendance             Attendance[]
   grades                 Grade[]
   referrals              Referral[]           @relation("StudentReferrals")
@@ -142,12 +166,14 @@ model StudentProfile {
 }
 
 model ParentProfile {
-  id     String  @id @default(cuid())
-  userId String  @unique
-  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String     @id @default(cuid())
+  userId String     @unique
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   phone  String?
+  role   ParentRole
 
-  children ParentStudent[]
+  children    ParentStudent[]
+  smsContacts SmsContact[]
 }
 
 model ParentStudent {
@@ -160,6 +186,43 @@ model ParentStudent {
   @@unique([parentProfileId, studentProfileId])
 }
 
+// ─── Subject Group Enrollments ────────────────────────────────────────────────
+// Many-to-many: students ↔ schedule groups (from the group-enrollment file).
+// Separate from StudentProfile.groupId which holds the homeroom class.
+
+model StudentGroup {
+  id               String         @id @default(cuid())
+  studentProfileId String
+  studentProfile   StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  groupId          String
+  group            Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([studentProfileId, groupId])
+  @@index([groupId])
+}
+
+// ─── SMS Contacts ─────────────────────────────────────────────────────────────
+
+model SmsContact {
+  id              String         @id @default(cuid())
+  studentId       String
+  student         StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  name            String
+  phone           String
+  role            ParentRole
+  active          Boolean        @default(true)
+  parentProfileId String?
+  parentProfile   ParentProfile? @relation(fields: [parentProfileId], references: [id], onDelete: SetNull)
+
+  smsLogs SmsLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([studentId])
+  @@index([studentId, active])
+}
+
 // ─── Groups ───────────────────────────────────────────────────────────────────
 
 model Group {
@@ -169,10 +232,12 @@ model Group {
   homeroomTeacherId String?       @unique
   homeroomTeacher   StaffProfile? @relation("HomeroomTeacher", fields: [homeroomTeacherId], references: [id])
 
-  students       StudentProfile[]
-  timetableSlots TimetableSlot[]
-  referrals      Referral[]
-  testSchedules  TestSchedule[]
+  students          StudentProfile[]
+  studentGroups     StudentGroup[]
+  courseAssignments CourseAssignment[]
+  timetableSlots    TimetableSlot[]
+  referrals         Referral[]
+  testSchedules     TestSchedule[]
 }
 
 // ─── Curriculum ───────────────────────────────────────────────────────────────
@@ -196,6 +261,7 @@ model CourseAssignment {
   staffId  String
   staff    StaffProfile @relation(fields: [staffId], references: [id])
   groupId  String?
+  group    Group?       @relation(fields: [groupId], references: [id])
 
   @@unique([courseId, staffId, groupId])
 }
@@ -203,15 +269,16 @@ model CourseAssignment {
 // ─── Timetable ────────────────────────────────────────────────────────────────
 
 model TimetableSlot {
-  id        String       @id @default(cuid())
+  id        String        @id @default(cuid())
   groupId   String
-  group     Group        @relation(fields: [groupId], references: [id])
+  group     Group         @relation(fields: [groupId], references: [id])
   courseId  String
-  course    Course       @relation(fields: [courseId], references: [id])
-  staffId   String
-  staff     StaffProfile @relation(fields: [staffId], references: [id])
-  dayOfWeek Int          // 1=Mon … 5=Fri
-  period    Int          // 1-based
+  course    Course        @relation(fields: [courseId], references: [id])
+  staffId   String?       // null until teacher claims the slot
+  staff     StaffProfile? @relation(fields: [staffId], references: [id])
+  staffName String?       // raw name from import for matching
+  dayOfWeek Int           // 1=Mon … 5=Fri
+  period    Int           // 1-based
   room      String?
 
   attendance Attendance[]
@@ -291,6 +358,7 @@ model Grade {
   courseId  String
   course    Course         @relation(fields: [courseId], references: [id])
   staffId   String
+  staff     StaffProfile   @relation(fields: [staffId], references: [id])
   value     Decimal        @db.Decimal(4, 2)
   period    String
   notes     String?
@@ -304,15 +372,15 @@ model Grade {
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 model TestSchedule {
-  id        String       @id @default(cuid())
-  courseId  String
-  course    Course       @relation(fields: [courseId], references: [id])
-  groupId   String
-  group     Group        @relation(fields: [groupId], references: [id])
-  staffId   String
-  staff     StaffProfile @relation(fields: [staffId], references: [id])
-  date      DateTime     @db.Date
-  period    Int
+  id       String       @id @default(cuid())
+  courseId String
+  course   Course       @relation(fields: [courseId], references: [id])
+  groupId  String
+  group    Group        @relation(fields: [groupId], references: [id])
+  staffId  String
+  staff    StaffProfile @relation(fields: [staffId], references: [id])
+  date     DateTime     @db.Date
+  period   Int
 
   createdAt DateTime @default(now())
 
@@ -322,17 +390,17 @@ model TestSchedule {
 // ─── Referrals ────────────────────────────────────────────────────────────────
 
 model Referral {
-  id          String         @id @default(cuid())
-  studentId   String
-  student     StudentProfile @relation("StudentReferrals", fields: [studentId], references: [id])
-  filerId     String
-  filer       StaffProfile   @relation("ReferralFiler", fields: [filerId], references: [id])
-  groupId     String?
-  group       Group?         @relation(fields: [groupId], references: [id])
-  description String         @db.Text
-  date        DateTime
-  status      ReferralStatus @default(PENDING)
-  counselorNotes String?     @db.Text
+  id             String         @id @default(cuid())
+  studentId      String
+  student        StudentProfile @relation("StudentReferrals", fields: [studentId], references: [id])
+  filerId        String
+  filer          StaffProfile   @relation("ReferralFiler", fields: [filerId], references: [id])
+  groupId        String?
+  group          Group?         @relation(fields: [groupId], references: [id])
+  description    String         @db.Text
+  date           DateTime
+  status         ReferralStatus @default(PENDING)
+  counselorNotes String?        @db.Text
 
   resolution ReferralResolution?
 
@@ -344,17 +412,18 @@ model Referral {
 }
 
 model ReferralResolution {
-  id          String           @id @default(cuid())
-  referralId  String           @unique
-  referral    Referral         @relation(fields: [referralId], references: [id])
-  action      ResolutionAction
-  notes       String?          @db.Text
+  id         String           @id @default(cuid())
+  referralId String           @unique
+  referral   Referral         @relation(fields: [referralId], references: [id])
+  action     ResolutionAction
+  notes      String?          @db.Text
 
   parentContacted     Boolean   @default(false)
   parentContactDate   DateTime?
   parentContactMethod String?
 
   resolvedById String
+  resolvedBy   User     @relation(fields: [resolvedById], references: [id])
   resolvedAt   DateTime @default(now())
 }
 
@@ -367,6 +436,7 @@ model Notice {
   body         String      @db.Text
   bodyEl       String?     @db.Text
   uploadedById String
+  uploadedBy   User        @relation(fields: [uploadedById], references: [id])
   fileId       String?
   file         StoredFile? @relation(fields: [fileId], references: [id])
   urgent       Boolean     @default(false)
@@ -415,14 +485,78 @@ model StoredFile {
 // ─── SMS Log ──────────────────────────────────────────────────────────────────
 
 model SmsLog {
-  id              String   @id @default(cuid())
+  id              String         @id @default(cuid())
   studentId       String
+  student         StudentProfile @relation(fields: [studentId], references: [id])
+  smsContactId    String?
+  smsContact      SmsContact?    @relation(fields: [smsContactId], references: [id], onDelete: SetNull)
   phoneNumber     String
   message         String
   status          String
   gatewayResponse String?
 
   sentAt DateTime @default(now())
+}
+
+// ─── External: Exam Auditing ─────────────────────────────────────────────────
+// These tables belong to a separate exam-auditing project sharing this DB.
+
+model Template {
+  id            Int      @id @default(autoincrement())
+  totalPoints   Float    @map("total_points")
+  maxPointsJson String   @map("max_points_json")
+  createdAt     DateTime @default(now()) @db.Timestamptz @map("created_at")
+
+  auditResults   AuditResult[]
+  ldAuditResults LdAuditResult[]
+
+  @@map("templates")
+}
+
+model AuditResult {
+  id                 Int      @id @default(autoincrement())
+  templateId         Int      @map("template_id")
+  template           Template @relation(fields: [templateId], references: [id])
+  markerId           String?  @map("marker_id")
+  signaturePresent   Boolean  @map("signature_present")
+  awardedPointsJson  String   @map("awarded_points_json")
+  calculatedSum      Float    @map("calculated_sum")
+  writtenTotal       Float?   @map("written_total")
+  writtenGrade20     Float?   @map("written_grade20")
+  gradeConversion    Float    @map("grade_conversion")
+  markerIdMissing    Boolean  @map("marker_id_missing")
+  writtenTotalAbsent Boolean  @map("written_total_absent")
+  additionError      Boolean  @map("addition_error")
+  exceededPoints     Boolean  @map("exceeded_points")
+  conversionAbsent   Boolean  @map("conversion_absent")
+  conversionError    Boolean  @map("conversion_error")
+  passed             Boolean
+  createdAt          DateTime @default(now()) @db.Timestamptz @map("created_at")
+
+  @@map("audit_results")
+}
+
+model LdAuditResult {
+  id                  Int      @id @default(autoincrement())
+  templateId          Int      @map("template_id")
+  template            Template @relation(fields: [templateId], references: [id])
+  markerId            String?  @map("marker_id")
+  signaturePresent    Boolean  @map("signature_present")
+  awardedPointsJson   String   @map("awarded_points_json")
+  ldCalculatedSum     Float    @map("ld_calculated_sum")
+  ldGrade20           Float    @map("ld_grade20")
+  writtenGrade20      Float?   @map("written_grade20")
+  q6SignaturePresent  Boolean  @map("q6_signature_present")
+  q7SignaturePresent  Boolean  @map("q7_signature_present")
+  q11SignaturePresent Boolean  @map("q11_signature_present")
+  q11CrossedOut       Boolean  @map("q11_crossed_out")
+  markerIdMissing     Boolean  @map("marker_id_missing")
+  conversionAbsent    Boolean  @map("conversion_absent")
+  conversionError     Boolean  @map("conversion_error")
+  passed              Boolean
+  createdAt           DateTime @default(now()) @db.Timestamptz @map("created_at")
+
+  @@map("ld_audit_results")
 }
 
 // ─── Global Settings ──────────────────────────────────────────────────────────

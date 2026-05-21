@@ -182,7 +182,7 @@ export const attendanceRouter = createTRPCRouter({
           status: "IN_CLASS" as const,
           room: slot.room,
           course: slot.course.name,
-          teacher: slot.staff.user.name,
+          teacher: slot.staff?.user.name ?? slot.staffName ?? null,
           period: slot.period,
         };
       }

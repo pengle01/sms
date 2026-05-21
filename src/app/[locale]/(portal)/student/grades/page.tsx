@@ -15,7 +15,7 @@ const PERIOD_LABELS: Record<string, string> = {
 
 function gradeColor(v: number) {
   if (v >= 17) return "text-green-700";
-  if (v >= 13) return "text-blue-700";
+  if (v >= 13) return "text-emerald-700";
   if (v >= 10) return "text-amber-700";
   return "text-red-700";
 }

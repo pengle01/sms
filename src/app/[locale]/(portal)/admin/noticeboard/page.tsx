@@ -57,11 +57,11 @@ export default async function NoticeboardPage({
               <CardContent className="p-5">
                 <div className="flex items-start gap-4">
                   <div className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${
-                    notice.urgent ? "bg-red-50" : "bg-blue-50"
+                    notice.urgent ? "bg-red-50" : "bg-emerald-50"
                   }`}>
                     {notice.urgent
                       ? <AlertCircle className="w-5 h-5 text-red-500" />
-                      : <Bell className="w-5 h-5 text-blue-500" />
+                      : <Bell className="w-5 h-5 text-emerald-500" />
                     }
                   </div>
                   <div className="flex-1 min-w-0">

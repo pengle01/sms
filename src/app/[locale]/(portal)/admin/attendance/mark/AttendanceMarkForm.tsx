@@ -75,7 +75,7 @@ export function AttendanceMarkForm({ groups, students, slot, staffId, selectedGr
     PRESENT: { label: "Present", icon: CheckCircle, color: "text-green-600 bg-green-50 border-green-200" },
     ABSENT:  { label: "Absent",  icon: XCircle,     color: "text-red-600 bg-red-50 border-red-200" },
     LATE:    { label: "Late",    icon: Clock,        color: "text-amber-600 bg-amber-50 border-amber-200" },
-    EXCUSED: { label: "Excused", icon: FileText,     color: "text-blue-600 bg-blue-50 border-blue-200" },
+    EXCUSED: { label: "Excused", icon: FileText,     color: "text-emerald-600 bg-emerald-50 border-emerald-200" },
   } as const;
 
   const counts = Object.values(records).reduce<Record<string, number>>((acc, r) => {
@@ -90,7 +90,7 @@ export function AttendanceMarkForm({ groups, students, slot, staffId, selectedGr
         <select
           value={selectedGroupId ?? ""}
           onChange={handleGroupChange}
-          className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
         >
           <option value="">Select group…</option>
           {groups.map((g) => (
@@ -100,7 +100,7 @@ export function AttendanceMarkForm({ groups, students, slot, staffId, selectedGr
         <select
           value={selectedPeriod}
           onChange={handlePeriodChange}
-          className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
         >
           {[1, 2, 3, 4, 5, 6, 7].map((p) => (
             <option key={p} value={p}>Period {p}</option>
@@ -113,7 +113,7 @@ export function AttendanceMarkForm({ groups, students, slot, staffId, selectedGr
       )}
 
       {selectedGroupId && slot && (
-        <div className="text-sm text-slate-600 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
+        <div className="text-sm text-slate-600 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2">
           <span className="font-medium">{slot.course.name}</span>
           {slot.room && <span className="text-slate-500"> · Room {slot.room}</span>}
         </div>
@@ -179,7 +179,7 @@ export function AttendanceMarkForm({ groups, students, slot, staffId, selectedGr
                             max={60}
                             value={rec.minutesDelayed}
                             onChange={(e) => setDelay(student.id, parseInt(e.target.value) || 0)}
-                            className="w-16 h-8 px-2 rounded-lg border border-slate-200 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-16 h-8 px-2 rounded-lg border border-slate-200 text-sm text-center focus:outline-none focus:ring-2 focus:ring-emerald-500"
                           />
                           <span className="text-xs text-slate-500">min</span>
                         </div>
@@ -195,7 +195,7 @@ export function AttendanceMarkForm({ groups, students, slot, staffId, selectedGr
             <Button
               onClick={handleSubmit}
               disabled={isPending || !slot}
-              className="h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+              className="h-10 px-6 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
             >
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save Attendance

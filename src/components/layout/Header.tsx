@@ -92,7 +92,7 @@ export function Header({ userName, userImage, locale, pageTitle, role, portal }:
           <div ref={profileRef} className="relative">
             <button
               onClick={() => setProfileOpen((v) => !v)}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-white text-sm font-semibold touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 overflow-hidden"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-white text-sm font-semibold touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 overflow-hidden"
               aria-label="User menu"
             >
               {userImage ? (

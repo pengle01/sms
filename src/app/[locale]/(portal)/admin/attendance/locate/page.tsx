@@ -83,20 +83,20 @@ export default async function LocatePage({
             name="search"
             defaultValue={search}
             placeholder="Search by name…"
-            className="w-full h-9 pl-9 pr-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full h-9 pl-9 pr-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
         <select
           name="groupId"
           defaultValue={groupId ?? ""}
-          className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
         >
           <option value="">All groups</option>
           {groups.map((g) => (
             <option key={g.id} value={g.id}>{g.name}</option>
           ))}
         </select>
-        <button type="submit" className="h-9 px-4 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">
+        <button type="submit" className="h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700">
           Search
         </button>
       </form>
@@ -127,7 +127,7 @@ export default async function LocatePage({
                       <Badge variant="outline" className="text-xs">{slot.group.name}</Badge>
                     </td>
                     <td className="px-5 py-3 font-medium text-slate-900">{slot.course.name}</td>
-                    <td className="px-5 py-3 text-slate-600">{slot.staff.user.name}</td>
+                    <td className="px-5 py-3 text-slate-600">{slot.staff?.user.name ?? slot.staffName ?? "—"}</td>
                     <td className="px-5 py-3 text-slate-500">{slot.room ?? "—"}</td>
                   </tr>
                 ))}

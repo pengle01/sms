@@ -26,7 +26,7 @@ export function AcknowledgeButton({ noticeId, acknowledged: initial }: { noticeI
     <button
       onClick={() => mutate({ noticeId })}
       disabled={isPending}
-      className="text-xs text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+      className="text-xs text-emerald-600 hover:text-emerald-700 font-medium disabled:opacity-50"
     >
       Mark as read
     </button>

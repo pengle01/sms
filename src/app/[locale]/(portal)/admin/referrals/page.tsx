@@ -65,7 +65,7 @@ export default async function ReferralsPage({
   const statusBadge = (status: string) => {
     if (status === "PENDING") return "bg-amber-50 text-amber-700 border-amber-200";
     if (status === "RESOLVED") return "bg-green-50 text-green-700 border-green-200";
-    return "bg-blue-50 text-blue-700 border-blue-200";
+    return "bg-emerald-50 text-emerald-700 border-emerald-200";
   };
 
   return (
@@ -83,7 +83,7 @@ export default async function ReferralsPage({
         <select
           name="status"
           defaultValue={statusFilter ?? "ALL"}
-          className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
         >
           <option value="ALL">All statuses</option>
           <option value="PENDING">Pending</option>
@@ -92,7 +92,7 @@ export default async function ReferralsPage({
         </select>
         <button
           type="submit"
-          className="h-9 px-4 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+          className="h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
         >
           Filter
         </button>

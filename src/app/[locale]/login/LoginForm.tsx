@@ -36,7 +36,7 @@ export function LoginForm({ locale, isDev, urlError }: LoginFormProps) {
         </span>
         <a
           href={`/${otherLocale}/login`}
-          className="text-xs px-3 py-1.5 rounded-full text-blue-300/70 hover:text-white hover:bg-white/10 transition-colors"
+          className="text-xs px-3 py-1.5 rounded-full text-emerald-300/70 hover:text-white hover:bg-white/10 transition-colors"
         >
           {otherLocaleLabel}
         </a>
@@ -54,11 +54,11 @@ export function LoginForm({ locale, isDev, urlError }: LoginFormProps) {
         {/* Staff / Students */}
         <div className="rounded-2xl bg-white/10 border border-white/20 backdrop-blur-sm p-8 space-y-6">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-blue-300 mb-1">
+            <p className="text-xs font-semibold uppercase tracking-widest text-emerald-300 mb-1">
               {isDev ? "Dev mode" : "Microsoft SSO"}
             </p>
             <h2 className="text-xl font-bold text-white">{t("staffLogin")}</h2>
-            <p className="text-sm text-blue-200/70 mt-1">
+            <p className="text-sm text-lime-300/70 mt-1">
               {isDev ? "Enter any staff email — no password required" : t("staffLoginDesc")}
             </p>
           </div>
@@ -67,19 +67,19 @@ export function LoginForm({ locale, isDev, urlError }: LoginFormProps) {
             <form action={staffLoginAction} className="space-y-4">
               <input type="hidden" name="locale" value={locale} />
               <div className="space-y-1.5">
-                <Label htmlFor="staff-email" className="text-blue-100 text-sm">{t("email")}</Label>
+                <Label htmlFor="staff-email" className="text-lime-200 text-sm">{t("email")}</Label>
                 <Input
                   id="staff-email"
                   name="email"
                   type="email"
                   placeholder="teacher@school.cy"
                   required
-                  className="bg-white/10 border-white/20 text-white placeholder:text-blue-200/40 focus-visible:ring-blue-400"
+                  className="bg-white/10 border-white/20 text-white placeholder:text-lime-300/40 focus-visible:ring-emerald-400"
                 />
               </div>
               <Button
                 type="submit"
-                className="w-full h-11 bg-blue-500 hover:bg-blue-400 text-white font-semibold"
+                className="w-full h-11 bg-emerald-500 hover:bg-emerald-400 text-white font-semibold"
               >
                 Sign in
               </Button>
@@ -98,39 +98,39 @@ export function LoginForm({ locale, isDev, urlError }: LoginFormProps) {
         {/* Parents */}
         <div className="rounded-2xl bg-white/10 border border-white/20 backdrop-blur-sm p-8 space-y-6">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-blue-300 mb-1">
+            <p className="text-xs font-semibold uppercase tracking-widest text-emerald-300 mb-1">
               Email &amp; Password
             </p>
             <h2 className="text-xl font-bold text-white">{t("parentLogin")}</h2>
-            <p className="text-sm text-blue-200/70 mt-1">{t("parentLoginDesc")}</p>
+            <p className="text-sm text-lime-300/70 mt-1">{t("parentLoginDesc")}</p>
           </div>
 
           <form action={parentLoginAction} className="space-y-4">
             <input type="hidden" name="locale" value={locale} />
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-blue-100 text-sm">{t("email")}</Label>
+              <Label htmlFor="email" className="text-lime-200 text-sm">{t("email")}</Label>
               <Input
                 id="email"
                 name="email"
                 type="email"
                 placeholder="parent@example.com"
                 required
-                className="bg-white/10 border-white/20 text-white placeholder:text-blue-200/40 focus-visible:ring-blue-400"
+                className="bg-white/10 border-white/20 text-white placeholder:text-lime-300/40 focus-visible:ring-emerald-400"
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-blue-100 text-sm">{t("password")}</Label>
+              <Label htmlFor="password" className="text-lime-200 text-sm">{t("password")}</Label>
               <Input
                 id="password"
                 name="password"
                 type="password"
                 required
-                className="bg-white/10 border-white/20 text-white placeholder:text-blue-200/40 focus-visible:ring-blue-400"
+                className="bg-white/10 border-white/20 text-white placeholder:text-lime-300/40 focus-visible:ring-emerald-400"
               />
             </div>
             <Button
               type="submit"
-              className="w-full h-11 bg-blue-500 hover:bg-blue-400 text-white font-semibold"
+              className="w-full h-11 bg-emerald-500 hover:bg-emerald-400 text-white font-semibold"
             >
               {t("login")}
             </Button>

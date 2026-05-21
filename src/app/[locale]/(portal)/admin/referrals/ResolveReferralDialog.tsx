@@ -51,7 +51,7 @@ export function ResolveReferralDialog({ referralId, studentName }: { referralId:
     return (
       <button
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium"
+        className="inline-flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-700 font-medium"
       >
         <CheckCircle2 className="w-3.5 h-3.5" />
         Resolve
@@ -78,7 +78,7 @@ export function ResolveReferralDialog({ referralId, studentName }: { referralId:
             <select
               value={action}
               onChange={(e) => setAction(e.target.value as Action)}
-              className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
             >
               {ACTIONS.map((a) => (
                 <option key={a.value} value={a.value}>{a.label}</option>
@@ -92,7 +92,7 @@ export function ResolveReferralDialog({ referralId, studentName }: { referralId:
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
             />
           </div>
 
@@ -115,7 +115,7 @@ export function ResolveReferralDialog({ referralId, studentName }: { referralId:
                   type="date"
                   value={parentContactDate}
                   onChange={(e) => setParentContactDate(e.target.value)}
-                  className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <div className="space-y-1.5">
@@ -125,7 +125,7 @@ export function ResolveReferralDialog({ referralId, studentName }: { referralId:
                   value={parentContactMethod}
                   onChange={(e) => setParentContactMethod(e.target.value)}
                   placeholder="Phone, email…"
-                  className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
             </div>
