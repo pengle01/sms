@@ -1,26 +1,10 @@
-import type { Metadata, Viewport } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
-import { Inter } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { TRPCProvider } from "@/trpc/provider";
-import "@/app/globals.css";
-
-export const metadata: Metadata = {
-  title: "School Management System",
-};
-
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-};
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin", "greek"],
-});
+import { LocaleSetter } from "./locale-setter";
 
 export default async function LocaleLayout({
   children,
@@ -38,15 +22,12 @@ export default async function LocaleLayout({
   const messages = await getMessages();
 
   return (
-    <html lang={locale} className={`${inter.variable} h-full`}>
-      <body className="min-h-full antialiased bg-background text-foreground font-[family-name:var(--font-inter)]">
-        <NextIntlClientProvider messages={messages}>
-          <TRPCProvider>
-            {children}
-            <Toaster richColors position="top-right" />
-          </TRPCProvider>
-        </NextIntlClientProvider>
-      </body>
-    </html>
+    <NextIntlClientProvider messages={messages}>
+      <TRPCProvider>
+        <LocaleSetter locale={locale} />
+        {children}
+        <Toaster richColors position="top-right" />
+      </TRPCProvider>
+    </NextIntlClientProvider>
   );
 }
