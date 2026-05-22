@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/server/auth";
-import { hasMinRole } from "@/lib/rbac";
+import { canManageClaims } from "@/lib/rbac";
 import { db } from "@/server/db";
 import type { Role } from "@/generated/prisma";
 import { RequestsList } from "./RequestsList";
@@ -14,8 +14,8 @@ export default async function ClaimsPage({
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
-  if (!session?.user || !hasMinRole(session.user.role as Role, "HEADMASTER")) {
-    redirect(`/${locale}/admin/dashboard`);
+  if (!session?.user || !canManageClaims(session.user.role as Role)) {
+    redirect(`/${locale}/login`);
   }
 
   const [rawUsers, rawClaims, rawChaperones] = await Promise.all([

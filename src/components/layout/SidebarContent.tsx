@@ -19,30 +19,46 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  // Admin / Staff
-  { key: "dashboard",   href: "dashboard",         icon: LayoutDashboard, roles: ["SUPER_ADMIN","HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER","SCHOOL_ADMIN"] },
-  { key: "locate",      href: "attendance/locate",  icon: Search,          roles: ["SUPER_ADMIN","HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER","SCHOOL_ADMIN"] },
-  { key: "attendance",  href: "attendance",         icon: ClipboardList,   roles: ["SUPER_ADMIN","HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","TEACHER","SCHOOL_ADMIN"] },
-  { key: "referrals",   href: "referrals",          icon: AlertTriangle,   roles: ["SUPER_ADMIN","HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
-  { key: "grades",      href: "grades",             icon: BookOpen,        roles: ["SUPER_ADMIN","HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","TEACHER"] },
-  { key: "timetable",   href: "timetable",          icon: Calendar,        roles: ["SUPER_ADMIN","HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","SCHOOL_ADMIN","TEACHER"] },
-  { key: "tests",       href: "tests",              icon: FileText,        roles: ["SUPER_ADMIN","HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","TEACHER"] },
-  { key: "noticeboard", href: "noticeboard",        icon: Bell,            roles: ["SUPER_ADMIN","HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER","SCHOOL_ADMIN"] },
-  { key: "students",    href: "students",           icon: GraduationCap,   roles: ["SUPER_ADMIN","HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","SCHOOL_ADMIN"] },
-  { key: "groups",      href: "groups",             icon: Home,            roles: ["SUPER_ADMIN","HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","SCHOOL_ADMIN"] },
-  { key: "staff",       href: "staff",              icon: Users,           roles: ["SUPER_ADMIN","HEADMASTER"] },
-  { key: "claims",      href: "claims",             icon: Backpack,        roles: ["SUPER_ADMIN","HEADMASTER"] },
-  { key: "auditLog",    href: "audit-log",          icon: Shield,          roles: ["SUPER_ADMIN","HEADMASTER"] },
-  { key: "settings",    href: "settings",           icon: Settings,        roles: ["SUPER_ADMIN"] },
-  // Student portal
+  // ── Educator portal (/teacher) — all who work directly with students ──
+  { key: "dashboard",    href: "dashboard",         icon: LayoutDashboard, roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
+  { key: "attendance",   href: "attendance",        icon: ClipboardList,   roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
+  { key: "locate",       href: "attendance/locate", icon: Search,          roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
+  { key: "referrals",    href: "referrals",         icon: AlertTriangle,   roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
+  { key: "grades",       href: "grades",            icon: BookOpen,        roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","TEACHER"] },
+  { key: "timetable",    href: "timetable",         icon: Calendar,        roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","TEACHER"] },
+  { key: "tests",        href: "tests",             icon: FileText,        roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","TEACHER"] },
+  { key: "noticeboard",  href: "noticeboard",       icon: Bell,            roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
+  { key: "students",     href: "students",          icon: GraduationCap,   roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR"] },
+  { key: "groups",       href: "groups",            icon: Home,            roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B"] },
+
+  // ── Office portal (/office) — student data & attendance ─────────────
+  { key: "dashboard",    href: "dashboard",         icon: LayoutDashboard, roles: ["SCHOOL_ADMIN"] },
+  { key: "attendance",   href: "attendance",        icon: ClipboardList,   roles: ["SCHOOL_ADMIN"] },
+  { key: "students",     href: "students",          icon: GraduationCap,   roles: ["SCHOOL_ADMIN"] },
+  { key: "groups",       href: "groups",            icon: Home,            roles: ["SCHOOL_ADMIN"] },
+  { key: "noticeboard",  href: "noticeboard",       icon: Bell,            roles: ["SCHOOL_ADMIN"] },
+
+  // ── Admin portal (/admin) — registrations & system ───────────────────
+  { key: "dashboard",    href: "dashboard",         icon: LayoutDashboard, roles: ["SUPER_ADMIN"] },
+  { key: "claims",       href: "claims",            icon: Backpack,        roles: ["SUPER_ADMIN"] },
+  { key: "users",        href: "users",             icon: Users,           roles: ["SUPER_ADMIN"] },
+  { key: "students",     href: "students",          icon: GraduationCap,   roles: ["SUPER_ADMIN"] },
+  { key: "timetable",    href: "timetable",         icon: Calendar,        roles: ["SUPER_ADMIN"] },
+  { key: "groups",       href: "groups",            icon: Home,            roles: ["SUPER_ADMIN"] },
+  { key: "auditLog",     href: "audit-log",         icon: Shield,          roles: ["SUPER_ADMIN"] },
+  { key: "settings",     href: "settings",          icon: Settings,        roles: ["SUPER_ADMIN"] },
+
+  // ── Student portal ───────────────────────────────────────────────────
   { key: "myAttendance", href: "attendance",        icon: ClipboardList,   roles: ["STUDENT"] },
   { key: "myGrades",     href: "grades",            icon: BookOpen,        roles: ["STUDENT"] },
-  // Parent portal
-  { key: "children",    href: "children",           icon: GraduationCap,   roles: ["PARENT"] },
-  { key: "noticeboard", href: "noticeboard",        icon: Bell,            roles: ["PARENT"] },
-  // Chaperone portal
-  { key: "myStudents",   href: "students",           icon: GraduationCap,   roles: ["CHAPERONE"] },
-  { key: "newRequest",   href: "request",            icon: Plus,            roles: ["CHAPERONE"] },
+
+  // ── Parent portal ────────────────────────────────────────────────────
+  { key: "children",     href: "children",          icon: GraduationCap,   roles: ["PARENT"] },
+  { key: "noticeboard",  href: "noticeboard",       icon: Bell,            roles: ["PARENT"] },
+
+  // ── Chaperone portal ─────────────────────────────────────────────────
+  { key: "myStudents",   href: "students",          icon: GraduationCap,   roles: ["CHAPERONE"] },
+  { key: "newRequest",   href: "request",           icon: Plus,            roles: ["CHAPERONE"] },
 ];
 
 interface SidebarContentProps {

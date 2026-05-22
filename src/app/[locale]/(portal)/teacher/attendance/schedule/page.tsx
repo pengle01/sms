@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
+import type { Role } from "@/generated/prisma";
 import { db } from "@/server/db";
 import { utcMidnight } from "@/lib/dates";
 import Link from "next/link";
@@ -28,18 +29,20 @@ export default async function TeacherSchedulePage({
   if (!session?.user) redirect(`/${locale}/login`);
 
   const staff = await db.staffProfile.findUnique({ where: { userId: session.user.id } });
-  if (!staff) redirect(`/${locale}/teacher/setup`);
+  if (!staff && (session.user.role as Role) === "TEACHER") redirect(`/${locale}/teacher/setup`);
 
   const now = new Date();
   const todayDow = now.getDay();
   const isWeekend = todayDow === 0 || todayDow === 6;
   const today = utcMidnight();
 
-  const slots: Slot[] = await db.timetableSlot.findMany({
-    where: { staffId: staff.id },
-    include: { course: true, group: true },
-    orderBy: [{ dayOfWeek: "asc" }, { period: "asc" }],
-  });
+  const slots: Slot[] = staff
+    ? await db.timetableSlot.findMany({
+        where: { staffId: staff.id },
+        include: { course: true, group: true },
+        orderBy: [{ dayOfWeek: "asc" }, { period: "asc" }],
+      })
+    : [];
 
   const slotMap: Record<number, Record<number, Slot>> = {};
   for (const s of slots) {

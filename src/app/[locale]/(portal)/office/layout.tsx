@@ -1,12 +1,12 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/server/auth";
-import { isEducator } from "@/lib/rbac";
+import { isOfficeAdmin } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 
-export default async function TeacherPortalLayout({
+export default async function OfficePortalLayout({
   children,
   params,
 }: {
@@ -16,22 +16,20 @@ export default async function TeacherPortalLayout({
   const { locale } = await params;
   const session = await getServerSession(authOptions);
 
-  if (!session?.user || !isEducator(session.user.role as Role)) {
+  if (!session?.user || !isOfficeAdmin(session.user.role as Role)) {
     redirect(`/${locale}/login`);
   }
 
-  const role = session.user.role as Role;
-
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
-      <Sidebar role={role} locale={locale} portal="teacher" userName={session.user.name ?? undefined} />
+      <Sidebar role="SCHOOL_ADMIN" locale={locale} portal="office" userName={session.user.name ?? undefined} />
       <div className="flex-1 flex flex-col min-w-0">
         <Header
           userName={session.user.name ?? undefined}
           userImage={session.user.image ?? undefined}
           locale={locale}
-          role={role}
-          portal="teacher"
+          role="SCHOOL_ADMIN"
+          portal="office"
         />
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           {children}

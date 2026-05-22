@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/server/auth";
 import { db } from "@/server/db";
+import type { Role } from "@/generated/prisma";
 import { utcMidnight } from "@/lib/dates";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, ClipboardList, AlertCircle } from "lucide-react";
@@ -17,7 +18,8 @@ export default async function TeacherDashboardPage({
   if (!session) redirect(`/${locale}/login`);
 
   const staff = await db.staffProfile.findUnique({ where: { userId: session.user.id } });
-  if (!staff) redirect(`/${locale}/teacher/setup`);
+  // Only plain teachers must claim a schedule — management roles may have no staffProfile
+  if (!staff && (session.user.role as Role) === "TEACHER") redirect(`/${locale}/teacher/setup`);
 
   const now = new Date();
   const todayDow = now.getDay();
@@ -25,18 +27,20 @@ export default async function TeacherDashboardPage({
   const today = utcMidnight();
 
   const [allSlots, markedRaw] = await Promise.all([
-    db.timetableSlot.findMany({
-      where: { staffId: staff.id },
-      include: { course: true, group: true },
-      orderBy: [{ dayOfWeek: "asc" }, { period: "asc" }],
-    }),
-    isWeekend
-      ? Promise.resolve([])
-      : db.attendance.findMany({
+    staff
+      ? db.timetableSlot.findMany({
+          where: { staffId: staff.id },
+          include: { course: true, group: true },
+          orderBy: [{ dayOfWeek: "asc" }, { period: "asc" }],
+        })
+      : Promise.resolve([]),
+    staff && !isWeekend
+      ? db.attendance.findMany({
           where: { date: today, timetableSlot: { staffId: staff.id } },
           select: { timetableSlotId: true },
           distinct: ["timetableSlotId"],
-        }),
+        })
+      : Promise.resolve([]),
   ]);
 
   const todaySlots = allSlots.filter((s) => s.dayOfWeek === todayDow);

@@ -4,14 +4,14 @@ import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/server/auth";
-import { hasMinRole } from "@/lib/rbac";
+import { canManageClaims } from "@/lib/rbac";
 import { db } from "@/server/db";
 import type { Role } from "@/generated/prisma";
 import { Prisma } from "@/generated/prisma";
 
 async function requireAdmin() {
   const session = await getServerSession(authOptions);
-  if (!session?.user || !hasMinRole(session.user.role as Role, "HEADMASTER")) redirect("/");
+  if (!session?.user || !canManageClaims(session.user.role as Role)) redirect("/");
   return session;
 }
 

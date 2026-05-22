@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { authOptions } from "@/server/auth";
-import { isAdminStaff, hasMinRole } from "@/lib/rbac";
+import { isAdminStaff } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma";
 import { db } from "@/server/db";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -26,13 +26,11 @@ export default async function AdminPortalLayout({
   // headersList is used to read x-pathname in other layouts; kept here for parity
   void headersList;
 
-  const pendingClaimsCount = hasMinRole(role, "HEADMASTER")
-    ? await Promise.all([
-        db.user.count({ where: { isActive: false } }),
-        db.teacherClaim.count({ where: { status: "PENDING", user: { isActive: true } } }),
-        db.chaperoneRequest.count({ where: { status: "PENDING" } }),
-      ]).then(([u, t, c]) => u + t + c)
-    : 0;
+  const pendingClaimsCount = await Promise.all([
+    db.user.count({ where: { isActive: false } }),
+    db.teacherClaim.count({ where: { status: "PENDING", user: { isActive: true } } }),
+    db.chaperoneRequest.count({ where: { status: "PENDING" } }),
+  ]).then(([u, t, c]) => u + t + c);
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">

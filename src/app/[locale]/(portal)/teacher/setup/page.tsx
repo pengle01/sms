@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/server/auth";
+import type { Role } from "@/generated/prisma";
 import { db } from "@/server/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,9 @@ export default async function TeacherSetupPage({
   const { submitted, error } = await searchParams;
   const session = await getServerSession(authOptions);
 
-  if (!session?.user || session.user.role !== "TEACHER") redirect(`/${locale}/login`);
+  if (!session?.user) redirect(`/${locale}/login`);
+  // Setup (schedule claim) is only for plain teachers — management roles don't have a schedule to claim
+  if ((session.user.role as Role) !== "TEACHER") redirect(`/${locale}/teacher/dashboard`);
 
   const profile = await db.staffProfile.findUnique({ where: { userId: session.user.id } });
   if (profile) redirect(`/${locale}/teacher/dashboard`);
