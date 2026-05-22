@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import type { Role } from "@/generated/prisma";
+import { getPortalForRole } from "@/lib/rbac";
 
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
 // Must match the cookie name getToken() looks for in the middleware.
@@ -42,7 +43,8 @@ export async function staffLoginAction(formData: FormData) {
   }
 
   await createSession(user.id, user.email, user.name, user.role, user.image);
-  redirect(`/${locale}/admin`);
+  const portal = getPortalForRole(user.role as Role);
+  redirect(`/${locale}/${portal}`);
 }
 
 export async function parentLoginAction(formData: FormData) {

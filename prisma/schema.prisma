@@ -21,6 +21,7 @@ enum Role {
   STUDENT_COUNSELOR
   TEACHER
   SCHOOL_ADMIN
+  CHAPERONE
   STUDENT
   PARENT
 }
@@ -56,6 +57,12 @@ enum ResolutionAction {
   WRITTEN_AGREEMENT
   WARNING
   OTHER
+}
+
+enum ClaimStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 // ─── NextAuth ─────────────────────────────────────────────────────────────────
@@ -114,9 +121,12 @@ model User {
   studentProfile StudentProfile?
   parentProfile  ParentProfile?
 
-  uploadedNotices   Notice[]
-  resolvedReferrals ReferralResolution[]
-  auditLogs         AuditLog[]
+  uploadedNotices      Notice[]
+  resolvedReferrals    ReferralResolution[]
+  auditLogs            AuditLog[]
+  chaperoneAssignments ActivityChaperone[]
+  teacherClaim         TeacherClaim?
+  chaperoneRequests    ChaperoneRequest[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -162,7 +172,8 @@ model StudentProfile {
   grades                 Grade[]
   referrals              Referral[]           @relation("StudentReferrals")
   exitPermits            ExitPermit[]
-  activityParticipations ActivityParticipant[]
+  activityParticipations   ActivityParticipant[]
+  chaperoneRequestStudents ChaperoneRequestStudent[]
 }
 
 model ParentProfile {
@@ -337,6 +348,7 @@ model Activity {
   location    String?
 
   participants ActivityParticipant[]
+  chaperones   ActivityChaperone[]
 }
 
 model ActivityParticipant {
@@ -347,6 +359,56 @@ model ActivityParticipant {
   student    StudentProfile @relation(fields: [studentId], references: [id])
 
   @@unique([activityId, studentId])
+}
+
+model ActivityChaperone {
+  id         String   @id @default(cuid())
+  activityId String
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([activityId, userId])
+  @@index([userId])
+}
+
+// ─── Claims & Requests ────────────────────────────────────────────────────────
+
+// A teacher selects which staffName in the timetable belongs to them.
+// Admin approves → StaffProfile created and TimetableSlots linked.
+model TeacherClaim {
+  id        String      @id @default(cuid())
+  userId    String      @unique
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  staffName String
+  status    ClaimStatus @default(PENDING)
+  createdAt DateTime    @default(now())
+}
+
+// A chaperone requests responsibility for a set of students.
+// Admin approves → chaperone can view those students in their portal.
+model ChaperoneRequest {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  note      String?     @db.Text
+  status    ClaimStatus @default(PENDING)
+  students  ChaperoneRequestStudent[]
+  createdAt DateTime    @default(now())
+
+  @@index([userId])
+  @@index([status])
+}
+
+model ChaperoneRequestStudent {
+  id               String           @id @default(cuid())
+  requestId        String
+  request          ChaperoneRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  studentProfileId String
+  studentProfile   StudentProfile   @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([requestId, studentProfileId])
+  @@index([studentProfileId])
 }
 
 // ─── Grades ───────────────────────────────────────────────────────────────────

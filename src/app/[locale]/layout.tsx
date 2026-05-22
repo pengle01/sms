@@ -26,7 +26,7 @@ export default async function LocaleLayout({
       <TRPCProvider>
         <LocaleSetter locale={locale} />
         {children}
-        <Toaster richColors position="top-right" />
+        <Toaster richColors position="bottom-right" />
       </TRPCProvider>
     </NextIntlClientProvider>
   );

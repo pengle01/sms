@@ -16,9 +16,10 @@ interface HeaderProps {
   pageTitle?: string;
   role?: Role;
   portal?: string;
+  pendingClaimsCount?: number;
 }
 
-export function Header({ userName, userImage, locale, pageTitle, role, portal }: HeaderProps) {
+export function Header({ userName, userImage, locale, pageTitle, role, portal, pendingClaimsCount }: HeaderProps) {
   const t = useTranslations("auth");
   const router = useRouter();
   const profileRef = useRef<HTMLDivElement>(null);
@@ -50,11 +51,6 @@ export function Header({ userName, userImage, locale, pageTitle, role, portal }:
     const newLocale = locale === "en" ? "el" : "en";
     const newPath = window.location.pathname.replace(`/${locale}/`, `/${newLocale}/`);
     router.push(newPath);
-  };
-
-  const handleLogout = () => {
-    document.cookie = "next-auth.session-token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
-    window.location.href = `/${locale}/login`;
   };
 
   const initials = userName?.[0]?.toUpperCase() ?? "?";
@@ -111,13 +107,13 @@ export function Header({ userName, userImage, locale, pageTitle, role, portal }:
                     <p className="text-xs text-slate-500 mt-0.5">{role.replace(/_/g, " ")}</p>
                   )}
                 </div>
-                <button
-                  onClick={handleLogout}
+                <a
+                  href={`/api/logout?locale=${locale}`}
                   className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 active:bg-red-100 touch-manipulation"
                 >
                   <LogOut className="w-4 h-4" />
                   {t("logout")}
-                </button>
+                </a>
               </div>
             )}
           </div>
@@ -149,6 +145,7 @@ export function Header({ userName, userImage, locale, pageTitle, role, portal }:
               portal={portal}
               userName={userName}
               onNavigate={() => setDrawerOpen(false)}
+              pendingClaimsCount={pendingClaimsCount}
             />
           </div>
         </>,

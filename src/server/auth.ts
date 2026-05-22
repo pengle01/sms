@@ -67,7 +67,7 @@ export const authOptions: NextAuthOptions = {
         });
 
         if (!user || !user.passwordHash || !user.isActive) return null;
-        if (!IS_DEV && user.role !== "PARENT") return null;
+        if (!IS_DEV && user.role !== "PARENT" && user.role !== "CHAPERONE") return null;
 
         const valid = await bcrypt.compare(credentials.password, user.passwordHash);
         if (!valid) return null;

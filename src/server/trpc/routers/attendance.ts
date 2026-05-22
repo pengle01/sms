@@ -12,7 +12,7 @@ export const attendanceRouter = createTRPCRouter({
             studentId: z.string(),
             timetableSlotId: z.string(),
             date: z.string(), // ISO date string
-            status: z.enum(["PRESENT", "ABSENT", "LATE", "EXCUSED"]),
+            status: z.enum(["PRESENT", "ABSENT", "LATE"]),
             minutesDelayed: z.number().int().min(0).default(0),
           })
         ),

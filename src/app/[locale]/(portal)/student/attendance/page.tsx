@@ -38,7 +38,7 @@ export default async function StudentAttendancePage({
     where: {
       studentId: student.id,
       date: { gte: start, lt: end },
-      OR: [{ status: "ABSENT" }, { status: "LATE" }, { status: "EXCUSED" }],
+      OR: [{ status: "ABSENT" }, { status: "LATE" }],
     },
     include: { timetableSlot: { include: { course: true } } },
     orderBy: [{ date: "desc" }, { timetableSlot: { period: "asc" } }],
@@ -50,7 +50,6 @@ export default async function StudentAttendancePage({
   });
   const absent = allRecords.filter((r) => r.status === "ABSENT" || r.isAutoAbsent).length;
   const late = allRecords.filter((r) => r.status === "LATE").length;
-  const excused = allRecords.filter((r) => r.status === "EXCUSED").length;
 
   const prevYear = month === 1 ? year - 1 : year;
   const prevMonth = month === 1 ? 12 : month - 1;
@@ -90,7 +89,7 @@ export default async function StudentAttendancePage({
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <Card>
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold text-red-600">{absent}</p>
@@ -101,12 +100,6 @@ export default async function StudentAttendancePage({
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold text-amber-600">{late}</p>
             <p className="text-xs text-slate-500 mt-1">Late</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-emerald-600">{excused}</p>
-            <p className="text-xs text-slate-500 mt-1">Excused</p>
           </CardContent>
         </Card>
       </div>

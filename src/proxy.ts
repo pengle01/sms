@@ -9,7 +9,7 @@ import type { Role } from "@/generated/prisma";
 const intlMiddleware = createMiddleware(routing);
 
 // Public routes that don't require authentication
-const PUBLIC_PATHS = ["/login", "/api/auth"];
+const PUBLIC_PATHS = ["/login", "/register", "/api/auth", "/api/logout"];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname.includes(p));
@@ -29,6 +29,11 @@ export default async function proxy(request: NextRequest) {
 
   // Apply i18n middleware first
   const intlResponse = intlMiddleware(request);
+
+  // If intl is doing a locale redirect (e.g. adding missing prefix), let it through
+  if (intlResponse.status >= 300 && intlResponse.status < 400) {
+    return intlResponse;
+  }
 
   // Check auth for protected routes
   if (!isPublicPath(pathname)) {
@@ -54,7 +59,25 @@ export default async function proxy(request: NextRequest) {
     }
   }
 
-  return intlResponse ?? NextResponse.next();
+  // Pass x-pathname as a REQUEST header so layouts can read it via headers().
+  // response.headers.set() only sets response headers — headers() in server
+  // components reads request headers, so we must use the request: { headers }
+  // option on NextResponse.next() instead.
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", pathname);
+
+  const response = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
+
+  // Forward any Set-Cookie headers from the intl middleware (e.g. locale cookie)
+  for (const [key, value] of intlResponse.headers.entries()) {
+    if (key.toLowerCase() === "set-cookie") {
+      response.headers.append(key, value);
+    }
+  }
+
+  return response;
 }
 
 export const config = {

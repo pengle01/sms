@@ -48,7 +48,7 @@ export default async function ParentChildAttendancePage({
     where: {
       studentId,
       date: { gte: start, lt: end },
-      OR: [{ status: "ABSENT" }, { status: "LATE" }, { status: "EXCUSED" }],
+      OR: [{ status: "ABSENT" }, { status: "LATE" }],
     },
     include: { timetableSlot: { include: { course: true } } },
     orderBy: [{ date: "desc" }, { timetableSlot: { period: "asc" } }],

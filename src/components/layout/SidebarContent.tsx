@@ -8,7 +8,7 @@ import type { Role } from "@/generated/prisma";
 import {
   LayoutDashboard, ClipboardList, AlertTriangle, BookOpen,
   Calendar, FileText, Bell, Users, Settings, Shield,
-  Search, GraduationCap, Home,
+  Search, GraduationCap, Home, Backpack, Plus,
 } from "lucide-react";
 
 interface NavItem {
@@ -31,6 +31,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "students",    href: "students",           icon: GraduationCap,   roles: ["SUPER_ADMIN","HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","SCHOOL_ADMIN"] },
   { key: "groups",      href: "groups",             icon: Home,            roles: ["SUPER_ADMIN","HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","SCHOOL_ADMIN"] },
   { key: "staff",       href: "staff",              icon: Users,           roles: ["SUPER_ADMIN","HEADMASTER"] },
+  { key: "claims",      href: "claims",             icon: Backpack,        roles: ["SUPER_ADMIN","HEADMASTER"] },
   { key: "auditLog",    href: "audit-log",          icon: Shield,          roles: ["SUPER_ADMIN","HEADMASTER"] },
   { key: "settings",    href: "settings",           icon: Settings,        roles: ["SUPER_ADMIN"] },
   // Student portal
@@ -39,6 +40,9 @@ const NAV_ITEMS: NavItem[] = [
   // Parent portal
   { key: "children",    href: "children",           icon: GraduationCap,   roles: ["PARENT"] },
   { key: "noticeboard", href: "noticeboard",        icon: Bell,            roles: ["PARENT"] },
+  // Chaperone portal
+  { key: "myStudents",   href: "students",           icon: GraduationCap,   roles: ["CHAPERONE"] },
+  { key: "newRequest",   href: "request",            icon: Plus,            roles: ["CHAPERONE"] },
 ];
 
 interface SidebarContentProps {
@@ -47,9 +51,10 @@ interface SidebarContentProps {
   portal: string;
   userName?: string;
   onNavigate?: () => void;
+  pendingClaimsCount?: number;
 }
 
-export function SidebarContent({ role, locale, portal, userName, onNavigate }: SidebarContentProps) {
+export function SidebarContent({ role, locale, portal, userName, onNavigate, pendingClaimsCount }: SidebarContentProps) {
   const t = useTranslations("nav");
   const pathname = usePathname();
   const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(role));
@@ -86,7 +91,12 @@ export function SidebarContent({ role, locale, portal, userName, onNavigate }: S
               )}
             >
               <Icon className="w-4 h-4 flex-shrink-0" />
-              {t(item.key as Parameters<typeof t>[0])}
+              <span className="flex-1">{t(item.key as Parameters<typeof t>[0])}</span>
+              {item.key === "claims" && pendingClaimsCount != null && pendingClaimsCount > 0 && (
+                <span className="ml-auto text-xs font-semibold bg-amber-400 text-amber-900 rounded-full px-1.5 py-0.5 min-w-[1.25rem] text-center">
+                  {pendingClaimsCount}
+                </span>
+              )}
             </Link>
           );
         })}

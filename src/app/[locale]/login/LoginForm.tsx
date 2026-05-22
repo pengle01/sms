@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -137,6 +138,13 @@ export function LoginForm({ locale, isDev, urlError }: LoginFormProps) {
           </form>
         </div>
       </div>
+
+      <p className="text-center text-sm text-emerald-300/60 mt-2">
+        New staff or chaperone?{" "}
+        <Link href={`/${locale}/register`} className="text-lime-400 hover:text-lime-300 font-medium">
+          Create an account
+        </Link>
+      </p>
     </div>
   );
 }

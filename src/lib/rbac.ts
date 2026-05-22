@@ -23,6 +23,19 @@ export const STAFF_ROLES: Role[] = [
   "TEACHER",
 ];
 
+export const ADMIN_ROLES: Role[] = [
+  "SUPER_ADMIN",
+  "HEADMASTER",
+  "HEADTEACHER_A",
+  "HEADTEACHER_B",
+  "STUDENT_COUNSELOR",
+  "SCHOOL_ADMIN",
+];
+
+export function isAdminStaff(role: Role): boolean {
+  return ADMIN_ROLES.includes(role);
+}
+
 export const MANAGEMENT_ROLES: Role[] = [
   "SUPER_ADMIN",
   "HEADMASTER",
@@ -60,9 +73,11 @@ export function canViewAllReferrals(role: Role): boolean {
 }
 
 // Which roles get the admin/staff portal
-export function getPortalForRole(role: Role): "admin" | "student" | "parent" {
+export function getPortalForRole(role: Role): "admin" | "teacher" | "student" | "parent" | "chaperone" {
   if (role === "PARENT") return "parent";
   if (role === "STUDENT") return "student";
+  if (role === "CHAPERONE") return "chaperone";
+  if (role === "TEACHER") return "teacher";
   return "admin";
 }
 
