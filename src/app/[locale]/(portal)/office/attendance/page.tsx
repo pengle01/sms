@@ -4,7 +4,7 @@ import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, Clock } from "lucide-react";
 import { utcMidnight, localDateStr } from "@/lib/dates";
 import { PrintButton } from "./PrintButton";
 
@@ -26,7 +26,12 @@ export default async function OfficeAttendancePage({
   const today = utcMidnight(todayStr);
   const selectedDate = utcMidnight(selectedDateStr);
 
-  const [groups, absences] = await Promise.all([
+  // Late filings: absences recorded after the attendance date (teachers filing retroactively)
+  const fourteenDaysAgo = utcMidnight(
+    localDateStr(new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000))
+  );
+
+  const [groups, absences, recentAbsencesRaw] = await Promise.all([
     db.group.findMany({ orderBy: [{ grade: "asc" }, { name: "asc" }] }),
     db.attendance.findMany({
       where: {
@@ -46,7 +51,46 @@ export default async function OfficeAttendancePage({
       },
       orderBy: [{ student: { user: { name: "asc" } } }, { timetableSlot: { period: "asc" } }],
     }),
+    db.attendance.findMany({
+      where: {
+        date: { gte: fourteenDaysAgo, lt: today },
+        OR: [{ status: "ABSENT" }, { status: "LATE" }, { isAutoAbsent: true }],
+      },
+      select: {
+        date: true,
+        createdAt: true,
+        staff: { include: { user: { select: { name: true } } } },
+      },
+    }),
   ]);
+
+  // Group late filings by (staffId, dateStr), keeping the latest createdAt per group
+  type LateGroup = { staffName: string; attendanceDateStr: string; count: number; daysLate: number };
+  const lateMap = new Map<string, LateGroup>();
+  for (const r of recentAbsencesRaw) {
+    const attendanceDateStr = r.date.toISOString().slice(0, 10);
+    const filedDateStr = r.createdAt.toISOString().slice(0, 10);
+    if (filedDateStr <= attendanceDateStr) continue; // filed same day — not late
+    const key = `${r.staff.id}::${attendanceDateStr}`;
+    const daysLate = Math.round(
+      (r.createdAt.getTime() - r.date.getTime()) / (24 * 60 * 60 * 1000)
+    );
+    const existing = lateMap.get(key);
+    if (existing) {
+      existing.count++;
+      existing.daysLate = Math.max(existing.daysLate, daysLate);
+    } else {
+      lateMap.set(key, {
+        staffName: r.staff.user.name ?? "Unknown",
+        attendanceDateStr,
+        count: 1,
+        daysLate,
+      });
+    }
+  }
+  const lateFilings = Array.from(lateMap.values()).sort(
+    (a, b) => b.attendanceDateStr.localeCompare(a.attendanceDateStr)
+  );
 
   const isToday = selectedDate.toDateString() === today.toDateString();
   const dateLabel = selectedDate.toLocaleDateString("el-GR", {
@@ -97,6 +141,40 @@ export default async function OfficeAttendancePage({
           Apply
         </button>
       </form>
+
+      {/* Late filings alert — hidden on print */}
+      {lateFilings.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 print:hidden">
+          <div className="flex items-center gap-2 mb-3">
+            <Clock className="w-4 h-4 text-amber-600 flex-shrink-0" />
+            <span className="text-sm font-semibold text-amber-800">
+              Retroactive filings — {lateFilings.length} batch{lateFilings.length !== 1 ? "es" : ""} filed after the attendance date
+            </span>
+          </div>
+          <div className="space-y-1.5">
+            {lateFilings.map((lf, i) => {
+              const dateDisplay = new Date(lf.attendanceDateStr + "T12:00:00").toLocaleDateString("el-GR", {
+                weekday: "short", day: "numeric", month: "short",
+              });
+              return (
+                <div key={i} className="flex items-center gap-3 text-sm">
+                  <span className="font-medium text-slate-800">{lf.staffName}</span>
+                  <span className="text-slate-500">filed {lf.count} absence{lf.count !== 1 ? "s" : ""} for</span>
+                  <a
+                    href={`?date=${lf.attendanceDateStr}`}
+                    className="font-medium text-amber-700 hover:underline"
+                  >
+                    {dateDisplay}
+                  </a>
+                  <span className="text-slate-400 text-xs">
+                    ({lf.daysLate} day{lf.daysLate !== 1 ? "s" : ""} late)
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <Card className="print:shadow-none print:border-0">
         <CardHeader className="pb-3 print:hidden">

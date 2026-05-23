@@ -51,7 +51,8 @@
     "users": "Χρήστες",
     "claims": "Αιτήματα",
     "myStudents": "Οι Μαθητές Μου",
-    "newRequest": "Νέο Αίτημα"
+    "newRequest": "Νέο Αίτημα",
+    "activities": "Δραστηριότητες"
   },
   "dashboard": {
     "welcome": "Καλώς ήρθατε, {name}",

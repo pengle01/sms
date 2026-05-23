@@ -51,7 +51,8 @@
     "users": "Users",
     "claims": "Claims",
     "myStudents": "My Students",
-    "newRequest": "New Request"
+    "newRequest": "New Request",
+    "activities": "Activities"
   },
   "dashboard": {
     "welcome": "Welcome, {name}",

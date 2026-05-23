@@ -3,11 +3,11 @@ import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
 import type { Role } from "@/generated/prisma";
 import { db } from "@/server/db";
-import { utcMidnight } from "@/lib/dates";
+import { utcMidnight, localDateStr } from "@/lib/dates";
 import Link from "next/link";
-import { CheckCircle2, ClipboardList, AlertCircle } from "lucide-react";
+import { CheckCircle2, ClipboardList, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"] as const;
+const DAY_LABELS = ["", "Mon", "Tue", "Wed", "Thu", "Fri"] as const;
 
 type Slot = {
   id: string;
@@ -19,12 +19,22 @@ type Slot = {
   group: { name: string };
 };
 
+function getMondayOfWeek(date: Date): Date {
+  const d = new Date(date);
+  const day = d.getDay();
+  d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+  return d;
+}
+
 export default async function TeacherSchedulePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ week?: string }>;
 }) {
   const { locale } = await params;
+  const { week: weekParam } = await searchParams;
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect(`/${locale}/login`);
 
@@ -32,9 +42,32 @@ export default async function TeacherSchedulePage({
   if (!staff && (session.user.role as Role) === "TEACHER") redirect(`/${locale}/teacher/setup`);
 
   const now = new Date();
+  const todayStr = localDateStr(now);
   const todayDow = now.getDay();
-  const isWeekend = todayDow === 0 || todayDow === 6;
-  const today = utcMidnight();
+
+  // Week offset (0 = current, -1 = last week, +1 = next week, etc.)
+  const weekOffset = weekParam ? parseInt(weekParam) : 0;
+
+  // Calculate Monday of the requested week
+  const baseMon = getMondayOfWeek(now);
+  baseMon.setDate(baseMon.getDate() + weekOffset * 7);
+
+  // Date strings for Mon–Fri of this week
+  const dowToDateStr: Record<number, string> = {};
+  for (let d = 1; d <= 5; d++) {
+    const dt = new Date(baseMon);
+    dt.setDate(baseMon.getDate() + (d - 1));
+    dowToDateStr[d] = localDateStr(dt);
+  }
+
+  const weekStartStr = dowToDateStr[1]!;
+  const weekEndStr   = dowToDateStr[5]!;
+  const isFutureWeek = weekStartStr > todayStr;
+  const isCurrentWeek = weekOffset === 0;
+
+  function isPastOrToday(dow: number) {
+    return (dowToDateStr[dow] ?? "") <= todayStr;
+  }
 
   const slots: Slot[] = staff
     ? await db.timetableSlot.findMany({
@@ -53,59 +86,116 @@ export default async function TeacherSchedulePage({
   const maxPeriod = slots.reduce((m, s) => Math.max(m, s.period), 0);
   const periods = maxPeriod > 0 ? Array.from({ length: maxPeriod }, (_, i) => i + 1) : [];
 
-  const todaySlots = !isWeekend ? slots.filter((s) => s.dayOfWeek === todayDow) : [];
-  const markedSlotIds = new Set<string>();
-
-  if (todaySlots.length > 0) {
+  // Query marked attendance for this week's past/today dates
+  const markedSet = new Set<string>();
+  if (slots.length > 0 && !isFutureWeek) {
+    const weekStart = utcMidnight(weekStartStr);
+    const weekEnd   = utcMidnight(isCurrentWeek ? todayStr : weekEndStr);
     const existing = await db.attendance.findMany({
-      where: { date: today, timetableSlotId: { in: todaySlots.map((s) => s.id) } },
-      select: { timetableSlotId: true },
-      distinct: ["timetableSlotId"],
+      where: {
+        date: { gte: weekStart, lte: weekEnd },
+        timetableSlotId: { in: slots.map((s) => s.id) },
+      },
+      select: { timetableSlotId: true, date: true },
     });
-    for (const a of existing) markedSlotIds.add(a.timetableSlotId);
+    for (const e of existing) {
+      markedSet.add(`${e.timetableSlotId}::${e.date.toISOString().slice(0, 10)}`);
+    }
   }
 
-  const dateLabel = now.toLocaleDateString("el-GR", {
-    weekday: "long", day: "numeric", month: "long",
-  });
+  // Format week range for display
+  const fmtDate = (str: string) => {
+    const d = new Date(str + "T12:00:00");
+    return d.toLocaleDateString("el-GR", { day: "numeric", month: "short" });
+  };
+  const weekLabel = `${fmtDate(weekStartStr)} – ${fmtDate(weekEndStr)}`;
+
+  const prevWeekHref = `?week=${weekOffset - 1}`;
+  const nextWeekHref = `?week=${weekOffset + 1}`;
+  const currentWeekHref = "?week=0";
 
   if (slots.length === 0) {
     return (
       <div className="space-y-4">
-        <h2 className="text-2xl font-bold text-slate-900">My Schedule</h2>
+        <h2 className="text-2xl font-bold text-slate-900">Ωρολόγιο Πρόγραμμα</h2>
         <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          No timetable slots are linked to your account yet. Ask an administrator to import the schedule.
+          No timetable slots linked to your account. Ask an administrator to import the schedule.
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">My Schedule</h2>
-        <p className="text-slate-500 text-sm mt-1">{dateLabel}</p>
+    <div className="space-y-5">
+      {/* Header + week navigation */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex-1">
+          <h2 className="text-2xl font-bold text-slate-900">Ωρολόγιο Πρόγραμμα</h2>
+          <div className="flex items-center gap-2 mt-0.5">
+            <p className="text-slate-500 text-sm">{weekLabel}</p>
+            {!isCurrentWeek && (
+              <Link
+                href={currentWeekHref}
+                className="text-xs font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
+              >
+                → This week
+              </Link>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1">
+          <Link
+            href={prevWeekHref}
+            className="h-9 w-9 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors"
+            title="Previous week"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Link>
+          <Link
+            href={nextWeekHref}
+            className="h-9 w-9 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors"
+            title="Next week"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
       </div>
 
-      {/* Week grid */}
+      {isFutureWeek && (
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-500">
+          Future week — attendance cannot be marked in advance.
+        </div>
+      )}
+
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="w-full min-w-[520px] text-sm border-collapse">
           <thead>
             <tr>
-              <th className="w-14 border-b border-slate-100 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400" />
+              <th className="w-10 border-b border-slate-100 px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400" />
               {([1, 2, 3, 4, 5] as const).map((dow) => {
-                const isToday = dow === todayDow;
+                const dateStr = dowToDateStr[dow]!;
+                const isToday = dateStr === todayStr;
+                const past = isPastOrToday(dow);
+                const [, mm, dd] = dateStr.split("-");
                 return (
                   <th
                     key={dow}
-                    className={`border-b border-slate-100 px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide ${
-                      isToday ? "bg-emerald-50 text-emerald-700" : "text-slate-400"
+                    className={`border-b border-slate-100 px-3 py-3 text-center text-xs font-semibold ${
+                      isToday
+                        ? "bg-emerald-50 text-emerald-700"
+                        : past
+                        ? "text-slate-600"
+                        : "text-slate-300"
                     }`}
                   >
-                    {DAYS[dow - 1]}
+                    <span className="uppercase tracking-wide">{DAY_LABELS[dow]}</span>
+                    <span className={`ml-1.5 text-[11px] font-normal ${isToday ? "text-emerald-600" : past ? "text-slate-400" : "text-slate-300"}`}>
+                      {dd}/{mm}
+                    </span>
                     {isToday && (
-                      <span className="ml-1.5 inline-block rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold text-white leading-none">
+                      <span className="ml-1.5 inline-block rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold text-white leading-none align-middle">
                         today
                       </span>
                     )}
@@ -117,41 +207,44 @@ export default async function TeacherSchedulePage({
           <tbody>
             {periods.map((period) => (
               <tr key={period} className="border-b border-slate-50 last:border-0">
-                <td className="px-4 py-2 text-center align-top text-xs font-semibold text-slate-400">
+                <td className="px-3 py-2 text-center align-top text-xs font-semibold text-slate-400">
                   {period}
                 </td>
                 {([1, 2, 3, 4, 5] as const).map((dow) => {
                   const slot = slotMap[dow]?.[period];
-                  const isToday = dow === todayDow && !isWeekend;
-                  const marked = slot ? markedSlotIds.has(slot.id) : false;
+                  const dateStr = dowToDateStr[dow]!;
+                  const isToday = dateStr === todayStr;
+                  const past = isPastOrToday(dow);
+                  const canMark = past && !isFutureWeek;
+                  const marked = slot ? markedSet.has(`${slot.id}::${dateStr}`) : false;
 
                   const cellContent = slot ? (
                     <div
                       className={`rounded-lg px-3 py-2.5 ${
-                        isToday
+                        canMark
                           ? marked
-                            ? "border border-emerald-200 bg-emerald-100"
-                            : "border border-emerald-300 bg-emerald-50 group-hover:border-emerald-400 group-hover:bg-emerald-100"
-                          : "border border-slate-100 bg-slate-50"
+                            ? "border border-emerald-200 bg-emerald-50"
+                            : isToday
+                            ? "border border-emerald-300 bg-emerald-50 group-hover:border-emerald-400"
+                            : "border border-amber-100 bg-amber-50/60 group-hover:border-amber-300"
+                          : "border border-slate-100 bg-slate-50 opacity-40"
                       }`}
                     >
-                      <p className="text-xs font-semibold leading-snug text-slate-900">
-                        {slot.course.name}
-                      </p>
+                      <p className="text-xs font-semibold leading-snug text-slate-900">{slot.course.name}</p>
                       <p className="mt-0.5 text-xs text-slate-500">{slot.group.name}</p>
-                      {slot.room && (
-                        <p className="text-xs text-slate-400">Room {slot.room}</p>
-                      )}
-                      {isToday && marked && (
+                      {slot.room && <p className="text-xs text-slate-400">Room {slot.room}</p>}
+                      {canMark && marked && (
                         <div className="mt-1.5 flex items-center gap-1">
                           <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                           <span className="text-xs font-medium text-emerald-600">Done</span>
                         </div>
                       )}
-                      {isToday && !marked && (
+                      {canMark && !marked && (
                         <div className="mt-1.5 flex items-center gap-1">
-                          <ClipboardList className="w-3 h-3 text-emerald-500" />
-                          <span className="text-xs font-medium text-emerald-600">Mark</span>
+                          <ClipboardList className={`w-3 h-3 ${isToday ? "text-emerald-500" : "text-amber-500"}`} />
+                          <span className={`text-xs font-medium ${isToday ? "text-emerald-600" : "text-amber-600"}`}>
+                            {isToday ? "Mark" : "Fill in"}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -160,11 +253,11 @@ export default async function TeacherSchedulePage({
                   return (
                     <td
                       key={dow}
-                      className={`px-2 py-2 align-top ${isToday ? "bg-emerald-50/30" : ""}`}
+                      className={`px-2 py-2 align-top ${isToday && isCurrentWeek ? "bg-emerald-50/30" : ""}`}
                     >
-                      {slot && isToday ? (
+                      {slot && canMark ? (
                         <Link
-                          href={`/${locale}/teacher/attendance/mark?groupId=${slot.groupId}&period=${slot.period}`}
+                          href={`/${locale}/teacher/attendance/mark?groupId=${slot.groupId}&period=${slot.period}&date=${dateStr}`}
                           className="group block"
                         >
                           {cellContent}

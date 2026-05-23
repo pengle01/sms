@@ -2,7 +2,7 @@ import { db } from "@/server/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
-import { utcMidnight } from "@/lib/dates";
+import { utcMidnight, localDateStr } from "@/lib/dates";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { AttendanceMarkForm } from "./AttendanceMarkForm";
@@ -12,13 +12,13 @@ export default async function TeacherMarkAttendancePage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ groupId?: string; period?: string }>;
+  searchParams: Promise<{ groupId?: string; period?: string; date?: string }>;
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login`);
 
-  const { groupId, period: periodStr } = await searchParams;
+  const { groupId, period: periodStr, date: dateParam } = await searchParams;
   const period = periodStr ? parseInt(periodStr) : 1;
 
   const staff = await db.staffProfile.findUnique({ where: { userId: session.user.id } });
@@ -27,11 +27,19 @@ export default async function TeacherMarkAttendancePage({
   let students: { id: string; user: { name: string | null }; studentId: string }[] = [];
   let slot: { id: string; room: string | null; course: { name: string } } | null = null;
   let existingRecords: Record<string, { status: "PRESENT" | "ABSENT" | "LATE"; minutesDelayed: number }> = {};
+  let studentLocations: Record<string, { type: "activity" | "support"; name: string }> = {};
+  let prevPeriodsRecords: Record<string, Record<number, { status: string; minutesDelayed: number; isAutoAbsent: boolean }>> = {};
+  let prevActivityPeriods: Record<string, number[]> = {};
+  const prevPeriods = period > 1 ? Array.from({ length: period - 1 }, (_, i) => i + 1) : [];
+
+  const attendanceDateStr = dateParam ?? localDateStr();
+  const attendanceDateObj = utcMidnight(attendanceDateStr);
+  const isToday = attendanceDateStr === localDateStr();
 
   if (groupId && period) {
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    const todayMidnight = utcMidnight();
+    const attendanceDay = new Date(attendanceDateStr + "T12:00:00");
+    const dayOfWeek = attendanceDay.getDay();
+    const todayMidnight = attendanceDateObj;
 
     const [fetchedStudents, fetchedSlot] = await Promise.all([
       db.studentProfile.findMany({
@@ -47,12 +55,14 @@ export default async function TeacherMarkAttendancePage({
     students = fetchedStudents;
     slot = fetchedSlot;
 
-    if (slot && students.length > 0) {
+    const studentIds = students.map((s) => s.id);
+
+    if (slot && studentIds.length > 0) {
       const marked = await db.attendance.findMany({
         where: {
           timetableSlotId: slot.id,
           date: todayMidnight,
-          studentId: { in: students.map((s) => s.id) },
+          studentId: { in: studentIds },
         },
         select: { studentId: true, status: true, minutesDelayed: true },
       });
@@ -61,6 +71,92 @@ export default async function TeacherMarkAttendancePage({
           status: (r.status === "EXCUSED" ? "ABSENT" : r.status) as "PRESENT" | "ABSENT" | "LATE",
           minutesDelayed: r.minutesDelayed,
         };
+      }
+    }
+
+    if (studentIds.length > 0) {
+      // Support group slots: students enrolled in other groups with a slot at this period
+      const subjectEnrollments = await db.studentGroup.findMany({
+        where: { studentProfileId: { in: studentIds } },
+        select: { studentProfileId: true, groupId: true },
+      });
+
+      const subjectGroupIds = [...new Set(subjectEnrollments.map((e) => e.groupId))];
+
+      const [supportSlots, activityParticipants, prevAttendance, allDayActivities] = await Promise.all([
+        subjectGroupIds.length > 0
+          ? db.timetableSlot.findMany({
+              where: { groupId: { in: subjectGroupIds }, period, dayOfWeek },
+              include: { course: { select: { name: true } } },
+            })
+          : Promise.resolve([]),
+        db.activityParticipant.findMany({
+          where: {
+            studentId: { in: studentIds },
+            activity: {
+              date: todayMidnight,
+              startPeriod: { lte: period },
+              endPeriod: { gte: period },
+            },
+          },
+          include: { activity: { select: { name: true } } },
+        }),
+        prevPeriods.length > 0
+          ? db.attendance.findMany({
+              where: {
+                date: todayMidnight,
+                studentId: { in: studentIds },
+                timetableSlot: { period: { in: prevPeriods } },
+              },
+              select: {
+                studentId: true,
+                status: true,
+                minutesDelayed: true,
+                isAutoAbsent: true,
+                timetableSlot: { select: { period: true } },
+              },
+            })
+          : Promise.resolve([]),
+        // All activities today for these students — used to mark previous-period activity dots
+        db.activityParticipant.findMany({
+          where: {
+            studentId: { in: studentIds },
+            activity: { date: todayMidnight },
+          },
+          select: {
+            studentId: true,
+            activity: { select: { startPeriod: true, endPeriod: true } },
+          },
+        }),
+      ]);
+
+      for (const r of prevAttendance) {
+        if (!prevPeriodsRecords[r.studentId]) prevPeriodsRecords[r.studentId] = {};
+        prevPeriodsRecords[r.studentId]![r.timetableSlot.period] = {
+          status: r.status,
+          minutesDelayed: r.minutesDelayed,
+          isAutoAbsent: r.isAutoAbsent,
+        };
+      }
+
+      const slotByGroup = Object.fromEntries(supportSlots.map((s) => [s.groupId, s.course.name]));
+
+      for (const e of subjectEnrollments) {
+        const course = slotByGroup[e.groupId];
+        if (course) studentLocations[e.studentProfileId] = { type: "support", name: course };
+      }
+      for (const ap of activityParticipants) {
+        studentLocations[ap.studentId] = { type: "activity", name: ap.activity.name };
+      }
+
+      for (const ap of allDayActivities) {
+        for (let p = ap.activity.startPeriod; p <= ap.activity.endPeriod; p++) {
+          if (!prevPeriods.includes(p)) continue;
+          if (!prevActivityPeriods[ap.studentId]) prevActivityPeriods[ap.studentId] = [];
+          if (!prevActivityPeriods[ap.studentId]!.includes(p)) {
+            prevActivityPeriods[ap.studentId]!.push(p);
+          }
+        }
       }
     }
   }
@@ -80,7 +176,12 @@ export default async function TeacherMarkAttendancePage({
       <div>
         <h2 className="text-2xl font-bold text-slate-900">Mark Attendance</h2>
         <p className="text-slate-500 text-sm mt-1">
-          {new Date().toLocaleDateString("el-GR", { weekday: "long", day: "numeric", month: "long" })}
+          {attendanceDateObj.toLocaleDateString("el-GR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+          {!isToday && (
+            <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+              Past date
+            </span>
+          )}
         </p>
       </div>
 
@@ -90,7 +191,13 @@ export default async function TeacherMarkAttendancePage({
         staffId={staff.id}
         selectedGroupId={groupId}
         selectedPeriod={period}
+        prevPeriods={prevPeriods}
+        attendanceDate={attendanceDateStr}
+        isToday={isToday}
         existingRecords={existingRecords}
+        studentLocations={studentLocations}
+        prevPeriodsRecords={prevPeriodsRecords}
+        prevActivityPeriods={prevActivityPeriods}
       />
     </div>
   );
