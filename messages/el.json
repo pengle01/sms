@@ -52,7 +52,8 @@
     "claims": "Αιτήματα",
     "myStudents": "Οι Μαθητές Μου",
     "newRequest": "Νέο Αίτημα",
-    "activities": "Δραστηριότητες"
+    "activities": "Δραστηριότητες",
+    "homegroup": "Τμήμα Μου"
   },
   "dashboard": {
     "welcome": "Καλώς ήρθατε, {name}",

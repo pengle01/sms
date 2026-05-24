@@ -139,7 +139,7 @@ model StaffProfile {
   phone      String?
   department String?
 
-  homeroomGroup     Group?             @relation("HomeroomTeacher")
+  homeroomGroups    Group[]            @relation("HomeroomTeacher")
   courseAssignments CourseAssignment[]
   filedReferrals    Referral[]         @relation("ReferralFiler")
   attendanceRecords Attendance[]       @relation("AttendanceTeacher")
@@ -240,7 +240,7 @@ model Group {
   id                String        @id @default(cuid())
   name              String        @unique
   grade             Int           // 1, 2, or 3
-  homeroomTeacherId String?       @unique
+  homeroomTeacherId String?
   homeroomTeacher   StaffProfile? @relation("HomeroomTeacher", fields: [homeroomTeacherId], references: [id])
 
   students          StudentProfile[]

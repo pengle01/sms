@@ -8,7 +8,7 @@ import type { Role } from "@/generated/prisma";
 import {
   LayoutDashboard, ClipboardList, AlertTriangle, BookOpen,
   Calendar, CalendarRange, FileText, Bell, Users, Settings, Shield,
-  Search, GraduationCap, Home, Backpack, Plus,
+  Search, GraduationCap, Home, Backpack, Plus, BookMarked,
 } from "lucide-react";
 
 interface NavItem {
@@ -21,6 +21,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   // ── Educator portal (/teacher) — all who work directly with students ──
   { key: "dashboard",    href: "dashboard",           icon: LayoutDashboard, roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
+  { key: "homegroup",    href: "homegroup",           icon: BookMarked,      roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "timetable",    href: "attendance/schedule", icon: Calendar,        roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "locate",       href: "attendance/locate",   icon: Search,          roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "referrals",    href: "referrals",           icon: AlertTriangle,   roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },

@@ -52,7 +52,8 @@
     "claims": "Claims",
     "myStudents": "My Students",
     "newRequest": "New Request",
-    "activities": "Activities"
+    "activities": "Activities",
+    "homegroup": "My Homegroup"
   },
   "dashboard": {
     "welcome": "Welcome, {name}",
