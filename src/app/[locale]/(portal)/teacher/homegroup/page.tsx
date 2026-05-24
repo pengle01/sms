@@ -27,10 +27,20 @@ export default async function TeacherHomegroupPage({
         include: { _count: { select: { students: true } } },
         orderBy: [{ grade: "asc" }, { name: "asc" }],
       },
+      homeroomHeadGroups: {
+        include: { _count: { select: { students: true } } },
+        orderBy: [{ grade: "asc" }, { name: "asc" }],
+      },
     },
   });
 
-  if (!staff || staff.homeroomGroups.length === 0) {
+  const allGroups = [
+    ...(staff?.homeroomGroups ?? []),
+    ...(staff?.homeroomHeadGroups ?? []),
+  ].filter((g, i, arr) => arr.findIndex((x) => x.id === g.id) === i)
+   .sort((a, b) => a.grade - b.grade || a.name.localeCompare(b.name));
+
+  if (!staff || allGroups.length === 0) {
     return (
       <div className="space-y-4">
         <h2 className="text-2xl font-bold text-slate-900">My Homegroup</h2>
@@ -39,7 +49,7 @@ export default async function TeacherHomegroupPage({
     );
   }
 
-  const groups = staff.homeroomGroups;
+  const groups = allGroups;
   const activeGroup = groups.find((g) => g.id === selectedGroupId) ?? groups[0]!;
 
   const todayStr = localDateStr();

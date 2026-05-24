@@ -17,26 +17,35 @@ export default async function GroupsPage({
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "SUPER_ADMIN") redirect(`/${locale}/login`);
 
-  const [groups, teachers] = await Promise.all([
+  const [groups, teachers, headteachers] = await Promise.all([
     db.group.findMany({
       include: {
         homeroomTeacher: { include: { user: { select: { name: true } } } },
+        homeroomHeadteacher: { include: { user: { select: { name: true } } } },
         _count: { select: { students: true, studentGroups: true } },
       },
       orderBy: [{ grade: "asc" }, { name: "asc" }],
     }),
     db.staffProfile.findMany({
-      where: { user: { role: { in: ["TEACHER", "HEADTEACHER_B"] } } },
-      include: { user: { select: { name: true, role: true } } },
+      where: { user: { role: "TEACHER" } },
+      include: { user: { select: { name: true } } },
+      orderBy: { user: { name: "asc" } },
+    }),
+    db.staffProfile.findMany({
+      where: { user: { role: "HEADTEACHER_B" } },
+      include: { user: { select: { name: true } } },
       orderBy: { user: { name: "asc" } },
     }),
   ]);
 
   const teacherOptions = teachers.map((t) => ({
     id: t.id,
-    name: t.user.role === "HEADTEACHER_B"
-      ? `${t.user.name} (B')`
-      : (t.user.name ?? t.id),
+    name: t.user.name ?? t.id,
+  }));
+
+  const headteacherOptions = headteachers.map((t) => ({
+    id: t.id,
+    name: t.user.name ?? t.id,
   }));
 
   const homerooms = groups.filter((g) => g._count.students > 0);
@@ -49,8 +58,10 @@ export default async function GroupsPage({
 
   const gradeLabel: Record<number, string> = { 1: "Year 1", 2: "Year 2", 3: "Year 3" };
 
-  const assigned = homerooms.filter((g) => g.homeroomTeacherId).length;
-  const unassigned = homerooms.length - assigned;
+  const assignedTeacher = homerooms.filter((g) => g.homeroomTeacherId).length;
+  const assignedHead = homerooms.filter((g) => g.homeroomHeadteacherId).length;
+  const unassignedTeacher = homerooms.length - assignedTeacher;
+  const unassignedHead = homerooms.length - assignedHead;
 
   return (
     <div className="space-y-6">
@@ -58,15 +69,19 @@ export default async function GroupsPage({
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Homeroom Groups</h2>
           <p className="text-slate-500 text-sm mt-1">
-            {assigned} assigned · {unassigned > 0 && (
-              <span className="text-amber-600 font-medium">{unassigned} unassigned</span>
-            )}
-            {unassigned === 0 && <span className="text-emerald-600 font-medium">all assigned</span>}
+            Teachers:{" "}
+            {unassignedTeacher > 0
+              ? <span className="text-amber-600 font-medium">{unassignedTeacher} unassigned</span>
+              : <span className="text-emerald-600 font-medium">all assigned</span>}
+            {" · "}
+            Headteachers B:{" "}
+            {unassignedHead > 0
+              ? <span className="text-amber-600 font-medium">{unassignedHead} unassigned</span>
+              : <span className="text-emerald-600 font-medium">all assigned</span>}
           </p>
         </div>
       </div>
 
-      {/* Homeroom assignment table — per year */}
       {Object.entries(byGrade).map(([grade, gradeGroups]) => (
         <Card key={grade}>
           <CardHeader className="pb-2">
@@ -82,7 +97,7 @@ export default async function GroupsPage({
                   <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide w-16">
                     <Users className="w-3.5 h-3.5 inline mr-1" />Students
                   </th>
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Homeroom Teacher</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Homeroom Staff</th>
                   <th className="w-10" />
                 </tr>
               </thead>
@@ -94,8 +109,10 @@ export default async function GroupsPage({
                     <td className="px-4 py-3">
                       <InlineTeacherAssign
                         groupId={g.id}
-                        currentStaffId={g.homeroomTeacherId}
+                        currentTeacherId={g.homeroomTeacherId}
+                        currentHeadteacherId={g.homeroomHeadteacherId}
                         teachers={teacherOptions}
+                        headteachers={headteacherOptions}
                       />
                     </td>
                     <td className="px-3 py-3">
@@ -123,7 +140,6 @@ export default async function GroupsPage({
         </div>
       )}
 
-      {/* Support groups — collapsed info */}
       {supportGroups.length > 0 && (
         <div>
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">

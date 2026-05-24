@@ -20,6 +20,7 @@ export default async function GroupDetailPage({
     where: { id },
     include: {
       homeroomTeacher: { include: { user: { select: { name: true, email: true } } } },
+      homeroomHeadteacher: { include: { user: { select: { name: true, email: true } } } },
       students: {
         include: { user: { select: { name: true, isActive: true } } },
         orderBy: { user: { name: "asc" } },
@@ -82,6 +83,7 @@ export default async function GroupDetailPage({
             {group.students.length > 0 && ` · ${group.students.length} homeroom`}
             {group.studentGroups.length > 0 && ` · ${group.studentGroups.length} enrolled`}
             {group.homeroomTeacher && ` · ${group.homeroomTeacher.user.name}`}
+            {group.homeroomHeadteacher && ` · ${group.homeroomHeadteacher.user.name} (B')`}
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
