@@ -22,3 +22,12 @@ export function periodsForDow(config: PeriodsPerDay, dow: number): number[] {
 export function maxPeriodCount(config: PeriodsPerDay): number {
   return Math.max(...Object.values(config));
 }
+
+export const DEFAULT_MAX_TESTS_PER_WEEK = 4;
+
+export async function getMaxTestsPerWeek(): Promise<number> {
+  const setting = await db.globalSetting.findUnique({ where: { key: "maxTestsPerWeek" } });
+  if (!setting) return DEFAULT_MAX_TESTS_PER_WEEK;
+  const n = parseInt(setting.value);
+  return isNaN(n) ? DEFAULT_MAX_TESTS_PER_WEEK : n;
+}

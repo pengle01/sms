@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY } from "@/lib/schoolConfig";
+import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY, getMaxTestsPerWeek, DEFAULT_MAX_TESTS_PER_WEEK } from "@/lib/schoolConfig";
 
 export default async function AdminSettingsPage({
   params,
@@ -14,8 +14,13 @@ export default async function AdminSettingsPage({
   if (!session || session.user.role !== "SUPER_ADMIN") redirect(`/${locale}/login`);
 
   const { PeriodsForm } = await import("./PeriodsForm");
-  const periodsPerDay = await getPeriodsPerDay();
+  const { MaxTestsForm } = await import("./MaxTestsForm");
+  const [periodsPerDay, maxTestsPerWeek] = await Promise.all([
+    getPeriodsPerDay(),
+    getMaxTestsPerWeek(),
+  ]);
   const initial = { ...DEFAULT_PERIODS_PER_DAY, ...periodsPerDay };
+  const maxTestsInitial = maxTestsPerWeek ?? DEFAULT_MAX_TESTS_PER_WEEK;
 
   return (
     <div className="space-y-6">
@@ -30,6 +35,15 @@ export default async function AdminSettingsPage({
         </CardHeader>
         <CardContent>
           <PeriodsForm initial={initial} />
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Test Limits</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <MaxTestsForm initial={maxTestsInitial} />
         </CardContent>
       </Card>
     </div>

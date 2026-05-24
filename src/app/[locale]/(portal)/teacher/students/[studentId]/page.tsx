@@ -5,7 +5,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, CalendarRange } from "lucide-react";
+import { ChevronLeft, CalendarRange, FlaskConical } from "lucide-react";
 import { utcMidnight, localDateStr } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { getPeriodsPerDay, periodsForDow, maxPeriodCount } from "@/lib/schoolConfig";
@@ -53,7 +53,7 @@ export default async function StudentSchedulePage({
   const todayPeriods = periodsForDow(periodsConfig, isSchoolDay ? todayDow : 1);
   const allPeriods = Array.from({ length: maxPeriodCount(periodsConfig) }, (_, i) => i + 1);
 
-  const [allSlots, todayActivities] = await Promise.all([
+  const [allSlots, todayActivities, upcomingTests] = await Promise.all([
     groupIds.length > 0
       ? db.timetableSlot.findMany({
           where: { groupId: { in: groupIds } },
@@ -70,6 +70,18 @@ export default async function StudentSchedulePage({
       include: { filer: { include: { user: { select: { name: true } } } } },
       orderBy: { startPeriod: "asc" },
     }),
+    groupIds.length > 0
+      ? db.testSchedule.findMany({
+          where: { groupId: { in: groupIds }, date: { gte: today } },
+          include: {
+            course: { select: { name: true } },
+            group: { select: { name: true } },
+            staff: { include: { user: { select: { name: true } } } },
+          },
+          orderBy: [{ date: "asc" }, { period: "asc" }],
+          take: 20,
+        })
+      : Promise.resolve([]),
   ]);
 
   type SlotEntry = (typeof allSlots)[0] & { isSubjectGroup?: boolean };
@@ -213,6 +225,55 @@ export default async function StudentSchedulePage({
             <p className="text-sm text-slate-400">No school today — switch to Week view to see the timetable.</p>
           )}
         </>
+      )}
+
+      {/* UPCOMING TESTS */}
+      {upcomingTests.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <FlaskConical className="w-4 h-4" />
+              Upcoming Tests
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100">
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Date</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Subject</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Group</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Period</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Type</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {upcomingTests.map((t) => (
+                  <tr key={t.id} className="hover:bg-slate-50">
+                    <td className="px-5 py-3 font-medium text-slate-900">
+                      {DOW_SHORT[t.date.getUTCDay()]} {t.date.toLocaleDateString("el-GR", { day: "numeric", month: "short", timeZone: "UTC" })}
+                    </td>
+                    <td className="px-5 py-3 text-slate-700">{t.course.name}</td>
+                    <td className="px-5 py-3 text-slate-500 text-xs">{t.group.name}</td>
+                    <td className="px-5 py-3 text-slate-400 text-xs">
+                      {t.periodCount > 1 ? `P${t.period}–${t.period + t.periodCount - 1}` : `P${t.period}`}
+                    </td>
+                    <td className="px-5 py-3">
+                      <Badge
+                        variant="outline"
+                        className={t.type === "BIG"
+                          ? "text-xs bg-slate-800 text-white border-slate-800"
+                          : "text-xs bg-slate-100 text-slate-600 border-slate-200"}
+                      >
+                        {t.type === "BIG" ? "Big · 45 min" : "Small · 20 min"}
+                      </Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
       )}
 
       {/* WEEK VIEW */}

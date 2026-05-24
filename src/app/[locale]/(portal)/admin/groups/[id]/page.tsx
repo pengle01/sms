@@ -4,9 +4,8 @@ import { authOptions } from "@/server/auth";
 import { redirect, notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { GraduationCap, Users, ArrowLeft, ClipboardList, UserCog } from "lucide-react";
+import { GraduationCap, Users, ArrowLeft, ClipboardList } from "lucide-react";
 import Link from "next/link";
-import { AssignTeacherForm } from "./AssignTeacherForm";
 
 export default async function GroupDetailPage({
   params,
@@ -16,11 +15,6 @@ export default async function GroupDetailPage({
   const { locale, id } = await params;
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login`);
-
-  const allTeachers = await db.staffProfile.findMany({
-    include: { user: { select: { name: true } } },
-    orderBy: { user: { name: "asc" } },
-  });
 
   const group = await db.group.findUnique({
     where: { id },
@@ -106,23 +100,6 @@ export default async function GroupDetailPage({
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
-        {/* Homeroom teacher assignment */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <UserCog className="w-4 h-4" />
-              Homeroom Teacher
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <AssignTeacherForm
-              groupId={id}
-              currentStaffId={group.homeroomTeacherId}
-              teachers={allTeachers.map((t) => ({ id: t.id, name: t.user.name }))}
-            />
-          </CardContent>
-        </Card>
-
         {/* Homeroom roster */}
         {group.students.length > 0 && (
         <Card>

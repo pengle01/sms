@@ -9,6 +9,9 @@ import { cn } from "@/lib/utils";
 import { createActivity } from "../actions";
 import { localDateStr } from "@/lib/dates";
 import { getPeriodsPerDay, maxPeriodCount } from "@/lib/schoolConfig";
+import { utcMidnight } from "@/lib/dates";
+import { AlertTriangle } from "lucide-react";
+import { SelectAllButton } from "./SelectAllButton";
 
 export default async function NewActivityPage({
   params,
@@ -54,6 +57,74 @@ export default async function NewActivityPage({
           orderBy: { user: { name: "asc" } },
         })
       : [];
+
+  // Test conflict check — find tests that overlap with this activity's period range
+  type TestWarning = {
+    courseName: string;
+    groupName: string;
+    staffName: string | null;
+    type: "BIG" | "SMALL";
+    periodLabel: string;
+    affectedCount: number;
+  };
+  let testWarnings: TestWarning[] = [];
+
+  if (groupId && detailsConfirmed && date && startPeriod && endPeriod && students.length > 0) {
+    const actStart = Math.min(parseInt(startPeriod), parseInt(endPeriod));
+    const actEnd = Math.max(parseInt(startPeriod), parseInt(endPeriod));
+
+    // All groups the homeroom students belong to
+    const studentsWithGroups = await db.studentProfile.findMany({
+      where: { groupId, user: { isActive: true } },
+      select: {
+        id: true,
+        groupId: true,
+        subjectGroups: { select: { groupId: true } },
+      },
+    });
+    const allGroupIds = [
+      ...new Set(
+        studentsWithGroups.flatMap((s) => [
+          ...(s.groupId ? [s.groupId] : []),
+          ...s.subjectGroups.map((sg) => sg.groupId),
+        ])
+      ),
+    ];
+
+    const testsOnDate = await db.testSchedule.findMany({
+      where: {
+        date: utcMidnight(date),
+        groupId: { in: allGroupIds },
+      },
+      include: {
+        course: { select: { name: true } },
+        group: { select: { name: true, id: true } },
+        staff: { include: { user: { select: { name: true } } } },
+      },
+    });
+
+    // Filter to tests that overlap the activity's period range
+    const overlapping = testsOnDate.filter(
+      (t) => t.period <= actEnd && t.period + t.periodCount - 1 >= actStart
+    );
+
+    // Count how many students are affected by each test
+    for (const t of overlapping) {
+      const affectedCount = studentsWithGroups.filter((s) =>
+        (s.groupId === t.groupId) ||
+        s.subjectGroups.some((sg) => sg.groupId === t.groupId)
+      ).length;
+
+      testWarnings.push({
+        courseName: t.course.name,
+        groupName: t.group.name,
+        staffName: t.staff?.user.name ?? null,
+        type: t.type,
+        periodLabel: t.periodCount > 1 ? `P${t.period}–${t.period + t.periodCount - 1}` : `P${t.period}`,
+        affectedCount,
+      });
+    }
+  }
 
   // Build base URL params (activity details only, no grade/groupId)
   function detailParams() {
@@ -247,13 +318,56 @@ export default async function NewActivityPage({
                 </div>
               )}
 
+              {/* Test conflict warning */}
+              {testWarnings.length > 0 && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 overflow-hidden">
+                  <div className="flex items-center gap-2 px-4 py-3 border-b border-amber-200">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                    <p className="text-sm font-semibold text-amber-800">
+                      Tests scheduled during these periods
+                    </p>
+                  </div>
+                  <div className="divide-y divide-amber-100 px-4">
+                    {testWarnings.map((w, i) => (
+                      <div key={i} className="py-3 flex items-start justify-between gap-4 flex-wrap">
+                        <div>
+                          <p className="text-sm font-medium text-amber-900">
+                            {w.courseName}
+                            <span className={`ml-2 text-xs px-1.5 py-0.5 rounded font-semibold ${
+                              w.type === "BIG"
+                                ? "bg-slate-800 text-white"
+                                : "bg-slate-100 text-slate-600"
+                            }`}>
+                              {w.type === "BIG" ? "Big" : "Small"}
+                            </span>
+                          </p>
+                          <p className="text-xs text-amber-600 mt-0.5">
+                            {w.groupName} · {w.periodLabel}
+                            {w.staffName && ` · ${w.staffName}`}
+                          </p>
+                        </div>
+                        <span className="text-xs text-amber-700 bg-amber-100 rounded-full px-2 py-1 whitespace-nowrap">
+                          {w.affectedCount} student{w.affectedCount !== 1 ? "s" : ""} affected
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="px-4 py-2.5 text-xs text-amber-600 border-t border-amber-200">
+                    You can still create the activity — this is for your information only.
+                  </p>
+                </div>
+              )}
+
               {/* Students */}
               {groupId && (
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                    Students in{" "}
-                    {allGroups.find((g) => g.id === groupId)?.name}
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                      Students in{" "}
+                      {allGroups.find((g) => g.id === groupId)?.name}
+                    </p>
+                    {students.length > 0 && <SelectAllButton formId="create-activity-form" />}
+                  </div>
                   <div className="border border-slate-200 rounded-lg divide-y divide-slate-100 max-h-64 overflow-y-auto">
                     {students.length === 0 ? (
                       <p className="px-4 py-6 text-center text-sm text-slate-400">
