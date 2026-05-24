@@ -114,7 +114,7 @@ export default async function AttendancePage({
             <tbody className="divide-y divide-slate-50">
               {absences.map((a) => (
                 <tr key={a.id} className="hover:bg-slate-50">
-                  <td className="px-5 py-3.5 font-medium text-slate-900">{a.student.user.name}</td>
+                  <td className="px-5 py-3.5 font-medium text-slate-900">{a.student.user?.name}</td>
                   <td className="px-5 py-3.5">
                     <Badge variant="outline" className="text-xs">{a.student.group?.name ?? "—"}</Badge>
                   </td>

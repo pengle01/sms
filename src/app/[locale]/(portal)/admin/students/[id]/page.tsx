@@ -146,7 +146,7 @@ export default async function StudentDetailPage({
                   <tbody className="divide-y divide-slate-50">
                     {parents.map(({ parentProfile }) => (
                       <tr key={parentProfile.id}>
-                        <td className="px-5 py-3 font-medium text-slate-900">{parentProfile.user.name ?? "—"}</td>
+                        <td className="px-5 py-3 font-medium text-slate-900">{parentProfile.user?.name ?? "—"}</td>
                         <td className="px-5 py-3">
                           <Badge variant="outline" className="text-xs capitalize">
                             {parentProfile.role.toLowerCase()}

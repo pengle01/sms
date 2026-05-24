@@ -40,12 +40,12 @@ export default async function GroupsPage({
 
   const teacherOptions = teachers.map((t) => ({
     id: t.id,
-    name: t.user.name ?? t.id,
+    name: t.user?.name ?? t.id,
   }));
 
   const headteacherOptions = headteachers.map((t) => ({
     id: t.id,
-    name: t.user.name ?? t.id,
+    name: t.user?.name ?? t.id,
   }));
 
   const homerooms = groups.filter((g) => g._count.students > 0);

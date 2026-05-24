@@ -216,7 +216,7 @@ export default async function StudentsPage({
             <tbody className="divide-y divide-slate-50">
               {students.map((s) => (
                 <StudentRow key={s.id} href={`/${locale}/admin/students/${s.id}`}>
-                  <td className="px-5 py-3 font-medium text-slate-900">{s.user.name}</td>
+                  <td className="px-5 py-3 font-medium text-slate-900">{s.user?.name}</td>
                   <td className="px-5 py-3 text-slate-500 font-mono text-xs">{s.studentId}</td>
                   {!groupId && (
                     <td className="px-5 py-3">

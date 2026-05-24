@@ -25,12 +25,12 @@ export default async function ParentPortalLayout({
           role="PARENT"
           locale={locale}
           portal="parent"
-          userName={session.user.name ?? undefined}
+          userName={session.user?.name ?? undefined}
         />
       </aside>
       <div className="flex-1 flex flex-col min-w-0">
         <Header
-          userName={session.user.name ?? undefined}
+          userName={session.user?.name ?? undefined}
           userImage={session.user.image ?? undefined}
           locale={locale}
           role="PARENT"

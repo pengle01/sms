@@ -34,11 +34,11 @@ export default async function AdminPortalLayout({
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
-      <Sidebar role={role} locale={locale} portal="admin" userName={session.user.name ?? undefined} pendingClaimsCount={pendingClaimsCount} />
+      <Sidebar role={role} locale={locale} portal="admin" userName={session.user?.name ?? undefined} pendingClaimsCount={pendingClaimsCount} />
 
       <div className="flex-1 flex flex-col min-w-0">
         <Header
-          userName={session.user.name ?? undefined}
+          userName={session.user?.name ?? undefined}
           userImage={session.user.image ?? undefined}
           locale={locale}
           role={role}

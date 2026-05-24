@@ -178,7 +178,7 @@ export function AttendanceMarkForm({
                       className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center"
                     >
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-900">{student.user.name}</p>
+                        <p className="text-sm font-medium text-slate-900">{student.user?.name}</p>
                         <p className="text-xs text-slate-400 font-mono">{student.studentId}</p>
                       </div>
 

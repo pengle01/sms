@@ -81,7 +81,7 @@ export default async function AdminDashboardPage({
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-slate-900">
-          {t("welcome", { name: session.user.name ?? "" })}
+          {t("welcome", { name: session.user?.name ?? "" })}
         </h2>
         <p className="text-slate-500 mt-1">{t("today")}</p>
       </div>
@@ -189,11 +189,11 @@ export default async function AdminDashboardPage({
               {recentReferrals.map((r) => (
                 <div key={r.id} className="flex items-center justify-between py-3">
                   <div>
-                    <p className="text-sm font-medium text-slate-900">{r.student.user.name}</p>
+                    <p className="text-sm font-medium text-slate-900">{r.student.user?.name}</p>
                     <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{r.description}</p>
                   </div>
                   <div className="flex items-center gap-2 ml-4">
-                    <span className="text-xs text-slate-400">{r.filer.user.name}</span>
+                    <span className="text-xs text-slate-400">{r.filer.user?.name}</span>
                     <Badge variant="outline" className="text-xs border-amber-300 text-amber-700">
                       Pending
                     </Badge>

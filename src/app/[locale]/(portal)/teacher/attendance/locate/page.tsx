@@ -149,7 +149,7 @@ export default async function TeacherLocatePage({
         period: p,
         courseName: periodMap[p]?.course.name ?? null,
         room: periodMap[p]?.room ?? null,
-        staffName: periodMap[p]?.staffName ?? periodMap[p]?.staff?.user.name ?? null,
+        staffName: periodMap[p]?.staffName ?? periodMap[p]?.staff?.user?.name ?? null,
         isActivity: !!actByPeriod[p],
         activityName: actByPeriod[p],
       }));
@@ -224,7 +224,7 @@ export default async function TeacherLocatePage({
       {/* Step 3 — Students */}
       {groupId && selectedGroup && (
         <StudentList
-          students={students.map((s) => ({ id: s.id, user: { name: s.user.name } }))}
+          students={students.map((s) => ({ id: s.id, user: { name: s.user?.name } }))}
           groupName={selectedGroup.name}
           schedules={schedules}
           periodAttendance={periodAttendance}

@@ -88,7 +88,7 @@ export default async function ParentChildrenPage({
                     <GraduationCap className="w-5 h-5 text-emerald-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-slate-900">{s.user.name}</h3>
+                    <h3 className="font-semibold text-slate-900">{s.user?.name}</h3>
                     <p className="text-sm text-slate-500">{s.studentId}</p>
                     <div className="flex items-center gap-2 mt-1">
                       {s.group && (

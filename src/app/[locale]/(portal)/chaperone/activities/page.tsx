@@ -81,7 +81,7 @@ export default async function ChaperoneActivitiesPage({
                 <div className="divide-y divide-slate-100">
                   {activity.participants.map(({ student }) => (
                     <div key={student.id} className="py-2 flex items-center justify-between">
-                      <span className="text-sm text-slate-700">{student.user.name ?? "—"}</span>
+                      <span className="text-sm text-slate-700">{student.user?.name ?? "—"}</span>
                       {!student.user.isActive && (
                         <Badge variant="outline" className="text-xs text-slate-400">Inactive</Badge>
                       )}

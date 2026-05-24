@@ -82,8 +82,8 @@ export default async function GroupDetailPage({
             Grade {group.grade}
             {group.students.length > 0 && ` · ${group.students.length} homeroom`}
             {group.studentGroups.length > 0 && ` · ${group.studentGroups.length} enrolled`}
-            {group.homeroomTeacher && ` · ${group.homeroomTeacher.user.name}`}
-            {group.homeroomHeadteacher && ` · ${group.homeroomHeadteacher.user.name} (B')`}
+            {group.homeroomTeacher && ` · ${group.homeroomTeacher.user?.name}`}
+            {group.homeroomHeadteacher && ` · ${group.homeroomHeadteacher.user?.name} (B')`}
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
@@ -122,7 +122,7 @@ export default async function GroupDetailPage({
               <tbody className="divide-y divide-slate-50">
                 {group.students.map((s) => (
                   <tr key={s.id} className="hover:bg-slate-50">
-                    <td className="px-5 py-3 font-medium text-slate-900">{s.user.name}</td>
+                    <td className="px-5 py-3 font-medium text-slate-900">{s.user?.name}</td>
                     <td className="px-5 py-3">
                       <Badge
                         variant="outline"
@@ -164,7 +164,7 @@ export default async function GroupDetailPage({
               <tbody className="divide-y divide-slate-50">
                 {group.studentGroups.map(({ studentProfile: s }) => (
                   <tr key={s.id} className="hover:bg-slate-50">
-                    <td className="px-5 py-3 font-medium text-slate-900">{s.user.name}</td>
+                    <td className="px-5 py-3 font-medium text-slate-900">{s.user?.name}</td>
                     <td className="px-5 py-3">
                       <Badge
                         variant="outline"
@@ -200,7 +200,7 @@ export default async function GroupDetailPage({
                       <div key={slot.id} className="flex items-center gap-3 text-sm px-3 py-2 rounded-lg bg-slate-50">
                         <span className="text-slate-400 w-6 text-center font-mono text-xs">{slot.period}</span>
                         <span className="font-medium text-slate-900 flex-1">{slot.course.name}</span>
-                        <span className="text-slate-500 text-xs">{slot.staff?.user.name ?? slot.staffName ?? "—"}</span>
+                        <span className="text-slate-500 text-xs">{slot.staff?.user?.name ?? slot.staffName ?? "—"}</span>
                         {slot.room && (
                           <span className="text-slate-400 text-xs">Rm {slot.room}</span>
                         )}

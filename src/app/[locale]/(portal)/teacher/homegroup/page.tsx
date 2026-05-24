@@ -222,7 +222,7 @@ export default async function TeacherHomegroupPage({
                         href={`/${locale}/teacher/students/${s.id}`}
                         className="hover:text-emerald-700 hover:underline"
                       >
-                        {s.user.name}
+                        {s.user?.name}
                       </Link>
                     </td>
                     <td className="px-4 py-3 text-center">

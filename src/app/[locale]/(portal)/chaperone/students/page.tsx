@@ -106,7 +106,7 @@ export default async function ChaperoneStudentsPage({
                   <div className="divide-y divide-slate-100">
                     {req.students.map(({ studentProfile: sp }) => (
                       <div key={sp.id} className="py-2 flex items-center justify-between">
-                        <span className="text-sm text-slate-700">{sp.user.name ?? "—"}</span>
+                        <span className="text-sm text-slate-700">{sp.user?.name ?? "—"}</span>
                         {sp.group && (
                           <span className="text-xs text-slate-400 font-mono">{sp.group.name}</span>
                         )}

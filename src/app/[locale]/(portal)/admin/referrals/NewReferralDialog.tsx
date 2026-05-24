@@ -70,7 +70,7 @@ export function NewReferralDialog({ students, locale }: { students: Student[]; l
               <option value="">Select student…</option>
               {students.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.user.name} ({s.studentId})
+                  {s.user?.name} ({s.studentId})
                 </option>
               ))}
             </select>

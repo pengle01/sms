@@ -119,7 +119,7 @@ export default async function StudentSchedulePage({
           <ChevronLeft className="w-5 h-5" />
         </Link>
         <div className="flex-1 min-w-0">
-          <h2 className="text-2xl font-bold text-slate-900">{student.user.name}</h2>
+          <h2 className="text-2xl font-bold text-slate-900">{student.user?.name}</h2>
           <div className="flex items-center gap-2 mt-1">
             {student.group && <Badge variant="outline">{student.group.name}</Badge>}
             {student.subjectGroups.length > 0 && (
@@ -208,7 +208,7 @@ export default async function StudentSchedulePage({
                           ) : slot ? (
                             <>
                               <td className="px-5 py-3 font-medium text-slate-900">{slot.course.name}</td>
-                              <td className="px-5 py-3 text-slate-500">{slot.staffName ?? slot.staff?.user.name ?? "—"}</td>
+                              <td className="px-5 py-3 text-slate-500">{slot.staffName ?? slot.staff?.user?.name ?? "—"}</td>
                               <td className="px-5 py-3 text-slate-400">{slot.room ?? ""}</td>
                             </>
                           ) : (
@@ -317,8 +317,8 @@ export default async function StudentSchedulePage({
                           ) : slot ? (
                             <div className="space-y-0.5">
                               <p className="font-medium text-slate-800 leading-tight text-xs">{slot.course.name}</p>
-                              {(slot.staffName ?? slot.staff?.user.name) && (
-                                <p className="text-[11px] text-slate-500 leading-tight">{slot.staffName ?? slot.staff?.user.name}</p>
+                              {(slot.staffName ?? slot.staff?.user?.name) && (
+                                <p className="text-[11px] text-slate-500 leading-tight">{slot.staffName ?? slot.staff?.user?.name}</p>
                               )}
                               {slot.room && (
                                 <p className="text-[11px] text-slate-400 leading-tight">Room {slot.room}</p>

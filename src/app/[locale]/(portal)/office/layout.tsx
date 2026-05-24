@@ -22,10 +22,10 @@ export default async function OfficePortalLayout({
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
-      <Sidebar role="SCHOOL_ADMIN" locale={locale} portal="office" userName={session.user.name ?? undefined} />
+      <Sidebar role="SCHOOL_ADMIN" locale={locale} portal="office" userName={session.user?.name ?? undefined} />
       <div className="flex-1 flex flex-col min-w-0">
         <Header
-          userName={session.user.name ?? undefined}
+          userName={session.user?.name ?? undefined}
           userImage={session.user.image ?? undefined}
           locale={locale}
           role="SCHOOL_ADMIN"

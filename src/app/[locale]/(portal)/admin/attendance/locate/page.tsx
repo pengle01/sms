@@ -127,7 +127,7 @@ export default async function LocatePage({
                       <Badge variant="outline" className="text-xs">{slot.group.name}</Badge>
                     </td>
                     <td className="px-5 py-3 font-medium text-slate-900">{slot.course.name}</td>
-                    <td className="px-5 py-3 text-slate-600">{slot.staff?.user.name ?? slot.staffName ?? "—"}</td>
+                    <td className="px-5 py-3 text-slate-600">{slot.staff?.user?.name ?? slot.staffName ?? "—"}</td>
                     <td className="px-5 py-3 text-slate-500">{slot.room ?? "—"}</td>
                   </tr>
                 ))}
@@ -161,7 +161,7 @@ export default async function LocatePage({
                     (lastAttendance.status === "ABSENT");
                   return (
                     <tr key={s.id} className="hover:bg-slate-50">
-                      <td className="px-5 py-3.5 font-medium text-slate-900">{s.user.name}</td>
+                      <td className="px-5 py-3.5 font-medium text-slate-900">{s.user?.name}</td>
                       <td className="px-5 py-3.5">
                         <Badge variant="outline" className="text-xs">{s.group?.name ?? "—"}</Badge>
                       </td>

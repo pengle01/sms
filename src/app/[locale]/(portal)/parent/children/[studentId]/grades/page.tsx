@@ -64,7 +64,7 @@ export default async function ParentChildGradesPage({
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">{student.user.name}</h2>
+        <h2 className="text-2xl font-bold text-slate-900">{student.user?.name}</h2>
         <p className="text-slate-500 text-sm mt-1">Grades · {student.group?.name ?? "No group"} · Scale 0–20</p>
       </div>
 

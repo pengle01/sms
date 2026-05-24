@@ -97,7 +97,7 @@ export default async function ActivitiesPage({
                   <p className="text-sm text-slate-500 mt-0.5">
                     {periodRange(a.startPeriod, a.endPeriod)}
                     {a.location && ` · ${a.location}`}
-                    {" · "}{a.filer.user.name}
+                    {" · "}{a.filer.user?.name}
                   </p>
                 </div>
                 <div className="flex items-center gap-1 text-sm text-slate-500 flex-shrink-0">
@@ -131,7 +131,7 @@ export default async function ActivitiesPage({
                   <p className="text-sm text-slate-500 mt-0.5">
                     {periodRange(a.startPeriod, a.endPeriod)}
                     {a.location && ` · ${a.location}`}
-                    {" · "}{a.filer.user.name}
+                    {" · "}{a.filer.user?.name}
                   </p>
                 </Link>
                 <div className="flex items-center gap-1 text-sm text-slate-500 flex-shrink-0">
@@ -178,7 +178,7 @@ export default async function ActivitiesPage({
                       <p className="text-sm text-slate-400 mt-0.5">
                         {periodRange(a.startPeriod, a.endPeriod)}
                         {a.location && ` · ${a.location}`}
-                        {" · "}{a.filer.user.name}
+                        {" · "}{a.filer.user?.name}
                       </p>
                     </div>
                     <div className="flex items-center gap-1 text-sm text-slate-400 flex-shrink-0">

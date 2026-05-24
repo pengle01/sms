@@ -22,10 +22,10 @@ export default async function ChaperonePortalLayout({
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
-      <Sidebar role={role} locale={locale} portal="chaperone" userName={session.user.name ?? undefined} />
+      <Sidebar role={role} locale={locale} portal="chaperone" userName={session.user?.name ?? undefined} />
       <div className="flex-1 flex flex-col min-w-0">
         <Header
-          userName={session.user.name ?? undefined}
+          userName={session.user?.name ?? undefined}
           userImage={session.user.image ?? undefined}
           locale={locale}
           role={role}

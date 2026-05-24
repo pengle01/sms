@@ -123,14 +123,14 @@ export default async function ReferralsPage({
                   <td className="px-5 py-3.5 text-slate-500 whitespace-nowrap">
                     {new Date(r.date).toLocaleDateString("el-GR")}
                   </td>
-                  <td className="px-5 py-3.5 font-medium text-slate-900">{r.student.user.name}</td>
+                  <td className="px-5 py-3.5 font-medium text-slate-900">{r.student.user?.name}</td>
                   <td className="px-5 py-3.5">
                     <Badge variant="outline" className="text-xs">{r.group?.name ?? r.student.group?.name ?? "—"}</Badge>
                   </td>
                   <td className="px-5 py-3.5 text-slate-600 max-w-xs">
                     <span className="line-clamp-2">{r.description}</span>
                   </td>
-                  <td className="px-5 py-3.5 text-slate-500">{r.filer.user.name}</td>
+                  <td className="px-5 py-3.5 text-slate-500">{r.filer.user?.name}</td>
                   <td className="px-5 py-3.5">
                     <Badge variant="outline" className={`text-xs ${statusBadge(r.status)}`}>
                       {r.status}
@@ -139,7 +139,7 @@ export default async function ReferralsPage({
                   {canViewAll && (
                     <td className="px-5 py-3.5">
                       {r.status === "PENDING" && (
-                        <ResolveReferralDialog referralId={r.id} studentName={r.student.user.name ?? ""} />
+                        <ResolveReferralDialog referralId={r.id} studentName={r.student.user?.name ?? ""} />
                       )}
                       {r.status === "RESOLVED" && r.resolution && (
                         <span className="text-xs text-slate-400">{r.resolution.action.replace(/_/g, " ")}</span>

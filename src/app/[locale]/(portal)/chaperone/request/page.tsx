@@ -78,7 +78,7 @@ export default async function ChaperoneRequestPage({
                       value={sp.id}
                       className="accent-emerald-600 w-4 h-4 flex-shrink-0"
                     />
-                    <span className="flex-1 text-sm text-slate-800">{sp.user.name ?? "—"}</span>
+                    <span className="flex-1 text-sm text-slate-800">{sp.user?.name ?? "—"}</span>
                     {sp.group && (
                       <span className="text-xs text-slate-400 font-mono">{sp.group.name}</span>
                     )}

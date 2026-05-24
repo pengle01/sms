@@ -84,7 +84,7 @@ export function StudentList({
                         "block text-sm font-medium",
                         isExpanded ? "text-emerald-700" : "text-slate-900"
                       )}>
-                        {s.user.name}
+                        {s.user?.name}
                       </span>
                       {periodStrip.length > 0 && (
                         <div className="flex items-end gap-1.5 mt-1">

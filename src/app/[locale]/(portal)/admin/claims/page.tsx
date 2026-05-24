@@ -52,7 +52,7 @@ export default async function ClaimsPage({
 
   const teacherClaims: PendingClaim[] = rawClaims.map((c) => ({
     id: c.id,
-    name: c.user.name ?? "",
+    name: c.user?.name ?? "",
     email: c.user.email,
     staffName: c.staffName,
     createdAt: c.createdAt.toISOString(),
@@ -60,10 +60,10 @@ export default async function ClaimsPage({
 
   const chaperoneRequests: PendingChaperone[] = rawChaperones.map((r) => ({
     id: r.id,
-    name: r.user.name ?? "",
+    name: r.user?.name ?? "",
     email: r.user.email,
     note: r.note ?? undefined,
-    students: r.students.map((s) => ({ id: s.studentProfile.id, name: s.studentProfile.user.name ?? "—" })),
+    students: r.students.map((s) => ({ id: s.studentProfile.id, name: s.studentProfile.user?.name ?? "—" })),
     createdAt: r.createdAt.toISOString(),
   }));
 

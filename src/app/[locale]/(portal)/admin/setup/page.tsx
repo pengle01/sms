@@ -61,7 +61,7 @@ export default async function TeacherSetupPage({
   return (
     <div className="max-w-xl mx-auto mt-16 space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-slate-900">Welcome, {session.user.name}</h2>
+        <h2 className="text-2xl font-bold text-slate-900">Welcome, {session.user?.name}</h2>
         <p className="text-slate-500 mt-1 text-sm">
           Select your name as it appears in the teaching schedule to link your account to your timetable.
         </p>

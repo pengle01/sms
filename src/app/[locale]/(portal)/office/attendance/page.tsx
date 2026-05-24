@@ -81,7 +81,7 @@ export default async function OfficeAttendancePage({
       existing.daysLate = Math.max(existing.daysLate, daysLate);
     } else {
       lateMap.set(key, {
-        staffName: r.staff.user.name ?? "Unknown",
+        staffName: r.staff.user?.name ?? "Unknown",
         attendanceDateStr,
         count: 1,
         daysLate,
@@ -196,7 +196,7 @@ export default async function OfficeAttendancePage({
             <tbody className="divide-y divide-slate-50">
               {absences.map((a) => (
                 <tr key={a.id} className="hover:bg-slate-50 print:hover:bg-transparent">
-                  <td className="px-5 py-3 font-medium text-slate-900">{a.student.user.name}</td>
+                  <td className="px-5 py-3 font-medium text-slate-900">{a.student.user?.name}</td>
                   <td className="px-5 py-3">
                     <Badge variant="outline" className="text-xs">{a.student.group?.name ?? "—"}</Badge>
                   </td>

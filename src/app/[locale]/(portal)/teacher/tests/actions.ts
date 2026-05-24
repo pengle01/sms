@@ -141,7 +141,7 @@ export async function scheduleTest(data: {
     // Rule 1: only 1 big test per day
     if (data.type === "BIG" && studentDayTests.some((t) => t.type === "BIG")) {
       conflicts.push({
-        studentName: s.user.name ?? s.id,
+        studentName: s.user?.name ?? s.id,
         reason: "BIG_SAME_DAY",
         existingTests: studentDayTests
           .filter((t) => t.type === "BIG")
@@ -159,7 +159,7 @@ export async function scheduleTest(data: {
     // Rule 2: max tests per week
     if (studentWeekTests.length >= maxTests) {
       conflicts.push({
-        studentName: s.user.name ?? s.id,
+        studentName: s.user?.name ?? s.id,
         reason: "WEEKLY_LIMIT",
         existingTests: studentWeekTests.map((t) => ({
           courseName: t.course.name,

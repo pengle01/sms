@@ -88,7 +88,7 @@ export default async function ActivityDetailPage({
             {dateLabel} · {periodRange(activity.startPeriod, activity.endPeriod)}
             {activity.location && ` · ${activity.location}`}
           </p>
-          <p className="text-slate-400 text-xs mt-0.5">Organised by {activity.filer.user.name}</p>
+          <p className="text-slate-400 text-xs mt-0.5">Organised by {activity.filer.user?.name}</p>
         </div>
       </div>
 
@@ -113,7 +113,7 @@ export default async function ActivityDetailPage({
                         href={`/${locale}/teacher/students/${p.studentId}`}
                         className="hover:underline"
                       >
-                        {p.student.user.name}
+                        {p.student.user?.name}
                       </Link>
                     </td>
                     <td className="px-5 py-3">
@@ -215,7 +215,7 @@ export default async function ActivityDetailPage({
                             value={s.id}
                             className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                           />
-                          <span className="flex-1 text-sm font-medium text-slate-900">{s.user.name}</span>
+                          <span className="flex-1 text-sm font-medium text-slate-900">{s.user?.name}</span>
                         </label>
                       ))}
                     </div>
