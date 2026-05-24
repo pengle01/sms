@@ -8,6 +8,7 @@ import { ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createActivity } from "../actions";
 import { localDateStr } from "@/lib/dates";
+import { getPeriodsPerDay, maxPeriodCount } from "@/lib/schoolConfig";
 
 export default async function NewActivityPage({
   params,
@@ -78,7 +79,8 @@ export default async function NewActivityPage({
     return `?${p.toString()}`;
   }
 
-  const periods = [1, 2, 3, 4, 5, 6, 7];
+  const periodsConfig = await getPeriodsPerDay();
+  const periods = Array.from({ length: maxPeriodCount(periodsConfig) }, (_, i) => i + 1);
 
   return (
     <div className="space-y-5 max-w-2xl">

@@ -8,10 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, CalendarRange } from "lucide-react";
 import { utcMidnight, localDateStr } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+import { getPeriodsPerDay, periodsForDow, maxPeriodCount } from "@/lib/schoolConfig";
 
 const DOW_LABELS = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const DOW_SHORT  = ["", "Mon", "Tue", "Wed", "Thu", "Fri"];
-const PERIODS    = [1, 2, 3, 4, 5, 6, 7];
 
 export default async function StudentSchedulePage({
   params,
@@ -48,6 +48,10 @@ export default async function StudentSchedulePage({
   const now = new Date();
   const todayDow = now.getDay();
   const isSchoolDay = todayDow >= 1 && todayDow <= 5;
+
+  const periodsConfig = await getPeriodsPerDay();
+  const todayPeriods = periodsForDow(periodsConfig, isSchoolDay ? todayDow : 1);
+  const allPeriods = Array.from({ length: maxPeriodCount(periodsConfig) }, (_, i) => i + 1);
 
   const [allSlots, todayActivities] = await Promise.all([
     groupIds.length > 0
@@ -178,7 +182,7 @@ export default async function StudentSchedulePage({
               <CardContent className="p-0">
                 <table className="w-full text-sm">
                   <tbody className="divide-y divide-slate-50">
-                    {PERIODS.map((p) => {
+                    {todayPeriods.map((p) => {
                       const slot = grid[todayDow]?.[p];
                       const activity = activityByPeriod[p];
                       return (
@@ -235,7 +239,7 @@ export default async function StudentSchedulePage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {PERIODS.map((p) => (
+                {allPeriods.map((p) => (
                   <tr key={p} className="hover:bg-slate-50">
                     <td className="px-4 py-3 text-xs font-semibold text-slate-400">P{p}</td>
                     {[1, 2, 3, 4, 5].map((d) => {
