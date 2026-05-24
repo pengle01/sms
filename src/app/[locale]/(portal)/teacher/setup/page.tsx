@@ -47,7 +47,13 @@ export default async function TeacherSetupPage({
   }
 
   const slots = await db.timetableSlot.findMany({
-    where: { staffId: null, staffName: { not: null } },
+    where: {
+      staffName: { not: null },
+      OR: [
+        { staffId: null },
+        { staff: { userId: null } },
+      ],
+    },
     select: { staffName: true },
     distinct: ["staffName"],
     orderBy: { staffName: "asc" },
