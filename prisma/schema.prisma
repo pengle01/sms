@@ -146,6 +146,7 @@ model StaffProfile {
 
   homeroomGroups        Group[]            @relation("HomeroomTeacher")
   homeroomHeadGroups    Group[]            @relation("HomeroomHeadteacher")
+  homeroomCounselorGroups Group[]          @relation("HomeroomCounselor")
   courseAssignments CourseAssignment[]
   filedReferrals    Referral[]         @relation("ReferralFiler")
   attendanceRecords Attendance[]       @relation("AttendanceTeacher")
@@ -250,6 +251,8 @@ model Group {
   homeroomTeacher       StaffProfile? @relation("HomeroomTeacher", fields: [homeroomTeacherId], references: [id])
   homeroomHeadteacherId String?
   homeroomHeadteacher   StaffProfile? @relation("HomeroomHeadteacher", fields: [homeroomHeadteacherId], references: [id])
+  counselorId           String?
+  counselor             StaffProfile? @relation("HomeroomCounselor", fields: [counselorId], references: [id])
 
   students          StudentProfile[]
   studentGroups     StudentGroup[]

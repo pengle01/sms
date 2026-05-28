@@ -1,0 +1,71 @@
+import { describe, it, expect } from "vitest";
+import { localDateStr, utcMidnight, monthStart, monthEnd } from "@/lib/dates";
+
+describe("localDateStr", () => {
+  it("formats a known date as YYYY-MM-DD", () => {
+    const d = new Date("2024-03-15T12:00:00Z");
+    // Result depends on local timezone — just verify format
+    expect(localDateStr(d)).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("returns today's date string by default", () => {
+    expect(localDateStr()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe("utcMidnight", () => {
+  it("returns UTC midnight for a YYYY-MM-DD string", () => {
+    const d = utcMidnight("2024-06-01");
+    expect(d.toISOString()).toBe("2024-06-01T00:00:00.000Z");
+  });
+
+  it("preserves the date component regardless of local timezone offsets", () => {
+    const d = utcMidnight("2024-12-31");
+    expect(d.getUTCFullYear()).toBe(2024);
+    expect(d.getUTCMonth()).toBe(11); // 0-indexed
+    expect(d.getUTCDate()).toBe(31);
+    expect(d.getUTCHours()).toBe(0);
+    expect(d.getUTCMinutes()).toBe(0);
+  });
+
+  it("accepts a Date object and produces UTC midnight for that local date", () => {
+    const d = utcMidnight(new Date("2025-01-20T10:00:00Z"));
+    expect(d.getUTCHours()).toBe(0);
+    expect(d.getUTCMinutes()).toBe(0);
+    expect(d.getUTCSeconds()).toBe(0);
+  });
+});
+
+describe("monthStart", () => {
+  it("returns UTC midnight on the 1st of the given month", () => {
+    const d = monthStart(2024, 3);
+    expect(d.toISOString()).toBe("2024-03-01T00:00:00.000Z");
+  });
+
+  it("handles January correctly", () => {
+    const d = monthStart(2025, 1);
+    expect(d.toISOString()).toBe("2025-01-01T00:00:00.000Z");
+  });
+
+  it("handles December correctly", () => {
+    const d = monthStart(2024, 12);
+    expect(d.toISOString()).toBe("2024-12-01T00:00:00.000Z");
+  });
+});
+
+describe("monthEnd", () => {
+  it("returns the first day of the next month (exclusive end)", () => {
+    const d = monthEnd(2024, 3);
+    expect(d.toISOString()).toBe("2024-04-01T00:00:00.000Z");
+  });
+
+  it("wraps December into January of next year", () => {
+    const d = monthEnd(2024, 12);
+    expect(d.toISOString()).toBe("2025-01-01T00:00:00.000Z");
+  });
+
+  it("monthEnd equals monthStart of the next month", () => {
+    expect(monthEnd(2024, 6).getTime()).toBe(monthStart(2024, 7).getTime());
+    expect(monthEnd(2024, 12).getTime()).toBe(monthStart(2025, 1).getTime());
+  });
+});

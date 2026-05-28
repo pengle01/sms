@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GraduationCap, Users, ChevronRight } from "lucide-react";
 import { InlineTeacherAssign } from "./InlineTeacherAssign";
+import { GroupAssignmentImport } from "./GroupAssignmentImport";
 
 export default async function GroupsPage({
   params,
@@ -17,11 +18,12 @@ export default async function GroupsPage({
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "SUPER_ADMIN") redirect(`/${locale}/login`);
 
-  const [groups, teachers, headteachers] = await Promise.all([
+  const [groups, teachers, headteachers, counselors] = await Promise.all([
     db.group.findMany({
       include: {
-        homeroomTeacher: { include: { user: { select: { name: true } } } },
+        homeroomTeacher:   { include: { user: { select: { name: true } } } },
         homeroomHeadteacher: { include: { user: { select: { name: true } } } },
+        counselor:         { include: { user: { select: { name: true } } } },
         _count: { select: { students: true, studentGroups: true } },
       },
       orderBy: [{ grade: "asc" }, { name: "asc" }],
@@ -36,17 +38,16 @@ export default async function GroupsPage({
       include: { user: { select: { name: true } } },
       orderBy: { user: { name: "asc" } },
     }),
+    db.staffProfile.findMany({
+      where: { user: { role: "STUDENT_COUNSELOR" } },
+      include: { user: { select: { name: true } } },
+      orderBy: { user: { name: "asc" } },
+    }),
   ]);
 
-  const teacherOptions = teachers.map((t) => ({
-    id: t.id,
-    name: t.user?.name ?? t.id,
-  }));
-
-  const headteacherOptions = headteachers.map((t) => ({
-    id: t.id,
-    name: t.user?.name ?? t.id,
-  }));
+  const teacherOptions    = teachers.map((t) => ({ id: t.id, name: t.user?.name ?? t.id }));
+  const headteacherOptions = headteachers.map((t) => ({ id: t.id, name: t.user?.name ?? t.id }));
+  const counselorOptions  = counselors.map((t) => ({ id: t.id, name: t.user?.name ?? t.id }));
 
   const homerooms = groups.filter((g) => g._count.students > 0);
   const supportGroups = groups.filter((g) => g._count.students === 0);
@@ -58,10 +59,12 @@ export default async function GroupsPage({
 
   const gradeLabel: Record<number, string> = { 1: "Year 1", 2: "Year 2", 3: "Year 3" };
 
-  const assignedTeacher = homerooms.filter((g) => g.homeroomTeacherId).length;
-  const assignedHead = homerooms.filter((g) => g.homeroomHeadteacherId).length;
-  const unassignedTeacher = homerooms.length - assignedTeacher;
-  const unassignedHead = homerooms.length - assignedHead;
+  const assignedTeacher    = homerooms.filter((g) => g.homeroomTeacherId).length;
+  const assignedHead       = homerooms.filter((g) => g.homeroomHeadteacherId).length;
+  const assignedCounselor  = homerooms.filter((g) => g.counselorId).length;
+  const unassignedTeacher  = homerooms.length - assignedTeacher;
+  const unassignedHead     = homerooms.length - assignedHead;
+  const unassignedCounselor = homerooms.length - assignedCounselor;
 
   return (
     <div className="space-y-6">
@@ -78,8 +81,14 @@ export default async function GroupsPage({
             {unassignedHead > 0
               ? <span className="text-amber-600 font-medium">{unassignedHead} unassigned</span>
               : <span className="text-emerald-600 font-medium">all assigned</span>}
+            {" · "}
+            ΣΕΑ:{" "}
+            {unassignedCounselor > 0
+              ? <span className="text-amber-600 font-medium">{unassignedCounselor} unassigned</span>
+              : <span className="text-emerald-600 font-medium">all assigned</span>}
           </p>
         </div>
+        <GroupAssignmentImport />
       </div>
 
       {Object.entries(byGrade).map(([grade, gradeGroups]) => (
@@ -98,6 +107,7 @@ export default async function GroupsPage({
                     <Users className="w-3.5 h-3.5 inline mr-1" />Students
                   </th>
                   <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Homeroom Staff</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide w-36">ΣΕΑ</th>
                   <th className="w-10" />
                 </tr>
               </thead>
@@ -111,9 +121,20 @@ export default async function GroupsPage({
                         groupId={g.id}
                         currentTeacherId={g.homeroomTeacherId}
                         currentHeadteacherId={g.homeroomHeadteacherId}
+                        currentCounselorId={g.counselorId}
                         teachers={teacherOptions}
                         headteachers={headteacherOptions}
+                        counselors={counselorOptions}
                       />
+                    </td>
+                    <td className="px-4 py-3">
+                      {g.counselor?.user?.name ? (
+                        <span className="text-sm text-slate-700 font-medium">
+                          {g.counselor.user.name}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-300">—</span>
+                      )}
                     </td>
                     <td className="px-3 py-3">
                       <Link

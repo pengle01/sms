@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition, useState } from "react";
-import { assignHomeroomTeacher, assignHomeroomHeadteacher } from "./actions";
+import { assignHomeroomTeacher, assignHomeroomHeadteacher, assignHomeroomCounselor } from "./actions";
 import { Check, Loader2 } from "lucide-react";
 
 interface StaffOption {
@@ -13,8 +13,10 @@ interface Props {
   groupId: string;
   currentTeacherId: string | null;
   currentHeadteacherId: string | null;
+  currentCounselorId: string | null;
   teachers: StaffOption[];
   headteachers: StaffOption[];
+  counselors: StaffOption[];
 }
 
 function InlineSelect({
@@ -68,8 +70,10 @@ export function InlineTeacherAssign({
   groupId,
   currentTeacherId,
   currentHeadteacherId,
+  currentCounselorId,
   teachers,
   headteachers,
+  counselors,
 }: Props) {
   return (
     <div className="flex flex-col gap-1.5 min-w-[220px]">
@@ -84,6 +88,12 @@ export function InlineTeacherAssign({
         options={headteachers}
         placeholder="— Headteacher B —"
         onChange={(id) => assignHomeroomHeadteacher(groupId, id || null)}
+      />
+      <InlineSelect
+        value={currentCounselorId ?? ""}
+        options={counselors}
+        placeholder="— ΣΕΑ —"
+        onChange={(id) => assignHomeroomCounselor(groupId, id || null)}
       />
     </div>
   );
