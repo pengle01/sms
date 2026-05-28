@@ -74,6 +74,7 @@ interface SidebarContentProps {
 
 export function SidebarContent({ role, locale, portal, userName, onNavigate, pendingClaimsCount }: SidebarContentProps) {
   const t = useTranslations("nav");
+  const tCommon = useTranslations("common");
   const pathname = usePathname();
   const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(role));
 
@@ -85,8 +86,7 @@ export function SidebarContent({ role, locale, portal, userName, onNavigate, pen
           <GraduationCap className="w-5 h-5 text-emerald-900" />
         </div>
         <span className="font-semibold text-white text-sm leading-tight">
-          School<br />
-          <span className="text-emerald-400 font-normal text-xs">Management System</span>
+          {tCommon("appName")}
         </span>
       </div>
 

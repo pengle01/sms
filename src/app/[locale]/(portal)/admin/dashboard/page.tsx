@@ -20,13 +20,13 @@ export default async function AdminDashboardPage({
 
   const t = await getTranslations("dashboard");
   const tCommon = await getTranslations("common");
+  const tReferrals = await getTranslations("referrals");
 
   const today = utcMidnight();
   const now = new Date();
-  const todayDow = now.getDay(); // 0=Sun … 6=Sat
+  const todayDow = now.getDay();
   const isWeekend = todayDow === 0 || todayDow === 6;
 
-  // Fetch schedule for users who have a staff profile
   const staff = await db.staffProfile.findUnique({ where: { userId: session.user.id } });
 
   const [absentsToday, pendingReferrals, unreadNotices, totalStudents, allSlots, markedRaw] =
@@ -56,7 +56,6 @@ export default async function AdminDashboardPage({
   const todaySlots = allSlots.filter((s) => s.dayOfWeek === todayDow);
   const markedSlotIds = new Set(markedRaw.map((r) => r.timetableSlotId));
 
-  // Span all periods 1–maxPeriod so gaps are visible
   const maxPeriod = allSlots.reduce((m, s) => Math.max(m, s.period), 0);
   const slotByPeriod = Object.fromEntries(todaySlots.map((s) => [s.period, s]));
 
@@ -71,10 +70,10 @@ export default async function AdminDashboardPage({
   });
 
   const stats = [
-    { title: t("absentsToday"),      value: absentsToday,    icon: ClipboardList, color: "text-red-600",     bg: "bg-red-50"     },
-    { title: t("pendingReferrals"),  value: pendingReferrals, icon: AlertTriangle, color: "text-amber-600",   bg: "bg-amber-50"   },
-    { title: t("unreadNotices"),     value: unreadNotices,   icon: Bell,          color: "text-emerald-600", bg: "bg-emerald-50" },
-    { title: "Total Students",       value: totalStudents,   icon: Users,         color: "text-green-600",   bg: "bg-green-50"   },
+    { title: t("absentsToday"),     value: absentsToday,    icon: ClipboardList, color: "text-red-600",     bg: "bg-red-50"     },
+    { title: t("pendingReferrals"), value: pendingReferrals, icon: AlertTriangle, color: "text-amber-600",   bg: "bg-amber-50"   },
+    { title: t("unreadNotices"),    value: unreadNotices,   icon: Bell,          color: "text-emerald-600", bg: "bg-emerald-50" },
+    { title: t("totalStudents"),    value: totalStudents,   icon: Users,         color: "text-green-600",   bg: "bg-green-50"   },
   ];
 
   return (
@@ -86,27 +85,25 @@ export default async function AdminDashboardPage({
         <p className="text-slate-500 mt-1">{t("today")}</p>
       </div>
 
-{/* Today's schedule — only for staff with a linked profile */}
+      {/* Today's schedule — only for staff with a linked profile */}
       {staff && (
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Today&apos;s Schedule</CardTitle>
+              <CardTitle className="text-base">{t("todaySchedule")}</CardTitle>
               <Link
                 href={`/${locale}/admin/attendance/schedule`}
                 className="text-xs font-medium text-emerald-600 hover:text-emerald-700"
               >
-                Full schedule →
+                {t("fullSchedule")}
               </Link>
             </div>
           </CardHeader>
           <CardContent className="p-0">
             {isWeekend ? (
-              <p className="px-5 py-6 text-sm text-slate-400">No school today.</p>
+              <p className="px-5 py-6 text-sm text-slate-400">{t("noSchoolToday")}</p>
             ) : maxPeriod === 0 ? (
-              <p className="px-5 py-6 text-sm text-slate-400">
-                No timetable slots linked to your account yet.
-              </p>
+              <p className="px-5 py-6 text-sm text-slate-400">{t("noTimetableSlots")}</p>
             ) : (
               <div className="divide-y divide-slate-50">
                 {Array.from({ length: maxPeriod }, (_, i) => i + 1).map((period) => {
@@ -119,7 +116,7 @@ export default async function AdminDashboardPage({
                         <span className="w-5 flex-shrink-0 text-center text-sm font-semibold text-slate-200">
                           {period}
                         </span>
-                        <span className="text-sm italic text-slate-300">Free period</span>
+                        <span className="text-sm italic text-slate-300">{t("freePeriod")}</span>
                       </div>
                     );
                   }
@@ -137,14 +134,14 @@ export default async function AdminDashboardPage({
                         <span className="text-sm font-medium text-slate-900">{slot.course.name}</span>
                         <span className="text-sm text-slate-400">{slot.group.name}</span>
                         {slot.room && (
-                          <span className="text-xs text-slate-400 font-mono">Room {slot.room}</span>
+                          <span className="text-xs text-slate-400 font-mono">{t("room", { room: slot.room })}</span>
                         )}
                       </div>
                       {marked ? (
                         <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-500" />
                       ) : (
                         <span className="text-xs font-medium text-emerald-600 flex-shrink-0">
-                          Mark →
+                          {t("markAttendance")}
                         </span>
                       )}
                     </Link>
@@ -179,7 +176,7 @@ export default async function AdminDashboardPage({
       {/* Recent referrals */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Recent Pending Referrals</CardTitle>
+          <CardTitle className="text-base">{t("recentReferrals")}</CardTitle>
         </CardHeader>
         <CardContent>
           {recentReferrals.length === 0 ? (
@@ -195,7 +192,7 @@ export default async function AdminDashboardPage({
                   <div className="flex items-center gap-2 ml-4">
                     <span className="text-xs text-slate-400">{r.filer.user?.name}</span>
                     <Badge variant="outline" className="text-xs border-amber-300 text-amber-700">
-                      Pending
+                      {tReferrals("pending")}
                     </Badge>
                   </div>
                 </div>

@@ -4,8 +4,11 @@ import { useActionState, useRef, useState } from "react";
 import { importGroupAssignments, type GroupImportResult } from "./actions";
 import { Upload, X, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 
 export function GroupAssignmentImport() {
+  const t = useTranslations("groups");
+  const tCommon = useTranslations("common");
   const [open, setOpen] = useState(false);
   const [result, action, pending] = useActionState(importGroupAssignments, null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -18,7 +21,7 @@ export function GroupAssignmentImport() {
         className="h-9 gap-2 border-slate-200 text-slate-600 hover:border-emerald-400 hover:text-emerald-700"
       >
         <Upload className="w-4 h-4" />
-        Import assignments
+        {t("importAssignments")}
       </Button>
     );
   }
@@ -28,10 +31,8 @@ export function GroupAssignmentImport() {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-5">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-slate-900">Import group assignments</h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Upload the xlsx with columns: ΤΜΗΜΑ · ΥΠΕΥΘΥΝΟΣ · ΚΗΔΕΜΟΝΑΣ ΒΔ · ΥΠΕΥΘΥΝΗ ΣΕΑ
-            </p>
+            <h3 className="text-lg font-semibold text-slate-900">{t("importTitle")}</h3>
+            <p className="text-xs text-slate-500 mt-0.5">{t("importInstructions")}</p>
           </div>
           <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-slate-600">
             <X className="w-5 h-5" />
@@ -62,12 +63,12 @@ export function GroupAssignmentImport() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
                 </svg>
-                <p className="text-sm text-slate-500 font-medium">Importing…</p>
+                <p className="text-sm text-slate-500 font-medium">{tCommon("importing")}</p>
               </>
             ) : (
               <>
                 <Upload className="w-7 h-7 text-slate-400" />
-                <p className="text-sm font-medium text-slate-700">Click to select xlsx file</p>
+                <p className="text-sm font-medium text-slate-700">{t("selectFile")}</p>
               </>
             )}
           </label>
@@ -79,11 +80,11 @@ export function GroupAssignmentImport() {
                   <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="text-sm font-semibold text-green-800">
-                      {result.assigned} group{result.assigned !== 1 ? "s" : ""} updated
+                      {t("importSuccess", { count: result.assigned })}
                     </p>
                     {result.skipped.length > 0 && (
                       <p className="text-xs text-green-700 mt-1">
-                        {result.skipped.length} rows skipped (groups not found)
+                        {t("importSkipped", { count: result.skipped.length })}
                       </p>
                     )}
                   </div>
@@ -95,7 +96,7 @@ export function GroupAssignmentImport() {
                   <div className="flex items-center gap-2 mb-2">
                     <AlertTriangle className="w-4 h-4 text-amber-600" />
                     <p className="text-sm font-semibold text-amber-800">
-                      {result.errors.length} unmatched name{result.errors.length !== 1 ? "s" : ""}
+                      {t("importErrors", { count: result.errors.length })}
                     </p>
                   </div>
                   <ul className="space-y-1 max-h-40 overflow-y-auto">
@@ -111,7 +112,7 @@ export function GroupAssignmentImport() {
 
         <div className="flex justify-end">
           <Button variant="outline" onClick={() => setOpen(false)} className="h-9">
-            Close
+            {tCommon("close")}
           </Button>
         </div>
       </div>

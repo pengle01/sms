@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { utcMidnight, localDateStr } from "@/lib/dates";
 import { AlertTriangle, FileText, CalendarCheck, Users, FlaskConical } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 
 export default async function TeacherHomegroupPage({
   params,
@@ -19,6 +20,9 @@ export default async function TeacherHomegroupPage({
   const { groupId: selectedGroupId } = await searchParams;
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login`);
+
+  const t = await getTranslations("homegroup");
+  const tCommon = await getTranslations("common");
 
   const staff = await db.staffProfile.findUnique({
     where: { userId: session.user.id },
@@ -43,8 +47,8 @@ export default async function TeacherHomegroupPage({
   if (!staff || allGroups.length === 0) {
     return (
       <div className="space-y-4">
-        <h2 className="text-2xl font-bold text-slate-900">My Homegroup</h2>
-        <p className="text-sm text-slate-400">You have not been assigned a homeroom group. Ask an administrator to assign one.</p>
+        <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>
+        <p className="text-sm text-slate-400">{t("notAssigned")}</p>
       </div>
     );
   }
@@ -121,22 +125,22 @@ export default async function TeacherHomegroupPage({
   const referralMap = Object.fromEntries(referrals.map((r) => [r.studentId, r._count._all]));
 
   const testsByGroupId = new Map<string, number>();
-  for (const t of upcomingStudentTests) {
-    testsByGroupId.set(t.groupId, (testsByGroupId.get(t.groupId) ?? 0) + 1);
+  for (const test of upcomingStudentTests) {
+    testsByGroupId.set(test.groupId, (testsByGroupId.get(test.groupId) ?? 0) + 1);
   }
   const testCountMap = new Map<string, number>();
   for (const s of students) {
-    const groups = [s.groupId, ...s.subjectGroups.map((sg) => sg.groupId)].filter(Boolean) as string[];
-    testCountMap.set(s.id, groups.reduce((sum, gId) => sum + (testsByGroupId.get(gId) ?? 0), 0));
+    const sGroups = [s.groupId, ...s.subjectGroups.map((sg) => sg.groupId)].filter(Boolean) as string[];
+    testCountMap.set(s.id, sGroups.reduce((sum, gId) => sum + (testsByGroupId.get(gId) ?? 0), 0));
   }
 
-  const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const localeTag = locale === "el" ? "el-GR" : "en-US";
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">My Homegroup</h2>
-        <p className="text-slate-500 text-sm mt-1">Student overview · past 30 days</p>
+        <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>
+        <p className="text-slate-500 text-sm mt-1">{t("subtitle")}</p>
       </div>
 
       {/* Group tabs (if multiple) */}
@@ -164,15 +168,15 @@ export default async function TeacherHomegroupPage({
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2 text-emerald-800">
               <CalendarCheck className="w-4 h-4" />
-              Upcoming Tests — Next 7 Days
+              {t("upcomingTests")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">
-            {upcomingTests.map((t) => (
-              <div key={t.id} className="flex items-center gap-3 text-sm">
-                <span className="text-emerald-700 font-medium">{t.course.name}</span>
+            {upcomingTests.map((test) => (
+              <div key={test.id} className="flex items-center gap-3 text-sm">
+                <span className="text-emerald-700 font-medium">{test.course.name}</span>
                 <span className="text-emerald-600 text-xs">
-                  {DOW[t.date.getDay()]} {t.date.toLocaleDateString("el-GR", { day: "numeric", month: "short" })} · P{t.period}
+                  {test.date.toLocaleDateString(localeTag, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })} · P{test.period}
                 </span>
               </div>
             ))}
@@ -185,27 +189,27 @@ export default async function TeacherHomegroupPage({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Users className="w-4 h-4" />
-            {activeGroup.name} · {students.length} students
+            {t("groupStudents", { name: activeGroup.name, count: students.length })}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100">
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Student</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{tCommon("student")}</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">
                   <span className="flex items-center justify-center gap-1">
-                    <AlertTriangle className="w-3 h-3" /> Absences
+                    <AlertTriangle className="w-3 h-3" /> {t("absences")}
                   </span>
                 </th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">
                   <span className="flex items-center justify-center gap-1">
-                    <FileText className="w-3 h-3" /> Reports
+                    <FileText className="w-3 h-3" /> {t("reports")}
                   </span>
                 </th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">
                   <span className="flex items-center justify-center gap-1">
-                    <FlaskConical className="w-3 h-3" /> Tests
+                    <FlaskConical className="w-3 h-3" /> {t("tests")}
                   </span>
                 </th>
               </tr>
@@ -219,7 +223,7 @@ export default async function TeacherHomegroupPage({
                   <tr key={s.id} className="hover:bg-slate-50">
                     <td className="px-5 py-3 font-medium text-slate-900">
                       <Link
-                        href={`/${locale}/teacher/students/${s.id}`}
+                        href={`/${locale}/teacher/students/${s.id}?from=homegroup&groupId=${activeGroup.id}`}
                         className="hover:text-emerald-700 hover:underline"
                       >
                         {s.user?.name}
@@ -250,7 +254,7 @@ export default async function TeacherHomegroupPage({
                     <td className="px-4 py-3 text-center">
                       {tests > 0 ? (
                         <Link
-                          href={`/${locale}/teacher/students/${s.id}`}
+                          href={`/${locale}/teacher/students/${s.id}?from=homegroup&groupId=${activeGroup.id}`}
                           className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
                             tests >= 3 ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"
                           }`}
@@ -267,7 +271,7 @@ export default async function TeacherHomegroupPage({
               })}
               {students.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-5 py-10 text-center text-slate-400">No active students in this group.</td>
+                  <td colSpan={4} className="px-5 py-10 text-center text-slate-400">{t("noStudents")}</td>
                 </tr>
               )}
             </tbody>

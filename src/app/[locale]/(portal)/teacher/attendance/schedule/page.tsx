@@ -6,8 +6,7 @@ import { db } from "@/server/db";
 import { utcMidnight, localDateStr } from "@/lib/dates";
 import Link from "next/link";
 import { CheckCircle2, ClipboardList, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
-
-const DAY_LABELS = ["", "Mon", "Tue", "Wed", "Thu", "Fri"] as const;
+import { getTranslations } from "next-intl/server";
 
 type Slot = {
   id: string;
@@ -38,6 +37,10 @@ export default async function TeacherSchedulePage({
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect(`/${locale}/login`);
 
+  const tNav = await getTranslations("nav");
+  const t = await getTranslations("attendance");
+  const tCommon = await getTranslations("common");
+
   const staff = await db.staffProfile.findUnique({ where: { userId: session.user.id } });
   if (!staff && (session.user.role as Role) === "TEACHER") redirect(`/${locale}/teacher/setup`);
 
@@ -45,14 +48,11 @@ export default async function TeacherSchedulePage({
   const todayStr = localDateStr(now);
   const todayDow = now.getDay();
 
-  // Week offset (0 = current, -1 = last week, +1 = next week, etc.)
   const weekOffset = weekParam ? parseInt(weekParam) : 0;
 
-  // Calculate Monday of the requested week
   const baseMon = getMondayOfWeek(now);
   baseMon.setDate(baseMon.getDate() + weekOffset * 7);
 
-  // Date strings for Mon–Fri of this week
   const dowToDateStr: Record<number, string> = {};
   for (let d = 1; d <= 5; d++) {
     const dt = new Date(baseMon);
@@ -86,7 +86,6 @@ export default async function TeacherSchedulePage({
   const maxPeriod = slots.reduce((m, s) => Math.max(m, s.period), 0);
   const periods = maxPeriod > 0 ? Array.from({ length: maxPeriod }, (_, i) => i + 1) : [];
 
-  // Query marked attendance for this week's past/today dates
   const markedSet = new Set<string>();
   if (slots.length > 0 && !isFutureWeek) {
     const weekStart = utcMidnight(weekStartStr);
@@ -103,10 +102,9 @@ export default async function TeacherSchedulePage({
     }
   }
 
-  // Format week range for display
   const fmtDate = (str: string) => {
     const d = new Date(str + "T12:00:00");
-    return d.toLocaleDateString("el-GR", { day: "numeric", month: "short" });
+    return d.toLocaleDateString(locale === "el" ? "el-GR" : "en-US", { day: "numeric", month: "short" });
   };
   const weekLabel = `${fmtDate(weekStartStr)} – ${fmtDate(weekEndStr)}`;
 
@@ -114,13 +112,16 @@ export default async function TeacherSchedulePage({
   const nextWeekHref = `?week=${weekOffset + 1}`;
   const currentWeekHref = "?week=0";
 
+  // Day label lookup using translations
+  const dayLabel = (dow: number) => t(`daysShort.${dow}` as Parameters<typeof t>[0]);
+
   if (slots.length === 0) {
     return (
       <div className="space-y-4">
-        <h2 className="text-2xl font-bold text-slate-900">Ωρολόγιο Πρόγραμμα</h2>
+        <h2 className="text-2xl font-bold text-slate-900">{tNav("timetable")}</h2>
         <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          No timetable slots linked to your account. Ask an administrator to import the schedule.
+          {t("noSlots")}
         </div>
       </div>
     );
@@ -131,7 +132,7 @@ export default async function TeacherSchedulePage({
       {/* Header + week navigation */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex-1">
-          <h2 className="text-2xl font-bold text-slate-900">Ωρολόγιο Πρόγραμμα</h2>
+          <h2 className="text-2xl font-bold text-slate-900">{tNav("timetable")}</h2>
           <div className="flex items-center gap-2 mt-0.5">
             <p className="text-slate-500 text-sm">{weekLabel}</p>
             {!isCurrentWeek && (
@@ -139,7 +140,7 @@ export default async function TeacherSchedulePage({
                 href={currentWeekHref}
                 className="text-xs font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
               >
-                → This week
+                {t("thisWeek")}
               </Link>
             )}
           </div>
@@ -149,14 +150,14 @@ export default async function TeacherSchedulePage({
           <Link
             href={prevWeekHref}
             className="h-9 w-9 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors"
-            title="Previous week"
+            title={t("previousWeek")}
           >
             <ChevronLeft className="w-4 h-4" />
           </Link>
           <Link
             href={nextWeekHref}
             className="h-9 w-9 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors"
-            title="Next week"
+            title={t("nextWeek")}
           >
             <ChevronRight className="w-4 h-4" />
           </Link>
@@ -165,7 +166,7 @@ export default async function TeacherSchedulePage({
 
       {isFutureWeek && (
         <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-500">
-          Future week — attendance cannot be marked in advance.
+          {t("futureWeek")}
         </div>
       )}
 
@@ -190,13 +191,13 @@ export default async function TeacherSchedulePage({
                         : "text-slate-300"
                     }`}
                   >
-                    <span className="uppercase tracking-wide">{DAY_LABELS[dow]}</span>
+                    <span className="uppercase tracking-wide">{dayLabel(dow)}</span>
                     <span className={`ml-1.5 text-[11px] font-normal ${isToday ? "text-emerald-600" : past ? "text-slate-400" : "text-slate-300"}`}>
                       {dd}/{mm}
                     </span>
                     {isToday && (
                       <span className="ml-1.5 inline-block rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold text-white leading-none align-middle">
-                        today
+                        {tCommon("today")}
                       </span>
                     )}
                   </th>
@@ -236,14 +237,14 @@ export default async function TeacherSchedulePage({
                       {canMark && marked && (
                         <div className="mt-1.5 flex items-center gap-1">
                           <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                          <span className="text-xs font-medium text-emerald-600">Done</span>
+                          <span className="text-xs font-medium text-emerald-600">{t("done")}</span>
                         </div>
                       )}
                       {canMark && !marked && (
                         <div className="mt-1.5 flex items-center gap-1">
                           <ClipboardList className={`w-3 h-3 ${isToday ? "text-emerald-500" : "text-amber-500"}`} />
                           <span className={`text-xs font-medium ${isToday ? "text-emerald-600" : "text-amber-600"}`}>
-                            {isToday ? "Mark" : "Fill in"}
+                            {isToday ? t("mark") : t("fillIn")}
                           </span>
                         </div>
                       )}

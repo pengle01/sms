@@ -15,7 +15,18 @@
     "print": "Print",
     "noData": "No data found",
     "error": "An error occurred",
-    "success": "Saved successfully"
+    "success": "Saved successfully",
+    "today": "today",
+    "clear": "Clear",
+    "close": "Close",
+    "previous": "Previous",
+    "next": "Next",
+    "student": "Student",
+    "comingSoon": "Coming soon.",
+    "pageOf": "Page {page} of {total}",
+    "unassigned": "unassigned",
+    "allAssigned": "all assigned",
+    "importing": "Importing…"
   },
   "auth": {
     "login": "Sign In",
@@ -62,7 +73,17 @@
     "absentsToday": "Absences Today",
     "pendingReferrals": "Pending Referrals",
     "unreadNotices": "Unread Notices",
-    "myGroup": "My Group"
+    "myGroup": "My Group",
+    "todaySchedule": "Today's Schedule",
+    "fullWeek": "Full week →",
+    "fullSchedule": "Full schedule →",
+    "noSchoolToday": "No school today.",
+    "noTimetableSlots": "No timetable slots linked to your account yet. Ask an administrator to import the schedule.",
+    "totalStudents": "Total Students",
+    "recentReferrals": "Recent Pending Referrals",
+    "freePeriod": "Free period",
+    "room": "Room {room}",
+    "markAttendance": "Mark →"
   },
   "attendance": {
     "title": "Attendance",
@@ -83,7 +104,27 @@
       "atActivity": "At {activity}",
       "inClass": "In class — {room} with {teacher}",
       "unknown": "Location unknown"
-    }
+    },
+    "daysShort": { "1": "Mon", "2": "Tue", "3": "Wed", "4": "Thu", "5": "Fri" },
+    "done": "Done",
+    "fillIn": "Fill in",
+    "mark": "Mark",
+    "thisWeek": "→ This week",
+    "previousWeek": "Previous week",
+    "nextWeek": "Next week",
+    "futureWeek": "Future week — attendance cannot be marked in advance.",
+    "noSlots": "No timetable slots linked to your account. Ask an administrator to import the schedule."
+  },
+  "homegroup": {
+    "title": "My Homegroup",
+    "subtitle": "Student overview · past 30 days",
+    "notAssigned": "You have not been assigned a homeroom group. Ask an administrator to assign one.",
+    "upcomingTests": "Upcoming Tests — Next 7 Days",
+    "groupStudents": "{name} · {count} students",
+    "absences": "Absences",
+    "reports": "Reports",
+    "tests": "Tests",
+    "noStudents": "No active students in this group."
   },
   "referrals": {
     "title": "Referrals",
@@ -107,7 +148,17 @@
     "parentContacted": "Parent Contacted",
     "contactDate": "Contact Date",
     "contactMethod": "Contact Method",
-    "counselorNotes": "Private Counselor Notes"
+    "counselorNotes": "Private Counselor Notes",
+    "allStatuses": "All statuses",
+    "allHomegroups": "All homegroups",
+    "groupLog": "{name} — Referral Log",
+    "allReferrals": "All Referrals",
+    "noReferrals": "No referrals found",
+    "total": "{count} total",
+    "dateHeader": "Date",
+    "groupHeader": "Group",
+    "filedBy": "Filed by",
+    "actionsHeader": "Actions"
   },
   "grades": {
     "title": "Grades",
@@ -168,6 +219,30 @@
     "errorStaffNameNotFound": "That name was not found in the timetable. Contact the administrator.",
     "errorStaffNameTaken": "That name has already been claimed by another account.",
     "errorGeneric": "Registration failed. Please try again."
+  },
+  "groups": {
+    "title": "Homeroom Groups",
+    "year1": "Year 1",
+    "year2": "Year 2",
+    "year3": "Year 3",
+    "teachers": "Teachers",
+    "headteachersB": "Headteachers B",
+    "counselors": "Counselors",
+    "homeroomStaff": "Homeroom Staff",
+    "counselorColumn": "Counselor",
+    "noGroups": "No homeroom groups yet",
+    "importToCreate": "Import students to create homeroom groups",
+    "supportGroups": "Support / Subject Groups ({count})",
+    "selectTeacher": "— Teacher —",
+    "selectHeadteacher": "— Headteacher B —",
+    "selectCounselor": "— Counselor —",
+    "importAssignments": "Import assignments",
+    "importTitle": "Import group assignments",
+    "importInstructions": "Upload the xlsx with columns: ΤΜΗΜΑ · ΥΠΕΥΘΥΝΟΣ · ΚΗΔΕΜΟΝΑΣ ΒΔ · ΥΠΕΥΘΥΝΗ ΣΕΑ",
+    "selectFile": "Click to select xlsx file",
+    "importSuccess": "{count} groups updated",
+    "importSkipped": "{count} rows skipped (groups not found)",
+    "importErrors": "{count} unmatched names"
   },
   "users": {
     "title": "User Management",

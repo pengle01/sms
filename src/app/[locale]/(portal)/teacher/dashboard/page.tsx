@@ -7,6 +7,7 @@ import { utcMidnight } from "@/lib/dates";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, ClipboardList, AlertCircle } from "lucide-react";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
 export default async function TeacherDashboardPage({
   params,
@@ -17,8 +18,9 @@ export default async function TeacherDashboardPage({
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login`);
 
+  const t = await getTranslations("dashboard");
+
   const staff = await db.staffProfile.findUnique({ where: { userId: session.user.id } });
-  // Only plain teachers must claim a schedule — management roles may have no staffProfile
   if (!staff && (session.user.role as Role) === "TEACHER") redirect(`/${locale}/teacher/setup`);
 
   const now = new Date();
@@ -48,7 +50,7 @@ export default async function TeacherDashboardPage({
   const maxPeriod = allSlots.reduce((m, s) => Math.max(m, s.period), 0);
   const slotByPeriod = Object.fromEntries(todaySlots.map((s) => [s.period, s]));
 
-  const dateLabel = now.toLocaleDateString("el-GR", {
+  const dateLabel = now.toLocaleDateString(locale === "el" ? "el-GR" : "en-US", {
     weekday: "long", day: "numeric", month: "long",
   });
 
@@ -56,7 +58,7 @@ export default async function TeacherDashboardPage({
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-slate-900">
-          Hello, {session.user?.name?.split(" ")[0]}
+          {t("welcome", { name: session.user?.name?.split(" ")[0] ?? "" })}
         </h2>
         <p className="text-slate-500 mt-1">{dateLabel}</p>
       </div>
@@ -64,28 +66,26 @@ export default async function TeacherDashboardPage({
       {allSlots.length === 0 ? (
         <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          No timetable slots are linked to your account yet. Ask an administrator to import the schedule.
+          {t("noTimetableSlots")}
         </div>
       ) : (
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Today&apos;s Schedule</CardTitle>
+              <CardTitle className="text-base">{t("todaySchedule")}</CardTitle>
               <Link
                 href={`/${locale}/teacher/attendance/schedule`}
                 className="text-xs font-medium text-emerald-600 hover:text-emerald-700"
               >
-                Full week →
+                {t("fullWeek")}
               </Link>
             </div>
           </CardHeader>
           <CardContent className="p-0">
             {isWeekend ? (
-              <p className="px-5 py-6 text-sm text-slate-400">No school today.</p>
+              <p className="px-5 py-6 text-sm text-slate-400">{t("noSchoolToday")}</p>
             ) : maxPeriod === 0 ? (
-              <p className="px-5 py-6 text-sm text-slate-400">
-                No timetable slots linked to your account yet.
-              </p>
+              <p className="px-5 py-6 text-sm text-slate-400">{t("noTimetableSlots")}</p>
             ) : (
               <div className="divide-y divide-slate-50">
                 {Array.from({ length: maxPeriod }, (_, i) => i + 1).map((period) => {
@@ -98,7 +98,7 @@ export default async function TeacherDashboardPage({
                         <span className="w-5 flex-shrink-0 text-center text-sm font-semibold text-slate-200">
                           {period}
                         </span>
-                        <span className="text-sm italic text-slate-300">Free period</span>
+                        <span className="text-sm italic text-slate-300">{t("freePeriod")}</span>
                       </div>
                     );
                   }
@@ -116,14 +116,14 @@ export default async function TeacherDashboardPage({
                         <span className="text-sm font-medium text-slate-900">{slot.course.name}</span>
                         <span className="text-sm text-slate-400">{slot.group.name}</span>
                         {slot.room && (
-                          <span className="text-xs text-slate-400 font-mono">Room {slot.room}</span>
+                          <span className="text-xs text-slate-400 font-mono">{t("room", { room: slot.room })}</span>
                         )}
                       </div>
                       {marked ? (
                         <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-500" />
                       ) : (
                         <span className="text-xs font-medium text-emerald-600 flex-shrink-0">
-                          Mark →
+                          {t("markAttendance")}
                         </span>
                       )}
                     </Link>

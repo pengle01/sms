@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GraduationCap, Users, ChevronRight } from "lucide-react";
 import { InlineTeacherAssign } from "./InlineTeacherAssign";
 import { GroupAssignmentImport } from "./GroupAssignmentImport";
+import { getTranslations } from "next-intl/server";
 
 export default async function GroupsPage({
   params,
@@ -17,6 +18,9 @@ export default async function GroupsPage({
   const { locale } = await params;
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "SUPER_ADMIN") redirect(`/${locale}/login`);
+
+  const t = await getTranslations("groups");
+  const tCommon = await getTranslations("common");
 
   const [groups, teachers, headteachers, counselors] = await Promise.all([
     db.group.findMany({
@@ -57,7 +61,11 @@ export default async function GroupsPage({
     return acc;
   }, {});
 
-  const gradeLabel: Record<number, string> = { 1: "Year 1", 2: "Year 2", 3: "Year 3" };
+  const gradeLabel: Record<number, string> = {
+    1: t("year1"),
+    2: t("year2"),
+    3: t("year3"),
+  };
 
   const assignedTeacher    = homerooms.filter((g) => g.homeroomTeacherId).length;
   const assignedHead       = homerooms.filter((g) => g.homeroomHeadteacherId).length;
@@ -66,26 +74,29 @@ export default async function GroupsPage({
   const unassignedHead     = homerooms.length - assignedHead;
   const unassignedCounselor = homerooms.length - assignedCounselor;
 
+  const assignedLabel = tCommon("allAssigned");
+  const unassignedLabel = (n: number) => `${n} ${tCommon("unassigned")}`;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Homeroom Groups</h2>
+          <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>
           <p className="text-slate-500 text-sm mt-1">
-            Teachers:{" "}
+            {t("teachers")}:{" "}
             {unassignedTeacher > 0
-              ? <span className="text-amber-600 font-medium">{unassignedTeacher} unassigned</span>
-              : <span className="text-emerald-600 font-medium">all assigned</span>}
+              ? <span className="text-amber-600 font-medium">{unassignedLabel(unassignedTeacher)}</span>
+              : <span className="text-emerald-600 font-medium">{assignedLabel}</span>}
             {" · "}
-            Headteachers B:{" "}
+            {t("headteachersB")}:{" "}
             {unassignedHead > 0
-              ? <span className="text-amber-600 font-medium">{unassignedHead} unassigned</span>
-              : <span className="text-emerald-600 font-medium">all assigned</span>}
+              ? <span className="text-amber-600 font-medium">{unassignedLabel(unassignedHead)}</span>
+              : <span className="text-emerald-600 font-medium">{assignedLabel}</span>}
             {" · "}
-            ΣΕΑ:{" "}
+            {t("counselors")}:{" "}
             {unassignedCounselor > 0
-              ? <span className="text-amber-600 font-medium">{unassignedCounselor} unassigned</span>
-              : <span className="text-emerald-600 font-medium">all assigned</span>}
+              ? <span className="text-amber-600 font-medium">{unassignedLabel(unassignedCounselor)}</span>
+              : <span className="text-emerald-600 font-medium">{assignedLabel}</span>}
           </p>
         </div>
         <GroupAssignmentImport />
@@ -106,8 +117,8 @@ export default async function GroupsPage({
                   <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide w-16">
                     <Users className="w-3.5 h-3.5 inline mr-1" />Students
                   </th>
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Homeroom Staff</th>
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide w-36">ΣΕΑ</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("homeroomStaff")}</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide w-36">{t("counselorColumn")}</th>
                   <th className="w-10" />
                 </tr>
               </thead>
@@ -156,15 +167,15 @@ export default async function GroupsPage({
       {homerooms.length === 0 && (
         <div className="text-center py-20 text-slate-400">
           <GraduationCap className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">No homeroom groups yet</p>
-          <p className="text-sm mt-1">Import students to create homeroom groups</p>
+          <p className="font-medium">{t("noGroups")}</p>
+          <p className="text-sm mt-1">{t("importToCreate")}</p>
         </div>
       )}
 
       {supportGroups.length > 0 && (
         <div>
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
-            Support / Subject Groups ({supportGroups.length})
+            {t("supportGroups", { count: supportGroups.length })}
           </p>
           <div className="flex flex-wrap gap-2">
             {supportGroups.map((g) => (

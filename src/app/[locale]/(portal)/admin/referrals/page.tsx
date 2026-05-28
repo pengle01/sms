@@ -9,6 +9,7 @@ import { AlertTriangle } from "lucide-react";
 import { NewReferralDialog } from "./NewReferralDialog";
 import { ResolveReferralDialog } from "./ResolveReferralDialog";
 import { cn } from "@/lib/utils";
+import { getTranslations } from "next-intl/server";
 
 export default async function ReferralsPage({
   params,
@@ -20,6 +21,9 @@ export default async function ReferralsPage({
   const { locale } = await params;
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "SUPER_ADMIN") redirect(`/${locale}/login`);
+
+  const t = await getTranslations("referrals");
+  const tCommon = await getTranslations("common");
 
   const { status: statusFilter, group: groupFilter, page: pageStr } = await searchParams;
   const page = Math.max(1, parseInt(pageStr ?? "1"));
@@ -71,13 +75,20 @@ export default async function ReferralsPage({
     return "bg-emerald-50 text-emerald-700 border-emerald-200";
   };
 
+  const statusLabel = (status: string) => {
+    if (status === "PENDING") return t("pending");
+    if (status === "ASSIGNED") return t("assigned");
+    if (status === "RESOLVED") return t("resolved");
+    return status;
+  };
+
   const buildHref = (overrides: Record<string, string | undefined>) => {
-    const params = new URLSearchParams();
+    const p = new URLSearchParams();
     const merged = { status: statusFilter, group: groupFilter, ...overrides };
     for (const [k, v] of Object.entries(merged)) {
-      if (v && v !== "ALL") params.set(k, v);
+      if (v && v !== "ALL") p.set(k, v);
     }
-    const qs = params.toString();
+    const qs = p.toString();
     return qs ? `?${qs}` : "?";
   };
 
@@ -85,8 +96,8 @@ export default async function ReferralsPage({
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Καταγγελίες</h2>
-          <p className="text-slate-500 text-sm mt-1">{total} total</p>
+          <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>
+          <p className="text-slate-500 text-sm mt-1">{t("total", { count: total })}</p>
         </div>
         <NewReferralDialog students={students} locale={locale} />
       </div>
@@ -109,10 +120,10 @@ export default async function ReferralsPage({
             >
               <p className="font-semibold truncate">{g.name}</p>
               <p className={cn("text-xs mt-0.5", isActive ? "text-emerald-100" : "text-slate-400")}>
-                {g._count.referrals} total
+                {t("total", { count: g._count.referrals })}
                 {pending > 0 && (
                   <span className={cn("ml-1.5 font-semibold", isActive ? "text-amber-200" : "text-amber-600")}>
-                    · {pending} pending
+                    · {pending} {t("pending").toLowerCase()}
                   </span>
                 )}
               </p>
@@ -129,17 +140,17 @@ export default async function ReferralsPage({
           defaultValue={statusFilter ?? "ALL"}
           className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
         >
-          <option value="ALL">All statuses</option>
-          <option value="PENDING">Pending</option>
-          <option value="ASSIGNED">Assigned</option>
-          <option value="RESOLVED">Resolved</option>
+          <option value="ALL">{t("allStatuses")}</option>
+          <option value="PENDING">{t("pending")}</option>
+          <option value="ASSIGNED">{t("assigned")}</option>
+          <option value="RESOLVED">{t("resolved")}</option>
         </select>
         <select
           name="group"
           defaultValue={groupFilter ?? ""}
           className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
         >
-          <option value="">All homegroups</option>
+          <option value="">{t("allHomegroups")}</option>
           {groups.map((g) => (
             <option key={g.id} value={g.id}>{g.name}</option>
           ))}
@@ -148,11 +159,11 @@ export default async function ReferralsPage({
           type="submit"
           className="h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
         >
-          Filter
+          {tCommon("filter")}
         </button>
         {(statusFilter || groupFilter) && (
           <Link href="?" className="h-9 px-3 flex items-center text-sm text-slate-500 hover:text-slate-800">
-            Clear
+            {tCommon("clear")}
           </Link>
         )}
       </form>
@@ -161,21 +172,21 @@ export default async function ReferralsPage({
         <CardHeader className="pb-3">
           <CardTitle className="text-base">
             {groupFilter
-              ? `${groups.find((g) => g.id === groupFilter)?.name ?? "Group"} — Referral Log`
-              : "All Referrals"}
+              ? t("groupLog", { name: groups.find((g) => g.id === groupFilter)?.name ?? "Group" })
+              : t("allReferrals")}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
           <table className="w-full text-sm min-w-[700px]">
             <thead>
               <tr className="border-b border-slate-100">
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Date</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Student</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Group</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Description</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Filed by</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Actions</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("dateHeader")}</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{tCommon("student")}</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("groupHeader")}</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("description")}</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("filedBy")}</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("status")}</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("actionsHeader")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -194,7 +205,7 @@ export default async function ReferralsPage({
                   <td className="px-5 py-3.5 text-slate-500">{r.filer.user?.name}</td>
                   <td className="px-5 py-3.5">
                     <Badge variant="outline" className={`text-xs ${statusBadge(r.status)}`}>
-                      {r.status}
+                      {statusLabel(r.status)}
                     </Badge>
                   </td>
                   <td className="px-5 py-3.5">
@@ -211,7 +222,7 @@ export default async function ReferralsPage({
                 <tr>
                   <td colSpan={7} className="px-5 py-16 text-center text-slate-400">
                     <AlertTriangle className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                    No referrals found
+                    {t("noReferrals")}
                   </td>
                 </tr>
               )}
@@ -222,18 +233,18 @@ export default async function ReferralsPage({
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-sm text-slate-600">
-          <span>Page {page} of {totalPages}</span>
+          <span>{tCommon("pageOf", { page, total: totalPages })}</span>
           <div className="flex gap-2">
             {page > 1 && (
               <Link href={buildHref({ page: String(page - 1) })}
                 className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50">
-                Previous
+                {tCommon("previous")}
               </Link>
             )}
             {page < totalPages && (
               <Link href={buildHref({ page: String(page + 1) })}
                 className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50">
-                Next
+                {tCommon("next")}
               </Link>
             )}
           </div>

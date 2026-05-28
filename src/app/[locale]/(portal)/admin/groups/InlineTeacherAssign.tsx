@@ -3,6 +3,7 @@
 import { useTransition, useState } from "react";
 import { assignHomeroomTeacher, assignHomeroomHeadteacher, assignHomeroomCounselor } from "./actions";
 import { Check, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface StaffOption {
   id: string;
@@ -75,24 +76,26 @@ export function InlineTeacherAssign({
   headteachers,
   counselors,
 }: Props) {
+  const t = useTranslations("groups");
+
   return (
     <div className="flex flex-col gap-1.5 min-w-[220px]">
       <InlineSelect
         value={currentTeacherId ?? ""}
         options={teachers}
-        placeholder="— Teacher —"
+        placeholder={t("selectTeacher")}
         onChange={(id) => assignHomeroomTeacher(groupId, id || null)}
       />
       <InlineSelect
         value={currentHeadteacherId ?? ""}
         options={headteachers}
-        placeholder="— Headteacher B —"
+        placeholder={t("selectHeadteacher")}
         onChange={(id) => assignHomeroomHeadteacher(groupId, id || null)}
       />
       <InlineSelect
         value={currentCounselorId ?? ""}
         options={counselors}
-        placeholder="— ΣΕΑ —"
+        placeholder={t("selectCounselor")}
         onChange={(id) => assignHomeroomCounselor(groupId, id || null)}
       />
     </div>

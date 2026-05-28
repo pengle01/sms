@@ -18,10 +18,10 @@ export default async function StudentSchedulePage({
   searchParams,
 }: {
   params: Promise<{ locale: string; studentId: string }>;
-  searchParams: Promise<{ view?: string }>;
+  searchParams: Promise<{ view?: string; from?: string; groupId?: string }>;
 }) {
   const { locale, studentId } = await params;
-  const { view } = await searchParams;
+  const { view, from, groupId } = await searchParams;
   const showWeek = view === "week";
 
   const session = await getServerSession(authOptions);
@@ -103,10 +103,11 @@ export default async function StudentSchedulePage({
     }
   }
 
-  // Smart back link: return to locate page with grade+group context
-  const backUrl = student.group
-    ? `/${locale}/teacher/attendance/locate?grade=${student.group.grade}&groupId=${student.groupId}`
-    : `/${locale}/teacher/attendance/locate`;
+  const backUrl = from === "homegroup"
+    ? `/${locale}/teacher/homegroup${groupId ? `?groupId=${groupId}` : ""}`
+    : student.group
+      ? `/${locale}/teacher/attendance/locate?grade=${student.group.grade}&groupId=${student.groupId}`
+      : `/${locale}/teacher/attendance/locate`;
 
   const dayUrl = `/${locale}/teacher/students/${studentId}`;
   const weekUrl = `/${locale}/teacher/students/${studentId}?view=week`;
