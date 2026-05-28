@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Bell, AlertCircle } from "lucide-react";
 import { AcknowledgeButton } from "../../admin/noticeboard/AcknowledgeButton";
+import { fmtDisplayDate } from "@/lib/dates";
 
 export default async function ParentNoticeboardPage({
   params,
@@ -70,9 +71,7 @@ export default async function ParentNoticeboardPage({
                     <p className="text-sm text-slate-600 whitespace-pre-wrap">{notice.body}</p>
                     <div className="flex items-center justify-between mt-3 flex-wrap gap-2">
                       <p className="text-xs text-slate-400">
-                        {new Date(notice.createdAt).toLocaleDateString("el-GR", {
-                          day: "numeric", month: "short", year: "numeric",
-                        })}
+                        {fmtDisplayDate(new Date(notice.createdAt))}
                       </p>
                       <AcknowledgeButton noticeId={notice.id} acknowledged={acknowledged} />
                     </div>

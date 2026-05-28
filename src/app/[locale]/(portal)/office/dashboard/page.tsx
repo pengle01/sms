@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/server/auth";
 import { db } from "@/server/db";
-import { utcMidnight, localDateStr } from "@/lib/dates";
+import { getNow, utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClipboardList, GraduationCap, Bell, UserX } from "lucide-react";
 import Link from "next/link";
@@ -18,8 +18,8 @@ export default async function OfficeDashboardPage({
 
   const todayStr = localDateStr();
   const today = utcMidnight(todayStr);
-  const now = new Date();
-  const dateLabel = now.toLocaleDateString("el-GR", { weekday: "long", day: "numeric", month: "long" });
+  const now = getNow();
+  const dateLabel = fmtDisplayDate(now);
 
   const [absentsToday, unreadNotices] = await Promise.all([
     db.attendance.count({

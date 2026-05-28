@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { GraduationCap, Users, ArrowLeft, ClipboardList } from "lucide-react";
 import Link from "next/link";
+import { utcMidnight } from "@/lib/dates";
 
 export default async function GroupDetailPage({
   params,
@@ -45,8 +46,7 @@ export default async function GroupDetailPage({
 
   if (!group) notFound();
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = utcMidnight();
 
   const todayAbsences = await db.attendance.count({
     where: {

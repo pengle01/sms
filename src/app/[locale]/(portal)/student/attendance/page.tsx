@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ClipboardList } from "lucide-react";
-import { monthStart, monthEnd, localDateStr } from "@/lib/dates";
+import { getNow, monthStart, monthEnd, localDateStr, fmtDisplayDate } from "@/lib/dates";
 
 export default async function StudentAttendancePage({
   params,
@@ -26,7 +26,7 @@ export default async function StudentAttendancePage({
   });
   if (!student) redirect(`/${locale}/login`);
 
-  const now = new Date();
+  const now = getNow();
   const [year, month] = monthStr
     ? monthStr.split("-").map(Number) as [number, number]
     : [parseInt(localDateStr().slice(0, 4)), parseInt(localDateStr().slice(5, 7))];
@@ -124,10 +124,10 @@ export default async function StudentAttendancePage({
               {records.map((r) => (
                 <tr key={r.id} className="hover:bg-slate-50">
                   <td className="px-5 py-3.5 text-slate-600 whitespace-nowrap">
-                    {new Date(r.date).toLocaleDateString("el-GR")}
+                    {fmtDisplayDate(r.date)}
                   </td>
-                  <td className="px-5 py-3.5 text-slate-600">{r.timetableSlot.period}</td>
-                  <td className="px-5 py-3.5 font-medium text-slate-900">{r.timetableSlot.course.name}</td>
+                  <td className="px-5 py-3.5 text-slate-600">{r.timetableSlot?.period ?? r.intercalaryPeriod ?? "—"}</td>
+                  <td className="px-5 py-3.5 font-medium text-slate-900">{r.timetableSlot?.course.name ?? "—"}</td>
                   <td className="px-5 py-3.5">
                     <Badge variant="outline" className={`text-xs ${statusColor(r.status, r.isAutoAbsent)}`}>
                       {r.isAutoAbsent ? "Auto-Absent" : r.status}

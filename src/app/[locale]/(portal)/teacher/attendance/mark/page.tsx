@@ -2,7 +2,7 @@ import { db } from "@/server/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
-import { utcMidnight, localDateStr } from "@/lib/dates";
+import { utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { AttendanceMarkForm } from "./AttendanceMarkForm";
@@ -12,14 +12,15 @@ export default async function TeacherMarkAttendancePage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ groupId?: string; period?: string; date?: string }>;
+  searchParams: Promise<{ groupId?: string; period?: string; date?: string; intercalary?: string }>;
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login`);
 
-  const { groupId, period: periodStr, date: dateParam } = await searchParams;
+  const { groupId, period: periodStr, date: dateParam, intercalary: intercalaryParam } = await searchParams;
   const period = periodStr ? parseInt(periodStr) : 1;
+  const isIntercalary = intercalaryParam === "1";
 
   const staff = await db.staffProfile.findUnique({ where: { userId: session.user.id } });
   if (!staff) redirect(`/${locale}/teacher/setup`);
@@ -41,6 +42,31 @@ export default async function TeacherMarkAttendancePage({
     const dayOfWeek = attendanceDay.getDay();
     const todayMidnight = attendanceDateObj;
 
+    if (isIntercalary) {
+      // Intercalary period — no timetable slot; load homegroup students and existing intercalary records
+      const [fetchedStudents, markedIntercalary] = await Promise.all([
+        db.studentProfile.findMany({
+          where: { groupId, user: { isActive: true } },
+          include: { user: { select: { name: true } } },
+          orderBy: { user: { name: "asc" } },
+        }),
+        db.attendance.findMany({
+          where: {
+            intercalaryGroupId: groupId,
+            intercalaryPeriod: period,
+            date: todayMidnight,
+          },
+          select: { studentId: true, status: true, minutesDelayed: true },
+        }),
+      ]);
+      students = fetchedStudents;
+      for (const r of markedIntercalary) {
+        existingRecords[r.studentId] = {
+          status: (r.status === "EXCUSED" ? "ABSENT" : r.status) as "PRESENT" | "ABSENT" | "LATE",
+          minutesDelayed: r.minutesDelayed,
+        };
+      }
+    } else {
     const [fetchedStudents, fetchedSlot] = await Promise.all([
       db.studentProfile.findMany({
         where: { groupId },
@@ -132,7 +158,7 @@ export default async function TeacherMarkAttendancePage({
 
       for (const r of prevAttendance) {
         if (!prevPeriodsRecords[r.studentId]) prevPeriodsRecords[r.studentId] = {};
-        prevPeriodsRecords[r.studentId]![r.timetableSlot.period] = {
+        prevPeriodsRecords[r.studentId]![r.timetableSlot?.period ?? 0] = {
           status: r.status,
           minutesDelayed: r.minutesDelayed,
           isAutoAbsent: r.isAutoAbsent,
@@ -159,6 +185,7 @@ export default async function TeacherMarkAttendancePage({
         }
       }
     }
+    } // end else (non-intercalary)
   }
 
   return (
@@ -176,7 +203,7 @@ export default async function TeacherMarkAttendancePage({
       <div>
         <h2 className="text-2xl font-bold text-slate-900">Mark Attendance</h2>
         <p className="text-slate-500 text-sm mt-1">
-          {attendanceDateObj.toLocaleDateString("el-GR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+          {fmtDisplayDate(attendanceDateObj)}
           {!isToday && (
             <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
               Past date
@@ -198,6 +225,7 @@ export default async function TeacherMarkAttendancePage({
         studentLocations={studentLocations}
         prevPeriodsRecords={prevPeriodsRecords}
         prevActivityPeriods={prevActivityPeriods}
+        intercalaryGroupId={isIntercalary ? groupId : undefined}
       />
     </div>
   );

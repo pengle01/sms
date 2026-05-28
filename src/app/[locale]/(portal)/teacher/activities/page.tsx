@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CalendarRange, Plus, Users } from "lucide-react";
-import { utcMidnight, localDateStr } from "@/lib/dates";
+import { utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 
 export default async function ActivitiesPage({
   params,
@@ -162,7 +162,7 @@ export default async function ActivitiesPage({
           <Card className="mt-3">
             <CardContent className="p-0 divide-y divide-slate-50">
               {past.map((a) => {
-                const dateLabel = a.date.toLocaleDateString("el-GR", { day: "numeric", month: "short" });
+                const dateLabel = fmtDisplayDate(a.date);
                 return (
                   <Link
                     key={a.id}

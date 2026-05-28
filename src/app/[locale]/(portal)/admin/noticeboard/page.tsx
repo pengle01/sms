@@ -8,6 +8,7 @@ import { Bell, AlertCircle } from "lucide-react";
 import { NewNoticeDialog } from "./NewNoticeDialog";
 import { AcknowledgeButton } from "./AcknowledgeButton";
 import { isStaff } from "@/lib/rbac";
+import { fmtDisplayDateTime } from "@/lib/dates";
 import type { Role } from "@/generated/prisma";
 
 export default async function NoticeboardPage({
@@ -84,9 +85,7 @@ export default async function NoticeboardPage({
                     <p className="text-sm text-slate-600 whitespace-pre-wrap">{notice.body}</p>
                     <div className="flex items-center justify-between mt-3 flex-wrap gap-2">
                       <p className="text-xs text-slate-400">
-                        {new Date(notice.createdAt).toLocaleDateString("el-GR", {
-                          day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-                        })}
+                        {fmtDisplayDateTime(notice.createdAt)}
                       </p>
                       <AcknowledgeButton
                         noticeId={notice.id}

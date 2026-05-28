@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Plus, Loader2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { getNow } from "@/lib/dates";
 
 interface Student {
   id: string;
@@ -33,7 +34,7 @@ export function NewReferralDialog({ students, locale }: { students: Student[]; l
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!studentId || description.length < 10) return;
-    mutate({ studentId, description, date: new Date().toISOString().split("T")[0]! });
+    mutate({ studentId, description, date: getNow().toISOString().split("T")[0]! });
   };
 
   if (!open) {

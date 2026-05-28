@@ -5,7 +5,7 @@ import { db } from "@/server/db";
 import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClipboardList, AlertTriangle, Bell, Users, CheckCircle2 } from "lucide-react";
-import { utcMidnight } from "@/lib/dates";
+import { getNow, utcMidnight } from "@/lib/dates";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 
@@ -23,7 +23,7 @@ export default async function AdminDashboardPage({
   const tReferrals = await getTranslations("referrals");
 
   const today = utcMidnight();
-  const now = new Date();
+  const now = getNow();
   const todayDow = now.getDay();
   const isWeekend = todayDow === 0 || todayDow === 6;
 

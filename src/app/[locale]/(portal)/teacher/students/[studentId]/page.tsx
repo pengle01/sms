@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, CalendarRange, FlaskConical } from "lucide-react";
-import { utcMidnight, localDateStr } from "@/lib/dates";
+import { getNow, utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { getPeriodsPerDay, periodsForDow, maxPeriodCount } from "@/lib/schoolConfig";
 
@@ -45,7 +45,7 @@ export default async function StudentSchedulePage({
 
   const todayStr = localDateStr();
   const today = utcMidnight(todayStr);
-  const now = new Date();
+  const now = getNow();
   const todayDow = now.getDay();
   const isSchoolDay = todayDow >= 1 && todayDow <= 5;
 
@@ -252,7 +252,7 @@ export default async function StudentSchedulePage({
                 {upcomingTests.map((t) => (
                   <tr key={t.id} className="hover:bg-slate-50">
                     <td className="px-5 py-3 font-medium text-slate-900">
-                      {DOW_SHORT[t.date.getUTCDay()]} {t.date.toLocaleDateString("el-GR", { day: "numeric", month: "short", timeZone: "UTC" })}
+                      {DOW_SHORT[t.date.getUTCDay()]} {fmtDisplayDate(t.date)}
                     </td>
                     <td className="px-5 py-3 text-slate-700">{t.course.name}</td>
                     <td className="px-5 py-3 text-slate-500 text-xs">{t.group.name}</td>

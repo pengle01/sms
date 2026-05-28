@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GraduationCap, Clock, CheckCircle2, XCircle, Plus } from "lucide-react";
+import { fmtDisplayDate } from "@/lib/dates";
 import Link from "next/link";
 
 const STATUS_CONFIG = {
@@ -90,7 +91,7 @@ export default async function ChaperoneStudentsPage({
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-1">
                       <CardTitle className="text-sm font-medium text-slate-700">
-                        Submitted {req.createdAt.toLocaleDateString("el-CY")}
+                        Submitted {fmtDisplayDate(new Date(req.createdAt))}
                       </CardTitle>
                       {req.note && (
                         <p className="text-sm text-slate-500 italic">"{req.note}"</p>

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { UserCheck, UserX, GraduationCap, Undo2, CheckCircle2, XCircle } from "lucide-react";
 import type { Role } from "@/generated/prisma";
+import { fmtDisplayDate } from "@/lib/dates";
 import {
   approveRegistrationAction,
   rejectRegistrationAction,
@@ -199,7 +200,7 @@ export function RequestsList({ registrations: initRegs, teacherClaims: initClaim
                         {item.staffName && (
                           <Badge className="text-xs bg-blue-50 text-blue-700 border-blue-200 font-mono">{item.staffName}</Badge>
                         )}
-                        <span className="text-xs text-slate-400">{new Date(item.createdAt).toLocaleDateString("el-CY")}</span>
+                        <span className="text-xs text-slate-400">{fmtDisplayDate(new Date(item.createdAt))}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
@@ -224,7 +225,7 @@ export function RequestsList({ registrations: initRegs, teacherClaims: initClaim
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
                         <Badge variant="outline" className="text-xs">Teacher</Badge>
                         <Badge className="text-xs bg-blue-50 text-blue-700 border-blue-200 font-mono">{item.staffName}</Badge>
-                        <span className="text-xs text-slate-400">{new Date(item.createdAt).toLocaleDateString("el-CY")}</span>
+                        <span className="text-xs text-slate-400">{fmtDisplayDate(new Date(item.createdAt))}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
@@ -248,7 +249,7 @@ export function RequestsList({ registrations: initRegs, teacherClaims: initClaim
                     <p className="text-sm text-slate-500">{item.email}</p>
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge variant="outline" className="text-xs">Chaperone</Badge>
-                      <span className="text-xs text-slate-400">{new Date(item.createdAt).toLocaleDateString("el-CY")}</span>
+                      <span className="text-xs text-slate-400">{fmtDisplayDate(new Date(item.createdAt))}</span>
                     </div>
                     {item.note && (
                       <p className="text-sm text-slate-600 italic">"{item.note}"</p>

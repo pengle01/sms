@@ -4,8 +4,9 @@ import { db } from "@/server/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { revalidatePath } from "next/cache";
-import { utcMidnight } from "@/lib/dates";
+import { utcMidnight, fmtDisplayDate } from "@/lib/dates";
 import { getMaxTestsPerWeek } from "@/lib/schoolConfig";
+import { getActiveTerm, isSchoolClosed } from "@/lib/calendar";
 import { TestType } from "@/generated/prisma";
 
 export type TestConflict = {
@@ -39,7 +40,7 @@ function weekBounds(date: Date): { weekStart: Date; weekEnd: Date } {
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function fmtDate(d: Date) {
-  return `${DOW[d.getUTCDay()]} ${d.getUTCDate()} ${d.toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" })}`;
+  return `${DOW[d.getUTCDay()]} ${fmtDisplayDate(d)}`;
 }
 
 function fmtPeriod(period: number, periodCount: number) {
@@ -63,6 +64,15 @@ export async function scheduleTest(data: {
   const targetDate = utcMidnight(data.date);
   const { weekStart, weekEnd } = weekBounds(targetDate);
   const maxTests = await getMaxTestsPerWeek();
+
+  // Reject school holidays and non-term dates
+  const [schoolClosed, activeTerm] = await Promise.all([
+    isSchoolClosed(targetDate),
+    getActiveTerm(targetDate),
+  ]);
+  if (schoolClosed) return { success: false, message: "School is closed on this date." };
+  if (!activeTerm) return { success: false, message: "No active school term for this date." };
+  if (targetDate > activeTerm.testDeadline) return { success: false, message: "This date is after the test deadline for the current term." };
 
   // Validate that this teacher has a timetable slot for the chosen period on this day
   const dayOfWeek = targetDate.getUTCDay(); // 1=Mon…5=Fri matches TimetableSlot.dayOfWeek

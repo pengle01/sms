@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { getNow } from "@/lib/dates";
 import { trpc } from "@/trpc/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ interface Props {
   studentLocations?: Record<string, { type: "activity" | "support"; name: string }>;
   prevPeriodsRecords?: Record<string, Record<number, PeriodRecord>>;
   prevActivityPeriods?: Record<string, number[]>;
+  intercalaryGroupId?: string;
 }
 
 const STATUS_CONFIG = {
@@ -93,6 +95,7 @@ export function AttendanceMarkForm({
   studentLocations = {},
   prevPeriodsRecords = {},
   prevActivityPeriods = {},
+  intercalaryGroupId,
 }: Props) {
   const router = useRouter();
   const [records, setRecords] = useState<Record<string, { status: AttendanceStatus; minutesDelayed: number }>>(
@@ -100,7 +103,6 @@ export function AttendanceMarkForm({
       Object.fromEntries(
         students.map((s) => {
           if (existingRecords[s.id]) return [s.id, existingRecords[s.id]];
-          // Students currently on an activity are absent from this class
           const defaultStatus: AttendanceStatus =
             studentLocations[s.id]?.type === "activity" ? "ABSENT" : "PRESENT";
           return [s.id, { status: defaultStatus, minutesDelayed: 0 }];
@@ -108,13 +110,17 @@ export function AttendanceMarkForm({
       )
   );
 
-  const { mutate: markAttendance, isPending } = trpc.attendance.markAttendance.useMutation({
-    onSuccess: () => {
-      toast.success("Attendance saved");
-      router.back();
-    },
+  const { mutate: markAttendance, isPending: isPendingRegular } = trpc.attendance.markAttendance.useMutation({
+    onSuccess: () => { toast.success("Attendance saved"); router.back(); },
     onError: (e) => toast.error(e.message),
   });
+
+  const { mutate: markIntercalary, isPending: isPendingIntercalary } = trpc.attendance.markIntercalaryAttendance.useMutation({
+    onSuccess: () => { toast.success("Attendance saved"); router.back(); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const isPending = isPendingRegular || isPendingIntercalary;
 
   const setStatus = (studentId: string, status: AttendanceStatus) => {
     setRecords((r) => ({
@@ -132,8 +138,21 @@ export function AttendanceMarkForm({
   };
 
   const handleSubmit = () => {
+    const date = attendanceDate ?? getNow().toISOString().split("T")[0]!;
+    if (intercalaryGroupId) {
+      markIntercalary({
+        groupId: intercalaryGroupId,
+        period: selectedPeriod,
+        date,
+        records: students.map((s) => ({
+          studentId: s.id,
+          status: records[s.id]?.status ?? "PRESENT",
+          minutesDelayed: records[s.id]?.minutesDelayed ?? 0,
+        })),
+      });
+      return;
+    }
     if (!slot || !selectedGroupId) return;
-    const date = attendanceDate ?? new Date().toISOString().split("T")[0]!;
     markAttendance({
       records: students.map((s) => ({
         studentId: s.id,
@@ -171,9 +190,17 @@ export function AttendanceMarkForm({
         </div>
       )}
 
-      {selectedGroupId && !slot && students.length > 0 && (
+      {selectedGroupId && !slot && !intercalaryGroupId && students.length > 0 && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-700">
           No timetable slot found for this group / period / day.
+        </div>
+      )}
+      {intercalaryGroupId && (
+        <div className="flex items-center justify-between rounded-lg border border-purple-200 bg-purple-50 px-4 py-2 text-sm">
+          <span className="text-purple-800 font-medium">Intercalary Period {selectedPeriod} — Homegroup Attendance</span>
+          {isResubmit && (
+            <span className="text-xs text-purple-700 font-medium">Previously saved — editing</span>
+          )}
         </div>
       )}
 
@@ -276,7 +303,7 @@ export function AttendanceMarkForm({
           <div className="flex justify-end pt-2">
             <Button
               onClick={handleSubmit}
-              disabled={isPending || !slot}
+              disabled={isPending || (!slot && !intercalaryGroupId)}
               className="h-10 px-6 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
             >
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

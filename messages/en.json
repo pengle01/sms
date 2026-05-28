@@ -65,7 +65,8 @@
     "myStudents": "My Students",
     "newRequest": "New Request",
     "activities": "Activities",
-    "homegroup": "My Homegroup"
+    "homegroup": "My Homegroup",
+    "calendar": "Calendar"
   },
   "dashboard": {
     "welcome": "Welcome, {name}",
@@ -262,5 +263,67 @@
     "noPending": "No pending registrations.",
     "approvedSuccess": "User approved.",
     "rejectedSuccess": "Registration rejected."
+  },
+  "calendar": {
+    "title": "Calendar",
+    "terms": "School Terms",
+    "addTerm": "Add Term",
+    "editTerm": "Edit Term",
+    "termLabel": "Label",
+    "termStart": "Start Date",
+    "termEnd": "End Date",
+    "termDeadline": "Test Deadline",
+    "noTerms": "No terms configured",
+    "specialDays": "Special Days",
+    "addSpecialDay": "Add Special Day",
+    "editSpecialDay": "Edit Special Day",
+    "dayType": "Type",
+    "dayLabel": "Description",
+    "dayStart": "Start Date",
+    "dayEnd": "End Date",
+    "meetingPeriod": "Meeting Period",
+    "noSpecialDays": "No special days configured",
+    "afterDeadline": "Date is after the test deadline for this term",
+    "noActiveTerm": "No active school term for this date",
+    "holiday": "Holiday",
+    "excursion": "Excursion",
+    "intercalary": "Intercalary",
+    "types": {
+      "INTERCALARY": "Intercalary (8-period)",
+      "EXCURSION": "Excursion",
+      "BANK_HOLIDAY": "Bank Holiday",
+      "CHRISTMAS": "Christmas Holidays",
+      "EASTER": "Easter Holidays",
+      "OTHER_HOLIDAY": "Other Closure"
+    },
+    "currentTerm": "Current term: {label}",
+    "testDeadlineNote": "Test deadline: {date}",
+    "noCurrentTerm": "No active term"
+  },
+  "tests": {
+    "title": "Tests",
+    "scheduleTest": "Schedule test",
+    "noTests": "No tests scheduled",
+    "noTestsHint": "Use the button above to schedule a test",
+    "upcoming": "Upcoming",
+    "past30": "Past 30 days",
+    "colDate": "Date",
+    "colSubject": "Subject",
+    "colGroup": "Group",
+    "colPeriod": "Period",
+    "colType": "Type",
+    "typeBig": "Big · 45 min",
+    "typeSmall": "Small · 20 min",
+    "noStaff": "No staff profile found.",
+    "dow": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+  },
+  "locate": {
+    "title": "Locate Student",
+    "currentPeriod": "Period {period} · {time}",
+    "year": "Year",
+    "yearN": "Year {n}",
+    "homegroup": "Homegroup",
+    "selectYear": "Select a year to get started.",
+    "noHomegroups": "No homeroom groups found for Year {n}."
   }
 }

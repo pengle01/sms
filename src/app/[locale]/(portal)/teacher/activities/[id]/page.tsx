@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, Users, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { fmtDisplayDate } from "@/lib/dates";
 import { addParticipants, removeParticipant } from "../actions";
 
 export default async function ActivityDetailPage({
@@ -67,9 +68,7 @@ export default async function ActivityDetailPage({
       })
     : [];
 
-  const dateLabel = activity.date.toLocaleDateString("el-GR", {
-    weekday: "long", day: "numeric", month: "long", year: "numeric",
-  });
+  const dateLabel = fmtDisplayDate(activity.date);
 
   function periodRange(s: number, e: number) {
     return s === e ? `Period ${s}` : `Periods ${s}–${e}`;

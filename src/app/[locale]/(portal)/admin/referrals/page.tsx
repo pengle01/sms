@@ -9,6 +9,7 @@ import { AlertTriangle } from "lucide-react";
 import { NewReferralDialog } from "./NewReferralDialog";
 import { ResolveReferralDialog } from "./ResolveReferralDialog";
 import { cn } from "@/lib/utils";
+import { fmtDisplayDate } from "@/lib/dates";
 import { getTranslations } from "next-intl/server";
 
 export default async function ReferralsPage({
@@ -193,7 +194,7 @@ export default async function ReferralsPage({
               {referrals.map((r) => (
                 <tr key={r.id} className="hover:bg-slate-50">
                   <td className="px-5 py-3.5 text-slate-500 whitespace-nowrap">
-                    {new Date(r.date).toLocaleDateString("el-GR")}
+                    {fmtDisplayDate(r.date)}
                   </td>
                   <td className="px-5 py-3.5 font-medium text-slate-900">{r.student.user?.name}</td>
                   <td className="px-5 py-3.5">

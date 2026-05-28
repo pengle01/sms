@@ -7,6 +7,7 @@ import {
   ChevronLeft, Pencil, User, Phone, Mail, Calendar, MapPin,
   CreditCard, Globe, Users, MessageSquare, BookOpen, Clock, Layers,
 } from "lucide-react";
+import { fmtDisplayDate } from "@/lib/dates";
 
 export default async function StudentDetailPage({
   params,
@@ -111,7 +112,7 @@ export default async function StudentDetailPage({
                 <Field label="Full name"       value={user.name} />
                 <Field label="Student ID"      value={student.studentId} mono />
                 <Field label="Gender"          value={student.gender === "MALE" ? "Male" : student.gender === "FEMALE" ? "Female" : null} />
-                <Field label="Date of birth"   value={student.dateOfBirth ? student.dateOfBirth.toLocaleDateString("el-CY") : null} />
+                <Field label="Date of birth"   value={student.dateOfBirth ? fmtDisplayDate(student.dateOfBirth) : null} />
                 <Field label="Place of birth"  value={student.placeOfBirth} />
                 <Field label="Nationality"     value={student.nationality} />
                 <Field label="ID card"         value={student.idCardNumber} mono />
@@ -300,7 +301,7 @@ export default async function StudentDetailPage({
               {student.dateOfBirth && (
                 <div className="flex items-center gap-2 text-slate-600">
                   <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  {student.dateOfBirth.toLocaleDateString("el-CY")}
+                  {fmtDisplayDate(student.dateOfBirth)}
                 </div>
               )}
               {student.idCardNumber && (

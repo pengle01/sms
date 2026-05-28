@@ -47,6 +47,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "timetable",    href: "timetable",         icon: Calendar,        roles: ["SUPER_ADMIN"] },
   { key: "groups",       href: "groups",            icon: Home,            roles: ["SUPER_ADMIN"] },
   { key: "referrals",    href: "referrals",         icon: AlertTriangle,   roles: ["SUPER_ADMIN"] },
+  { key: "calendar",     href: "calendar",          icon: CalendarRange,   roles: ["SUPER_ADMIN"] },
   { key: "auditLog",     href: "audit-log",         icon: Shield,          roles: ["SUPER_ADMIN"] },
   { key: "settings",     href: "settings",          icon: Settings,        roles: ["SUPER_ADMIN"] },
 

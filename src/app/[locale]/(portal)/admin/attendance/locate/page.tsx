@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Search, MapPin } from "lucide-react";
-import { utcMidnight } from "@/lib/dates";
+import { getNow, utcMidnight } from "@/lib/dates";
 
 export default async function LocatePage({
   params,
@@ -23,7 +23,7 @@ export default async function LocatePage({
   const today = utcMidnight();
 
   // Current period based on time (rough estimate — each period 45 min from 08:00)
-  const now = new Date();
+  const now = getNow();
   const startHour = 8;
   const minutesSinceStart = (now.getHours() - startHour) * 60 + now.getMinutes();
   const currentPeriod = Math.min(7, Math.max(1, Math.ceil(minutesSinceStart / 45)));
@@ -157,7 +157,7 @@ export default async function LocatePage({
                 {students.map((s) => {
                   const slot = s.groupId ? slotByGroup[s.groupId] : null;
                   const lastAttendance = s.attendance[0];
-                  const isAbsent = lastAttendance?.timetableSlot.period === currentPeriod &&
+                  const isAbsent = lastAttendance?.timetableSlot?.period === currentPeriod &&
                     (lastAttendance.status === "ABSENT");
                   return (
                     <tr key={s.id} className="hover:bg-slate-50">

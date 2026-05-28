@@ -7,13 +7,14 @@ import { Loader2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { Assignment } from "./page";
+import { getNow, fmtDisplayDate } from "@/lib/dates";
 
 const DOW_LABEL = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
 // dayOfWeek: 1=Mon…5=Fri matches Date.getDay() 1=Mon…5=Fri
 function getUpcomingDates(dayOfWeek: number, count = 12): string[] {
   const dates: string[] = [];
-  const today = new Date();
+  const today = getNow();
   today.setHours(0, 0, 0, 0);
   for (let offset = 0; dates.length < count; offset++) {
     const d = new Date(today);
@@ -29,8 +30,7 @@ function getUpcomingDates(dayOfWeek: number, count = 12): string[] {
 }
 
 function formatDateLabel(dateStr: string) {
-  const d = new Date(dateStr + "T12:00:00");
-  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  return fmtDisplayDate(dateStr + "T00:00:00.000Z");
 }
 
 interface Props {

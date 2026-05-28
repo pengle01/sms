@@ -5,6 +5,7 @@ import { db } from "@/server/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Backpack, Users, MapPin, Calendar } from "lucide-react";
+import { fmtDisplayDate } from "@/lib/dates";
 
 export default async function ChaperoneActivitiesPage({
   params,
@@ -63,7 +64,7 @@ export default async function ChaperoneActivitiesPage({
                 <div className="flex flex-wrap gap-3 text-sm text-slate-500 mt-1">
                   <span className="flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5" />
-                    {activity.date.toLocaleDateString("el-CY")}
+                    {fmtDisplayDate(activity.date)}
                   </span>
                   {activity.location && (
                     <span className="flex items-center gap-1">

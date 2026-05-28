@@ -70,6 +70,15 @@ enum TestType {
   BIG
 }
 
+enum SpecialDayType {
+  INTERCALARY
+  EXCURSION
+  BANK_HOLIDAY
+  CHRISTMAS
+  EASTER
+  OTHER_HOLIDAY
+}
+
 // ─── NextAuth ─────────────────────────────────────────────────────────────────
 
 model Account {
@@ -314,8 +323,8 @@ model Attendance {
   id              String           @id @default(cuid())
   studentId       String
   student         StudentProfile   @relation(fields: [studentId], references: [id])
-  timetableSlotId String
-  timetableSlot   TimetableSlot    @relation(fields: [timetableSlotId], references: [id])
+  timetableSlotId String?
+  timetableSlot   TimetableSlot?   @relation(fields: [timetableSlotId], references: [id])
   staffId         String
   staff           StaffProfile     @relation("AttendanceTeacher", fields: [staffId], references: [id])
   date            DateTime         @db.Date
@@ -323,11 +332,15 @@ model Attendance {
   minutesDelayed  Int              @default(0)
   isAutoAbsent    Boolean          @default(false)
   smsSent         Boolean          @default(false)
+  // Intercalary period attendance (when timetableSlotId is null)
+  intercalaryGroupId String?
+  intercalaryPeriod  Int?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([studentId, timetableSlotId, date])
+  @@unique([studentId, intercalaryGroupId, intercalaryPeriod, date])
   @@index([date])
   @@index([studentId, date])
 }
@@ -639,6 +652,27 @@ model LdAuditResult {
 model GlobalSetting {
   key   String @id
   value String
+}
+
+// ─── School Calendar ──────────────────────────────────────────────────────────
+
+model SchoolTerm {
+  id           String   @id @default(cuid())
+  label        String
+  startDate    DateTime @db.Date
+  endDate      DateTime @db.Date
+  testDeadline DateTime @db.Date
+  createdAt    DateTime @default(now())
+}
+
+model SpecialDay {
+  id                       String         @id @default(cuid())
+  type                     SpecialDayType
+  startDate                DateTime       @db.Date
+  endDate                  DateTime       @db.Date
+  label                    String?
+  intercalaryMeetingPeriod Int?           // only for INTERCALARY type
+  createdAt                DateTime       @default(now())
 }
 
 // ─── Audit Log ────────────────────────────────────────────────────────────────

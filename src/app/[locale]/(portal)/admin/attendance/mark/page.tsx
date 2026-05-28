@@ -2,7 +2,7 @@ import { db } from "@/server/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
-import { utcMidnight } from "@/lib/dates";
+import { getNow, utcMidnight, fmtDisplayDate } from "@/lib/dates";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { AttendanceMarkForm } from "./AttendanceMarkForm";
@@ -30,7 +30,7 @@ export default async function MarkAttendancePage({
   let existingRecords: Record<string, { status: "PRESENT" | "ABSENT" | "LATE"; minutesDelayed: number }> = {};
 
   if (groupId && period) {
-    const today = new Date();
+    const today = getNow();
     const dayOfWeek = today.getDay();
     const todayMidnight = utcMidnight();
 
@@ -81,7 +81,7 @@ export default async function MarkAttendancePage({
       <div>
         <h2 className="text-2xl font-bold text-slate-900">Mark Attendance</h2>
         <p className="text-slate-500 text-sm mt-1">
-          {new Date().toLocaleDateString("el-GR", { weekday: "long", day: "numeric", month: "long" })}
+          {fmtDisplayDate(getNow())}
         </p>
       </div>
 

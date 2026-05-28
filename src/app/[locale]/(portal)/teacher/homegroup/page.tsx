@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { utcMidnight, localDateStr } from "@/lib/dates";
+import { utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { AlertTriangle, FileText, CalendarCheck, Users, FlaskConical } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
@@ -200,7 +200,7 @@ export default async function TeacherHomegroupPage({
               <div key={test.id} className="flex items-center gap-3 text-sm">
                 <span className="text-emerald-700 font-medium">{test.course.name}</span>
                 <span className="text-emerald-600 text-xs">
-                  {test.date.toLocaleDateString(localeTag, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })} · P{test.period}
+                  {fmtDisplayDate(test.date)} · P{test.period}
                 </span>
               </div>
             ))}

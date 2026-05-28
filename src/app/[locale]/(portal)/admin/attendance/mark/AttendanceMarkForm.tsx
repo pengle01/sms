@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { getNow } from "@/lib/dates";
 import { trpc } from "@/trpc/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -86,7 +87,7 @@ export function AttendanceMarkForm({
 
   const handleSubmit = () => {
     if (!slot || !selectedGroupId) return;
-    const today = new Date().toISOString().split("T")[0]!;
+    const today = getNow().toISOString().split("T")[0]!;
     markAttendance({
       records: students.map((s) => ({
         studentId: s.id,

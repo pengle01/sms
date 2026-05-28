@@ -6,7 +6,9 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, CalendarCheck } from "lucide-react";
-import { utcMidnight, localDateStr } from "@/lib/dates";
+import { utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
+import { getActiveTerm } from "@/lib/calendar";
+import { getTranslations } from "next-intl/server";
 import { DeleteTestButton } from "./DeleteTestButton";
 
 export default async function TeacherTestsPage({
@@ -22,14 +24,19 @@ export default async function TeacherTestsPage({
   if (!staff) {
     return (
       <div className="space-y-4">
-        <h2 className="text-2xl font-bold text-slate-900">Tests</h2>
-        <p className="text-slate-400 text-sm">No staff profile found.</p>
+        <h2 className="text-2xl font-bold text-slate-900">{tTests("title")}</h2>
+        <p className="text-slate-400 text-sm">{tTests("noStaff")}</p>
       </div>
     );
   }
 
+  const t = await getTranslations("calendar");
+  const tTests = await getTranslations("tests");
+  const localeTag = locale === "el" ? "el-GR" : "en-US";
+
   const today = utcMidnight(localDateStr());
   const thirtyDaysAgo = new Date(today);
+  const [activeTerm] = await Promise.all([getActiveTerm(today)]);
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
   const tests = await db.testSchedule.findMany({
@@ -47,10 +54,9 @@ export default async function TeacherTestsPage({
   const upcoming = tests.filter((t) => t.date >= today);
   const past = tests.filter((t) => t.date < today);
 
-  const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const DOW = tTests.raw("dow") as string[];
 
-  const formatDate = (d: Date) =>
-    `${DOW[d.getDay()]} ${d.toLocaleDateString("el-GR", { day: "numeric", month: "short" })}`;
+  const formatDate = (d: Date) => `${DOW[d.getUTCDay()]} ${fmtDisplayDate(d)}`;
 
   const TestRow = ({ t }: { t: (typeof tests)[number] }) => (
     <tr className="border-b border-slate-50 last:border-0">
@@ -69,7 +75,7 @@ export default async function TeacherTestsPage({
             ? "text-xs bg-slate-800 text-white border-slate-800"
             : "text-xs bg-slate-100 text-slate-600 border-slate-200"}
         >
-          {t.type === "BIG" ? "Big · 45 min" : "Small · 20 min"}
+          {t.type === "BIG" ? tTests("typeBig") : tTests("typeSmall")}
         </Badge>
       </td>
       <td className="px-3 py-3">
@@ -84,11 +90,11 @@ export default async function TeacherTestsPage({
         <table className="w-full text-sm min-w-[560px]">
           <thead>
             <tr className="border-b border-slate-100">
-              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Date</th>
-              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Subject</th>
-              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Group</th>
-              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Period</th>
-              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Type</th>
+              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{tTests("colDate")}</th>
+              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{tTests("colSubject")}</th>
+              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{tTests("colGroup")}</th>
+              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{tTests("colPeriod")}</th>
+              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{tTests("colType")}</th>
               <th className="w-10" />
             </tr>
           </thead>
@@ -104,36 +110,44 @@ export default async function TeacherTestsPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Tests</h2>
-          <p className="text-slate-500 text-sm mt-1">Upcoming and recent test schedule</p>
+          <h2 className="text-2xl font-bold text-slate-900">{tTests("title")}</h2>
+          {activeTerm ? (
+            <p className="text-slate-500 text-sm mt-1">
+              {t("currentTerm", { label: activeTerm.label })}
+              {" · "}
+              {t("testDeadlineNote", { date: fmtDisplayDate(activeTerm.testDeadline) })}
+            </p>
+          ) : (
+            <p className="text-slate-400 text-sm mt-1">{t("noCurrentTerm")}</p>
+          )}
         </div>
         <Link
           href={`/${locale}/teacher/tests/new`}
           className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
         >
           <Plus className="w-4 h-4" />
-          Schedule test
+          {tTests("scheduleTest")}
         </Link>
       </div>
 
       {upcoming.length === 0 && past.length === 0 && (
         <div className="text-center py-20 text-slate-400">
           <CalendarCheck className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">No tests scheduled</p>
-          <p className="text-sm mt-1">Use the button above to schedule a test</p>
+          <p className="font-medium">{tTests("noTests")}</p>
+          <p className="text-sm mt-1">{tTests("noTestsHint")}</p>
         </div>
       )}
 
       {upcoming.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Upcoming</p>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{tTests("upcoming")}</p>
           <TestTable rows={upcoming} />
         </div>
       )}
 
       {past.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Past 30 days</p>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{tTests("past30")}</p>
           <TestTable rows={past} faded />
         </div>
       )}

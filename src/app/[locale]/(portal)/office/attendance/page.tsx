@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ClipboardList, Clock } from "lucide-react";
-import { utcMidnight, localDateStr } from "@/lib/dates";
+import { utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { PrintButton } from "./PrintButton";
 
 export default async function OfficeAttendancePage({
@@ -93,9 +93,7 @@ export default async function OfficeAttendancePage({
   );
 
   const isToday = selectedDate.toDateString() === today.toDateString();
-  const dateLabel = selectedDate.toLocaleDateString("el-GR", {
-    weekday: "long", day: "numeric", month: "long", year: "numeric",
-  });
+  const dateLabel = fmtDisplayDate(selectedDate);
 
   return (
     <div className="space-y-5">
@@ -104,7 +102,7 @@ export default async function OfficeAttendancePage({
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Attendance</h2>
           <p className="text-slate-500 text-sm mt-1">
-            {isToday ? "Today" : selectedDate.toLocaleDateString("el-GR")}
+            {isToday ? "Today" : fmtDisplayDate(selectedDate)}
             {" · "}
             {absences.length} absences / late entries
           </p>
@@ -153,9 +151,7 @@ export default async function OfficeAttendancePage({
           </div>
           <div className="space-y-1.5">
             {lateFilings.map((lf, i) => {
-              const dateDisplay = new Date(lf.attendanceDateStr + "T12:00:00").toLocaleDateString("el-GR", {
-                weekday: "short", day: "numeric", month: "short",
-              });
+              const dateDisplay = fmtDisplayDate(lf.attendanceDateStr + "T00:00:00.000Z");
               return (
                 <div key={i} className="flex items-center gap-3 text-sm">
                   <span className="font-medium text-slate-800">{lf.staffName}</span>
@@ -200,8 +196,8 @@ export default async function OfficeAttendancePage({
                   <td className="px-5 py-3">
                     <Badge variant="outline" className="text-xs">{a.student.group?.name ?? "—"}</Badge>
                   </td>
-                  <td className="px-5 py-3 text-slate-600">{a.timetableSlot.period}</td>
-                  <td className="px-5 py-3 text-slate-600">{a.timetableSlot.course.name}</td>
+                  <td className="px-5 py-3 text-slate-600">{a.timetableSlot?.period ?? a.intercalaryPeriod ?? "—"}</td>
+                  <td className="px-5 py-3 text-slate-600">{a.timetableSlot?.course.name ?? "—"}</td>
                   <td className="px-5 py-3">
                     <Badge
                       variant="outline"

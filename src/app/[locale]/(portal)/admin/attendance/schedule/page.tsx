@@ -2,7 +2,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/server/db";
-import { utcMidnight } from "@/lib/dates";
+import { getNow, utcMidnight, fmtDisplayDate } from "@/lib/dates";
+import { getSpecialDayForDate } from "@/lib/calendar";
 import Link from "next/link";
 import { CheckCircle2, ClipboardList, AlertCircle } from "lucide-react";
 
@@ -30,7 +31,7 @@ export default async function TeacherSchedulePage({
   const staff = await db.staffProfile.findUnique({ where: { userId: session.user.id } });
   if (!staff) redirect(`/${locale}/admin/attendance`);
 
-  const now = new Date();
+  const now = getNow();
   // dayOfWeek: 0=Sun, 1=Mon…5=Fri, 6=Sat
   const todayDow = now.getDay();
   const isWeekend = todayDow === 0 || todayDow === 6;
@@ -49,7 +50,15 @@ export default async function TeacherSchedulePage({
     slotMap[s.dayOfWeek]![s.period] = s;
   }
 
-  const maxPeriod = slots.reduce((m, s) => Math.max(m, s.period), 0);
+  const todaySpecialDay = !isWeekend ? await getSpecialDayForDate(today) : null;
+  const todayMeetingPeriod =
+    todaySpecialDay === "INTERCALARY"
+      ? await db.specialDay.findFirst({ where: { type: "INTERCALARY", startDate: today }, select: { intercalaryMeetingPeriod: true } })
+          .then((r) => r?.intercalaryMeetingPeriod ?? null)
+      : null;
+
+  const normalMax = slots.reduce((m, s) => Math.max(m, s.period), 0);
+  const maxPeriod = Math.max(normalMax, todayMeetingPeriod ?? 0);
   const periods = maxPeriod > 0 ? Array.from({ length: maxPeriod }, (_, i) => i + 1) : [];
 
   // Which today slots already have attendance marked
@@ -62,12 +71,10 @@ export default async function TeacherSchedulePage({
       select: { timetableSlotId: true },
       distinct: ["timetableSlotId"],
     });
-    for (const a of existing) markedSlotIds.add(a.timetableSlotId);
+    for (const a of existing) if (a.timetableSlotId) markedSlotIds.add(a.timetableSlotId);
   }
 
-  const dateLabel = now.toLocaleDateString("el-GR", {
-    weekday: "long", day: "numeric", month: "long",
-  });
+  const dateLabel = fmtDisplayDate(now);
 
   if (slots.length === 0) {
     return (
@@ -123,9 +130,27 @@ export default async function TeacherSchedulePage({
                   {period}
                 </td>
                 {([1, 2, 3, 4, 5] as const).map((dow) => {
-                  const slot = slotMap[dow]?.[period];
                   const isToday = dow === todayDow && !isWeekend;
+                  const isIntercalaryDay = isToday && todayMeetingPeriod !== null;
+                  const dbPeriod =
+                    isIntercalaryDay && todayMeetingPeriod !== null && period > todayMeetingPeriod
+                      ? period - 1
+                      : period;
+                  const slot =
+                    isIntercalaryDay && period === todayMeetingPeriod
+                      ? undefined
+                      : slotMap[dow]?.[dbPeriod];
                   const marked = slot ? markedSlotIds.has(slot.id) : false;
+
+                  if (isIntercalaryDay && period === todayMeetingPeriod) {
+                    return (
+                      <td key={dow} className="px-2 py-2 align-top bg-emerald-50/30">
+                        <div className="rounded-lg px-3 py-2 border border-purple-100 bg-purple-50/20">
+                          <p className="text-xs text-purple-400 text-center">Intercalary</p>
+                        </div>
+                      </td>
+                    );
+                  }
 
                   const cellContent = slot ? (
                     <div

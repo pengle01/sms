@@ -90,6 +90,72 @@ export const attendanceRouter = createTRPCRouter({
       return upserted;
     }),
 
+  // Mark intercalary period-8 attendance (no timetable slot required)
+  markIntercalaryAttendance: staffProcedure
+    .input(
+      z.object({
+        groupId: z.string(),
+        period: z.number().int(),
+        date: z.string(),
+        records: z.array(
+          z.object({
+            studentId: z.string(),
+            status: z.enum(["PRESENT", "ABSENT", "LATE"]),
+            minutesDelayed: z.number().int().min(0).default(0),
+          })
+        ),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const staff = await ctx.db.staffProfile.findUnique({
+        where: { userId: ctx.session.user.id },
+      });
+      if (!staff) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const thresholdSetting = await ctx.db.globalSetting.findUnique({
+        where: { key: "delay_threshold_minutes" },
+      });
+      const threshold = thresholdSetting ? parseInt(thresholdSetting.value) : 15;
+
+      const dateObj = new Date(input.date);
+
+      await ctx.db.$transaction(
+        input.records.map((r) => {
+          const isAutoAbsent = r.minutesDelayed > threshold;
+          const status = isAutoAbsent ? "ABSENT" : r.status;
+
+          return ctx.db.attendance.upsert({
+            where: {
+              studentId_intercalaryGroupId_intercalaryPeriod_date: {
+                studentId: r.studentId,
+                intercalaryGroupId: input.groupId,
+                intercalaryPeriod: input.period,
+                date: dateObj,
+              },
+            },
+            create: {
+              studentId: r.studentId,
+              staffId: staff.id,
+              date: dateObj,
+              status,
+              minutesDelayed: r.minutesDelayed,
+              isAutoAbsent,
+              intercalaryGroupId: input.groupId,
+              intercalaryPeriod: input.period,
+            },
+            update: {
+              status,
+              minutesDelayed: r.minutesDelayed,
+              isAutoAbsent,
+              staffId: staff.id,
+            },
+          });
+        })
+      );
+
+      return { success: true };
+    }),
+
   // Get today's absence report for headteachers/admins
   dailyAbsenceReport: managementProcedure
     .input(z.object({ date: z.string().optional() }))

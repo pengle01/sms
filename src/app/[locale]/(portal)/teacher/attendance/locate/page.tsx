@@ -3,26 +3,28 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { utcMidnight } from "@/lib/dates";
+import { getNow, utcMidnight } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { StudentList, type DayRow } from "./StudentList";
 import { getPeriodsPerDay, periodsForDow } from "@/lib/schoolConfig";
+import { getTranslations } from "next-intl/server";
 
 export default async function TeacherLocatePage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ groupId?: string; grade?: string; _t?: string }>;
+  searchParams: Promise<{ groupId?: string; grade?: string }>;
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login`);
 
-  const { groupId, grade, _t } = await searchParams;
+  const t = await getTranslations("locate");
 
-  // Dev-only time override: ?_t=2026-05-22T10:30:00
-  const now = (process.env.NODE_ENV === "development" && _t) ? new Date(_t) : new Date();
+  const { groupId, grade } = await searchParams;
+
+  const now = getNow();
 
   const gradeNum = grade ? parseInt(grade) : undefined;
 
@@ -67,7 +69,7 @@ export default async function TeacherLocatePage({
   for (const s of students) {
     periodAttendance[s.id] = {};
     for (const a of s.attendance) {
-      periodAttendance[s.id]![a.timetableSlot.period] = a.status;
+      periodAttendance[s.id]![a.timetableSlot?.period ?? a.intercalaryPeriod ?? 0] = a.status;
     }
   }
 
@@ -164,27 +166,25 @@ export default async function TeacherLocatePage({
 
   const selectedGroup = groupId ? homeroomGroups.find((g) => g.id === groupId) ?? null : null;
 
-  const tParam = _t && process.env.NODE_ENV === "development" ? `&_t=${_t}` : "";
-
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">Locate Student</h2>
+        <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>
         {!isWeekend && (
           <p className="text-slate-500 text-sm mt-1">
-            Period {currentPeriod} · {now.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" })}
+            {t("currentPeriod", { period: currentPeriod, time: now.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" }) })}
           </p>
         )}
       </div>
 
       {/* Step 1 — Year */}
       <div className="space-y-1.5">
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Year</p>
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("year")}</p>
         <div className="flex gap-2 flex-wrap">
           {[1, 2, 3].map((g) => (
             <Link
               key={g}
-              href={`?grade=${g}${tParam}`}
+              href={`?grade=${g}`}
               className={cn(
                 "h-10 px-6 rounded-xl text-sm font-medium transition-colors border",
                 gradeNum === g
@@ -192,7 +192,7 @@ export default async function TeacherLocatePage({
                   : "bg-white text-slate-600 border-slate-200 hover:border-emerald-400 hover:text-emerald-700"
               )}
             >
-              Year {g}
+              {t("yearN", { n: g })}
             </Link>
           ))}
         </div>
@@ -201,12 +201,12 @@ export default async function TeacherLocatePage({
       {/* Step 2 — Homegroup */}
       {gradeNum && (
         <div className="space-y-1.5">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Homegroup</p>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("homegroup")}</p>
           <div className="flex gap-2 flex-wrap">
             {homeroomGroups.map((g) => (
               <Link
                 key={g.id}
-                href={`?grade=${gradeNum}&groupId=${g.id}${tParam}`}
+                href={`?grade=${gradeNum}&groupId=${g.id}`}
                 className={cn(
                   "h-10 px-5 rounded-xl text-sm font-medium transition-colors border",
                   groupId === g.id
@@ -235,9 +235,9 @@ export default async function TeacherLocatePage({
         />
       )}
 
-      {!gradeNum && <p className="text-sm text-slate-400">Select a year to get started.</p>}
+      {!gradeNum && <p className="text-sm text-slate-400">{t("selectYear")}</p>}
       {gradeNum && !groupId && homeroomGroups.length === 0 && (
-        <p className="text-sm text-slate-400">No homeroom groups found for Year {gradeNum}.</p>
+        <p className="text-sm text-slate-400">{t("noHomegroups", { n: gradeNum })}</p>
       )}
     </div>
   );

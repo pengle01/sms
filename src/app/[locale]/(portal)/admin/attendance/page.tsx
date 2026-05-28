@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { ClipboardList, Search } from "lucide-react";
-import { utcMidnight, localDateStr } from "@/lib/dates";
+import { utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 
 export default async function AttendancePage({
   params,
@@ -56,7 +56,7 @@ export default async function AttendancePage({
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Attendance</h2>
           <p className="text-slate-500 text-sm mt-1">
-            {isToday ? "Today" : selectedDate.toLocaleDateString("el-GR")}
+            {isToday ? "Today" : fmtDisplayDate(selectedDate)}
             {" · "}
             {absences.length} absences / late entries
           </p>
@@ -118,8 +118,8 @@ export default async function AttendancePage({
                   <td className="px-5 py-3.5">
                     <Badge variant="outline" className="text-xs">{a.student.group?.name ?? "—"}</Badge>
                   </td>
-                  <td className="px-5 py-3.5 text-slate-600">{a.timetableSlot.period}</td>
-                  <td className="px-5 py-3.5 text-slate-600">{a.timetableSlot.course.name}</td>
+                  <td className="px-5 py-3.5 text-slate-600">{a.timetableSlot?.period ?? a.intercalaryPeriod ?? "—"}</td>
+                  <td className="px-5 py-3.5 text-slate-600">{a.timetableSlot?.course.name ?? "—"}</td>
                   <td className="px-5 py-3.5">
                     <Badge
                       variant="outline"
