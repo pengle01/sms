@@ -70,12 +70,16 @@ export default async function proxy(request: NextRequest) {
     request: { headers: requestHeaders },
   });
 
-  // Forward any Set-Cookie headers from the intl middleware (e.g. locale cookie)
-  for (const [key, value] of intlResponse.headers.entries()) {
+  // Forward ALL response headers from the intl middleware so that
+  // next-intl's internal headers (locale cookie, x-middleware-request-*
+  // for requestLocale, etc.) are preserved alongside our x-pathname header.
+  intlResponse.headers.forEach((value, key) => {
     if (key.toLowerCase() === "set-cookie") {
       response.headers.append(key, value);
+    } else {
+      response.headers.set(key, value);
     }
-  }
+  });
 
   return response;
 }
