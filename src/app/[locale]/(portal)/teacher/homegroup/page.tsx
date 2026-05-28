@@ -14,10 +14,11 @@ export default async function TeacherHomegroupPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ groupId?: string }>;
+  searchParams: Promise<{ groupId?: string; period?: string }>;
 }) {
   const { locale } = await params;
-  const { groupId: selectedGroupId } = await searchParams;
+  const { groupId: selectedGroupId, period } = await searchParams;
+  const last30 = period === "30d";
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login`);
 
@@ -58,6 +59,8 @@ export default async function TeacherHomegroupPage({
 
   const todayStr = localDateStr();
   const today = utcMidnight(todayStr);
+  const thirtyDaysAgo = new Date(today);
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   const nextWeek = new Date(today);
   nextWeek.setDate(nextWeek.getDate() + 7);
 
@@ -89,6 +92,7 @@ export default async function TeacherHomegroupPage({
       by: ["studentId"],
       where: {
         studentId: { in: studentIds },
+        ...(last30 ? { date: { gte: thirtyDaysAgo } } : {}),
         OR: [{ status: "ABSENT" }, { isAutoAbsent: true }],
       },
       _count: { _all: true },
@@ -132,11 +136,35 @@ export default async function TeacherHomegroupPage({
 
   const localeTag = locale === "el" ? "el-GR" : "en-US";
 
+  const groupParam = selectedGroupId ? `&groupId=${selectedGroupId}` : "";
+  const allTimeHref = `?${groupParam}`;
+  const last30Href = `?period=30d${groupParam}`;
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>
-        <p className="text-slate-500 text-sm mt-1">{t("subtitle")}</p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>
+          <p className="text-slate-500 text-sm mt-1">{t("subtitle")}</p>
+        </div>
+        <div className="flex rounded-lg border border-slate-200 overflow-hidden flex-shrink-0 self-start">
+          <Link
+            href={allTimeHref}
+            className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+              !last30 ? "bg-slate-800 text-white" : "bg-white text-slate-500 hover:bg-slate-50"
+            }`}
+          >
+            {t("allTime")}
+          </Link>
+          <Link
+            href={last30Href}
+            className={`px-3 py-1.5 text-xs font-medium border-l border-slate-200 transition-colors ${
+              last30 ? "bg-slate-800 text-white" : "bg-white text-slate-500 hover:bg-slate-50"
+            }`}
+          >
+            {t("last30Days")}
+          </Link>
+        </div>
       </div>
 
       {/* Group tabs (if multiple) */}
@@ -145,7 +173,7 @@ export default async function TeacherHomegroupPage({
           {groups.map((g) => (
             <Link
               key={g.id}
-              href={`?groupId=${g.id}`}
+              href={`?groupId=${g.id}${last30 ? "&period=30d" : ""}`}
               className={`h-9 px-4 rounded-lg text-sm font-medium border transition-colors ${
                 activeGroup.id === g.id
                   ? "bg-slate-800 text-white border-slate-800"
