@@ -117,7 +117,7 @@
   },
   "homegroup": {
     "title": "My Homegroup",
-    "subtitle": "Student overview · past 30 days",
+    "subtitle": "Student overview · all time",
     "notAssigned": "You have not been assigned a homeroom group. Ask an administrator to assign one.",
     "upcomingTests": "Upcoming Tests — Next 7 Days",
     "groupStudents": "{name} · {count} students",

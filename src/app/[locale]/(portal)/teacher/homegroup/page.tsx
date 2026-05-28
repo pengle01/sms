@@ -58,8 +58,6 @@ export default async function TeacherHomegroupPage({
 
   const todayStr = localDateStr();
   const today = utcMidnight(todayStr);
-  const thirtyDaysAgo = new Date(today);
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   const nextWeek = new Date(today);
   nextWeek.setDate(nextWeek.getDate() + 7);
 
@@ -91,7 +89,6 @@ export default async function TeacherHomegroupPage({
       by: ["studentId"],
       where: {
         studentId: { in: studentIds },
-        date: { gte: thirtyDaysAgo },
         OR: [{ status: "ABSENT" }, { isAutoAbsent: true }],
       },
       _count: { _all: true },
@@ -100,7 +97,6 @@ export default async function TeacherHomegroupPage({
       by: ["studentId"],
       where: {
         studentId: { in: studentIds },
-        status: "PENDING",
       },
       _count: { _all: true },
     }),
