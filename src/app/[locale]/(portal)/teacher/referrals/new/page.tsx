@@ -19,16 +19,29 @@ export default async function NewReferralPage({
 
   const t = await getTranslations("referrals");
 
-  const students = await db.studentProfile.findMany({
-    where: { user: { isActive: true } },
-    include: {
-      user: { select: { name: true } },
-      group: { select: { name: true } },
-    },
-    orderBy: [{ group: { name: "asc" } }, { user: { name: "asc" } }],
+  // Fetch staff code name from TeacherClaim (e.g. "ΗΥ-ΕΓΓΛΕΖΑΚΗΣ Π")
+  const claim = await db.teacherClaim.findUnique({
+    where: { userId: session.user.id },
+    select: { staffName: true },
   });
+  const filerName = claim?.staffName ?? session.user.name ?? "";
 
-  const filerName = session.user.name ?? "";
+  // Fetch students grouped by homegroup
+  const groups = await db.group.findMany({
+    where: {
+      students: { some: { user: { isActive: true } } },
+    },
+    select: {
+      id: true,
+      name: true,
+      students: {
+        where: { user: { isActive: true } },
+        include: { user: { select: { name: true } } },
+        orderBy: { user: { name: "asc" } },
+      },
+    },
+    orderBy: { name: "asc" },
+  });
 
   return (
     <div className="space-y-5 max-w-2xl">
@@ -48,11 +61,14 @@ export default async function NewReferralPage({
         </CardHeader>
         <CardContent>
           <ReferralForm
-            students={students.map((s) => ({
-              id: s.id,
-              name: s.user?.name ?? "",
-              studentId: s.studentId,
-              groupName: s.group?.name ?? "",
+            groups={groups.map((g) => ({
+              id: g.id,
+              name: g.name,
+              students: g.students.map((s) => ({
+                id: s.id,
+                name: s.user?.name ?? "",
+                studentId: s.studentId,
+              })),
             }))}
             filerName={filerName}
             locale={locale}

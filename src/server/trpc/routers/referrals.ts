@@ -20,19 +20,6 @@ const RECOMMENDATION_VALUES = [
   "OTHER_RECOMMENDATION",
 ] as const;
 
-async function notifyUser(
-  db: Parameters<Parameters<typeof staffProcedure.mutation>[0]>[0]["ctx"]["db"],
-  userId: string,
-  type: string,
-  title: string,
-  body: string,
-  linkUrl: string
-) {
-  await db.notification.create({
-    data: { userId, type, title, body, linkUrl, read: false },
-  });
-}
-
 export const referralsRouter = createTRPCRouter({
   // File one or more referrals (one per student)
   create: staffProcedure
@@ -49,11 +36,18 @@ export const referralsRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const staff = await ctx.db.staffProfile.findUnique({
-        where: { userId: ctx.session.user.id },
-        include: { user: { select: { name: true } } },
-      });
+      const [staff, claim] = await Promise.all([
+        ctx.db.staffProfile.findUnique({
+          where: { userId: ctx.session.user.id },
+          include: { user: { select: { name: true } } },
+        }),
+        ctx.db.teacherClaim.findUnique({
+          where: { userId: ctx.session.user.id },
+          select: { staffName: true },
+        }),
+      ]);
       if (!staff) throw new TRPCError({ code: "NOT_FOUND" });
+      const filerDisplayName = claim?.staffName ?? staff.user?.name ?? "Εκπαιδευτικός";
 
       const students = await ctx.db.studentProfile.findMany({
         where: { id: { in: input.studentIds } },
@@ -99,7 +93,7 @@ export const referralsRouter = createTRPCRouter({
                   userId: headUserId,
                   type: "REFERRAL_CREATED",
                   title: "Νέα καταγγελία",
-                  body: `${staff.user?.name ?? "Εκπαιδευτικός"}: ${input.description.slice(0, 80)}`,
+                  body: `${filerDisplayName}: ${input.description.slice(0, 80)}`,
                   linkUrl: `/teacher/referrals`,
                   read: false,
                 },
@@ -118,11 +112,18 @@ export const referralsRouter = createTRPCRouter({
   submit: staffProcedure
     .input(z.object({ referralId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const staff = await ctx.db.staffProfile.findUnique({
-        where: { userId: ctx.session.user.id },
-        include: { user: { select: { name: true } } },
-      });
+      const [staff, submitClaim] = await Promise.all([
+        ctx.db.staffProfile.findUnique({
+          where: { userId: ctx.session.user.id },
+          include: { user: { select: { name: true } } },
+        }),
+        ctx.db.teacherClaim.findUnique({
+          where: { userId: ctx.session.user.id },
+          select: { staffName: true },
+        }),
+      ]);
       if (!staff) throw new TRPCError({ code: "NOT_FOUND" });
+      const submitDisplayName = submitClaim?.staffName ?? staff.user?.name ?? "Εκπαιδευτικός";
 
       const referral = await ctx.db.referral.findUnique({
         where: { id: input.referralId },
@@ -155,7 +156,7 @@ export const referralsRouter = createTRPCRouter({
               userId: headUserId,
               type: "REFERRAL_CREATED",
               title: "Νέα καταγγελία",
-              body: `${staff.user?.name ?? "Εκπαιδευτικός"}: ${referral.description.slice(0, 80)}`,
+              body: `${submitDisplayName}: ${referral.description.slice(0, 80)}`,
               linkUrl: `/teacher/referrals`,
               read: false,
             },
