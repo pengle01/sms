@@ -17,7 +17,7 @@ const ACTIONS = [
 
 type Action = typeof ACTIONS[number]["value"];
 
-export function ResolveReferralDialog({ referralId, studentName }: { referralId: string; studentName: string }) {
+export function ResolveReferralDialog({ referralId, studentName }: { referralId: string; studentName: string | string[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [action, setAction] = useState<Action>("PEDAGOGICAL_DIALOGUE");

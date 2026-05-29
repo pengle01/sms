@@ -147,9 +147,10 @@ model User {
   studentProfile StudentProfile?
   parentProfile  ParentProfile?
 
-  uploadedNotices      Notice[]
-  resolvedReferrals    ReferralResolution[]
-  notifications        Notification[]
+  uploadedNotices               Notice[]
+  resolvedReferrals             ReferralResolution[]
+  resolvedReferralStudents      ReferralStudentResolution[] @relation("ReferralStudentResolver")
+  notifications                 Notification[]
   auditLogs            AuditLog[]
   chaperoneAssignments ActivityChaperone[]
   teacherClaim         TeacherClaim?
@@ -201,6 +202,7 @@ model StudentProfile {
   grades                 Grade[]
   testGrades             TestGrade[]
   referrals              Referral[]           @relation("StudentReferrals")
+  referralStudents       ReferralStudent[]    @relation("ReferralStudentProfile")
   exitPermits            ExitPermit[]
   activityParticipations   ActivityParticipant[]
   chaperoneRequestStudents ChaperoneRequestStudent[]
@@ -281,7 +283,8 @@ model Group {
   studentGroups     StudentGroup[]
   courseAssignments CourseAssignment[]
   timetableSlots    TimetableSlot[]
-  referrals         Referral[]
+  referrals         Referral[]       @relation("ReferralGroup")
+  referralStudents  ReferralStudent[] @relation("ReferralStudentGroup")
   testSchedules     TestSchedule[]
 }
 
@@ -509,12 +512,15 @@ model TestGrade {
 
 model Referral {
   id             String         @id @default(cuid())
-  studentId      String
-  student        StudentProfile @relation("StudentReferrals", fields: [studentId], references: [id])
+  // Legacy single-student fields (nullable; kept for old data only)
+  studentId      String?
+  student        StudentProfile? @relation("StudentReferrals", fields: [studentId], references: [id])
+  groupId        String?
+  group          Group?          @relation("ReferralGroup", fields: [groupId], references: [id])
+  resolution     ReferralResolution?
+
   filerId        String
   filer          StaffProfile   @relation("ReferralFiler", fields: [filerId], references: [id])
-  groupId        String?
-  group          Group?         @relation(fields: [groupId], references: [id])
   description    String         @db.Text
   location       String?
   incidentTime   String?
@@ -524,13 +530,49 @@ model Referral {
   status         ReferralStatus @default(PENDING)
   counselorNotes String?        @db.Text
 
-  resolution ReferralResolution?
+  students  ReferralStudent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([studentId])
   @@index([status])
+}
+
+enum ReferralStudentStatus {
+  PENDING
+  RESOLVED
+}
+
+model ReferralStudent {
+  id         String              @id @default(cuid())
+  referralId String
+  referral   Referral            @relation(fields: [referralId], references: [id], onDelete: Cascade)
+  studentId  String
+  student    StudentProfile      @relation("ReferralStudentProfile", fields: [studentId], references: [id])
+  groupId    String?
+  group      Group?              @relation("ReferralStudentGroup", fields: [groupId], references: [id])
+  status     ReferralStudentStatus @default(PENDING)
+
+  resolution ReferralStudentResolution?
+
+  @@unique([referralId, studentId])
+  @@index([studentId])
+  @@index([groupId])
+}
+
+model ReferralStudentResolution {
+  id                String          @id @default(cuid())
+  referralStudentId String          @unique
+  referralStudent   ReferralStudent @relation(fields: [referralStudentId], references: [id], onDelete: Cascade)
+  action            ResolutionAction
+  notes             String?         @db.Text
+  counselorNotes    String?         @db.Text
+  parentContacted   Boolean         @default(false)
+  parentContactDate   DateTime?
+  parentContactMethod String?
+  resolvedById      String
+  resolvedBy        User            @relation("ReferralStudentResolver", fields: [resolvedById], references: [id])
+  resolvedAt        DateTime        @default(now())
 }
 
 model ReferralResolution {

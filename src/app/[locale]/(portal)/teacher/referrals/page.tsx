@@ -18,14 +18,12 @@ const STATUS_BADGE: Record<string, string> = {
   ASSIGNED: "bg-emerald-50 text-emerald-700 border-emerald-200",
   RESOLVED: "bg-green-50 text-green-700 border-green-200",
 };
-
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "Πρόχειρο",
   PENDING: "Εκκρεμής",
   ASSIGNED: "Ανατεθείσα",
   RESOLVED: "Επιλυμένη",
 };
-
 const ACTION_LABEL: Record<string, string> = {
   DETENTION: "Αποβολή",
   PEDAGOGICAL_DIALOGUE: "Παιδαγωγικός Διάλογος",
@@ -33,6 +31,23 @@ const ACTION_LABEL: Record<string, string> = {
   WARNING: "Προειδοποίηση",
   OTHER: "Άλλο",
 };
+const STUDENT_STATUS_BADGE: Record<string, string> = {
+  PENDING: "bg-amber-50 text-amber-700 border-amber-200",
+  RESOLVED: "bg-green-50 text-green-700 border-green-200",
+};
+
+// Include shape — same as in router
+const referralInclude = {
+  filer: { include: { user: { select: { name: true } } } },
+  students: {
+    include: {
+      student: { include: { user: { select: { name: true } } } },
+      group: { select: { name: true } },
+      resolution: true,
+    },
+    orderBy: { student: { user: { name: "asc" as const } } },
+  },
+} as const;
 
 export default async function TeacherReferralsPage({
   params,
@@ -63,6 +78,7 @@ export default async function TeacherReferralsPage({
   const isManagement = ["HEADMASTER", "HEADTEACHER_A"].includes(role);
   const isHeadteacherB = role === "HEADTEACHER_B";
   const showCounselorNotes = canViewCounselorNotes(role);
+  const headGroupIds = staff.homeroomHeadGroups.map((g) => g.id);
 
   // My filed referrals (all roles)
   const myWhere = {
@@ -73,11 +89,7 @@ export default async function TeacherReferralsPage({
     db.referral.count({ where: myWhere }),
     db.referral.findMany({
       where: myWhere,
-      include: {
-        student: { include: { user: { select: { name: true } } } },
-        group: { select: { name: true } },
-        resolution: true,
-      },
+      include: referralInclude,
       orderBy: { createdAt: "desc" },
       take: limit,
       skip: (page - 1) * limit,
@@ -85,44 +97,34 @@ export default async function TeacherReferralsPage({
   ]);
 
   // Homegroup pending referrals (HEADTEACHER_B only)
-  const headGroupIds = staff.homeroomHeadGroups.map((g) => g.id);
-  const [groupReferrals, groups] = await Promise.all([
-    isHeadteacherB && headGroupIds.length > 0
-      ? db.referral.findMany({
-          where: {
-            groupId: { in: headGroupIds },
-            status: "PENDING",
-          },
-          include: {
-            student: { include: { user: { select: { name: true } } } },
-            filer: { include: { user: { select: { name: true } } } },
-            group: { select: { name: true } },
-            resolution: true,
-          },
-          orderBy: { createdAt: "asc" },
-        })
-      : Promise.resolve([]),
-    isManagement
-      ? db.group.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } })
-      : Promise.resolve([]),
-  ]);
+  const groupReferrals = isHeadteacherB && headGroupIds.length > 0
+    ? await db.referral.findMany({
+        where: {
+          students: { some: { groupId: { in: headGroupIds }, status: "PENDING" } },
+          status: "PENDING",
+          NOT: { filerId: staff.id }, // exclude own referrals (already shown above)
+        },
+        include: referralInclude,
+        orderBy: { createdAt: "asc" },
+      })
+    : [];
 
   // Management: all referrals with filters
   const allWhere = {
-    ...(statusFilter && statusFilter !== "ALL" ? { status: statusFilter as "DRAFT" | "PENDING" | "ASSIGNED" | "RESOLVED" } : { status: { not: "DRAFT" as const } }),
-    ...(groupFilter ? { groupId: groupFilter } : {}),
+    ...(statusFilter && statusFilter !== "ALL"
+      ? { status: statusFilter as "DRAFT" | "PENDING" | "ASSIGNED" | "RESOLVED" }
+      : { status: { not: "DRAFT" as const } }),
+    ...(groupFilter ? { students: { some: { groupId: groupFilter } } } : {}),
   };
+  const groups = isManagement
+    ? await db.group.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } })
+    : [];
   const [allTotal, allReferrals] = isManagement
     ? await Promise.all([
         db.referral.count({ where: allWhere }),
         db.referral.findMany({
           where: allWhere,
-          include: {
-            student: { include: { user: { select: { name: true } } } },
-            filer: { include: { user: { select: { name: true } } } },
-            group: { select: { name: true } },
-            resolution: true,
-          },
+          include: referralInclude,
           orderBy: { createdAt: "desc" },
           take: limit,
           skip: (page - 1) * limit,
@@ -133,85 +135,123 @@ export default async function TeacherReferralsPage({
   const buildHref = (overrides: Record<string, string | undefined>) => {
     const p = new URLSearchParams();
     const merged = { status: statusFilter, group: groupFilter, ...overrides };
-    for (const [k, v] of Object.entries(merged)) {
-      if (v && v !== "ALL") p.set(k, v);
-    }
+    for (const [k, v] of Object.entries(merged)) if (v && v !== "ALL") p.set(k, v);
     const qs = p.toString();
     return qs ? `?${qs}` : "?";
   };
 
+  type Referral = (typeof myReferrals)[number];
+
+  // Render one referral as a table row — students shown inline below description
   const ReferralRow = ({
     r,
     showFiler,
-    canResolve,
+    resolverGroupIds,
   }: {
-    r: (typeof myReferrals)[number] & { filer?: { user: { name: string | null } | null } };
+    r: Referral;
     showFiler: boolean;
-    canResolve: boolean;
-  }) => (
-    <tr className="hover:bg-slate-50">
-      <td className="px-4 py-3 text-slate-500 text-sm whitespace-nowrap">
-        {fmtDisplayDate(r.date)}
-      </td>
-      <td className="px-4 py-3 font-medium text-slate-900 text-sm">
-        {r.student.user?.name ?? "—"}
-      </td>
-      <td className="px-4 py-3 text-sm">
-        <Badge variant="outline" className="text-xs">{r.group?.name ?? "—"}</Badge>
-      </td>
-      {showFiler && (
-        <td className="px-4 py-3 text-sm text-slate-500">{r.filer?.user?.name ?? "—"}</td>
-      )}
-      <td className="px-4 py-3 max-w-xs text-sm text-slate-600">
-        <span className="line-clamp-2">{r.description}</span>
-      </td>
-      <td className="px-4 py-3 text-sm">
-        <Badge variant="outline" className={`text-xs ${STATUS_BADGE[r.status] ?? ""}`}>
-          {STATUS_LABEL[r.status] ?? r.status}
-        </Badge>
-      </td>
-      <td className="px-4 py-3 text-sm">
-        {r.status === "DRAFT" && (
-          <div className="flex items-center gap-2">
-            <Link
-              href={`/${locale}/teacher/referrals/new`}
-              className="text-xs text-slate-500 hover:text-slate-800 font-medium"
-            >
-              Επεξεργασία
-            </Link>
-            <DeleteDraftButton referralId={r.id} />
+    resolverGroupIds?: string[]; // if set, only show/resolve students from these groups
+  }) => {
+    const students = resolverGroupIds
+      ? r.students.filter((rs) => rs.groupId && resolverGroupIds.includes(rs.groupId))
+      : r.students;
+
+    const canResolve =
+      resolverGroupIds !== undefined
+        ? students.some((rs) => rs.status === "PENDING")
+        : isManagement && r.status === "PENDING";
+
+    return (
+      <tr className="hover:bg-slate-50 align-top">
+        <td className="px-4 py-3 text-slate-500 text-sm whitespace-nowrap">
+          {fmtDisplayDate(r.date)}
+        </td>
+        {showFiler && (
+          <td className="px-4 py-3 text-sm text-slate-600">{r.filer.user?.name ?? "—"}</td>
+        )}
+        <td className="px-4 py-3 text-sm text-slate-700 max-w-xs">
+          <p className="line-clamp-2">{r.description}</p>
+          {r.location && <p className="text-xs text-slate-400 mt-0.5">{r.location}</p>}
+        </td>
+        {/* Students column */}
+        <td className="px-4 py-3 text-sm min-w-[160px]">
+          <div className="space-y-1">
+            {students.map((rs) => (
+              <div key={rs.id} className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-slate-800 font-medium">{rs.student.user?.name}</span>
+                <span className="text-xs text-slate-400">{rs.group?.name}</span>
+                <Badge
+                  variant="outline"
+                  className={`text-[10px] px-1.5 py-0 h-4 ${STUDENT_STATUS_BADGE[rs.status] ?? ""}`}
+                >
+                  {rs.status === "RESOLVED" && rs.resolution
+                    ? ACTION_LABEL[rs.resolution.action] ?? rs.resolution.action
+                    : STATUS_LABEL[rs.status] ?? rs.status}
+                </Badge>
+              </div>
+            ))}
+            {r.students.length > students.length && (
+              <p className="text-xs text-slate-400">
+                +{r.students.length - students.length} άλλο{r.students.length - students.length !== 1 ? "ι" : "ς"}
+              </p>
+            )}
           </div>
-        )}
-        {r.status === "PENDING" && canResolve && (
-          <ResolveReferralDialog
-            referralId={r.id}
-            studentName={r.student.user?.name ?? ""}
-            recommendation={r.recommendation}
-            canViewCounselorNotes={showCounselorNotes}
-          />
-        )}
-        {r.status === "RESOLVED" && r.resolution && (
-          <span className="text-xs text-slate-400">
-            {ACTION_LABEL[r.resolution.action] ?? r.resolution.action}
-          </span>
-        )}
-      </td>
-    </tr>
-  );
+        </td>
+        <td className="px-4 py-3 text-sm">
+          <Badge variant="outline" className={`text-xs ${STATUS_BADGE[r.status] ?? ""}`}>
+            {STATUS_LABEL[r.status] ?? r.status}
+          </Badge>
+        </td>
+        <td className="px-4 py-3 text-sm">
+          {r.status === "DRAFT" && r.filerId === staff.id && (
+            <div className="flex items-center gap-2">
+              <DeleteDraftButton referralId={r.id} />
+            </div>
+          )}
+          {canResolve && (
+            <ResolveReferralDialog
+              referralId={r.id}
+              studentNames={students.filter((rs) => rs.status === "PENDING").map((rs) => rs.student.user?.name ?? "").filter(Boolean)}
+              recommendation={r.recommendation}
+              canViewCounselorNotes={showCounselorNotes}
+            />
+          )}
+          {r.status === "RESOLVED" && !canResolve && (
+            <span className="text-xs text-slate-400">
+              {students[0]?.resolution ? ACTION_LABEL[students[0].resolution.action] ?? students[0].resolution.action : "Επιλύθηκε"}
+            </span>
+          )}
+        </td>
+      </tr>
+    );
+  };
 
   const TableHead = ({ showFiler }: { showFiler: boolean }) => (
     <thead>
       <tr className="border-b border-slate-100">
         <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Ημερομηνία</th>
-        <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Μαθητής</th>
-        <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Τμήμα</th>
         {showFiler && <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Καταγγέλλων</th>}
         <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Λεπτομέρειες</th>
+        <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Μαθητές</th>
         <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Κατάσταση</th>
         <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Ενέργειες</th>
       </tr>
     </thead>
   );
+
+  const Pagination = ({ total, label }: { total: number; label: string }) => {
+    const totalPages = Math.ceil(total / limit);
+    if (totalPages <= 1) return null;
+    return (
+      <div className="flex justify-between items-center px-4 py-3 border-t border-slate-100 text-xs text-slate-500">
+        <span>{label} — σελίδα {page} από {totalPages}</span>
+        <div className="flex gap-2">
+          {page > 1 && <Link href={buildHref({ page: String(page - 1) })} className="px-3 py-1.5 rounded border border-slate-200 hover:bg-slate-50">Προηγούμενη</Link>}
+          {page < totalPages && <Link href={buildHref({ page: String(page + 1) })} className="px-3 py-1.5 rounded border border-slate-200 hover:bg-slate-50">Επόμενη</Link>}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -226,43 +266,26 @@ export default async function TeacherReferralsPage({
         </Link>
       </div>
 
-      {/* Management view: all referrals with filters */}
+      {/* Management: all referrals */}
       {isManagement && (
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <CardTitle className="text-base">Όλες οι Καταγγελίες ({allTotal})</CardTitle>
               <form method="GET" className="flex gap-2 flex-wrap">
-                <select
-                  name="status"
-                  defaultValue={statusFilter ?? "ALL"}
-                  className="h-8 px-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
-                >
+                <select name="status" defaultValue={statusFilter ?? "ALL"}
+                  className="h-8 px-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
                   <option value="ALL">Όλες</option>
                   <option value="PENDING">Εκκρεμείς</option>
                   <option value="RESOLVED">Επιλυμένες</option>
                 </select>
-                <select
-                  name="group"
-                  defaultValue={groupFilter ?? ""}
-                  className="h-8 px-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
-                >
+                <select name="group" defaultValue={groupFilter ?? ""}
+                  className="h-8 px-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
                   <option value="">Όλα τα τμήματα</option>
-                  {groups.map((g) => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
-                  ))}
+                  {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
                 </select>
-                <button
-                  type="submit"
-                  className="h-8 px-3 rounded-lg bg-slate-800 text-white text-xs font-medium hover:bg-slate-700"
-                >
-                  Φίλτρο
-                </button>
-                {(statusFilter || groupFilter) && (
-                  <Link href="?" className="h-8 px-2 flex items-center text-xs text-slate-400 hover:text-slate-700">
-                    Καθαρισμός
-                  </Link>
-                )}
+                <button type="submit" className="h-8 px-3 rounded-lg bg-slate-800 text-white text-xs font-medium hover:bg-slate-700">Φίλτρο</button>
+                {(statusFilter || groupFilter) && <Link href="?" className="h-8 px-2 flex items-center text-xs text-slate-400 hover:text-slate-700">Καθαρισμός</Link>}
               </form>
             </div>
           </CardHeader>
@@ -271,37 +294,22 @@ export default async function TeacherReferralsPage({
               <TableHead showFiler={true} />
               <tbody className="divide-y divide-slate-50">
                 {allReferrals.map((r) => (
-                  <ReferralRow
-                    key={r.id}
-                    r={r as (typeof myReferrals)[number] & { filer?: { user: { name: string | null } | null } }}
-                    showFiler={true}
-                    canResolve={true}
-                  />
+                  <ReferralRow key={r.id} r={r} showFiler={true} />
                 ))}
                 {allReferrals.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-slate-400">
-                      <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                      Δεν βρέθηκαν καταγγελίες
-                    </td>
-                  </tr>
+                  <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">
+                    <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                    Δεν βρέθηκαν καταγγελίες
+                  </td></tr>
                 )}
               </tbody>
             </table>
           </CardContent>
-          {Math.ceil(allTotal / limit) > 1 && (
-            <div className="flex justify-between items-center px-4 py-3 border-t border-slate-100 text-xs text-slate-500">
-              <span>Σελίδα {page} από {Math.ceil(allTotal / limit)}</span>
-              <div className="flex gap-2">
-                {page > 1 && <Link href={buildHref({ page: String(page - 1) })} className="px-3 py-1.5 rounded border border-slate-200 hover:bg-slate-50">Προηγούμενη</Link>}
-                {page < Math.ceil(allTotal / limit) && <Link href={buildHref({ page: String(page + 1) })} className="px-3 py-1.5 rounded border border-slate-200 hover:bg-slate-50">Επόμενη</Link>}
-              </div>
-            </div>
-          )}
+          <Pagination total={allTotal} label="Καταγγελίες" />
         </Card>
       )}
 
-      {/* HEADTEACHER_B: their homegroup's pending referrals */}
+      {/* HEADTEACHER_B: pending referrals for their homegroup */}
       {isHeadteacherB && groupReferrals.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
@@ -314,12 +322,7 @@ export default async function TeacherReferralsPage({
               <TableHead showFiler={true} />
               <tbody className="divide-y divide-slate-50">
                 {groupReferrals.map((r) => (
-                  <ReferralRow
-                    key={r.id}
-                    r={r as (typeof myReferrals)[number] & { filer?: { user: { name: string | null } | null } }}
-                    showFiler={true}
-                    canResolve={true}
-                  />
+                  <ReferralRow key={r.id} r={r} showFiler={true} resolverGroupIds={headGroupIds} />
                 ))}
               </tbody>
             </table>
@@ -337,33 +340,18 @@ export default async function TeacherReferralsPage({
             <TableHead showFiler={false} />
             <tbody className="divide-y divide-slate-50">
               {myReferrals.map((r) => (
-                <ReferralRow
-                  key={r.id}
-                  r={r}
-                  showFiler={false}
-                  canResolve={false}
-                />
+                <ReferralRow key={r.id} r={r} showFiler={false} />
               ))}
               {myReferrals.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-slate-400">
-                    <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                    Δεν έχετε υποβάλει καταγγελίες
-                  </td>
-                </tr>
+                <tr><td colSpan={5} className="px-4 py-12 text-center text-slate-400">
+                  <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                  Δεν έχετε υποβάλει καταγγελίες
+                </td></tr>
               )}
             </tbody>
           </table>
         </CardContent>
-        {Math.ceil(myTotal / limit) > 1 && (
-          <div className="flex justify-between items-center px-4 py-3 border-t border-slate-100 text-xs text-slate-500">
-            <span>Σελίδα {page} από {Math.ceil(myTotal / limit)}</span>
-            <div className="flex gap-2">
-              {page > 1 && <Link href={buildHref({ page: String(page - 1) })} className="px-3 py-1.5 rounded border border-slate-200 hover:bg-slate-50">Προηγούμενη</Link>}
-              {page < Math.ceil(myTotal / limit) && <Link href={buildHref({ page: String(page + 1) })} className="px-3 py-1.5 rounded border border-slate-200 hover:bg-slate-50">Επόμενη</Link>}
-            </div>
-          </div>
-        )}
+        <Pagination total={myTotal} label="Δελτία" />
       </Card>
     </div>
   );

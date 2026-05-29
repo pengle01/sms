@@ -19,14 +19,14 @@ type Action = (typeof ACTIONS)[number]["value"];
 
 interface Props {
   referralId: string;
-  studentName: string;
+  studentNames: string[];
   recommendation?: string;
   canViewCounselorNotes?: boolean;
 }
 
 export function ResolveReferralDialog({
   referralId,
-  studentName,
+  studentNames,
   recommendation,
   canViewCounselorNotes = false,
 }: Props) {
@@ -79,7 +79,11 @@ export function ResolveReferralDialog({
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-slate-900">Επίλυση Καταγγελίας</h3>
-            <p className="text-sm text-slate-500">{studentName}</p>
+            <p className="text-sm text-slate-500">
+              {studentNames.length === 1
+                ? studentNames[0]
+                : `${studentNames.length} μαθητές: ${studentNames.join(", ")}`}
+            </p>
           </div>
           <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-slate-600">
             <X className="w-5 h-5" />

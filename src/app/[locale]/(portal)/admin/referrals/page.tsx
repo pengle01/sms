@@ -32,7 +32,7 @@ export default async function ReferralsPage({
 
   const where = {
     ...(statusFilter && statusFilter !== "ALL" ? { status: statusFilter as "PENDING" | "ASSIGNED" | "RESOLVED" } : {}),
-    ...(groupFilter ? { groupId: groupFilter } : {}),
+    ...(groupFilter ? { students: { some: { groupId: groupFilter } } } : {}),
   };
 
   const [total, referrals, students, groups, groupSummary] = await Promise.all([
@@ -40,10 +40,15 @@ export default async function ReferralsPage({
     db.referral.findMany({
       where,
       include: {
-        student: { include: { user: { select: { name: true } }, group: true } },
         filer: { include: { user: { select: { name: true } } } },
-        resolution: true,
-        group: true,
+        students: {
+          include: {
+            student: { include: { user: { select: { name: true } } } },
+            group: { select: { name: true } },
+            resolution: true,
+          },
+          orderBy: { student: { user: { name: "asc" as const } } },
+        },
       },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * limit,
@@ -59,10 +64,8 @@ export default async function ReferralsPage({
       select: {
         id: true,
         name: true,
-        _count: { select: { referrals: true } },
-        referrals: {
-          where: { status: "PENDING" },
-          select: { id: true },
+        referralStudents: {
+          select: { id: true, status: true },
         },
       },
     }),
@@ -106,7 +109,8 @@ export default async function ReferralsPage({
       {/* Homegroup summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
         {groupSummary.map((g) => {
-          const pending = g.referrals.length;
+          const total = g.referralStudents.length;
+          const pending = g.referralStudents.filter((rs) => rs.status === "PENDING").length;
           const isActive = groupFilter === g.id;
           return (
             <Link
@@ -121,7 +125,7 @@ export default async function ReferralsPage({
             >
               <p className="font-semibold truncate">{g.name}</p>
               <p className={cn("text-xs mt-0.5", isActive ? "text-emerald-100" : "text-slate-400")}>
-                {t("total", { count: g._count.referrals })}
+                {t("total", { count: total })}
                 {pending > 0 && (
                   <span className={cn("ml-1.5 font-semibold", isActive ? "text-amber-200" : "text-amber-600")}>
                     · {pending} {t("pending").toLowerCase()}
@@ -183,7 +187,6 @@ export default async function ReferralsPage({
               <tr className="border-b border-slate-100">
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("dateHeader")}</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{tCommon("student")}</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("groupHeader")}</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("description")}</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("filedBy")}</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("status")}</th>
@@ -192,18 +195,24 @@ export default async function ReferralsPage({
             </thead>
             <tbody className="divide-y divide-slate-50">
               {referrals.map((r) => (
-                <tr key={r.id} className="hover:bg-slate-50">
+                <tr key={r.id} className="hover:bg-slate-50 align-top">
                   <td className="px-5 py-3.5 text-slate-500 whitespace-nowrap">
                     {fmtDisplayDate(r.date)}
                   </td>
-                  <td className="px-5 py-3.5 font-medium text-slate-900">{r.student.user?.name}</td>
-                  <td className="px-5 py-3.5">
-                    <Badge variant="outline" className="text-xs">{r.group?.name ?? r.student.group?.name ?? "—"}</Badge>
+                  <td className="px-5 py-3.5 text-sm">
+                    <div className="space-y-0.5">
+                      {r.students.map((rs) => (
+                        <div key={rs.id} className="flex items-center gap-1.5">
+                          <span className="font-medium text-slate-900">{rs.student.user?.name}</span>
+                          <Badge variant="outline" className="text-[10px] px-1.5">{rs.group?.name ?? "—"}</Badge>
+                        </div>
+                      ))}
+                    </div>
                   </td>
                   <td className="px-5 py-3.5 text-slate-600 max-w-xs">
-                    <span className="line-clamp-2">{r.description}</span>
+                    <span className="line-clamp-2 text-sm">{r.description}</span>
                   </td>
-                  <td className="px-5 py-3.5 text-slate-500">{r.filer.user?.name}</td>
+                  <td className="px-5 py-3.5 text-slate-500 text-sm">{r.filer.user?.name}</td>
                   <td className="px-5 py-3.5">
                     <Badge variant="outline" className={`text-xs ${statusBadge(r.status)}`}>
                       {statusLabel(r.status)}
@@ -211,17 +220,20 @@ export default async function ReferralsPage({
                   </td>
                   <td className="px-5 py-3.5">
                     {r.status === "PENDING" && (
-                      <ResolveReferralDialog referralId={r.id} studentName={r.student.user?.name ?? ""} />
+                      <ResolveReferralDialog
+                        referralId={r.id}
+                        studentName={r.students.map((rs) => rs.student.user?.name ?? "").filter(Boolean)}
+                      />
                     )}
-                    {r.status === "RESOLVED" && r.resolution && (
-                      <span className="text-xs text-slate-400">{r.resolution.action.replace(/_/g, " ")}</span>
+                    {r.status === "RESOLVED" && r.students[0]?.resolution && (
+                      <span className="text-xs text-slate-400">{r.students[0].resolution.action.replace(/_/g, " ")}</span>
                     )}
                   </td>
                 </tr>
               ))}
               {referrals.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-5 py-16 text-center text-slate-400">
+                  <td colSpan={6} className="px-5 py-16 text-center text-slate-400">
                     <AlertTriangle className="w-10 h-10 mx-auto mb-2 opacity-30" />
                     {t("noReferrals")}
                   </td>
