@@ -7,7 +7,14 @@ import { toast } from "sonner";
 import { Loader2, X, Search, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getNow } from "@/lib/dates";
-import { ReferralRecommendation } from "@/generated/prisma";
+type ReferralRecommendation =
+  | "NO_RECOMMENDATION"
+  | "EXPULSION"
+  | "STRICT_MEASURE"
+  | "OBSERVATION"
+  | "STRICT_OBSERVATION"
+  | "NOTIFY_PARENTS"
+  | "OTHER_RECOMMENDATION";
 
 interface Student {
   id: string;

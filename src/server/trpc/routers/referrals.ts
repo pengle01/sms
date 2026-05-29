@@ -8,8 +8,17 @@ import {
 } from "../init";
 import { TRPCError } from "@trpc/server";
 import { canViewAllReferrals, canViewCounselorNotes } from "@/lib/rbac";
-import { ReferralRecommendation } from "@/generated/prisma";
 import type { Role } from "@/generated/prisma";
+
+const RECOMMENDATION_VALUES = [
+  "NO_RECOMMENDATION",
+  "EXPULSION",
+  "STRICT_MEASURE",
+  "OBSERVATION",
+  "STRICT_OBSERVATION",
+  "NOTIFY_PARENTS",
+  "OTHER_RECOMMENDATION",
+] as const;
 
 async function notifyUser(
   db: Parameters<Parameters<typeof staffProcedure.mutation>[0]>[0]["ctx"]["db"],
@@ -35,7 +44,7 @@ export const referralsRouter = createTRPCRouter({
         location: z.string().optional(),
         incidentTime: z.string().optional(),
         extraInfo: z.string().optional(),
-        recommendation: z.nativeEnum(ReferralRecommendation).default("NO_RECOMMENDATION"),
+        recommendation: z.enum(RECOMMENDATION_VALUES).default("NO_RECOMMENDATION"),
         isDraft: z.boolean().default(false),
       })
     )
