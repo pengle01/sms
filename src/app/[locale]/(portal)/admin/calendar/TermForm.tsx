@@ -29,6 +29,8 @@ export function TermForm({ term, open, onClose }: Props) {
 
   const fmt = (d: Date) => localDateStr(new Date(d));
 
+  const PRESETS = ["Α΄ Τετράμηνο", "Β΄ Τετράμηνο"] as const;
+
   const [label, setLabel] = useState(term?.label ?? "");
   const [startDate, setStartDate] = useState(term ? fmt(term.startDate) : "");
   const [endDate, setEndDate] = useState(term ? fmt(term.endDate) : "");
@@ -73,6 +75,24 @@ export function TermForm({ term, open, onClose }: Props) {
           <DialogTitle>{term ? t("editTerm") : t("addTerm")}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {!term && (
+            <div className="flex gap-2">
+              {PRESETS.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setLabel(preset)}
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                    label === preset
+                      ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                      : "border-slate-200 text-slate-600 hover:border-emerald-300 hover:text-emerald-700"
+                  }`}
+                >
+                  {preset}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label>{t("termLabel")}</Label>
             <Input value={label} onChange={(e) => setLabel(e.target.value)} required />

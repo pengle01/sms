@@ -56,6 +56,7 @@ export default async function TeacherDashboardPage({
 
   const todaySpecialDay = !isWeekend ? await getSpecialDayForDate(today) : null;
   const isTodayIntercalary = todaySpecialDay === "INTERCALARY";
+  const isTodayExcursion = todaySpecialDay === "EXCURSION";
 
   const todayMeetingPeriod: number | null = isTodayIntercalary
     ? await db.specialDay
@@ -66,7 +67,7 @@ export default async function TeacherDashboardPage({
         .then((r) => r?.intercalaryMeetingPeriod ?? 8)
     : null;
 
-  const [allSlots, markedRaw, intercalaryMarkedRow] = await Promise.all([
+  const [allSlots, markedRaw, intercalaryMarkedRow, excursionMarkedRow] = await Promise.all([
     staff
       ? db.timetableSlot.findMany({
           where: { staffId: staff.id },
@@ -74,7 +75,7 @@ export default async function TeacherDashboardPage({
           orderBy: [{ dayOfWeek: "asc" }, { period: "asc" }],
         })
       : Promise.resolve([]),
-    staff && !isWeekend
+    staff && !isWeekend && !isTodayExcursion
       ? db.attendance.findMany({
           where: { date: today, timetableSlot: { staffId: staff.id } },
           select: { timetableSlotId: true },
@@ -87,11 +88,18 @@ export default async function TeacherDashboardPage({
           select: { id: true },
         })
       : Promise.resolve(null),
+    isTodayExcursion && homeroomGroup
+      ? db.attendance.findFirst({
+          where: { intercalaryGroupId: homeroomGroup.id, intercalaryPeriod: 1, date: today },
+          select: { id: true },
+        })
+      : Promise.resolve(null),
   ]);
 
   const todaySlots = allSlots.filter((s) => s.dayOfWeek === todayDow);
   const markedSlotIds = new Set(markedRaw.map((r) => r.timetableSlotId));
   const intercalaryMarked = intercalaryMarkedRow !== null;
+  const excursionMarked = excursionMarkedRow !== null;
 
   const normalMax = allSlots.reduce((m, s) => Math.max(m, s.period), 0);
   const maxPeriod = Math.max(normalMax, isTodayIntercalary && todayMeetingPeriod !== null ? todayMeetingPeriod : 0);
@@ -130,6 +138,30 @@ export default async function TeacherDashboardPage({
           <CardContent className="p-0">
             {isWeekend ? (
               <p className="px-5 py-6 text-sm text-slate-400">{t("noSchoolToday")}</p>
+            ) : isTodayExcursion ? (
+              <div className="divide-y divide-slate-50">
+                {homeroomGroup ? (
+                  <Link
+                    href={`/${locale}/teacher/attendance/mark?groupId=${homeroomGroup.id}&period=1&excursion=1`}
+                    className={`flex items-center gap-4 px-5 py-3 transition-colors hover:bg-blue-50/40 ${excursionMarked ? "bg-blue-50/30" : ""}`}
+                  >
+                    <span className="w-5 flex-shrink-0 text-center text-sm font-bold text-blue-300">1</span>
+                    <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-medium text-blue-900">{homeroomGroup.name}</span>
+                      <span className="text-xs text-blue-400">{t("excursion")}</span>
+                    </div>
+                    {excursionMarked ? (
+                      <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-blue-500" />
+                    ) : (
+                      <span className="text-xs font-medium text-blue-600 flex-shrink-0">{t("markAttendance")}</span>
+                    )}
+                  </Link>
+                ) : (
+                  <div className="flex items-center gap-3 px-5 py-4 text-sm text-blue-500">
+                    <span>{t("excursion")}</span>
+                  </div>
+                )}
+              </div>
             ) : maxPeriod === 0 ? (
               <p className="px-5 py-6 text-sm text-slate-400">{t("noTimetableSlots")}</p>
             ) : (

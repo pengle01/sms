@@ -11,6 +11,30 @@ import { getNow, fmtDisplayDate } from "@/lib/dates";
 
 const DOW_LABEL = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
+type SpecialDayInfo = { type: string; start: string; end: string; eventStartPeriod?: number | null; eventEndPeriod?: number | null };
+
+function getDateSpecialDay(dateStr: string, specialDays: SpecialDayInfo[]): SpecialDayInfo | null {
+  return specialDays.find((d) => dateStr >= d.start && dateStr <= d.end) ?? null;
+}
+
+const HOLIDAY_TYPES = new Set(["BANK_HOLIDAY", "CHRISTMAS", "EASTER", "OTHER_HOLIDAY"]);
+
+function dateBadge(day: SpecialDayInfo | null): { label: string; style: string } | null {
+  if (!day) return null;
+  if (HOLIDAY_TYPES.has(day.type)) return { label: "Αργία", style: "text-red-600" };
+  if (day.type === "EXCURSION")    return { label: "Εκδρομή", style: "text-blue-600" };
+  if (day.type === "SCHOOL_EVENT") {
+    const p = day.eventStartPeriod != null && day.eventEndPeriod != null
+      ? day.eventStartPeriod === day.eventEndPeriod
+        ? ` P${day.eventStartPeriod}`
+        : ` P${day.eventStartPeriod}–${day.eventEndPeriod}`
+      : "";
+    return { label: `Εκδήλωση${p}`, style: "text-amber-600" };
+  }
+  if (day.type === "INTERCALARY")  return { label: "Εμβόλιμη", style: "text-purple-600" };
+  return null;
+}
+
 // dayOfWeek: 1=Mon…5=Fri matches Date.getDay() 1=Mon…5=Fri
 function getUpcomingDates(dayOfWeek: number, count = 12): string[] {
   const dates: string[] = [];
@@ -36,9 +60,10 @@ function formatDateLabel(dateStr: string) {
 interface Props {
   assignments: Assignment[];
   locale: string;
+  specialDays: SpecialDayInfo[];
 }
 
-export function TestForm({ assignments, locale }: Props) {
+export function TestForm({ assignments, locale, specialDays }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
@@ -155,20 +180,34 @@ export function TestForm({ assignments, locale }: Props) {
           </span>
         </label>
         <div className="flex flex-wrap gap-2">
-          {upcomingDates.map((d) => (
-            <button
-              key={d}
-              type="button"
-              onClick={() => { setDate(d); reset(); }}
-              className={`h-9 px-4 rounded-lg text-sm font-medium border transition-colors ${
-                date === d
-                  ? "bg-emerald-600 text-white border-emerald-600"
-                  : "bg-white text-slate-600 border-slate-200 hover:border-emerald-400 hover:text-emerald-700"
-              }`}
-            >
-              {formatDateLabel(d)}
-            </button>
-          ))}
+          {upcomingDates.map((d) => {
+            const specialDay = getDateSpecialDay(d, specialDays);
+            const badge = dateBadge(specialDay);
+            const isDisabled = !!specialDay;
+            const isSelected = date === d;
+            return (
+              <button
+                key={d}
+                type="button"
+                disabled={isDisabled}
+                onClick={() => { setDate(d); reset(); }}
+                className={`relative flex flex-col items-center min-w-[80px] px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                  isSelected
+                    ? "bg-emerald-600 text-white border-emerald-600"
+                    : isDisabled
+                    ? "cursor-not-allowed opacity-60 bg-slate-50 border-slate-200"
+                    : "bg-white text-slate-600 border-slate-200 hover:border-emerald-400 hover:text-emerald-700"
+                }`}
+              >
+                <span className={isDisabled && !isSelected ? "text-slate-400 line-through" : ""}>{formatDateLabel(d)}</span>
+                {badge && !isSelected && (
+                  <span className={`text-[10px] font-semibold leading-none mt-0.5 ${badge.style}`}>
+                    {badge.label}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 

@@ -64,6 +64,8 @@ export async function createSpecialDay(data: {
   endDate: string;
   label?: string;
   intercalaryMeetingPeriod?: number;
+  eventStartPeriod?: number;
+  eventEndPeriod?: number;
 }) {
   await requireSuperAdmin();
   await db.specialDay.create({
@@ -73,6 +75,8 @@ export async function createSpecialDay(data: {
       endDate: utcMidnight(data.endDate),
       label: data.label?.trim() || null,
       intercalaryMeetingPeriod: data.type === "INTERCALARY" ? (data.intercalaryMeetingPeriod ?? 8) : null,
+      eventStartPeriod: data.type === "SCHOOL_EVENT" ? (data.eventStartPeriod ?? 1) : null,
+      eventEndPeriod: data.type === "SCHOOL_EVENT" ? (data.eventEndPeriod ?? 1) : null,
     },
   });
   revalidatePath("/[locale]/admin/calendar", "page");
@@ -80,7 +84,7 @@ export async function createSpecialDay(data: {
 
 export async function updateSpecialDay(
   id: string,
-  data: { type: SpecialDayType; startDate: string; endDate: string; label?: string; intercalaryMeetingPeriod?: number }
+  data: { type: SpecialDayType; startDate: string; endDate: string; label?: string; intercalaryMeetingPeriod?: number; eventStartPeriod?: number; eventEndPeriod?: number }
 ) {
   await requireSuperAdmin();
   await db.specialDay.update({
@@ -91,6 +95,8 @@ export async function updateSpecialDay(
       endDate: utcMidnight(data.endDate),
       label: data.label?.trim() || null,
       intercalaryMeetingPeriod: data.type === "INTERCALARY" ? (data.intercalaryMeetingPeriod ?? 8) : null,
+      eventStartPeriod: data.type === "SCHOOL_EVENT" ? (data.eventStartPeriod ?? 1) : null,
+      eventEndPeriod: data.type === "SCHOOL_EVENT" ? (data.eventEndPeriod ?? 1) : null,
     },
   });
   revalidatePath("/[locale]/admin/calendar", "page");

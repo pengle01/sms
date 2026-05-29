@@ -48,7 +48,7 @@
     "referrals": "Referrals",
     "grades": "Grades",
     "timetable": "Timetable",
-    "tests": "Test Schedule",
+    "tests": "Tests",
     "noticeboard": "Noticeboard",
     "students": "Students",
     "groups": "Groups",
@@ -58,6 +58,7 @@
     "locate": "Locate Student",
     "myAttendance": "My Attendance",
     "myGrades": "My Grades",
+    "myTests": "My Tests",
     "children": "My Children",
     "users": "Users",
     "staff": "Staff Profiles",
@@ -84,7 +85,8 @@
     "recentReferrals": "Recent Pending Referrals",
     "freePeriod": "Free period",
     "room": "Room {room}",
-    "markAttendance": "Mark →"
+    "markAttendance": "Mark →",
+    "excursion": "Excursion"
   },
   "attendance": {
     "title": "Attendance",
@@ -279,9 +281,12 @@
     "editSpecialDay": "Edit Special Day",
     "dayType": "Type",
     "dayLabel": "Description",
+    "dayDate": "Date(s)",
     "dayStart": "Start Date",
     "dayEnd": "End Date",
     "meetingPeriod": "Meeting Period",
+    "eventStartPeriod": "Start Period",
+    "eventEndPeriod": "End Period",
     "noSpecialDays": "No special days configured",
     "afterDeadline": "Date is after the test deadline for this term",
     "noActiveTerm": "No active school term for this date",
@@ -294,7 +299,8 @@
       "BANK_HOLIDAY": "Bank Holiday",
       "CHRISTMAS": "Christmas Holidays",
       "EASTER": "Easter Holidays",
-      "OTHER_HOLIDAY": "Other Closure"
+      "OTHER_HOLIDAY": "Other Closure",
+      "SCHOOL_EVENT": "School Event"
     },
     "currentTerm": "Current term: {label}",
     "testDeadlineNote": "Test deadline: {date}",
@@ -315,7 +321,31 @@
     "typeBig": "Big · 45 min",
     "typeSmall": "Small · 20 min",
     "noStaff": "No staff profile found.",
-    "dow": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    "dow": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    "grades": "Grades →"
+  },
+  "testGrades": {
+    "title": "Test Grades",
+    "back": "← Test Schedule",
+    "saveAll": "Save all",
+    "saved": "Saved",
+    "noStudents": "No students found",
+    "colStudent": "Student",
+    "colScore": "Score (0–20)",
+    "invalidGrade": "Invalid grade (must be 0–20)"
+  },
+  "myTests": {
+    "title": "My Tests",
+    "upcoming": "Upcoming",
+    "past": "Past",
+    "noUpcoming": "No tests scheduled",
+    "colDate": "Date",
+    "colSubject": "Subject",
+    "colPeriod": "Period",
+    "colType": "Type",
+    "colGrade": "Grade",
+    "typeBig": "Big · 45 min",
+    "typeSmall": "Small · 20 min"
   },
   "locate": {
     "title": "Locate Student",

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import { TestForm } from "./TestForm";
+import { utcMidnight } from "@/lib/dates";
 
 export type Assignment = {
   groupId: string;
@@ -60,6 +61,14 @@ export default async function NewTestPage({
 
   const assignments = [...assignmentMap.values()];
 
+  // Fetch special days for the next 6 months so the form can label dates
+  const sixMonthsLater = new Date();
+  sixMonthsLater.setMonth(sixMonthsLater.getMonth() + 6);
+  const specialDays = await db.specialDay.findMany({
+    where: { endDate: { gte: utcMidnight() }, startDate: { lte: utcMidnight(sixMonthsLater.toISOString().slice(0, 10)) } },
+    select: { type: true, startDate: true, endDate: true, eventStartPeriod: true, eventEndPeriod: true },
+  });
+
   if (assignments.length === 0) {
     return (
       <div className="space-y-4">
@@ -84,7 +93,7 @@ export default async function NewTestPage({
           <CardTitle className="text-base">Test details</CardTitle>
         </CardHeader>
         <CardContent>
-          <TestForm assignments={assignments} locale={locale} />
+          <TestForm assignments={assignments} locale={locale} specialDays={specialDays.map(d => ({ type: d.type, start: d.startDate.toISOString().slice(0, 10), end: d.endDate.toISOString().slice(0, 10), eventStartPeriod: d.eventStartPeriod, eventEndPeriod: d.eventEndPeriod }))} />
         </CardContent>
       </Card>
     </div>

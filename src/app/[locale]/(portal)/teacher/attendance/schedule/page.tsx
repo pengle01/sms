@@ -111,7 +111,12 @@ export default async function TeacherSchedulePage({
   const periods = maxPeriod > 0 ? Array.from({ length: maxPeriod }, (_, i) => i + 1) : [];
 
   const markedSet = new Set<string>();
-  const intercalaryMarkedDates = new Set<string>(); // ISO date strings where period-8 homegroup attendance is marked
+  const intercalaryMarkedDates = new Set<string>();
+  const excursionMarkedDates = new Set<string>();
+
+  const hasExcursion = weekDates.some(
+    (d) => dayTypeMap.get(d.toISOString().slice(0, 10)) === "EXCURSION"
+  );
 
   if (!isFutureWeek) {
     const weekStart = utcMidnight(weekStartStr);
@@ -140,20 +145,29 @@ export default async function TeacherSchedulePage({
         (d) => dayTypeMap.get(d.toISOString().slice(0, 10)) === "INTERCALARY"
       );
       if (intercalaryDates.length > 0) {
-        // Check each intercalary date with its configured meeting period
         const checks = intercalaryDates.map((d) => {
           const iso = d.toISOString().slice(0, 10);
           const mPeriod = dayMeetingPeriodMap.get(iso) ?? 8;
           return db.attendance.findFirst({
-            where: {
-              intercalaryGroupId: homeroomGroup.id,
-              intercalaryPeriod: mPeriod,
-              date: d,
-            },
+            where: { intercalaryGroupId: homeroomGroup.id, intercalaryPeriod: mPeriod, date: d },
             select: { date: true },
-          }).then((row) => {
-            if (row) intercalaryMarkedDates.add(iso);
-          });
+          }).then((row) => { if (row) intercalaryMarkedDates.add(iso); });
+        });
+        queries.push(...checks);
+      }
+    }
+
+    if (hasExcursion && homeroomGroup) {
+      const excursionDates = weekDates.filter(
+        (d) => dayTypeMap.get(d.toISOString().slice(0, 10)) === "EXCURSION"
+      );
+      if (excursionDates.length > 0) {
+        const checks = excursionDates.map((d) => {
+          const iso = d.toISOString().slice(0, 10);
+          return db.attendance.findFirst({
+            where: { intercalaryGroupId: homeroomGroup.id, intercalaryPeriod: 1, date: d },
+            select: { date: true },
+          }).then((row) => { if (row) excursionMarkedDates.add(iso); });
         });
         queries.push(...checks);
       }
@@ -246,6 +260,8 @@ export default async function TeacherSchedulePage({
                     className={`border-b border-slate-100 px-3 py-3 text-center text-xs font-semibold ${
                       isHoliday
                         ? "bg-red-50 text-red-400"
+                        : isExcursion
+                        ? "bg-blue-50 text-blue-600"
                         : isToday
                         ? "bg-emerald-50 text-emerald-700"
                         : past
@@ -295,6 +311,7 @@ export default async function TeacherSchedulePage({
                   const specialType = dayTypeMap.get(dateStr) ?? null;
                   const isHoliday = isHolidayType(specialType);
                   const isDayIntercalary = specialType === "INTERCALARY";
+                  const isDayExcursion = specialType === "EXCURSION";
                   const canMark = past && !isFutureWeek && !isHoliday;
 
                   // On intercalary days the meeting period is inserted, shifting slots below it down by 1
@@ -353,6 +370,55 @@ export default async function TeacherSchedulePage({
                         <div className="rounded-lg px-3 py-2 border border-purple-100 bg-purple-50/20">
                           <p className="text-xs text-purple-400 text-center">{tCal("intercalary")}</p>
                         </div>
+                      </td>
+                    );
+                  }
+
+                  // Excursion day — normal schedule is suspended
+                  if (isDayExcursion) {
+                    const excursionMarked = excursionMarkedDates.has(dateStr);
+                    // Period 1: homegroup teachers mark attendance; others see a passive indicator
+                    if (period === 1 && homeroomGroup) {
+                      return (
+                        <td key={dow} className={`px-2 py-2 align-top ${isToday && isCurrentWeek ? "bg-blue-50/30" : ""}`}>
+                          {canMark ? (
+                            <Link
+                              href={`/${locale}/teacher/attendance/mark?groupId=${homeroomGroup.id}&period=1&date=${dateStr}&excursion=1`}
+                              className="group block"
+                            >
+                              <div className={`rounded-lg px-3 py-2.5 border ${
+                                excursionMarked
+                                  ? "border-blue-200 bg-blue-50"
+                                  : "border-blue-200 bg-blue-50/50 group-hover:border-blue-300"
+                              }`}>
+                                <p className="text-xs font-semibold leading-snug text-blue-900">{homeroomGroup.name}</p>
+                                <p className="mt-0.5 text-xs text-blue-500">{tCal("excursion")}</p>
+                                <div className="mt-1.5 flex items-center gap-1">
+                                  {excursionMarked ? (
+                                    <><CheckCircle2 className="w-3 h-3 text-blue-600" /><span className="text-xs font-medium text-blue-600">{t("done")}</span></>
+                                  ) : (
+                                    <><ClipboardList className="w-3 h-3 text-blue-500" /><span className="text-xs font-medium text-blue-600">{t("mark")}</span></>
+                                  )}
+                                </div>
+                              </div>
+                            </Link>
+                          ) : (
+                            <div className="rounded-lg px-3 py-2.5 border border-blue-100 bg-blue-50/30 opacity-40">
+                              <p className="text-xs font-semibold leading-snug text-blue-800">{homeroomGroup.name}</p>
+                              <p className="mt-0.5 text-xs text-blue-400">{tCal("excursion")}</p>
+                            </div>
+                          )}
+                        </td>
+                      );
+                    }
+                    // Period 1 for non-homegroup teacher, or any other period: dimmed excursion cell
+                    return (
+                      <td key={dow} className="px-2 py-2 align-top bg-blue-50/10">
+                        {period === 1 && (
+                          <div className="rounded-lg px-3 py-2 border border-blue-100 bg-blue-50/20">
+                            <p className="text-xs text-blue-400 text-center">{tCal("excursion")}</p>
+                          </div>
+                        )}
                       </td>
                     );
                   }

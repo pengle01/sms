@@ -20,6 +20,10 @@ export default async function TeacherTestsPage({
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login`);
 
+  const t = await getTranslations("calendar");
+  const tTests = await getTranslations("tests");
+  const localeTag = locale === "el" ? "el-GR" : "en-US";
+
   const staff = await db.staffProfile.findUnique({ where: { userId: session.user.id } });
   if (!staff) {
     return (
@@ -29,10 +33,6 @@ export default async function TeacherTestsPage({
       </div>
     );
   }
-
-  const t = await getTranslations("calendar");
-  const tTests = await getTranslations("tests");
-  const localeTag = locale === "el" ? "el-GR" : "en-US";
 
   const today = utcMidnight(localDateStr());
   const thirtyDaysAgo = new Date(today);
@@ -79,7 +79,15 @@ export default async function TeacherTestsPage({
         </Badge>
       </td>
       <td className="px-3 py-3">
-        {t.date >= today && <DeleteTestButton testId={t.id} />}
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/${locale}/teacher/tests/${t.id}/grades`}
+            className="text-xs font-medium text-emerald-600 hover:text-emerald-700"
+          >
+            {tTests("grades")}
+          </Link>
+          {t.date >= today && <DeleteTestButton testId={t.id} />}
+        </div>
       </td>
     </tr>
   );

@@ -36,7 +36,13 @@ export default async function MarkAttendancePage({
 
     const [fetchedStudents, fetchedSlot] = await Promise.all([
       db.studentProfile.findMany({
-        where: { groupId },
+        where: {
+          OR: [
+            { groupId },
+            { subjectGroups: { some: { groupId } } },
+          ],
+          user: { isActive: true },
+        },
         include: { user: { select: { name: true } } },
         orderBy: { user: { name: "asc" } },
       }),

@@ -12,15 +12,16 @@ export default async function TeacherMarkAttendancePage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ groupId?: string; period?: string; date?: string; intercalary?: string }>;
+  searchParams: Promise<{ groupId?: string; period?: string; date?: string; intercalary?: string; excursion?: string }>;
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login`);
 
-  const { groupId, period: periodStr, date: dateParam, intercalary: intercalaryParam } = await searchParams;
+  const { groupId, period: periodStr, date: dateParam, intercalary: intercalaryParam, excursion: excursionParam } = await searchParams;
   const period = periodStr ? parseInt(periodStr) : 1;
   const isIntercalary = intercalaryParam === "1";
+  const isExcursion = excursionParam === "1";
 
   const staff = await db.staffProfile.findUnique({ where: { userId: session.user.id } });
   if (!staff) redirect(`/${locale}/teacher/setup`);
@@ -42,25 +43,21 @@ export default async function TeacherMarkAttendancePage({
     const dayOfWeek = attendanceDay.getDay();
     const todayMidnight = attendanceDateObj;
 
-    if (isIntercalary) {
-      // Intercalary period — no timetable slot; load homegroup students and existing intercalary records
-      const [fetchedStudents, markedIntercalary] = await Promise.all([
+    if (isIntercalary || isExcursion) {
+      // Intercalary / excursion — no timetable slot; load homegroup students
+      const [fetchedStudents, markedRows] = await Promise.all([
         db.studentProfile.findMany({
           where: { groupId, user: { isActive: true } },
           include: { user: { select: { name: true } } },
           orderBy: { user: { name: "asc" } },
         }),
         db.attendance.findMany({
-          where: {
-            intercalaryGroupId: groupId,
-            intercalaryPeriod: period,
-            date: todayMidnight,
-          },
+          where: { intercalaryGroupId: groupId, intercalaryPeriod: period, date: todayMidnight },
           select: { studentId: true, status: true, minutesDelayed: true },
         }),
       ]);
       students = fetchedStudents;
-      for (const r of markedIntercalary) {
+      for (const r of markedRows) {
         existingRecords[r.studentId] = {
           status: (r.status === "EXCUSED" ? "ABSENT" : r.status) as "PRESENT" | "ABSENT" | "LATE",
           minutesDelayed: r.minutesDelayed,
@@ -69,7 +66,13 @@ export default async function TeacherMarkAttendancePage({
     } else {
     const [fetchedStudents, fetchedSlot] = await Promise.all([
       db.studentProfile.findMany({
-        where: { groupId },
+        where: {
+          OR: [
+            { groupId },
+            { subjectGroups: { some: { groupId } } },
+          ],
+          user: { isActive: true },
+        },
         include: { user: { select: { name: true } } },
         orderBy: { user: { name: "asc" } },
       }),
@@ -225,7 +228,8 @@ export default async function TeacherMarkAttendancePage({
         studentLocations={studentLocations}
         prevPeriodsRecords={prevPeriodsRecords}
         prevActivityPeriods={prevActivityPeriods}
-        intercalaryGroupId={isIntercalary ? groupId : undefined}
+        intercalaryGroupId={isIntercalary || isExcursion ? groupId : undefined}
+        isExcursion={isExcursion}
       />
     </div>
   );

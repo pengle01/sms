@@ -25,6 +25,8 @@ export function Header({ userName, userImage, locale, pageTitle, role, portal, p
   const profileRef = useRef<HTMLDivElement>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   // Close profile popover when tapping outside
   useEffect(() => {
@@ -121,7 +123,7 @@ export function Header({ userName, userImage, locale, pageTitle, role, portal, p
       </header>
 
       {/* Mobile drawer — portalled to document.body to escape any layout overflow/stacking constraints */}
-      {role && portal && drawerOpen && createPortal(
+      {mounted && role && portal && drawerOpen && createPortal(
         <>
           {/* Backdrop */}
           <div

@@ -11,6 +11,8 @@ import { SpecialDayForm } from "./SpecialDayForm";
 import { localDateStr, fmtDisplayDate } from "@/lib/dates";
 import type { SchoolTerm, SpecialDay, SpecialDayType } from "@/generated/prisma";
 
+const RANGE_TYPES: SpecialDayType[] = ["CHRISTMAS", "EASTER"];
+
 const TYPE_COLORS: Record<SpecialDayType, string> = {
   INTERCALARY: "bg-purple-100 text-purple-700",
   EXCURSION: "bg-blue-100 text-blue-700",
@@ -18,6 +20,7 @@ const TYPE_COLORS: Record<SpecialDayType, string> = {
   CHRISTMAS: "bg-emerald-100 text-emerald-700",
   EASTER: "bg-yellow-100 text-yellow-700",
   OTHER_HOLIDAY: "bg-slate-100 text-slate-700",
+  SCHOOL_EVENT: "bg-amber-100 text-amber-700",
 };
 
 function fmtDate(d: Date) {
@@ -107,8 +110,7 @@ export function CalendarClient({ terms, specialDays }: Props) {
                 <tr className="border-b border-slate-100">
                   <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("dayType")}</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("dayLabel")}</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("dayStart")}</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("dayEnd")}</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("dayDate")}</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -125,9 +127,20 @@ export function CalendarClient({ terms, specialDays }: Props) {
                       {day.type === "INTERCALARY" && day.intercalaryMeetingPeriod != null && (
                         <span className="ml-2 text-xs text-purple-500 font-medium">P{day.intercalaryMeetingPeriod}</span>
                       )}
+                      {day.type === "SCHOOL_EVENT" && day.eventStartPeriod != null && day.eventEndPeriod != null && (
+                        <span className="ml-2 text-xs text-amber-600 font-medium">
+                          {day.eventStartPeriod === day.eventEndPeriod
+                            ? `P${day.eventStartPeriod}`
+                            : `P${day.eventStartPeriod}–${day.eventEndPeriod}`}
+                        </span>
+                      )}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{fmtDate(day.startDate)}</td>
-                    <td className="px-4 py-3 text-slate-600">{fmtDate(day.endDate)}</td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {RANGE_TYPES.includes(day.type)
+                        ? <>{fmtDate(day.startDate)}<span className="mx-1.5 text-slate-300">–</span>{fmtDate(day.endDate)}</>
+                        : fmtDate(day.startDate)
+                      }
+                    </td>
                     <td className="px-4 py-3 text-right">
                       <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setEditDay(day); setDayOpen(true); }}>
                         <Pencil className="w-3.5 h-3.5" />

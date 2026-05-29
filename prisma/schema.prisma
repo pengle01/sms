@@ -77,6 +77,7 @@ enum SpecialDayType {
   CHRISTMAS
   EASTER
   OTHER_HOLIDAY
+  SCHOOL_EVENT
 }
 
 // ─── NextAuth ─────────────────────────────────────────────────────────────────
@@ -186,6 +187,7 @@ model StudentProfile {
   smsLogs                SmsLog[]
   attendance             Attendance[]
   grades                 Grade[]
+  testGrades             TestGrade[]
   referrals              Referral[]           @relation("StudentReferrals")
   exitPermits            ExitPermit[]
   activityParticipations   ActivityParticipant[]
@@ -470,9 +472,25 @@ model TestSchedule {
   periodCount Int          @default(1)  // 1 or 2 periods (BIG tests only)
   type        TestType     @default(BIG)
 
-  createdAt DateTime @default(now())
+  createdAt  DateTime    @default(now())
+  testGrades TestGrade[]
 
   @@index([groupId, date])
+}
+
+model TestGrade {
+  id             String         @id @default(cuid())
+  testScheduleId String
+  testSchedule   TestSchedule   @relation(fields: [testScheduleId], references: [id], onDelete: Cascade)
+  studentId      String
+  student        StudentProfile @relation(fields: [studentId], references: [id])
+  value          Decimal?       @db.Decimal(4, 2)
+  notes          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@unique([testScheduleId, studentId])
+  @@index([studentId])
 }
 
 // ─── Referrals ────────────────────────────────────────────────────────────────
@@ -672,6 +690,8 @@ model SpecialDay {
   endDate                  DateTime       @db.Date
   label                    String?
   intercalaryMeetingPeriod Int?           // only for INTERCALARY type
+  eventStartPeriod         Int?           // only for SCHOOL_EVENT type
+  eventEndPeriod           Int?           // only for SCHOOL_EVENT type
   createdAt                DateTime       @default(now())
 }
 

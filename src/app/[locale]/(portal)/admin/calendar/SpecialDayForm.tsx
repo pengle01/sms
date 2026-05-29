@@ -30,6 +30,7 @@ const SPECIAL_DAY_TYPES: SpecialDayType[] = [
   "CHRISTMAS",
   "EASTER",
   "OTHER_HOLIDAY",
+  "SCHOOL_EVENT",
 ];
 
 const RANGE_TYPES: SpecialDayType[] = ["CHRISTMAS", "EASTER"];
@@ -52,6 +53,8 @@ export function SpecialDayForm({ day, open, onClose }: Props) {
   const [endDate, setEndDate] = useState(day ? fmt(day.endDate) : "");
   const [label, setLabel] = useState(day?.label ?? "");
   const [meetingPeriod, setMeetingPeriod] = useState(day?.intercalaryMeetingPeriod ?? 8);
+  const [eventStartPeriod, setEventStartPeriod] = useState(day?.eventStartPeriod ?? 1);
+  const [eventEndPeriod, setEventEndPeriod] = useState(day?.eventEndPeriod ?? 1);
   const isRange = RANGE_TYPES.includes(type);
 
   function reset() {
@@ -60,6 +63,8 @@ export function SpecialDayForm({ day, open, onClose }: Props) {
     setEndDate(day ? fmt(day.endDate) : "");
     setLabel(day?.label ?? "");
     setMeetingPeriod(day?.intercalaryMeetingPeriod ?? 8);
+    setEventStartPeriod(day?.eventStartPeriod ?? 1);
+    setEventEndPeriod(day?.eventEndPeriod ?? 1);
   }
 
   function handleClose() {
@@ -72,9 +77,9 @@ export function SpecialDayForm({ day, open, onClose }: Props) {
     const effectiveEnd = isRange ? endDate : startDate;
     startTransition(async () => {
       if (day) {
-        await updateSpecialDay(day.id, { type, startDate, endDate: effectiveEnd, label: label || undefined, intercalaryMeetingPeriod: meetingPeriod });
+        await updateSpecialDay(day.id, { type, startDate, endDate: effectiveEnd, label: label || undefined, intercalaryMeetingPeriod: meetingPeriod, eventStartPeriod, eventEndPeriod });
       } else {
-        await createSpecialDay({ type, startDate, endDate: effectiveEnd, label: label || undefined, intercalaryMeetingPeriod: meetingPeriod });
+        await createSpecialDay({ type, startDate, endDate: effectiveEnd, label: label || undefined, intercalaryMeetingPeriod: meetingPeriod, eventStartPeriod, eventEndPeriod });
       }
       handleClose();
     });
@@ -138,6 +143,32 @@ export function SpecialDayForm({ day, open, onClose }: Props) {
                 onChange={(e) => setMeetingPeriod(Math.max(1, Math.min(8, parseInt(e.target.value) || 8)))}
                 required
               />
+            </div>
+          )}
+          {type === "SCHOOL_EVENT" && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>{t("eventStartPeriod")}</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={8}
+                  value={eventStartPeriod}
+                  onChange={(e) => setEventStartPeriod(Math.max(1, Math.min(8, parseInt(e.target.value) || 1)))}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("eventEndPeriod")}</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={8}
+                  value={eventEndPeriod}
+                  onChange={(e) => setEventEndPeriod(Math.max(1, Math.min(8, parseInt(e.target.value) || 1)))}
+                  required
+                />
+              </div>
             </div>
           )}
           <div className="space-y-1.5">

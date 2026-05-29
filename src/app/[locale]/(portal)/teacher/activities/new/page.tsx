@@ -126,6 +126,15 @@ export default async function NewActivityPage({
     }
   }
 
+  // Check if selected date falls on a special day
+  const selectedDateMidnight = date ? utcMidnight(date) : null;
+  const dateSpecialDay = selectedDateMidnight
+    ? await db.specialDay.findFirst({
+        where: { startDate: { lte: selectedDateMidnight }, endDate: { gte: selectedDateMidnight } },
+        select: { type: true, label: true, eventStartPeriod: true, eventEndPeriod: true },
+      })
+    : null;
+
   // Build base URL params (activity details only, no grade/groupId)
   function detailParams() {
     const p = new URLSearchParams();
@@ -196,6 +205,40 @@ export default async function NewActivityPage({
                 defaultValue={date ?? todayStr}
                 className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
               />
+              {dateSpecialDay && (() => {
+                const HOLIDAY_TYPES = ["BANK_HOLIDAY", "CHRISTMAS", "EASTER", "OTHER_HOLIDAY"];
+                const isHoliday = HOLIDAY_TYPES.includes(dateSpecialDay.type);
+                const isExcursion = dateSpecialDay.type === "EXCURSION";
+                const isEvent = dateSpecialDay.type === "SCHOOL_EVENT";
+                const isIntercalary = dateSpecialDay.type === "INTERCALARY";
+                const { bg, border, text, icon } = isHoliday
+                  ? { bg: "bg-red-50", border: "border-red-200", text: "text-red-700", icon: "🔴" }
+                  : isExcursion
+                  ? { bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700", icon: "🔵" }
+                  : isEvent
+                  ? { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700", icon: "🟡" }
+                  : { bg: "bg-purple-50", border: "border-purple-200", text: "text-purple-700", icon: "🟣" };
+                const periodSuffix = isEvent && dateSpecialDay.eventStartPeriod != null && dateSpecialDay.eventEndPeriod != null
+                  ? ` (${dateSpecialDay.eventStartPeriod === dateSpecialDay.eventEndPeriod
+                      ? `Ώρα ${dateSpecialDay.eventStartPeriod}`
+                      : `Ώρες ${dateSpecialDay.eventStartPeriod}–${dateSpecialDay.eventEndPeriod}`})`
+                  : "";
+                const typeLabel =
+                  isHoliday ? "Αργία" :
+                  isExcursion ? "Εκδρομή" :
+                  isEvent ? `Σχολική Εκδήλωση${periodSuffix}` :
+                  isIntercalary ? "Εμβόλιμη Περίοδος" : dateSpecialDay.type;
+                return (
+                  <div className={`flex items-center gap-2 rounded-lg border ${border} ${bg} px-3 py-2 text-xs ${text}`}>
+                    <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>
+                      <strong>{typeLabel}</strong>
+                      {dateSpecialDay.label ? ` — ${dateSpecialDay.label}` : ""}
+                      {isHoliday ? " · Σχολείο κλειστό αυτή την ημέρα." : ""}
+                    </span>
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="grid grid-cols-2 gap-3">

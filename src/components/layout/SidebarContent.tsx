@@ -54,6 +54,7 @@ const NAV_ITEMS: NavItem[] = [
   // ── Student portal ───────────────────────────────────────────────────
   { key: "myAttendance", href: "attendance",        icon: ClipboardList,   roles: ["STUDENT"] },
   { key: "myGrades",     href: "grades",            icon: BookOpen,        roles: ["STUDENT"] },
+  { key: "myTests",      href: "tests",             icon: FileText,        roles: ["STUDENT"] },
 
   // ── Parent portal ────────────────────────────────────────────────────
   { key: "children",     href: "children",          icon: GraduationCap,   roles: ["PARENT"] },

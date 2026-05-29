@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { registerAction } from "./actions";
 import { useTranslations } from "next-intl";
@@ -20,6 +21,7 @@ export function RegisterForm({ locale, error, success, staffNames }: RegisterFor
   const t = useTranslations("register");
   const tAuth = useTranslations("auth");
   const [selectedRole, setSelectedRole] = useState<string>("");
+  const [staffName, setStaffName] = useState("");
 
   if (success) {
     return (
@@ -114,18 +116,19 @@ export function RegisterForm({ locale, error, success, staffNames }: RegisterFor
             {staffNames.length === 0 ? (
               <p className="text-sm text-amber-300/80 px-1">{t("staffNameNone")}</p>
             ) : (
-              <select
-                id="staffName"
-                name="staffName"
-                required
-                className="w-full rounded-md bg-white/10 border border-white/20 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 [&>option]:text-slate-900"
-                defaultValue=""
-              >
-                <option value="" disabled>{t("staffNamePlaceholder")}</option>
-                {staffNames.map((n) => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
-              </select>
+              <>
+                <input type="hidden" name="staffName" value={staffName} />
+                <Select value={staffName} onValueChange={setStaffName}>
+                  <SelectTrigger className="w-full h-10 bg-white/10 border-white/20 text-white data-placeholder:text-lime-300/40 focus-visible:ring-emerald-400">
+                    <SelectValue placeholder={t("staffNamePlaceholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {staffNames.map((n) => (
+                      <SelectItem key={n} value={n}>{n}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </>
             )}
           </div>
         )}

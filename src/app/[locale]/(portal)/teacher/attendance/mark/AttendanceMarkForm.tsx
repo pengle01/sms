@@ -28,6 +28,7 @@ interface Props {
   prevPeriodsRecords?: Record<string, Record<number, PeriodRecord>>;
   prevActivityPeriods?: Record<string, number[]>;
   intercalaryGroupId?: string;
+  isExcursion?: boolean;
 }
 
 const STATUS_CONFIG = {
@@ -96,6 +97,7 @@ export function AttendanceMarkForm({
   prevPeriodsRecords = {},
   prevActivityPeriods = {},
   intercalaryGroupId,
+  isExcursion,
 }: Props) {
   const router = useRouter();
   const [records, setRecords] = useState<Record<string, { status: AttendanceStatus; minutesDelayed: number }>>(
@@ -196,8 +198,10 @@ export function AttendanceMarkForm({
         </div>
       )}
       {intercalaryGroupId && (
-        <div className="flex items-center justify-between rounded-lg border border-purple-200 bg-purple-50 px-4 py-2 text-sm">
-          <span className="text-purple-800 font-medium">Intercalary Period {selectedPeriod} — Homegroup Attendance</span>
+        <div className={`flex items-center justify-between rounded-lg border px-4 py-2 text-sm ${isExcursion ? "border-blue-200 bg-blue-50" : "border-purple-200 bg-purple-50"}`}>
+          <span className={`font-medium ${isExcursion ? "text-blue-800" : "text-purple-800"}`}>
+            {isExcursion ? "Excursion — Homegroup Attendance" : `Intercalary Period ${selectedPeriod} — Homegroup Attendance`}
+          </span>
           {isResubmit && (
             <span className="text-xs text-purple-700 font-medium">Previously saved — editing</span>
           )}
