@@ -26,7 +26,7 @@ export default async function NewReferralPage({
   });
   const filerName = claim?.staffName ?? session.user.name ?? "";
 
-  // Fetch students grouped by homegroup
+  // Fetch students grouped by homegroup (include grade for cascading picker)
   const groups = await db.group.findMany({
     where: {
       students: { some: { user: { isActive: true } } },
@@ -34,13 +34,14 @@ export default async function NewReferralPage({
     select: {
       id: true,
       name: true,
+      grade: true,
       students: {
         where: { user: { isActive: true } },
         include: { user: { select: { name: true } } },
         orderBy: { user: { name: "asc" } },
       },
     },
-    orderBy: { name: "asc" },
+    orderBy: [{ grade: "asc" }, { name: "asc" }],
   });
 
   return (
@@ -64,6 +65,7 @@ export default async function NewReferralPage({
             groups={groups.map((g) => ({
               id: g.id,
               name: g.name,
+              grade: g.grade ?? 0,
               students: g.students.map((s) => ({
                 id: s.id,
                 name: s.user?.name ?? "",
