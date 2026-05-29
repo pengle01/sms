@@ -163,7 +163,34 @@
     "dateHeader": "Ημερομηνία",
     "groupHeader": "Τμήμα",
     "filedBy": "Υποβλήθηκε από",
-    "actionsHeader": "Ενέργειες"
+    "actionsHeader": "Ενέργειες",
+    "newReferral": "Νέα Καταγγελία",
+    "filerLabel": "Καταγγέλλων",
+    "studentsLabel": "Στοιχεία Μαθητή(ών)",
+    "selectStudents": "Αναζητήστε μαθητές…",
+    "incidentDate": "Ημερ. Παραπτώματος",
+    "locationLabel": "Τοποθεσία",
+    "timeLabel": "Ώρα",
+    "detailsLabel": "Λεπτομέρειες",
+    "extraInfoLabel": "Επιπρόσθετες Πληροφορίες",
+    "extraInfoNote": "Δεν αποτελούν μέρος της επίσημης καταγγελίας",
+    "recommendationsLabel": "Εισηγήσεις προς τη διεύθυνση",
+    "recommendationsNote": "Η διεύθυνση δεν δεσμεύεται να ακολουθήσει τις εισηγήσεις σας",
+    "rec_NO_RECOMMENDATION": "Καμία εισήγηση",
+    "rec_EXPULSION": "Παρακαλώ όπως επιβληθεί αποβολή",
+    "rec_STRICT_MEASURE": "Αυστηρό παιδαγωγικό μέτρο",
+    "rec_OBSERVATION": "Παρατήρηση (να μην επιβληθεί αποβολή)",
+    "rec_STRICT_OBSERVATION": "Αυστηρή παρατήρηση (να μην επιβληθεί αποβολή)",
+    "rec_NOTIFY_PARENTS": "Ενημέρωση γονέων/κηδεμόνων",
+    "rec_OTHER_RECOMMENDATION": "Άλλη εισήγηση",
+    "saveDraft": "Προσωρινή Αποθήκευση",
+    "submitReferral": "Υποβολή",
+    "myReferrals": "Δελτία που υπέβαλα",
+    "myGroupReferrals": "Εκκρεμή τμήματός μου",
+    "draft": "Πρόχειρο",
+    "noMyReferrals": "Δεν έχετε υποβάλει καταγγελίες",
+    "noGroupReferrals": "Δεν υπάρχουν εκκρεμείς καταγγελίες",
+    "deleteConfirm": "Να διαγραφεί το πρόχειρο;"
   },
   "grades": {
     "title": "Βαθμολογία",
@@ -355,5 +382,12 @@
     "homegroup": "Τμήμα",
     "selectYear": "Επιλέξτε έτος για να ξεκινήσετε.",
     "noHomegroups": "Δεν βρέθηκαν τμήματα για Έτος {n}."
+  },
+  "notifications": {
+    "title": "Ειδοποιήσεις",
+    "noNotifications": "Δεν υπάρχουν ειδοποιήσεις",
+    "markAllRead": "Σήμανση όλων ως αναγνωσμένων",
+    "referralCreated": "Νέα καταγγελία",
+    "referralResolved": "Καταγγελία επιλύθηκε"
   }
 }

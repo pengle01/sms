@@ -34,7 +34,7 @@ export function NewReferralDialog({ students, locale }: { students: Student[]; l
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!studentId || description.length < 10) return;
-    mutate({ studentId, description, date: getNow().toISOString().split("T")[0]! });
+    mutate({ studentIds: [studentId], description, date: getNow().toISOString().split("T")[0]! });
   };
 
   if (!open) {

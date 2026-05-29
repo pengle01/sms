@@ -45,7 +45,7 @@ describe("buildDayTypeMap", () => {
 
   it("maps a single-day event to exactly that day", () => {
     const specialDays = [
-      { id: "1", type: "BANK_HOLIDAY" as SpecialDayType, startDate: day("2025-01-08"), endDate: day("2025-01-08"), label: null, createdAt: new Date(), intercalaryMeetingPeriod: null },
+      { id: "1", type: "BANK_HOLIDAY" as SpecialDayType, startDate: day("2025-01-08"), endDate: day("2025-01-08"), label: null, createdAt: new Date(), intercalaryMeetingPeriod: null, eventStartPeriod: null, eventEndPeriod: null },
     ];
     const map = buildDayTypeMap(specialDays, week);
     expect(map.get("2025-01-08")).toBe("BANK_HOLIDAY");
@@ -55,7 +55,7 @@ describe("buildDayTypeMap", () => {
 
   it("maps a multi-day range across the whole week", () => {
     const specialDays = [
-      { id: "1", type: "CHRISTMAS" as SpecialDayType, startDate: day("2025-01-06"), endDate: day("2025-01-10"), label: null, createdAt: new Date(), intercalaryMeetingPeriod: null },
+      { id: "1", type: "CHRISTMAS" as SpecialDayType, startDate: day("2025-01-06"), endDate: day("2025-01-10"), label: null, createdAt: new Date(), intercalaryMeetingPeriod: null, eventStartPeriod: null, eventEndPeriod: null },
     ];
     const map = buildDayTypeMap(specialDays, week);
     for (const d of week) {
@@ -65,7 +65,7 @@ describe("buildDayTypeMap", () => {
 
   it("handles a range that partially overlaps the week", () => {
     const specialDays = [
-      { id: "1", type: "EASTER" as SpecialDayType, startDate: day("2025-01-08"), endDate: day("2025-01-12"), label: null, createdAt: new Date(), intercalaryMeetingPeriod: null },
+      { id: "1", type: "EASTER" as SpecialDayType, startDate: day("2025-01-08"), endDate: day("2025-01-12"), label: null, createdAt: new Date(), intercalaryMeetingPeriod: null, eventStartPeriod: null, eventEndPeriod: null },
     ];
     const map = buildDayTypeMap(specialDays, week);
     expect(map.has("2025-01-06")).toBe(false);

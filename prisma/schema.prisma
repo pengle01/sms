@@ -46,9 +46,20 @@ enum AttendanceStatus {
 }
 
 enum ReferralStatus {
+  DRAFT
   PENDING
   ASSIGNED
   RESOLVED
+}
+
+enum ReferralRecommendation {
+  NO_RECOMMENDATION
+  EXPULSION
+  STRICT_MEASURE
+  OBSERVATION
+  STRICT_OBSERVATION
+  NOTIFY_PARENTS
+  OTHER_RECOMMENDATION
 }
 
 enum ResolutionAction {
@@ -138,6 +149,7 @@ model User {
 
   uploadedNotices      Notice[]
   resolvedReferrals    ReferralResolution[]
+  notifications        Notification[]
   auditLogs            AuditLog[]
   chaperoneAssignments ActivityChaperone[]
   teacherClaim         TeacherClaim?
@@ -504,6 +516,10 @@ model Referral {
   groupId        String?
   group          Group?         @relation(fields: [groupId], references: [id])
   description    String         @db.Text
+  location       String?
+  incidentTime   String?
+  extraInfo      String?        @db.Text
+  recommendation ReferralRecommendation @default(NO_RECOMMENDATION)
   date           DateTime
   status         ReferralStatus @default(PENDING)
   counselorNotes String?        @db.Text
@@ -531,6 +547,22 @@ model ReferralResolution {
   resolvedById String
   resolvedBy   User     @relation(fields: [resolvedById], references: [id])
   resolvedAt   DateTime @default(now())
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String?
+  linkUrl   String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
 }
 
 // ─── Noticeboard ──────────────────────────────────────────────────────────────

@@ -163,7 +163,34 @@
     "dateHeader": "Date",
     "groupHeader": "Group",
     "filedBy": "Filed by",
-    "actionsHeader": "Actions"
+    "actionsHeader": "Actions",
+    "newReferral": "New Referral",
+    "filerLabel": "Reporter",
+    "studentsLabel": "Student(s)",
+    "selectStudents": "Search students…",
+    "incidentDate": "Incident Date",
+    "locationLabel": "Location",
+    "timeLabel": "Time",
+    "detailsLabel": "Details",
+    "extraInfoLabel": "Additional Information",
+    "extraInfoNote": "Not part of the official referral",
+    "recommendationsLabel": "Recommendations to administration",
+    "recommendationsNote": "Administration is not bound to follow your recommendations",
+    "rec_NO_RECOMMENDATION": "No recommendation",
+    "rec_EXPULSION": "Please impose expulsion",
+    "rec_STRICT_MEASURE": "Strict educational measure",
+    "rec_OBSERVATION": "Observation (no expulsion)",
+    "rec_STRICT_OBSERVATION": "Strict observation (no expulsion)",
+    "rec_NOTIFY_PARENTS": "Notify parents/guardians",
+    "rec_OTHER_RECOMMENDATION": "Other recommendation",
+    "saveDraft": "Save Draft",
+    "submitReferral": "Submit",
+    "myReferrals": "My Referrals",
+    "myGroupReferrals": "My Homegroup's Referrals",
+    "draft": "Draft",
+    "noMyReferrals": "No referrals filed yet",
+    "noGroupReferrals": "No pending referrals",
+    "deleteConfirm": "Delete this draft?"
   },
   "grades": {
     "title": "Grades",
@@ -355,5 +382,12 @@
     "homegroup": "Homegroup",
     "selectYear": "Select a year to get started.",
     "noHomegroups": "No homeroom groups found for Year {n}."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "noNotifications": "No notifications",
+    "markAllRead": "Mark all as read",
+    "referralCreated": "New referral",
+    "referralResolved": "Referral resolved"
   }
 }

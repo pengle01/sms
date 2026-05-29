@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { LogOut, Globe, Menu, X } from "lucide-react";
 import { SidebarContent } from "./SidebarContent";
+import { NotificationBell } from "./NotificationBell";
 import type { Role } from "@/generated/prisma";
 
 interface HeaderProps {
@@ -76,6 +77,8 @@ export function Header({ userName, userImage, locale, pageTitle, role, portal, p
 
         {/* Right */}
         <div className="flex items-center gap-2">
+          {role && <NotificationBell locale={locale} />}
+
           <Button
             variant="ghost"
             size="sm"
