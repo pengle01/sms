@@ -45,13 +45,6 @@ enum AttendanceStatus {
   EXCUSED
 }
 
-enum ReferralStatus {
-  DRAFT
-  PENDING
-  ASSIGNED
-  RESOLVED
-}
-
 enum ReferralRecommendation {
   NO_RECOMMENDATION
   EXPULSION
@@ -527,7 +520,7 @@ model Referral {
   extraInfo      String?        @db.Text
   recommendation ReferralRecommendation @default(NO_RECOMMENDATION)
   date           DateTime
-  status         ReferralStatus @default(PENDING)
+  isDraft        Boolean        @default(false)
   counselorNotes String?        @db.Text
 
   students  ReferralStudent[]
@@ -535,7 +528,7 @@ model Referral {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([status])
+  @@index([isDraft])
 }
 
 enum ReferralStudentStatus {

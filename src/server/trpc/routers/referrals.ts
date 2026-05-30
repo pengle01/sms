@@ -73,8 +73,6 @@ export const referralsRouter = createTRPCRouter({
         },
       });
 
-      const status = input.isDraft ? "DRAFT" : "PENDING";
-
       return ctx.db.$transaction(async (tx) => {
         const referral = await tx.referral.create({
           data: {
@@ -85,19 +83,19 @@ export const referralsRouter = createTRPCRouter({
             extraInfo: input.extraInfo,
             recommendation: input.recommendation,
             date: new Date(input.date),
-            status,
+            isDraft: input.isDraft,
             students: {
               create: students.map((s) => ({
                 studentId: s.id,
                 groupId: s.groupId,
-                status: status === "DRAFT" ? "PENDING" : "PENDING",
+                status: "PENDING",
               })),
             },
           },
           include: referralInclude,
         });
 
-        if (status === "PENDING") {
+        if (!input.isDraft) {
           const notified = new Set<string>();
           for (const s of students) {
             const headUserId = s.group?.homeroomHeadteacher?.user?.id;
@@ -121,7 +119,7 @@ export const referralsRouter = createTRPCRouter({
       });
     }),
 
-  // Promote a draft to PENDING and notify headteachers
+  // Promote a draft to submitted and notify headteachers
   submit: staffProcedure
     .input(z.object({ referralId: z.string() }))
     .mutation(async ({ ctx, input }) => {
@@ -154,12 +152,12 @@ export const referralsRouter = createTRPCRouter({
       });
       if (!referral) throw new TRPCError({ code: "NOT_FOUND" });
       if (referral.filerId !== staff.id) throw new TRPCError({ code: "FORBIDDEN" });
-      if (referral.status !== "DRAFT") throw new TRPCError({ code: "BAD_REQUEST", message: "Not a draft" });
+      if (!referral.isDraft) throw new TRPCError({ code: "BAD_REQUEST", message: "Not a draft" });
 
       return ctx.db.$transaction(async (tx) => {
         const updated = await tx.referral.update({
           where: { id: input.referralId },
-          data: { status: "PENDING" },
+          data: { isDraft: false },
         });
 
         const notified = new Set<string>();
@@ -194,7 +192,7 @@ export const referralsRouter = createTRPCRouter({
       const referral = await ctx.db.referral.findUnique({ where: { id: input.referralId } });
       if (!referral) throw new TRPCError({ code: "NOT_FOUND" });
       if (referral.filerId !== staff.id) throw new TRPCError({ code: "FORBIDDEN" });
-      if (referral.status !== "DRAFT") throw new TRPCError({ code: "BAD_REQUEST", message: "Only drafts can be deleted" });
+      if (!referral.isDraft) throw new TRPCError({ code: "BAD_REQUEST", message: "Only drafts can be deleted" });
 
       return ctx.db.referral.delete({ where: { id: input.referralId } });
     }),
@@ -203,7 +201,9 @@ export const referralsRouter = createTRPCRouter({
   list: protectedProcedure
     .input(
       z.object({
-        status: z.enum(["DRAFT", "PENDING", "ASSIGNED", "RESOLVED"]).optional(),
+        // Overall pending/resolved is derived from per-student status
+        studentStatus: z.enum(["PENDING", "RESOLVED"]).optional(),
+        isDraft: z.boolean().optional(),
         groupId: z.string().optional(),
         myOnly: z.boolean().default(false),
         page: z.number().int().min(1).default(1),
@@ -215,8 +215,16 @@ export const referralsRouter = createTRPCRouter({
       const userId = ctx.session.user.id;
 
       let whereFilter: Record<string, unknown> = {};
-      if (input.status) whereFilter.status = input.status;
+      if (input.isDraft !== undefined) whereFilter.isDraft = input.isDraft;
       if (input.groupId) whereFilter.students = { some: { groupId: input.groupId } };
+      // Derive overall pending/resolved from per-student status
+      if (input.studentStatus === "PENDING") {
+        whereFilter.students = {
+          some: { ...(input.groupId ? { groupId: input.groupId } : {}), status: "PENDING" },
+        };
+      } else if (input.studentStatus === "RESOLVED") {
+        whereFilter.students = { every: { status: "RESOLVED" }, some: {} };
+      }
 
       if (input.myOnly || role === "TEACHER" || role === "SCHOOL_ADMIN") {
         const staff = await ctx.db.staffProfile.findUnique({ where: { userId } });
@@ -230,7 +238,7 @@ export const referralsRouter = createTRPCRouter({
         if (!staff) throw new TRPCError({ code: "NOT_FOUND" });
         const headGroupIds = staff.homeroomHeadGroups.map((g) => g.id);
         whereFilter.students = { some: { groupId: { in: headGroupIds } } };
-        if (!input.status) whereFilter.status = { not: "DRAFT" as const };
+        whereFilter.isDraft = false;
       } else if (!canViewAllReferrals(role)) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
@@ -307,7 +315,8 @@ export const referralsRouter = createTRPCRouter({
         resolvableIds = referral.students.filter((rs) => !rs.resolution).map((rs) => rs.id);
       }
 
-      if (resolvableIds.length === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "No students to resolve" });
+      if (resolvableIds.length === 0)
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No students to resolve" });
 
       return ctx.db.$transaction(async (tx) => {
         // Create per-student resolutions
@@ -330,20 +339,13 @@ export const referralsRouter = createTRPCRouter({
           data: { status: "RESOLVED" },
         });
 
-        // Check if ALL students in the referral are now resolved
+        // Whole referral is resolved once no student remains PENDING
         const anyPending = await tx.referralStudent.findFirst({
           where: { referralId: input.referralId, status: "PENDING" },
         });
+        const allResolved = !anyPending;
 
-        let finalStatus = referral.status;
-        if (!anyPending) {
-          await tx.referral.update({
-            where: { id: input.referralId },
-            data: { status: "RESOLVED" },
-          });
-          finalStatus = "RESOLVED";
-
-          // Notify filer that all students are resolved
+        if (allResolved) {
           const filerUserId = referral.filer.user?.id;
           if (filerUserId) {
             await tx.notification.create({
@@ -359,7 +361,7 @@ export const referralsRouter = createTRPCRouter({
           }
         }
 
-        return { status: finalStatus };
+        return { allResolved };
       });
     }),
 

@@ -12,6 +12,18 @@ import { cn } from "@/lib/utils";
 import { fmtDisplayDate } from "@/lib/dates";
 import { getTranslations } from "next-intl/server";
 
+type ReferralWithStudents = { isDraft: boolean; students: { status: string }[] };
+
+// Overall status derived from per-student state (no Referral.status field).
+function overallStatus(r: ReferralWithStudents): "DRAFT" | "PENDING" | "PARTIAL" | "RESOLVED" {
+  if (r.isDraft) return "DRAFT";
+  if (r.students.length === 0) return "PENDING";
+  const resolved = r.students.filter((s) => s.status === "RESOLVED").length;
+  if (resolved === 0) return "PENDING";
+  if (resolved === r.students.length) return "RESOLVED";
+  return "PARTIAL";
+}
+
 export default async function ReferralsPage({
   params,
   searchParams,
@@ -30,8 +42,15 @@ export default async function ReferralsPage({
   const page = Math.max(1, parseInt(pageStr ?? "1"));
   const limit = 20;
 
+  // Status filter mapped to a derived where-fragment
+  const statusWhere = (value?: string) => {
+    if (value === "PENDING") return { isDraft: false, students: { some: { status: "PENDING" as const } } };
+    if (value === "RESOLVED") return { isDraft: false, students: { every: { status: "RESOLVED" as const }, some: {} } };
+    return {};
+  };
+
   const where = {
-    ...(statusFilter && statusFilter !== "ALL" ? { status: statusFilter as "PENDING" | "ASSIGNED" | "RESOLVED" } : {}),
+    ...statusWhere(statusFilter && statusFilter !== "ALL" ? statusFilter : undefined),
     ...(groupFilter ? { students: { some: { groupId: groupFilter } } } : {}),
   };
 
@@ -64,9 +83,7 @@ export default async function ReferralsPage({
       select: {
         id: true,
         name: true,
-        referralStudents: {
-          select: { id: true, status: true },
-        },
+        referralStudents: { select: { id: true, status: true } },
       },
     }),
   ]);
@@ -75,14 +92,16 @@ export default async function ReferralsPage({
 
   const statusBadge = (status: string) => {
     if (status === "PENDING") return "bg-amber-50 text-amber-700 border-amber-200";
+    if (status === "PARTIAL") return "bg-sky-50 text-sky-700 border-sky-200";
     if (status === "RESOLVED") return "bg-green-50 text-green-700 border-green-200";
-    return "bg-emerald-50 text-emerald-700 border-emerald-200";
+    return "bg-slate-100 text-slate-500 border-slate-200";
   };
 
   const statusLabel = (status: string) => {
     if (status === "PENDING") return t("pending");
-    if (status === "ASSIGNED") return t("assigned");
     if (status === "RESOLVED") return t("resolved");
+    if (status === "PARTIAL") return "Μερικώς";
+    if (status === "DRAFT") return "Πρόχειρο";
     return status;
   };
 
@@ -147,7 +166,6 @@ export default async function ReferralsPage({
         >
           <option value="ALL">{t("allStatuses")}</option>
           <option value="PENDING">{t("pending")}</option>
-          <option value="ASSIGNED">{t("assigned")}</option>
           <option value="RESOLVED">{t("resolved")}</option>
         </select>
         <select
@@ -194,43 +212,49 @@ export default async function ReferralsPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {referrals.map((r) => (
-                <tr key={r.id} className="hover:bg-slate-50 align-top">
-                  <td className="px-5 py-3.5 text-slate-500 whitespace-nowrap">
-                    {fmtDisplayDate(r.date)}
-                  </td>
-                  <td className="px-5 py-3.5 text-sm">
-                    <div className="space-y-0.5">
-                      {r.students.map((rs) => (
-                        <div key={rs.id} className="flex items-center gap-1.5">
-                          <span className="font-medium text-slate-900">{rs.student.user?.name}</span>
-                          <Badge variant="outline" className="text-[10px] px-1.5">{rs.group?.name ?? "—"}</Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-5 py-3.5 text-slate-600 max-w-xs">
-                    <span className="line-clamp-2 text-sm">{r.description}</span>
-                  </td>
-                  <td className="px-5 py-3.5 text-slate-500 text-sm">{r.filer.user?.name}</td>
-                  <td className="px-5 py-3.5">
-                    <Badge variant="outline" className={`text-xs ${statusBadge(r.status)}`}>
-                      {statusLabel(r.status)}
-                    </Badge>
-                  </td>
-                  <td className="px-5 py-3.5">
-                    {r.status === "PENDING" && (
-                      <ResolveReferralDialog
-                        referralId={r.id}
-                        studentName={r.students.map((rs) => rs.student.user?.name ?? "").filter(Boolean)}
-                      />
-                    )}
-                    {r.status === "RESOLVED" && r.students[0]?.resolution && (
-                      <span className="text-xs text-slate-400">{r.students[0].resolution.action.replace(/_/g, " ")}</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {referrals.map((r) => {
+                const status = overallStatus(r);
+                const pendingNames = r.students
+                  .filter((rs) => rs.status === "PENDING")
+                  .map((rs) => rs.student.user?.name ?? "")
+                  .filter(Boolean);
+                return (
+                  <tr key={r.id} className="hover:bg-slate-50 align-top">
+                    <td className="px-5 py-3.5 text-slate-500 whitespace-nowrap">
+                      {fmtDisplayDate(r.date)}
+                    </td>
+                    <td className="px-5 py-3.5 text-sm">
+                      <div className="space-y-0.5">
+                        {r.students.map((rs) => (
+                          <div key={rs.id} className="flex items-center gap-1.5">
+                            <span className="font-medium text-slate-900">{rs.student.user?.name}</span>
+                            <Badge variant="outline" className="text-[10px] px-1.5">{rs.group?.name ?? "—"}</Badge>
+                            {rs.status === "RESOLVED" && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 bg-green-50 text-green-700 border-green-200">
+                                {rs.resolution ? rs.resolution.action.replace(/_/g, " ") : "✓"}
+                              </Badge>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5 text-slate-600 max-w-xs">
+                      <span className="line-clamp-2 text-sm">{r.description}</span>
+                    </td>
+                    <td className="px-5 py-3.5 text-slate-500 text-sm">{r.filer.user?.name}</td>
+                    <td className="px-5 py-3.5">
+                      <Badge variant="outline" className={`text-xs ${statusBadge(status)}`}>
+                        {statusLabel(status)}
+                      </Badge>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {pendingNames.length > 0 && (
+                        <ResolveReferralDialog referralId={r.id} studentName={pendingNames} />
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
               {referrals.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-5 py-16 text-center text-slate-400">

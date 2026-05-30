@@ -34,7 +34,7 @@ export default async function AdminDashboardPage({
       db.attendance.count({
         where: { date: today, OR: [{ status: "ABSENT" }, { isAutoAbsent: true }] },
       }),
-      db.referral.count({ where: { status: "PENDING" } }),
+      db.referral.count({ where: { isDraft: false, students: { some: { status: "PENDING" } } } }),
       db.notice.count({ where: { urgent: true } }),
       db.studentProfile.count(),
       staff && !isWeekend
@@ -60,9 +60,9 @@ export default async function AdminDashboardPage({
   const slotByPeriod = Object.fromEntries(todaySlots.map((s) => [s.period, s]));
 
   const recentReferrals = await db.referral.findMany({
-    where: { status: "PENDING" },
+    where: { isDraft: false, students: { some: { status: "PENDING" } } },
     include: {
-      student: { include: { user: { select: { name: true } } } },
+      students: { include: { student: { include: { user: { select: { name: true } } } } } },
       filer: { include: { user: { select: { name: true } } } },
     },
     orderBy: { createdAt: "desc" },
@@ -186,7 +186,9 @@ export default async function AdminDashboardPage({
               {recentReferrals.map((r) => (
                 <div key={r.id} className="flex items-center justify-between py-3">
                   <div>
-                    <p className="text-sm font-medium text-slate-900">{r.student.user?.name}</p>
+                    <p className="text-sm font-medium text-slate-900">
+                      {r.students.map((rs) => rs.student.user?.name).filter(Boolean).join(", ") || "—"}
+                    </p>
                     <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{r.description}</p>
                   </div>
                   <div className="flex items-center gap-2 ml-4">

@@ -15,13 +15,13 @@ import type { Role } from "@/generated/prisma";
 const STATUS_BADGE: Record<string, string> = {
   DRAFT: "bg-slate-100 text-slate-500 border-slate-200",
   PENDING: "bg-amber-50 text-amber-700 border-amber-200",
-  ASSIGNED: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  PARTIAL: "bg-sky-50 text-sky-700 border-sky-200",
   RESOLVED: "bg-green-50 text-green-700 border-green-200",
 };
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "Πρόχειρο",
   PENDING: "Εκκρεμής",
-  ASSIGNED: "Ανατεθείσα",
+  PARTIAL: "Μερικώς επιλυμένη",
   RESOLVED: "Επιλυμένη",
 };
 const ACTION_LABEL: Record<string, string> = {
@@ -48,6 +48,21 @@ const referralInclude = {
     orderBy: { student: { user: { name: "asc" as const } } },
   },
 } as const;
+
+type ReferralWithStudents = {
+  isDraft: boolean;
+  students: { status: string }[];
+};
+
+// Overall status is derived from per-student state — no Referral.status field.
+function overallStatus(r: ReferralWithStudents): "DRAFT" | "PENDING" | "PARTIAL" | "RESOLVED" {
+  if (r.isDraft) return "DRAFT";
+  if (r.students.length === 0) return "PENDING";
+  const resolved = r.students.filter((s) => s.status === "RESOLVED").length;
+  if (resolved === 0) return "PENDING";
+  if (resolved === r.students.length) return "RESOLVED";
+  return "PARTIAL";
+}
 
 export default async function TeacherReferralsPage({
   params,
@@ -80,11 +95,16 @@ export default async function TeacherReferralsPage({
   const showCounselorNotes = canViewCounselorNotes(role);
   const headGroupIds = staff.homeroomHeadGroups.map((g) => g.id);
 
-  // My filed referrals (all roles)
-  const myWhere = {
-    filerId: staff.id,
-    ...(statusFilter ? { status: statusFilter as "DRAFT" | "PENDING" | "ASSIGNED" | "RESOLVED" } : {}),
+  // Translate a status filter value into a Prisma where-fragment (derived state)
+  const statusWhere = (value?: string) => {
+    if (value === "PENDING") return { isDraft: false, students: { some: { status: "PENDING" as const } } };
+    if (value === "RESOLVED") return { isDraft: false, students: { every: { status: "RESOLVED" as const }, some: {} } };
+    if (value === "DRAFT") return { isDraft: true };
+    return {};
   };
+
+  // My filed referrals (all roles, all states incl. drafts)
+  const myWhere = { filerId: staff.id, ...statusWhere(statusFilter) };
   const [myTotal, myReferrals] = await Promise.all([
     db.referral.count({ where: myWhere }),
     db.referral.findMany({
@@ -96,24 +116,24 @@ export default async function TeacherReferralsPage({
     }),
   ]);
 
-  // Homegroup pending referrals (HEADTEACHER_B only)
-  const groupReferrals = isHeadteacherB && headGroupIds.length > 0
-    ? await db.referral.findMany({
-        where: {
-          students: { some: { groupId: { in: headGroupIds }, status: "PENDING" } },
-          status: "PENDING",
-          NOT: { filerId: staff.id }, // exclude own referrals (already shown above)
-        },
-        include: referralInclude,
-        orderBy: { createdAt: "asc" },
-      })
-    : [];
+  // Homegroup referrals with a pending student in my group (HEADTEACHER_B only)
+  const groupReferrals =
+    isHeadteacherB && headGroupIds.length > 0
+      ? await db.referral.findMany({
+          where: {
+            isDraft: false,
+            students: { some: { groupId: { in: headGroupIds }, status: "PENDING" } },
+            NOT: { filerId: staff.id },
+          },
+          include: referralInclude,
+          orderBy: { createdAt: "asc" },
+        })
+      : [];
 
-  // Management: all referrals with filters
+  // Management: all submitted referrals with filters
   const allWhere = {
-    ...(statusFilter && statusFilter !== "ALL"
-      ? { status: statusFilter as "DRAFT" | "PENDING" | "ASSIGNED" | "RESOLVED" }
-      : { status: { not: "DRAFT" as const } }),
+    isDraft: false,
+    ...statusWhere(statusFilter && statusFilter !== "ALL" ? statusFilter : undefined),
     ...(groupFilter ? { students: { some: { groupId: groupFilter } } } : {}),
   };
   const groups = isManagement
@@ -142,7 +162,7 @@ export default async function TeacherReferralsPage({
 
   type Referral = (typeof myReferrals)[number];
 
-  // Render one referral as a table row — students shown inline below description
+  // Render one referral as a table row — students shown inline
   const ReferralRow = ({
     r,
     showFiler,
@@ -152,20 +172,24 @@ export default async function TeacherReferralsPage({
     showFiler: boolean;
     resolverGroupIds?: string[]; // if set, only show/resolve students from these groups
   }) => {
+    const status = overallStatus(r);
     const students = resolverGroupIds
       ? r.students.filter((rs) => rs.groupId && resolverGroupIds.includes(rs.groupId))
       : r.students;
 
+    const pendingNames = students
+      .filter((rs) => rs.status === "PENDING")
+      .map((rs) => rs.student.user?.name ?? "")
+      .filter(Boolean);
+
     const canResolve =
       resolverGroupIds !== undefined
         ? students.some((rs) => rs.status === "PENDING")
-        : isManagement && r.status === "PENDING";
+        : isManagement && students.some((rs) => rs.status === "PENDING");
 
     return (
       <tr className="hover:bg-slate-50 align-top">
-        <td className="px-4 py-3 text-slate-500 text-sm whitespace-nowrap">
-          {fmtDisplayDate(r.date)}
-        </td>
+        <td className="px-4 py-3 text-slate-500 text-sm whitespace-nowrap">{fmtDisplayDate(r.date)}</td>
         {showFiler && (
           <td className="px-4 py-3 text-sm text-slate-600">{r.filer.user?.name ?? "—"}</td>
         )}
@@ -173,7 +197,7 @@ export default async function TeacherReferralsPage({
           <p className="line-clamp-2">{r.description}</p>
           {r.location && <p className="text-xs text-slate-400 mt-0.5">{r.location}</p>}
         </td>
-        {/* Students column */}
+        {/* Students column with per-student status */}
         <td className="px-4 py-3 text-sm min-w-[160px]">
           <div className="space-y-1">
             {students.map((rs) => (
@@ -186,39 +210,40 @@ export default async function TeacherReferralsPage({
                 >
                   {rs.status === "RESOLVED" && rs.resolution
                     ? ACTION_LABEL[rs.resolution.action] ?? rs.resolution.action
-                    : STATUS_LABEL[rs.status] ?? rs.status}
+                    : "Εκκρεμής"}
                 </Badge>
               </div>
             ))}
             {r.students.length > students.length && (
               <p className="text-xs text-slate-400">
-                +{r.students.length - students.length} άλλο{r.students.length - students.length !== 1 ? "ι" : "ς"}
+                +{r.students.length - students.length} άλλο
+                {r.students.length - students.length !== 1 ? "ι" : "ς"}
               </p>
             )}
           </div>
         </td>
         <td className="px-4 py-3 text-sm">
-          <Badge variant="outline" className={`text-xs ${STATUS_BADGE[r.status] ?? ""}`}>
-            {STATUS_LABEL[r.status] ?? r.status}
+          <Badge variant="outline" className={`text-xs ${STATUS_BADGE[status] ?? ""}`}>
+            {STATUS_LABEL[status] ?? status}
           </Badge>
         </td>
         <td className="px-4 py-3 text-sm">
-          {r.status === "DRAFT" && r.filerId === staff.id && (
-            <div className="flex items-center gap-2">
-              <DeleteDraftButton referralId={r.id} />
-            </div>
+          {status === "DRAFT" && r.filerId === staff.id && (
+            <DeleteDraftButton referralId={r.id} />
           )}
           {canResolve && (
             <ResolveReferralDialog
               referralId={r.id}
-              studentNames={students.filter((rs) => rs.status === "PENDING").map((rs) => rs.student.user?.name ?? "").filter(Boolean)}
+              studentNames={pendingNames}
               recommendation={r.recommendation}
               canViewCounselorNotes={showCounselorNotes}
             />
           )}
-          {r.status === "RESOLVED" && !canResolve && (
+          {status === "RESOLVED" && !canResolve && (
             <span className="text-xs text-slate-400">
-              {students[0]?.resolution ? ACTION_LABEL[students[0].resolution.action] ?? students[0].resolution.action : "Επιλύθηκε"}
+              {students[0]?.resolution
+                ? ACTION_LABEL[students[0].resolution.action] ?? students[0].resolution.action
+                : "Επιλύθηκε"}
             </span>
           )}
         </td>
@@ -313,9 +338,7 @@ export default async function TeacherReferralsPage({
       {isHeadteacherB && groupReferrals.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">
-              Εκκρεμή τμήματός μου ({groupReferrals.length})
-            </CardTitle>
+            <CardTitle className="text-base">Εκκρεμή τμήματός μου ({groupReferrals.length})</CardTitle>
           </CardHeader>
           <CardContent className="p-0 overflow-x-auto">
             <table className="w-full text-sm min-w-[700px]">
