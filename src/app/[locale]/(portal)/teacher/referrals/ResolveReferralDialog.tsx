@@ -23,6 +23,7 @@ interface Props {
   studentNames: string[];
   recommendation?: string;
   canViewCounselorNotes?: boolean;
+  groupResolve?: boolean; // renders as a prominent "resolve all" button
 }
 
 export function ResolveReferralDialog({
@@ -31,6 +32,7 @@ export function ResolveReferralDialog({
   studentNames,
   recommendation,
   canViewCounselorNotes = false,
+  groupResolve = false,
 }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -70,20 +72,37 @@ export function ResolveReferralDialog({
       : `${studentNames.length} μαθητές`;
 
   if (!open) {
-    return referralStudentId ? (
+    if (groupResolve) {
+      // Collective punishment button — slate background, spans full width
+      return (
+        <button
+          onClick={() => setOpen(true)}
+          className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-[0.98] transition-all touch-manipulation"
+        >
+          <span className="text-sm font-semibold text-white">
+            Επίλυση Ομαδικά ({studentNames.length} μαθητές)
+          </span>
+          <ChevronRight className="w-4 h-4 text-slate-300" />
+        </button>
+      );
+    }
+    if (referralStudentId) {
       // Per-student: big accessible row button
-      <button
-        onClick={() => setOpen(true)}
-        className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 active:scale-[0.98] transition-all touch-manipulation"
-      >
-        <span className="text-sm font-semibold text-slate-800">{studentLabel}</span>
-        <span className="flex items-center gap-1 text-emerald-700 font-semibold text-sm">
-          Επίλυση
-          <ChevronRight className="w-4 h-4" />
-        </span>
-      </button>
-    ) : (
-      // All-students fallback (management view)
+      return (
+        <button
+          onClick={() => setOpen(true)}
+          className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 active:scale-[0.98] transition-all touch-manipulation"
+        >
+          <span className="text-sm font-semibold text-slate-800">{studentLabel}</span>
+          <span className="flex items-center gap-1 text-emerald-700 font-semibold text-sm">
+            Επίλυση
+            <ChevronRight className="w-4 h-4" />
+          </span>
+        </button>
+      );
+    }
+    // All-students fallback (management view)
+    return (
       <button
         onClick={() => setOpen(true)}
         className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-700 font-medium text-sm touch-manipulation"

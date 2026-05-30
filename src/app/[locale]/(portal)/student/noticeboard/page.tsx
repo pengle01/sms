@@ -3,7 +3,7 @@ import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
 import { NotificationsBoard } from "@/components/notifications/NotificationsBoard";
 
-export default async function OfficeNotificationsPage({
+export default async function StudentNotificationsPage({
   params,
 }: {
   params: Promise<{ locale: string }>;

@@ -368,8 +368,25 @@ export default async function TeacherReferralsPage({
                   )}
                 </div>
 
-                {/* Per-student resolve buttons */}
+                {/* Student resolution buttons */}
                 <div className="divide-y divide-slate-100">
+                  {/* Group resolve — shown only when 2+ students pending */}
+                  {myStudents.filter((rs) => rs.status === "PENDING").length >= 2 && (
+                    <div className="px-5 py-3 bg-slate-50">
+                      <ResolveReferralDialog
+                        referralId={r.id}
+                        studentNames={myStudents
+                          .filter((rs) => rs.status === "PENDING")
+                          .map((rs) => rs.student.user?.name ?? "")
+                          .filter(Boolean)}
+                        recommendation={r.recommendation}
+                        canViewCounselorNotes={showCounselorNotes}
+                        groupResolve
+                      />
+                      <p className="text-xs text-slate-400 mt-1 pl-1">Κοινή ποινή για όλους</p>
+                    </div>
+                  )}
+
                   {myStudents.map((rs) =>
                     rs.status === "RESOLVED" ? (
                       <div key={rs.id} className="flex items-center justify-between px-5 py-4 bg-green-50/40">

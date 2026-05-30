@@ -1,8 +1,21 @@
-export default function TeacherNoticeboardPage() {
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/server/auth";
+import { redirect } from "next/navigation";
+import { NotificationsBoard } from "@/components/notifications/NotificationsBoard";
+
+export default async function TeacherNotificationsPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const session = await getServerSession(authOptions);
+  if (!session) redirect(`/${locale}/login`);
+
   return (
-    <div className="space-y-4">
-      <h2 className="text-2xl font-bold text-slate-900">Noticeboard</h2>
-      <p className="text-slate-400 text-sm">Coming soon.</p>
+    <div className="space-y-5">
+      <h2 className="text-2xl font-bold text-slate-900">Ειδοποιήσεις</h2>
+      <NotificationsBoard locale={locale} />
     </div>
   );
 }
