@@ -334,23 +334,71 @@ export default async function TeacherReferralsPage({
         </Card>
       )}
 
-      {/* HEADTEACHER_B: pending referrals for their homegroup */}
+      {/* HEADTEACHER_B: pending referrals — card layout for accessibility */}
       {isHeadteacherB && groupReferrals.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Εκκρεμή τμήματός μου ({groupReferrals.length})</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0 overflow-x-auto">
-            <table className="w-full text-sm min-w-[700px]">
-              <TableHead showFiler={true} />
-              <tbody className="divide-y divide-slate-50">
-                {groupReferrals.map((r) => (
-                  <ReferralRow key={r.id} r={r} showFiler={true} resolverGroupIds={headGroupIds} />
-                ))}
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
+        <div className="space-y-3">
+          <h3 className="text-base font-semibold text-slate-700">
+            Εκκρεμή τμήματός μου ({groupReferrals.length})
+          </h3>
+          {groupReferrals.map((r) => {
+            const myStudents = r.students.filter(
+              (rs) => rs.groupId && headGroupIds.includes(rs.groupId)
+            );
+            return (
+              <div key={r.id} className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+                {/* Card header */}
+                <div className="px-5 py-4 border-b border-slate-100 bg-slate-50">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div>
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                        {r.filer.user?.name ?? "—"} · {fmtDisplayDate(r.date)}
+                        {r.location && ` · ${r.location}`}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className={`text-xs ${STATUS_BADGE[overallStatus(r)] ?? ""}`}>
+                      {STATUS_LABEL[overallStatus(r)]}
+                    </Badge>
+                  </div>
+                  <p className="mt-2 text-sm text-slate-800 leading-relaxed">{r.description}</p>
+                  {r.recommendation && r.recommendation !== "NO_RECOMMENDATION" && (
+                    <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
+                      <span className="font-semibold">Εισήγηση:</span>
+                      {r.recommendation.replace(/_/g, " ")}
+                    </div>
+                  )}
+                </div>
+
+                {/* Per-student resolve buttons */}
+                <div className="divide-y divide-slate-100">
+                  {myStudents.map((rs) =>
+                    rs.status === "RESOLVED" ? (
+                      <div key={rs.id} className="flex items-center justify-between px-5 py-4 bg-green-50/40">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-600">{rs.student.user?.name}</p>
+                          <p className="text-xs text-slate-400">{rs.group?.name}</p>
+                        </div>
+                        <span className="text-xs font-medium text-green-700 bg-green-100 border border-green-200 px-2.5 py-1 rounded-lg">
+                          {rs.resolution ? ACTION_LABEL[rs.resolution.action] ?? rs.resolution.action : "Επιλύθηκε"}
+                        </span>
+                      </div>
+                    ) : (
+                      <div key={rs.id} className="px-5 py-3">
+                        <ResolveReferralDialog
+                          referralId={r.id}
+                          referralStudentId={rs.id}
+                          studentNames={[rs.student.user?.name ?? ""]}
+                          recommendation={r.recommendation}
+                          canViewCounselorNotes={showCounselorNotes}
+                        />
+                        <p className="text-xs text-slate-400 mt-1 pl-1">{rs.group?.name}</p>
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
 
       {/* My filed referrals */}

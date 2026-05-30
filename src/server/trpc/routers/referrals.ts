@@ -270,12 +270,14 @@ export const referralsRouter = createTRPCRouter({
     }),
 
   // Resolve students in a referral.
-  // HEADTEACHER_B → resolves only students from their homegroup.
-  // Management / Admin → resolves all pending students.
+  // Pass referralStudentId to resolve a single student; omit to resolve all eligible.
+  // HEADTEACHER_B → limited to students from their homegroup.
+  // Management / Admin → all pending students.
   resolve: managementProcedure
     .input(
       z.object({
         referralId: z.string(),
+        referralStudentId: z.string().optional(), // resolve one specific student
         action: z.enum(["DETENTION", "PEDAGOGICAL_DIALOGUE", "WRITTEN_AGREEMENT", "WARNING", "OTHER"]),
         notes: z.string().optional(),
         counselorNotes: z.string().optional(),
@@ -299,7 +301,7 @@ export const referralsRouter = createTRPCRouter({
       if (!referral) throw new TRPCError({ code: "NOT_FOUND" });
 
       // Determine which students this user can resolve
-      let resolvableIds: string[];
+      let eligibleIds: string[];
 
       if (role === "HEADTEACHER_B") {
         const staff = await ctx.db.staffProfile.findUnique({
@@ -308,11 +310,21 @@ export const referralsRouter = createTRPCRouter({
         });
         if (!staff) throw new TRPCError({ code: "NOT_FOUND" });
         const headGroupIds = new Set(staff.homeroomHeadGroups.map((g) => g.id));
-        resolvableIds = referral.students
+        eligibleIds = referral.students
           .filter((rs) => rs.groupId && headGroupIds.has(rs.groupId) && !rs.resolution)
           .map((rs) => rs.id);
       } else {
-        resolvableIds = referral.students.filter((rs) => !rs.resolution).map((rs) => rs.id);
+        eligibleIds = referral.students.filter((rs) => !rs.resolution).map((rs) => rs.id);
+      }
+
+      // If a specific student was requested, resolve only them (after checking eligibility)
+      let resolvableIds: string[];
+      if (input.referralStudentId) {
+        if (!eligibleIds.includes(input.referralStudentId))
+          throw new TRPCError({ code: "FORBIDDEN", message: "Cannot resolve this student" });
+        resolvableIds = [input.referralStudentId];
+      } else {
+        resolvableIds = eligibleIds;
       }
 
       if (resolvableIds.length === 0)
