@@ -237,6 +237,7 @@ export default async function TeacherReferralsPage({
               studentNames={pendingNames}
               recommendation={r.recommendation}
               canViewCounselorNotes={showCounselorNotes}
+              locale={locale}
             />
           )}
           {status === "RESOLVED" && !canResolve && (
@@ -382,6 +383,7 @@ export default async function TeacherReferralsPage({
                         recommendation={r.recommendation}
                         canViewCounselorNotes={showCounselorNotes}
                         groupResolve
+                        locale={locale}
                       />
                       <p className="text-xs text-slate-400 mt-1 pl-1">Κοινή ποινή για όλους</p>
                     </div>
@@ -406,6 +408,7 @@ export default async function TeacherReferralsPage({
                           studentNames={[rs.student.user?.name ?? ""]}
                           recommendation={r.recommendation}
                           canViewCounselorNotes={showCounselorNotes}
+                          locale={locale}
                         />
                         <p className="text-xs text-slate-400 mt-1 pl-1">{rs.group?.name}</p>
                       </div>

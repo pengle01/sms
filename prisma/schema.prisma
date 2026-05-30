@@ -560,6 +560,8 @@ model ReferralStudentResolution {
   action            ResolutionAction
   notes             String?         @db.Text
   counselorNotes    String?         @db.Text
+  expulsionStartDate DateTime?
+  expulsionEndDate   DateTime?
   parentContacted   Boolean         @default(false)
   parentContactDate   DateTime?
   parentContactMethod String?

@@ -277,10 +277,12 @@ export const referralsRouter = createTRPCRouter({
     .input(
       z.object({
         referralId: z.string(),
-        referralStudentId: z.string().optional(), // resolve one specific student
+        referralStudentId: z.string().optional(),
         action: z.enum(["DETENTION", "PEDAGOGICAL_DIALOGUE", "WRITTEN_AGREEMENT", "WARNING", "OTHER"]),
         notes: z.string().optional(),
         counselorNotes: z.string().optional(),
+        expulsionStartDate: z.string().optional(), // ISO date, only for DETENTION
+        expulsionEndDate: z.string().optional(),
         parentContacted: z.boolean().default(false),
         parentContactDate: z.string().optional(),
         parentContactMethod: z.string().optional(),
@@ -338,6 +340,10 @@ export const referralsRouter = createTRPCRouter({
             action: input.action,
             notes: input.notes,
             counselorNotes: input.counselorNotes,
+            expulsionStartDate: input.action === "DETENTION" && input.expulsionStartDate
+              ? new Date(input.expulsionStartDate) : undefined,
+            expulsionEndDate: input.action === "DETENTION" && input.expulsionEndDate
+              ? new Date(input.expulsionEndDate) : undefined,
             parentContacted: input.parentContacted,
             parentContactDate: input.parentContactDate ? new Date(input.parentContactDate) : undefined,
             parentContactMethod: input.parentContactMethod,
@@ -375,6 +381,65 @@ export const referralsRouter = createTRPCRouter({
 
         return { allResolved };
       });
+    }),
+
+  // Send SMS to parents of resolved students in a referral
+  sendResolutionSms: managementProcedure
+    .input(
+      z.object({
+        referralId: z.string(),
+        referralStudentId: z.string().optional(), // send for one student only
+        message: z.string().min(1),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { sendSms } = await import("@/lib/sms");
+
+      const referral = await ctx.db.referral.findUnique({
+        where: { id: input.referralId },
+        include: {
+          students: {
+            where: input.referralStudentId ? { id: input.referralStudentId } : { status: "RESOLVED" },
+            include: {
+              student: {
+                include: {
+                  user: { select: { name: true } },
+                  smsContacts: { where: { active: true } },
+                },
+              },
+            },
+          },
+        },
+      });
+      if (!referral) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const results: { studentName: string; phone: string; success: boolean; error?: string }[] = [];
+
+      for (const rs of referral.students) {
+        const contacts = rs.student.smsContacts;
+        for (const contact of contacts) {
+          const result = await sendSms(contact.phone, input.message);
+          // Log the SMS
+          await ctx.db.smsLog.create({
+            data: {
+              studentId: rs.studentId,
+              smsContactId: contact.id,
+              phoneNumber: contact.phone,
+              message: input.message,
+              status: result.success ? "SENT" : "FAILED",
+              gatewayResponse: result.gatewayResponse ?? result.error,
+            },
+          });
+          results.push({
+            studentName: rs.student.user?.name ?? rs.studentId,
+            phone: contact.phone,
+            success: result.success,
+            error: result.error,
+          });
+        }
+      }
+
+      return { results };
     }),
 
   // Update private counselor notes
