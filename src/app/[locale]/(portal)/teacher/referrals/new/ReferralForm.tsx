@@ -199,21 +199,21 @@ export function ReferralForm({ groups, filerName, locale }: Props) {
       </div>
 
       {/* Actions */}
-      <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+      <div className="flex flex-col-reverse gap-3 pt-3 border-t border-slate-100 sm:flex-row sm:items-center sm:justify-between">
         <button
           type="button"
           onClick={() => router.back()}
-          className="text-sm text-slate-500 hover:text-slate-700"
+          className="text-sm text-slate-500 hover:text-slate-700 py-2 sm:py-0"
         >
           Επιστροφή
         </button>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
           <Button
             type="button"
             variant="outline"
             disabled={isPending || !canSubmit}
             onClick={() => submit(true)}
-            className="h-9 px-4"
+            className="h-10 px-4 w-full sm:h-9 sm:w-auto"
           >
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Προσωρινή Αποθήκευση
@@ -222,7 +222,7 @@ export function ReferralForm({ groups, filerName, locale }: Props) {
             type="button"
             disabled={isPending || !canSubmit}
             onClick={() => submit(false)}
-            className="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white"
+            className="h-10 px-4 w-full bg-emerald-600 hover:bg-emerald-700 text-white sm:h-9 sm:w-auto"
           >
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Υποβολή
