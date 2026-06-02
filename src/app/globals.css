@@ -213,5 +213,5 @@
 
 /* Lettering size — scales the root rem so all text grows proportionally.
    "small" is the existing 16px baseline. */
-html[data-font="medium"] { font-size: 112.5%; } /* 18px */
-html[data-font="large"]  { font-size: 125%; }   /* 20px */
+html[data-font="medium"] { font-size: 118.75%; } /* 19px */
+html[data-font="large"]  { font-size: 143.75%; } /* 23px */
