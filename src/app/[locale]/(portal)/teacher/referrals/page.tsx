@@ -11,20 +11,10 @@ import { canViewCounselorNotes } from "@/lib/rbac";
 import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY } from "@/lib/schoolConfig";
 import { ResolveReferralDialog } from "./ResolveReferralDialog";
 import { DeleteDraftButton } from "./DeleteDraftButton";
+import { ReferralStatusBadge } from "@/components/referrals/ReferralStatusBadge";
+import { overallStatus } from "@/lib/referralStatus";
 import type { Role } from "@/generated/prisma";
 
-const STATUS_BADGE: Record<string, string> = {
-  DRAFT: "bg-slate-100 text-slate-500 border-slate-200",
-  PENDING: "bg-amber-50 text-amber-700 border-amber-200",
-  PARTIAL: "bg-sky-50 text-sky-700 border-sky-200",
-  RESOLVED: "bg-green-50 text-green-700 border-green-200",
-};
-const STATUS_LABEL: Record<string, string> = {
-  DRAFT: "Πρόχειρο",
-  PENDING: "Εκκρεμής",
-  PARTIAL: "Μερικώς επιλυμένη",
-  RESOLVED: "Επιλυμένη",
-};
 const ACTION_LABEL: Record<string, string> = {
   DETENTION: "Αποβολή",
   PEDAGOGICAL_DIALOGUE: "Παιδαγωγικός Διάλογος",
@@ -49,21 +39,6 @@ const referralInclude = {
     orderBy: { student: { user: { name: "asc" as const } } },
   },
 } as const;
-
-type ReferralWithStudents = {
-  isDraft: boolean;
-  students: { status: string }[];
-};
-
-// Overall status is derived from per-student state — no Referral.status field.
-function overallStatus(r: ReferralWithStudents): "DRAFT" | "PENDING" | "PARTIAL" | "RESOLVED" {
-  if (r.isDraft) return "DRAFT";
-  if (r.students.length === 0) return "PENDING";
-  const resolved = r.students.filter((s) => s.status === "RESOLVED").length;
-  if (resolved === 0) return "PENDING";
-  if (resolved === r.students.length) return "RESOLVED";
-  return "PARTIAL";
-}
 
 export default async function TeacherReferralsPage({
   params,
@@ -226,9 +201,7 @@ export default async function TeacherReferralsPage({
           </div>
         </td>
         <td className="px-4 py-3 text-sm">
-          <Badge variant="outline" className={`text-xs ${STATUS_BADGE[status] ?? ""}`}>
-            {STATUS_LABEL[status] ?? status}
-          </Badge>
+          <ReferralStatusBadge referral={r} />
         </td>
         <td className="px-4 py-3 text-sm">
           {status === "DRAFT" && r.filerId === staff.id && (
@@ -360,9 +333,7 @@ export default async function TeacherReferralsPage({
                         {r.location && ` · ${r.location}`}
                       </p>
                     </div>
-                    <Badge variant="outline" className={`text-xs ${STATUS_BADGE[overallStatus(r)] ?? ""}`}>
-                      {STATUS_LABEL[overallStatus(r)]}
-                    </Badge>
+                    <ReferralStatusBadge referral={r} />
                   </div>
                   <p className="mt-2 text-sm text-slate-800 leading-relaxed">{r.description}</p>
                   {r.recommendation && r.recommendation !== "NO_RECOMMENDATION" && (

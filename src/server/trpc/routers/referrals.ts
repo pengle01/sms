@@ -271,6 +271,18 @@ export const referralsRouter = createTRPCRouter({
       return { items: sanitized, total, page: input.page };
     }),
 
+  // Mark a referral as opened by a headteacher (idempotent — first open wins).
+  // Drives the at-a-glance colour code (red → yellow once opened).
+  markOpened: managementProcedure
+    .input(z.object({ referralId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const res = await ctx.db.referral.updateMany({
+        where: { id: input.referralId, openedAt: null, isDraft: false },
+        data: { openedAt: new Date() },
+      });
+      return { changed: res.count > 0 };
+    }),
+
   // Resolve students in a referral.
   // Pass referralStudentId to resolve a single student; omit to resolve all eligible.
   // HEADTEACHER_B → limited to students from their homegroup.
@@ -374,6 +386,12 @@ export const referralsRouter = createTRPCRouter({
         await tx.referralStudent.updateMany({
           where: { id: { in: resolvableIds } },
           data: { status: "RESOLVED" },
+        });
+
+        // Resolving implies the referral was opened — backfill if it wasn't recorded.
+        await tx.referral.updateMany({
+          where: { id: input.referralId, openedAt: null },
+          data: { openedAt: new Date() },
         });
 
         // Whole referral is resolved once no student remains PENDING

@@ -521,6 +521,9 @@ model Referral {
   recommendation ReferralRecommendation @default(NO_RECOMMENDATION)
   date           DateTime
   isDraft        Boolean        @default(false)
+  // Set the first time a headteacher opens the referral to examine it.
+  // Drives the at-a-glance colour: unopened+unresolved = red, opened/partial = yellow, all resolved = green.
+  openedAt       DateTime?
   counselorNotes String?        @db.Text
 
   students  ReferralStudent[]

@@ -8,21 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { AlertTriangle } from "lucide-react";
 import { NewReferralDialog } from "./NewReferralDialog";
 import { ResolveReferralDialog } from "./ResolveReferralDialog";
+import { ReferralStatusBadge } from "@/components/referrals/ReferralStatusBadge";
 import { cn } from "@/lib/utils";
 import { fmtDisplayDate } from "@/lib/dates";
 import { getTranslations } from "next-intl/server";
-
-type ReferralWithStudents = { isDraft: boolean; students: { status: string }[] };
-
-// Overall status derived from per-student state (no Referral.status field).
-function overallStatus(r: ReferralWithStudents): "DRAFT" | "PENDING" | "PARTIAL" | "RESOLVED" {
-  if (r.isDraft) return "DRAFT";
-  if (r.students.length === 0) return "PENDING";
-  const resolved = r.students.filter((s) => s.status === "RESOLVED").length;
-  if (resolved === 0) return "PENDING";
-  if (resolved === r.students.length) return "RESOLVED";
-  return "PARTIAL";
-}
 
 export default async function ReferralsPage({
   params,
@@ -89,21 +78,6 @@ export default async function ReferralsPage({
   ]);
 
   const totalPages = Math.ceil(total / limit);
-
-  const statusBadge = (status: string) => {
-    if (status === "PENDING") return "bg-amber-50 text-amber-700 border-amber-200";
-    if (status === "PARTIAL") return "bg-sky-50 text-sky-700 border-sky-200";
-    if (status === "RESOLVED") return "bg-green-50 text-green-700 border-green-200";
-    return "bg-slate-100 text-slate-500 border-slate-200";
-  };
-
-  const statusLabel = (status: string) => {
-    if (status === "PENDING") return t("pending");
-    if (status === "RESOLVED") return t("resolved");
-    if (status === "PARTIAL") return "Μερικώς";
-    if (status === "DRAFT") return "Πρόχειρο";
-    return status;
-  };
 
   const buildHref = (overrides: Record<string, string | undefined>) => {
     const p = new URLSearchParams();
@@ -213,7 +187,6 @@ export default async function ReferralsPage({
             </thead>
             <tbody className="divide-y divide-slate-50">
               {referrals.map((r) => {
-                const status = overallStatus(r);
                 const pendingNames = r.students
                   .filter((rs) => rs.status === "PENDING")
                   .map((rs) => rs.student.user?.name ?? "")
@@ -243,9 +216,7 @@ export default async function ReferralsPage({
                     </td>
                     <td className="px-5 py-3.5 text-slate-500 text-sm">{r.filer.user?.name}</td>
                     <td className="px-5 py-3.5">
-                      <Badge variant="outline" className={`text-xs ${statusBadge(status)}`}>
-                        {statusLabel(status)}
-                      </Badge>
+                      <ReferralStatusBadge referral={r} />
                     </td>
                     <td className="px-5 py-3.5">
                       {pendingNames.length > 0 && (

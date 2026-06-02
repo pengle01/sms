@@ -104,6 +104,16 @@ export function ResolveReferralDialog({
 
   const removeDay = (d: string) => setExpulsionDays((prev) => prev.filter((x) => x !== d));
 
+  // Mark the referral opened (red → yellow) when a headteacher examines it.
+  const { mutate: markOpened } = trpc.referrals.markOpened.useMutation({
+    onSuccess: (res) => { if (res.changed) router.refresh(); },
+  });
+
+  const openDialog = () => {
+    setOpen(true);
+    markOpened({ referralId });
+  };
+
   const { mutate: resolve, isPending: resolving } = trpc.referrals.resolve.useMutation({
     onSuccess: () => {
       setResolved(true);
@@ -146,21 +156,21 @@ export function ResolveReferralDialog({
   // ─── Trigger buttons ──────────────────────────────────────────────────────
   if (!open) {
     if (groupResolve) return (
-      <button onClick={() => setOpen(true)}
+      <button onClick={openDialog}
         className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-[0.98] transition-all touch-manipulation">
         <span className="text-sm font-semibold text-white">Επίλυση Ομαδικά ({studentNames.length} μαθητές)</span>
         <ChevronRight className="w-4 h-4 text-slate-300" />
       </button>
     );
     if (referralStudentId) return (
-      <button onClick={() => setOpen(true)}
+      <button onClick={openDialog}
         className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 active:scale-[0.98] transition-all touch-manipulation">
         <span className="text-sm font-semibold text-slate-800">{studentLabel}</span>
         <span className="flex items-center gap-1 text-emerald-700 font-semibold text-sm">Επίλυση <ChevronRight className="w-4 h-4" /></span>
       </button>
     );
     return (
-      <button onClick={() => setOpen(true)}
+      <button onClick={openDialog}
         className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-700 font-medium text-sm touch-manipulation">
         Επίλυση όλων <ChevronRight className="w-4 h-4" />
       </button>
