@@ -1,8 +1,6 @@
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/server/auth";
+import { getActiveAuth } from "@/server/authz";
 import { isEducator } from "@/lib/rbac";
-import type { Role } from "@/generated/prisma";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 
@@ -14,13 +12,14 @@ export default async function TeacherPortalLayout({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const session = await getServerSession(authOptions);
+  const auth = await getActiveAuth();
 
-  if (!session?.user || !isEducator(session.user.role as Role)) {
+  if (!auth || !isEducator(auth.role)) {
     redirect(`/${locale}/login`);
   }
 
-  const role = session.user.role as Role;
+  const { session } = auth;
+  const role = auth.role;
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">

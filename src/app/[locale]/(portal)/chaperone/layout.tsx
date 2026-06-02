@@ -1,7 +1,5 @@
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/server/auth";
-import type { Role } from "@/generated/prisma";
+import { getActiveAuth } from "@/server/authz";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 
@@ -13,12 +11,12 @@ export default async function ChaperonePortalLayout({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const session = await getServerSession(authOptions);
+  const auth = await getActiveAuth();
 
-  if (!session?.user) redirect(`/${locale}/login`);
-  if ((session.user.role as Role) !== "CHAPERONE") redirect(`/${locale}/login`);
+  if (!auth || auth.role !== "CHAPERONE") redirect(`/${locale}/login`);
 
-  const role = session.user.role as Role;
+  const { session } = auth;
+  const role = auth.role;
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">

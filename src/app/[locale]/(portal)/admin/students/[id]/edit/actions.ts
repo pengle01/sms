@@ -1,16 +1,15 @@
 "use server";
 
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/server/auth";
 import { db } from "@/server/db";
 import { redirect } from "next/navigation";
 import { Gender } from "@/generated/prisma/enums";
-import { isStaff } from "@/lib/rbac";
-import type { Role } from "@/generated/prisma";
+import { isOfficeAdmin, isAdminStaff } from "@/lib/rbac";
+import { getActiveAuth } from "@/server/authz";
+import { writeAudit, requestMeta } from "@/server/audit";
 
 export async function updateStudent(id: string, locale: string, formData: FormData) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || !isStaff(session.user.role as Role)) {
+  const auth = await getActiveAuth();
+  if (!auth || (!isOfficeAdmin(auth.role) && !isAdminStaff(auth.role))) {
     throw new Error("Unauthorized");
   }
 
@@ -45,6 +44,16 @@ export async function updateStudent(id: string, locale: string, formData: FormDa
         },
       },
     },
+  });
+
+  const meta = await requestMeta();
+  await writeAudit({
+    userId: auth.userId,
+    action: "student.update",
+    resource: "StudentProfile",
+    resourceId: id,
+    details: { fields: ["name", "email", "group", "gender", "dob", "idCard", "passport", "isActive"] },
+    ...meta,
   });
 
   redirect(`/${locale}/admin/students/${id}`);

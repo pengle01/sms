@@ -1,9 +1,6 @@
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
-import { authOptions } from "@/server/auth";
+import { getActiveAuth } from "@/server/authz";
 import { isAdminStaff } from "@/lib/rbac";
-import type { Role } from "@/generated/prisma";
 import { db } from "@/server/db";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
@@ -16,15 +13,12 @@ export default async function AdminPortalLayout({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const session = await getServerSession(authOptions);
+  const auth = await getActiveAuth();
 
-  if (!session?.user) redirect(`/${locale}/login`);
-  if (!isAdminStaff(session.user.role as Role)) redirect(`/${locale}/login`);
+  if (!auth || !isAdminStaff(auth.role)) redirect(`/${locale}/login`);
 
-  const role = session.user.role as Role;
-  const headersList = await headers();
-  // headersList is used to read x-pathname in other layouts; kept here for parity
-  void headersList;
+  const { session } = auth;
+  const role = auth.role;
 
   const pendingClaimsCount = await Promise.all([
     db.user.count({ where: { isActive: false } }),

@@ -246,6 +246,7 @@
     "staffNameNone": "No unassigned schedule names found. Contact the administrator.",
     "errorEmailExists": "An account with this email already exists.",
     "errorPasswordMismatch": "Passwords do not match.",
+    "errorPasswordWeak": "Password must be at least 8 characters.",
     "errorInvalidRole": "Please select a valid role.",
     "errorStaffNameRequired": "Please select your name from the timetable.",
     "errorStaffNameNotFound": "That name was not found in the timetable. Contact the administrator.",

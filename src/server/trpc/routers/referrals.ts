@@ -10,7 +10,16 @@ import { TRPCError } from "@trpc/server";
 import { canViewAllReferrals, canViewCounselorNotes } from "@/lib/rbac";
 import { localDateStr } from "@/lib/dates";
 import { expulsionDaysInPast } from "@/lib/periods";
+import { writeAudit } from "@/server/audit";
 import type { Role } from "@/generated/prisma";
+
+function reqMeta(req?: Request) {
+  const fwd = req?.headers.get("x-forwarded-for");
+  return {
+    ipAddress: fwd ? fwd.split(",")[0]!.trim() : req?.headers.get("x-real-ip") ?? null,
+    userAgent: req?.headers.get("user-agent") ?? null,
+  };
+}
 
 const RECOMMENDATION_VALUES = [
   "NO_RECOMMENDATION",
@@ -357,7 +366,7 @@ export const referralsRouter = createTRPCRouter({
       if (resolvableIds.length === 0)
         throw new TRPCError({ code: "BAD_REQUEST", message: "No students to resolve" });
 
-      return ctx.db.$transaction(async (tx) => {
+      const result = await ctx.db.$transaction(async (tx) => {
         // Create per-student resolutions (individually to support nested expulsionDays)
         const expulsionDates =
           input.action === "DETENTION" && input.expulsionDays?.length
@@ -418,6 +427,17 @@ export const referralsRouter = createTRPCRouter({
 
         return { allResolved };
       });
+
+      await writeAudit({
+        userId: ctx.session.user.id,
+        action: "referral.resolve",
+        resource: "Referral",
+        resourceId: input.referralId,
+        details: { action: input.action, studentIds: resolvableIds, allResolved: result.allResolved },
+        ...reqMeta(ctx.req),
+      });
+
+      return result;
     }),
 
   // Send SMS to parents of resolved students in a referral
@@ -476,6 +496,15 @@ export const referralsRouter = createTRPCRouter({
         }
       }
 
+      await writeAudit({
+        userId: ctx.session.user.id,
+        action: "referral.sendSms",
+        resource: "Referral",
+        resourceId: input.referralId,
+        details: { recipients: results.length, sent: results.filter((r) => r.success).length },
+        ...reqMeta(ctx.req),
+      });
+
       return { results };
     }),
 
@@ -486,6 +515,22 @@ export const referralsRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const role = ctx.session.user.role as Role;
       if (!canViewAllReferrals(role)) throw new TRPCError({ code: "FORBIDDEN" });
+
+      // HEADTEACHER_B may only inspect students in groups they head.
+      if (role === "HEADTEACHER_B") {
+        const staff = await ctx.db.staffProfile.findUnique({
+          where: { userId: ctx.session.user.id },
+          include: { homeroomHeadGroups: { select: { id: true } } },
+        });
+        const target = await ctx.db.studentProfile.findUnique({
+          where: { id: input.studentId },
+          select: { groupId: true },
+        });
+        const headGroupIds = new Set(staff?.homeroomHeadGroups.map((g) => g.id) ?? []);
+        if (!target?.groupId || !headGroupIds.has(target.groupId)) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+      }
 
       const student = await ctx.db.studentProfile.findUnique({
         where: { id: input.studentId },

@@ -1,9 +1,10 @@
 import { db } from "@/server/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
+import { getActiveAuth } from "@/server/authz";
 import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY, totalPeriodsForDays } from "@/lib/schoolConfig";
 import { PrintTrigger } from "./PrintTrigger";
+
+const FULL_ACCESS_ROLES = ["SUPER_ADMIN", "HEADMASTER", "HEADTEACHER_A", "STUDENT_COUNSELOR"];
 
 const ACTION_LABEL: Record<string, string> = {
   DETENTION: "Αποβολή",
@@ -34,8 +35,8 @@ export default async function PrintResolutionPage({
   params: Promise<{ locale: string; referralId: string }>;
 }) {
   const { locale, referralId } = await params;
-  const session = await getServerSession(authOptions);
-  if (!session) redirect(`/${locale}/login`);
+  const auth = await getActiveAuth();
+  if (!auth) redirect(`/${locale}/login`);
 
   const [referral, periodsPerDay] = await Promise.all([
     db.referral.findUnique({
@@ -66,6 +67,25 @@ export default async function PrintResolutionPage({
   }
 
   if (!referral) redirect(`/${locale}/teacher/referrals`);
+
+  // Authorization: full-access roles, the filer, or a headteacher of one of the
+  // referral's students' groups. Other staff may not read arbitrary referrals.
+  let allowed = FULL_ACCESS_ROLES.includes(auth.role);
+  if (!allowed) {
+    const staff = await db.staffProfile.findUnique({
+      where: { userId: auth.userId },
+      include: { homeroomHeadGroups: { select: { id: true } } },
+    });
+    if (staff) {
+      if (referral.filerId === staff.id) {
+        allowed = true;
+      } else {
+        const headGroupIds = new Set(staff.homeroomHeadGroups.map((g) => g.id));
+        allowed = referral.students.some((rs) => rs.groupId && headGroupIds.has(rs.groupId));
+      }
+    }
+  }
+  if (!allowed) redirect(`/${locale}/teacher/referrals`);
 
   const today = new Date().toLocaleDateString("el-GR", {
     day: "2-digit", month: "long", year: "numeric",

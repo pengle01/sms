@@ -1,6 +1,5 @@
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/server/auth";
+import { getActiveAuth } from "@/server/authz";
 import { Header } from "@/components/layout/Header";
 import { SidebarContent } from "@/components/layout/SidebarContent";
 
@@ -12,11 +11,13 @@ export default async function ParentPortalLayout({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const session = await getServerSession(authOptions);
+  const auth = await getActiveAuth();
 
-  if (!session?.user || session.user.role !== "PARENT") {
+  if (!auth || auth.role !== "PARENT") {
     redirect(`/${locale}/login`);
   }
+
+  const { session } = auth;
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">

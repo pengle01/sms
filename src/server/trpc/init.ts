@@ -23,12 +23,23 @@ export const createCallerFactory = t.createCallerFactory;
 
 export const publicProcedure = t.procedure;
 
-// Requires any authenticated user
-export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
+// Requires any authenticated user. Re-validates against the DB on every call so
+// that deactivated accounts lose access immediately and role changes take effect
+// without waiting for the JWT to expire (the role in the token is just a login
+// snapshot). The fresh role is written back into ctx for downstream guards.
+export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
   if (!ctx.session?.user) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
-  return next({ ctx: { ...ctx, session: ctx.session } });
+  const user = await ctx.db.user.findUnique({
+    where: { id: ctx.session.user.id },
+    select: { isActive: true, role: true },
+  });
+  if (!user || !user.isActive) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Account inactive" });
+  }
+  const session = { ...ctx.session, user: { ...ctx.session.user, role: user.role } };
+  return next({ ctx: { ...ctx, session } });
 });
 
 // Requires staff role

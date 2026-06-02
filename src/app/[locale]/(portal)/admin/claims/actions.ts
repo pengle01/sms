@@ -1,18 +1,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/server/auth";
 import { canManageClaims } from "@/lib/rbac";
+import { getActiveAuth } from "@/server/authz";
+import { writeAudit, requestMeta } from "@/server/audit";
 import { db } from "@/server/db";
 import type { Role } from "@/generated/prisma";
 import { Prisma } from "@/generated/prisma";
 
 async function requireAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || !canManageClaims(session.user.role as Role)) redirect("/");
-  return session;
+  const auth = await getActiveAuth();
+  if (!auth || !canManageClaims(auth.role)) redirect("/");
+  return auth;
 }
 
 const VALID_ROLES: Role[] = [
@@ -21,7 +21,7 @@ const VALID_ROLES: Role[] = [
 ];
 
 export async function approveRegistrationAction(userId: string, role: Role) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   if (!VALID_ROLES.includes(role)) return;
 
   if (role === "TEACHER") {
@@ -42,14 +42,29 @@ export async function approveRegistrationAction(userId: string, role: Role) {
   } else {
     await db.user.update({ where: { id: userId, isActive: false }, data: { isActive: true, role } });
   }
+  await writeAudit({
+    userId: admin.userId,
+    action: "registration.approve",
+    resource: "User",
+    resourceId: userId,
+    details: { role },
+    ...(await requestMeta()),
+  });
   revalidatePath("/", "layout");
 }
 
 export async function rejectRegistrationAction(userId: string) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const user = await db.user.findUnique({ where: { id: userId } });
   if (!user || user.isActive) return;
   await db.user.delete({ where: { id: userId } });
+  await writeAudit({
+    userId: admin.userId,
+    action: "registration.reject",
+    resource: "User",
+    resourceId: userId,
+    ...(await requestMeta()),
+  });
   revalidatePath("/", "layout");
 }
 

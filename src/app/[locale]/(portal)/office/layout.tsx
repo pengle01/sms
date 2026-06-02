@@ -1,8 +1,6 @@
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/server/auth";
+import { getActiveAuth } from "@/server/authz";
 import { isOfficeAdmin } from "@/lib/rbac";
-import type { Role } from "@/generated/prisma";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 
@@ -14,11 +12,13 @@ export default async function OfficePortalLayout({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const session = await getServerSession(authOptions);
+  const auth = await getActiveAuth();
 
-  if (!session?.user || !isOfficeAdmin(session.user.role as Role)) {
+  if (!auth || !isOfficeAdmin(auth.role)) {
     redirect(`/${locale}/login`);
   }
+
+  const { session } = auth;
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">

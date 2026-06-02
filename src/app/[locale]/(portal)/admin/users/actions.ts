@@ -1,24 +1,24 @@
 "use server";
 
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { authOptions } from "@/server/auth";
 import { db } from "@/server/db";
 import { hasMinRole } from "@/lib/rbac";
+import { getActiveAuth } from "@/server/authz";
+import { writeAudit, requestMeta } from "@/server/audit";
 import type { Role } from "@/generated/prisma";
 import { Prisma } from "@/generated/prisma";
 
 async function requireAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user || !hasMinRole(session.user.role as Role, "HEADMASTER")) {
+  const auth = await getActiveAuth();
+  if (!auth || !hasMinRole(auth.role, "HEADMASTER")) {
     redirect("/");
   }
-  return session;
+  return auth;
 }
 
 export async function approveUserAction(formData: FormData) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const userId = formData.get("userId") as string;
   const role = formData.get("role") as Role;
 
@@ -55,11 +55,19 @@ export async function approveUserAction(formData: FormData) {
     });
   }
 
+  await writeAudit({
+    userId: admin.userId,
+    action: "user.approve",
+    resource: "User",
+    resourceId: userId,
+    details: { role },
+    ...(await requestMeta()),
+  });
   revalidatePath("/", "layout");
 }
 
 export async function rejectUserAction(formData: FormData) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const userId = formData.get("userId") as string;
 
   // Only delete if still pending
@@ -67,5 +75,12 @@ export async function rejectUserAction(formData: FormData) {
   if (!user || user.isActive) return;
 
   await db.user.delete({ where: { id: userId } });
+  await writeAudit({
+    userId: admin.userId,
+    action: "user.reject",
+    resource: "User",
+    resourceId: userId,
+    ...(await requestMeta()),
+  });
   revalidatePath("/", "layout");
 }

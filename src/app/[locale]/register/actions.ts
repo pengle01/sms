@@ -1,11 +1,14 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import bcrypt from "bcryptjs";
 import { db } from "@/server/db";
+import { rateLimit } from "@/server/rateLimit";
 import type { Role } from "@/generated/prisma";
 
 const CLAIMABLE_ROLES: Role[] = ["TEACHER", "SCHOOL_ADMIN", "CHAPERONE"];
+const MIN_PASSWORD_LENGTH = 8;
 
 export async function registerAction(formData: FormData) {
   const name = ((formData.get("name") as string) ?? "").trim();
@@ -18,7 +21,15 @@ export async function registerAction(formData: FormData) {
 
   const base = `/${locale}/register`;
 
+  // Throttle registrations per client IP to curb spam / enumeration.
+  const h = await headers();
+  const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? h.get("x-real-ip") ?? "unknown";
+  if (!rateLimit(`register:${ip}`, 5, 60 * 60 * 1000)) {
+    redirect(`${base}?error=errorGeneric`);
+  }
+
   if (!name || !email || !password) redirect(`${base}?error=errorGeneric`);
+  if (password.length < MIN_PASSWORD_LENGTH) redirect(`${base}?error=errorPasswordWeak`);
   if (password !== confirm) redirect(`${base}?error=errorPasswordMismatch`);
   if (!CLAIMABLE_ROLES.includes(role)) redirect(`${base}?error=errorInvalidRole`);
 

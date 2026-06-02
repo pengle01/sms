@@ -3,12 +3,20 @@ import type { NextAuthOptions, Session } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { db } from "@/server/db";
+import { rateLimit, resetRateLimit } from "@/server/rateLimit";
 import type { Role } from "@/generated/prisma";
 
 const IS_DEV = process.env.NODE_ENV === "development";
 
+// Fail fast in production if the JWT signing secret is missing — without it,
+// session tokens could be forged.
+if (!IS_DEV && !process.env.NEXTAUTH_SECRET) {
+  throw new Error("NEXTAUTH_SECRET must be set in production");
+}
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(db),
+  secret: process.env.NEXTAUTH_SECRET,
   session: { strategy: "jwt" },
   // Disable secure-cookie prefix in dev so HTTP LAN access (192.168.x.x) works.
   // With AUTH_TRUST_HOST=1 and no x-forwarded-proto, NextAuth infers HTTPS and
@@ -62,9 +70,11 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials.password) return null;
 
-        const user = await db.user.findUnique({
-          where: { email: credentials.email.toLowerCase() },
-        });
+        const email = credentials.email.toLowerCase();
+        // Throttle password attempts per account to slow brute-forcing.
+        if (!rateLimit(`login:${email}`, 10, 15 * 60 * 1000)) return null;
+
+        const user = await db.user.findUnique({ where: { email } });
 
         if (!user || !user.passwordHash || !user.isActive) return null;
         if (!IS_DEV && user.role !== "PARENT" && user.role !== "CHAPERONE") return null;
@@ -72,6 +82,7 @@ export const authOptions: NextAuthOptions = {
         const valid = await bcrypt.compare(credentials.password, user.passwordHash);
         if (!valid) return null;
 
+        resetRateLimit(`login:${email}`);
         return { id: user.id, email: user.email, name: user.name, role: user.role, image: user.image };
       },
     }),
@@ -86,7 +97,8 @@ export const authOptions: NextAuthOptions = {
       try {
         const u = new URL(url);
         const b = new URL(baseUrl);
-        if (u.port === b.port || u.host === b.host) return url;
+        // Only same-host redirects — never trust a foreign host (open-redirect).
+        if (u.host === b.host) return url;
       } catch {}
       return baseUrl;
     },

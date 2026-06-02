@@ -1,26 +1,34 @@
 "use server";
 
 import { db } from "@/server/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/server/auth";
 import { revalidatePath } from "next/cache";
+import { getActiveAuth } from "@/server/authz";
+import { writeAudit, requestMeta } from "@/server/audit";
 
 async function requireSuperAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "SUPER_ADMIN") throw new Error("Forbidden");
+  const auth = await getActiveAuth();
+  if (!auth || auth.role !== "SUPER_ADMIN") throw new Error("Forbidden");
+  return auth;
 }
 
 export async function unlinkStaffUser(staffProfileId: string) {
-  await requireSuperAdmin();
+  const admin = await requireSuperAdmin();
   await db.staffProfile.update({
     where: { id: staffProfileId },
     data: { userId: null },
+  });
+  await writeAudit({
+    userId: admin.userId,
+    action: "staff.unlinkUser",
+    resource: "StaffProfile",
+    resourceId: staffProfileId,
+    ...(await requestMeta()),
   });
   revalidatePath("/[locale]/admin/staff", "page");
 }
 
 export async function linkStaffUser(staffProfileId: string, userId: string) {
-  await requireSuperAdmin();
+  const admin = await requireSuperAdmin();
   // Unlink the user from any existing profile first
   await db.staffProfile.updateMany({
     where: { userId },
@@ -29,6 +37,14 @@ export async function linkStaffUser(staffProfileId: string, userId: string) {
   await db.staffProfile.update({
     where: { id: staffProfileId },
     data: { userId },
+  });
+  await writeAudit({
+    userId: admin.userId,
+    action: "staff.linkUser",
+    resource: "StaffProfile",
+    resourceId: staffProfileId,
+    details: { linkedUserId: userId },
+    ...(await requestMeta()),
   });
   revalidatePath("/[locale]/admin/staff", "page");
 }

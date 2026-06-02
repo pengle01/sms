@@ -18,11 +18,14 @@ function isPublicPath(pathname: string): boolean {
 export default async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  // Always allow API routes and static files
+  // Always allow API routes and genuine static assets. Match real asset
+  // extensions only — a bare `.includes(".")` would let any dotted page path
+  // (e.g. /teacher/x.y) skip the auth check.
+  const STATIC_ASSET = /\.(png|jpe?g|gif|svg|ico|webp|avif|css|js|map|woff2?|ttf|eot|pdf|txt|xml|json|csv|webmanifest)$/i;
   if (
     pathname.startsWith("/api/") ||
     pathname.startsWith("/_next/") ||
-    pathname.includes(".")
+    STATIC_ASSET.test(pathname)
   ) {
     return NextResponse.next();
   }
