@@ -5,13 +5,33 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, CalendarRange, FlaskConical } from "lucide-react";
+import { ChevronLeft, CalendarRange, FlaskConical, User, Phone, FileWarning } from "lucide-react";
 import { getNow, utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { getPeriodsPerDay, periodsForDow, maxPeriodCount } from "@/lib/schoolConfig";
+import { actionLabel } from "@/lib/referralLabels";
+import type { Role } from "@/generated/prisma";
 
 const DOW_LABELS = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const DOW_SHORT  = ["", "Mon", "Tue", "Wed", "Thu", "Fri"];
+
+const GENDER_LABEL: Record<string, string> = { MALE: "Άρρεν", FEMALE: "Θήλυ" };
+const CONTACT_ROLE_LABEL: Record<string, string> = {
+  FATHER: "Πατέρας",
+  MOTHER: "Μητέρα",
+  GUARDIAN: "Κηδεμόνας",
+  OTHER: "Άλλο",
+};
+
+function Field({ label, value }: { label: string; value?: string | null }) {
+  if (!value) return null;
+  return (
+    <div className="flex justify-between gap-3 border-b border-slate-50 py-1">
+      <dt className="text-slate-500">{label}</dt>
+      <dd className="font-medium text-slate-800 text-right">{value}</dd>
+    </div>
+  );
+}
 
 export default async function StudentSchedulePage({
   params,
@@ -53,7 +73,7 @@ export default async function StudentSchedulePage({
   const todayPeriods = periodsForDow(periodsConfig, isSchoolDay ? todayDow : 1);
   const allPeriods = Array.from({ length: maxPeriodCount(periodsConfig) }, (_, i) => i + 1);
 
-  const [allSlots, todayActivities, upcomingTests] = await Promise.all([
+  const [allSlots, todayActivities, upcomingTests, viewerStaff] = await Promise.all([
     groupIds.length > 0
       ? db.timetableSlot.findMany({
           where: { groupId: { in: groupIds } },
@@ -82,7 +102,36 @@ export default async function StudentSchedulePage({
           take: 20,
         })
       : Promise.resolve([]),
+    db.staffProfile.findUnique({ where: { userId: session.user.id }, select: { id: true } }),
   ]);
+
+  // Full dossier (personal info + contacts + referrals) is shown only to the
+  // student's homeroom teacher, their group's headteacher, and top management/counselor.
+  const role = session.user.role as Role;
+  const TOP_ROLES = ["HEADMASTER", "HEADTEACHER_A", "STUDENT_COUNSELOR", "SUPER_ADMIN"];
+  const canViewFull =
+    TOP_ROLES.includes(role) ||
+    (!!viewerStaff &&
+      (student.group?.homeroomTeacherId === viewerStaff.id ||
+        student.group?.homeroomHeadteacherId === viewerStaff.id));
+
+  const [contacts, referralRecords] = canViewFull
+    ? await Promise.all([
+        db.smsContact.findMany({
+          where: { studentId, active: true },
+          select: { id: true, name: true, phone: true, role: true },
+          orderBy: { name: "asc" },
+        }),
+        db.referralStudent.findMany({
+          where: { studentId, referral: { isDraft: false } },
+          include: {
+            referral: { select: { id: true, number: true, date: true, description: true, location: true } },
+            resolution: { include: { expulsionDays: { orderBy: { date: "asc" as const } } } },
+          },
+          orderBy: { referral: { date: "desc" } },
+        }),
+      ])
+    : [[], []];
 
   type SlotEntry = (typeof allSlots)[0] & { isSubjectGroup?: boolean };
   const grid: Record<number, Record<number, SlotEntry>> = {};
@@ -157,6 +206,116 @@ export default async function StudentSchedulePage({
           </Link>
         </div>
       </div>
+
+      {/* Full dossier — personal info, contacts, referrals (authorised viewers only) */}
+      {canViewFull && (
+        <div className="space-y-5">
+          {/* Personal information */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <User className="w-4 h-4" /> Προσωπικά Στοιχεία
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1 text-sm">
+                <Field label="Αρ. Μητρώου" value={student.studentId} />
+                <Field label="Τμήμα" value={student.group?.name} />
+                <Field label="Φύλο" value={student.gender ? GENDER_LABEL[student.gender] : null} />
+                <Field
+                  label="Ημ. Γέννησης"
+                  value={student.dateOfBirth ? fmtDisplayDate(student.dateOfBirth) : null}
+                />
+                <Field label="Τόπος Γέννησης" value={student.placeOfBirth} />
+                <Field label="Υπηκοότητα" value={student.nationality} />
+                <Field label="Αρ. Ταυτότητας" value={student.idCardNumber} />
+                <Field label="Αρ. Διαβατηρίου" value={student.passportNumber} />
+              </dl>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* Contact phone numbers */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Phone className="w-4 h-4" /> Τηλέφωνα Επικοινωνίας
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {contacts.length === 0 ? (
+                  <p className="text-sm text-slate-400">Δεν υπάρχουν καταχωρημένα τηλέφωνα.</p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {contacts.map((c) => (
+                      <li
+                        key={c.id}
+                        className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-slate-800 truncate">{c.name}</p>
+                          <p className="text-xs text-slate-400">{CONTACT_ROLE_LABEL[c.role] ?? c.role}</p>
+                        </div>
+                        <a
+                          href={`tel:${c.phone}`}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-medium hover:bg-emerald-100 whitespace-nowrap"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                          {c.phone}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Referrals */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileWarning className="w-4 h-4" /> Καταγγελίες ({referralRecords.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {referralRecords.length === 0 ? (
+                  <p className="text-sm text-slate-400">Καμία καταγγελία.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {referralRecords.map((rs) => (
+                      <li key={rs.id} className="rounded-lg border border-slate-200 px-3 py-2">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <Link
+                            href={`/${locale}/teacher/referrals/${rs.referral.id}/print`}
+                            target="_blank"
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-800"
+                          >
+                            <span className="text-slate-700 font-semibold">#{rs.referral.number}</span>
+                            {fmtDisplayDate(rs.referral.date)}
+                            {rs.referral.location && <span className="text-slate-400">· {rs.referral.location}</span>}
+                          </Link>
+                          {rs.status === "RESOLVED" ? (
+                            <span className="text-[11px] font-medium text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded">
+                              {rs.resolution ? actionLabel(rs.resolution.action) : "Επιλύθηκε"}
+                              {rs.resolution && rs.resolution.expulsionDays.length > 0 &&
+                                ` · ${rs.resolution.expulsionDays.length}η`}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                              Εκκρεμής
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-slate-700 line-clamp-2">{rs.referral.description}</p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
 
       {/* Today's activities */}
       {todayActivities.length > 0 && (
