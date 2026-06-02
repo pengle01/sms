@@ -34,6 +34,15 @@ function calcPeriods(dates: string[], periodsConfig: Record<number, number>): nu
   return totalPeriodsForDays(periodsConfig, dates);
 }
 
+// Local today as a YYYY-MM-DD string — earliest allowed expulsion day.
+function todayIso(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 function fmtDate(iso: string): string {
   return new Date(iso + "T12:00:00").toLocaleDateString("el-GR", {
     weekday: "short", day: "2-digit", month: "2-digit", year: "numeric",
@@ -82,8 +91,11 @@ export function ResolveReferralDialog({
     [expulsionDays, periodsConfig]
   );
 
+  const minDay = todayIso();
+
   const addDay = () => {
     if (!dateInput) return;
+    if (dateInput < minDay) { toast.error("Δεν επιτρέπονται ημερομηνίες στο παρελθόν"); return; }
     const dow = new Date(dateInput + "T12:00:00").getDay();
     if (dow === 0 || dow === 6) { toast.error("Το Σαββατοκύριακο δεν μετράει σε σχολικές μέρες"); return; }
     setExpulsionDays((prev) => prev.includes(dateInput) ? prev : [...prev, dateInput].sort());
@@ -259,7 +271,7 @@ export function ResolveReferralDialog({
 
                     {/* Add date */}
                     <div className="flex gap-2">
-                      <input type="date" value={dateInput}
+                      <input type="date" value={dateInput} min={minDay}
                         onChange={(e) => setDateInput(e.target.value)}
                         className="flex-1 h-10 px-3 rounded-xl border border-red-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 bg-white" />
                       <button type="button" onClick={addDay} disabled={!dateInput}

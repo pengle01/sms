@@ -8,6 +8,8 @@ import {
 } from "../init";
 import { TRPCError } from "@trpc/server";
 import { canViewAllReferrals, canViewCounselorNotes } from "@/lib/rbac";
+import { localDateStr } from "@/lib/dates";
+import { expulsionDaysInPast } from "@/lib/periods";
 import type { Role } from "@/generated/prisma";
 
 const RECOMMENDATION_VALUES = [
@@ -289,6 +291,18 @@ export const referralsRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const role = ctx.session.user.role as Role;
+
+      // Punishments may only be scheduled today or in the future, never the past.
+      if (
+        input.action === "DETENTION" &&
+        input.expulsionDays?.length &&
+        expulsionDaysInPast(input.expulsionDays, localDateStr()).length > 0
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Οι ημέρες αποβολής δεν μπορούν να είναι στο παρελθόν",
+        });
+      }
 
       const referral = await ctx.db.referral.findUnique({
         where: { id: input.referralId },

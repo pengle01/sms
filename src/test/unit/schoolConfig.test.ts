@@ -6,6 +6,7 @@ import {
   DEFAULT_PERIODS_PER_DAY,
   DEFAULT_MAX_TESTS_PER_WEEK,
 } from "@/lib/schoolConfig";
+import { expulsionDaysInPast } from "@/lib/periods";
 
 describe("DEFAULT_PERIODS_PER_DAY", () => {
   it("has 7 periods for each weekday", () => {
@@ -87,5 +88,34 @@ describe("totalPeriodsForDays", () => {
   it("falls back to 7 periods for a weekday missing from config", () => {
     const config = { 1: 7 }; // only Monday defined
     expect(totalPeriodsForDays(config, ["2026-06-02"])).toBe(7); // Tuesday → fallback 7
+  });
+});
+
+describe("expulsionDaysInPast", () => {
+  const today = "2026-06-02";
+
+  it("returns days before today", () => {
+    expect(expulsionDaysInPast(["2026-06-01", "2026-05-30"], today)).toEqual([
+      "2026-06-01",
+      "2026-05-30",
+    ]);
+  });
+
+  it("treats today as not in the past", () => {
+    expect(expulsionDaysInPast([today], today)).toEqual([]);
+  });
+
+  it("allows future days", () => {
+    expect(expulsionDaysInPast(["2026-06-03", "2026-12-01"], today)).toEqual([]);
+  });
+
+  it("returns only the past subset from a mixed list", () => {
+    expect(
+      expulsionDaysInPast(["2026-05-31", "2026-06-02", "2026-06-05"], today)
+    ).toEqual(["2026-05-31"]);
+  });
+
+  it("returns empty for an empty list", () => {
+    expect(expulsionDaysInPast([], today)).toEqual([]);
   });
 });

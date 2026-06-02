@@ -13,6 +13,12 @@ export function maxPeriodCount(config: PeriodsPerDay): number {
   return Math.max(...Object.values(config));
 }
 
+// Returns the expulsion days (YYYY-MM-DD) that fall before `todayIso`.
+// Date-only strings compare lexicographically the same as chronologically.
+export function expulsionDaysInPast(days: string[], todayIso: string): string[] {
+  return days.filter((d) => d < todayIso);
+}
+
 // Total school periods across a set of expulsion days.
 // Weekend days (Sat/Sun) contribute zero. Accepts Date objects or ISO date strings.
 export function totalPeriodsForDays(
