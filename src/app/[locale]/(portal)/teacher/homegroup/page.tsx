@@ -97,10 +97,13 @@ export default async function TeacherHomegroupPage({
       },
       _count: { _all: true },
     }),
-    db.referral.groupBy({
+    // Count via the ReferralStudent join table — Referral.studentId is legacy
+    // and null for the current multi-student referrals.
+    db.referralStudent.groupBy({
       by: ["studentId"],
       where: {
         studentId: { in: studentIds },
+        referral: { isDraft: false },
       },
       _count: { _all: true },
     }),
