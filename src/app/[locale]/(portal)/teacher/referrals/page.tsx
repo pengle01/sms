@@ -185,6 +185,7 @@ export default async function TeacherReferralsPage({
 
     return (
       <tr className={`hover:bg-slate-50 align-top ${referralLeftAccentClass(r)}`}>
+        <td className="px-4 py-3 text-sm font-semibold text-slate-700 whitespace-nowrap">#{r.number}</td>
         <td className="px-4 py-3 text-slate-500 text-sm whitespace-nowrap">{fmtDisplayDate(r.date)}</td>
         {showFiler && (
           <td className="px-4 py-3 text-sm text-slate-600">{r.filer.user?.name ?? "—"}</td>
@@ -243,6 +244,7 @@ export default async function TeacherReferralsPage({
   const TableHead = ({ showFiler }: { showFiler: boolean }) => (
     <thead>
       <tr className="border-b border-slate-100">
+        <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Αρ.</th>
         <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Ημερομηνία</th>
         {showFiler && <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Καταγγέλλων</th>}
         <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Λεπτομέρειες</th>
@@ -278,7 +280,7 @@ export default async function TeacherReferralsPage({
         <div className="px-5 py-4 border-b border-slate-100 bg-slate-50">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-              {r.filer.user?.name ?? "—"} · {fmtDisplayDate(r.date)}
+              <span className="text-slate-700">#{r.number}</span> · {r.filer.user?.name ?? "—"} · {fmtDisplayDate(r.date)}
               {r.location && ` · ${r.location}`}
             </p>
             <div className="flex items-center gap-2">
@@ -406,7 +408,7 @@ export default async function TeacherReferralsPage({
               <ReferralRow key={r.id} r={r} showFiler={false} />
             ))}
             {myReferrals.length === 0 && (
-              <tr><td colSpan={5} className="px-4 py-12 text-center text-slate-400">
+              <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">
                 <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-30" />
                 Δεν έχετε υποβάλει καταγγελίες
               </td></tr>
@@ -462,7 +464,7 @@ export default async function TeacherReferralsPage({
                   <ReferralRow key={r.id} r={r} showFiler={true} />
                 ))}
                 {allReferrals.length === 0 && (
-                  <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">
+                  <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400">
                     <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-30" />
                     Δεν βρέθηκαν καταγγελίες
                   </td></tr>

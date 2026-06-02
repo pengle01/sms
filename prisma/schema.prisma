@@ -505,6 +505,8 @@ model TestGrade {
 
 model Referral {
   id             String         @id @default(cuid())
+  // Human-friendly sequential identifier for easy coordination (e.g. "#42").
+  number         Int            @unique @default(autoincrement())
   // Legacy single-student fields (nullable; kept for old data only)
   studentId      String?
   student        StudentProfile? @relation("StudentReferrals", fields: [studentId], references: [id])

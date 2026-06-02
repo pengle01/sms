@@ -177,6 +177,7 @@ export default async function ReferralsPage({
           <table className="w-full text-sm min-w-[700px]">
             <thead>
               <tr className="border-b border-slate-100">
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Αρ.</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("dateHeader")}</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{tCommon("student")}</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("description")}</th>
@@ -193,6 +194,7 @@ export default async function ReferralsPage({
                   .filter(Boolean);
                 return (
                   <tr key={r.id} className={`hover:bg-slate-50 align-top ${referralLeftAccentClass(r)}`}>
+                    <td className="px-5 py-3.5 text-sm font-semibold text-slate-700 whitespace-nowrap">#{r.number}</td>
                     <td className="px-5 py-3.5 text-slate-500 whitespace-nowrap">
                       {fmtDisplayDate(r.date)}
                     </td>
@@ -230,7 +232,7 @@ export default async function ReferralsPage({
               })}
               {referrals.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-5 py-16 text-center text-slate-400">
+                  <td colSpan={7} className="px-5 py-16 text-center text-slate-400">
                     <AlertTriangle className="w-10 h-10 mx-auto mb-2 opacity-30" />
                     {t("noReferrals")}
                   </td>

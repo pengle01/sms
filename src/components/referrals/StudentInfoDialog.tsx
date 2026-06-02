@@ -113,6 +113,7 @@ export function StudentInfoDialog({ studentId, excludeReferralId, studentName }:
                             <div className="flex items-center justify-between gap-2 mb-1">
                               <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500">
                                 <FileWarning className="w-3.5 h-3.5 text-amber-500" />
+                                <span className="text-slate-700 font-semibold">#{r.number}</span>
                                 {fmtDisplayDate(r.date)}
                                 {r.location && <span className="text-slate-400">· {r.location}</span>}
                               </span>

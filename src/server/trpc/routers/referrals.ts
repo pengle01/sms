@@ -502,7 +502,7 @@ export const referralsRouter = createTRPCRouter({
               ? { referralId: { not: input.excludeReferralId } }
               : {},
             include: {
-              referral: { select: { id: true, date: true, description: true, location: true } },
+              referral: { select: { id: true, number: true, date: true, description: true, location: true } },
               resolution: {
                 select: {
                   action: true,
@@ -522,6 +522,7 @@ export const referralsRouter = createTRPCRouter({
         contacts: student.smsContacts,
         pastReferrals: student.referralStudents.map((rs) => ({
           id: rs.referral.id,
+          number: rs.referral.number,
           date: rs.referral.date,
           description: rs.referral.description,
           location: rs.referral.location,

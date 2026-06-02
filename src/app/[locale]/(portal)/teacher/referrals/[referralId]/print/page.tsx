@@ -104,6 +104,7 @@ export default async function PrintResolutionPage({
             <h1 className="text-xl font-bold text-slate-900 mt-2">
               ΑΠOΦΑΣΗ ΠΕΙΘΑΡΧΙΚΟY ΜEΤΡΟΥ
             </h1>
+            <p className="text-sm font-semibold text-slate-700 mt-1">Αρ. Καταγγελίας: #{referral.number}</p>
             <p className="text-xs text-slate-500 mt-1">Ημερομηνία έκδοσης: {today}</p>
           </div>
 
