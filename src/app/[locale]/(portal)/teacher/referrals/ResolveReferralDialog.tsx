@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { ChevronRight, Loader2, X, Printer, MessageSquare, CheckCircle2, Plus, CalendarDays } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { totalPeriodsForDays } from "@/lib/periods";
+import { recommendationLabel } from "@/lib/referralLabels";
 
 const ACTIONS = [
   { value: "PEDAGOGICAL_DIALOGUE", label: "Παιδαγωγικός Διάλογος" },
@@ -245,7 +246,7 @@ export function ResolveReferralDialog({
               {recommendation && recommendation !== "NO_RECOMMENDATION" && (
                 <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
                   <span className="font-semibold">Εισήγηση εκπαιδευτικού: </span>
-                  {recommendation.replace(/_/g, " ")}
+                  {recommendationLabel(recommendation)}
                 </div>
               )}
 

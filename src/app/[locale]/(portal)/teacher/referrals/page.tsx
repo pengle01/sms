@@ -15,6 +15,7 @@ import { StudentInfoDialog } from "@/components/referrals/StudentInfoDialog";
 import { StudentsDropdown } from "@/components/referrals/StudentsDropdown";
 import { ReferralTabs } from "@/components/referrals/ReferralTabs";
 import { overallStatus } from "@/lib/referralStatus";
+import { recommendationLabel } from "@/lib/referralLabels";
 import type { Role } from "@/generated/prisma";
 
 const ACTION_LABEL: Record<string, string> = {
@@ -302,7 +303,7 @@ export default async function TeacherReferralsPage({
           {r.recommendation && r.recommendation !== "NO_RECOMMENDATION" && (
             <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
               <span className="font-semibold">Εισήγηση:</span>
-              {r.recommendation.replace(/_/g, " ")}
+              {recommendationLabel(r.recommendation)}
             </div>
           )}
         </div>
