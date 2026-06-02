@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { AlertTriangle } from "lucide-react";
 import { NewReferralDialog } from "./NewReferralDialog";
 import { ResolveReferralDialog } from "./ResolveReferralDialog";
-import { ReferralStatusBadge } from "@/components/referrals/ReferralStatusBadge";
+import { ReferralStatusBadge, referralLeftAccentClass } from "@/components/referrals/ReferralStatusBadge";
+import { StudentInfoDialog } from "@/components/referrals/StudentInfoDialog";
 import { cn } from "@/lib/utils";
 import { fmtDisplayDate } from "@/lib/dates";
 import { getTranslations } from "next-intl/server";
@@ -192,7 +193,7 @@ export default async function ReferralsPage({
                   .map((rs) => rs.student.user?.name ?? "")
                   .filter(Boolean);
                 return (
-                  <tr key={r.id} className="hover:bg-slate-50 align-top">
+                  <tr key={r.id} className={`hover:bg-slate-50 align-top ${referralLeftAccentClass(r)}`}>
                     <td className="px-5 py-3.5 text-slate-500 whitespace-nowrap">
                       {fmtDisplayDate(r.date)}
                     </td>
@@ -207,6 +208,11 @@ export default async function ReferralsPage({
                                 {rs.resolution ? rs.resolution.action.replace(/_/g, " ") : "✓"}
                               </Badge>
                             )}
+                            <StudentInfoDialog
+                              studentId={rs.studentId}
+                              excludeReferralId={r.id}
+                              studentName={rs.student.user?.name ?? undefined}
+                            />
                           </div>
                         ))}
                       </div>

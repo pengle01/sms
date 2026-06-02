@@ -479,6 +479,59 @@ export const referralsRouter = createTRPCRouter({
       return { results };
     }),
 
+  // Student dossier for a referral: contact phone numbers + past referrals.
+  // Visible to roles that can view all referrals (headteachers, headmaster, counselor, admin).
+  studentContext: staffProcedure
+    .input(z.object({ studentId: z.string(), excludeReferralId: z.string().optional() }))
+    .query(async ({ ctx, input }) => {
+      const role = ctx.session.user.role as Role;
+      if (!canViewAllReferrals(role)) throw new TRPCError({ code: "FORBIDDEN" });
+
+      const student = await ctx.db.studentProfile.findUnique({
+        where: { id: input.studentId },
+        include: {
+          user: { select: { name: true } },
+          group: { select: { name: true } },
+          smsContacts: {
+            where: { active: true },
+            select: { id: true, name: true, phone: true, role: true },
+            orderBy: { name: "asc" },
+          },
+          referralStudents: {
+            where: input.excludeReferralId
+              ? { referralId: { not: input.excludeReferralId } }
+              : {},
+            include: {
+              referral: { select: { id: true, date: true, description: true, location: true } },
+              resolution: {
+                select: {
+                  action: true,
+                  expulsionDays: { select: { date: true }, orderBy: { date: "asc" as const } },
+                },
+              },
+            },
+            orderBy: { referral: { date: "desc" } },
+          },
+        },
+      });
+      if (!student) throw new TRPCError({ code: "NOT_FOUND" });
+
+      return {
+        name: student.user?.name ?? "—",
+        group: student.group?.name ?? null,
+        contacts: student.smsContacts,
+        pastReferrals: student.referralStudents.map((rs) => ({
+          id: rs.referral.id,
+          date: rs.referral.date,
+          description: rs.referral.description,
+          location: rs.referral.location,
+          status: rs.status as string,
+          action: rs.resolution?.action ?? null,
+          expulsionCount: rs.resolution?.expulsionDays.length ?? 0,
+        })),
+      };
+    }),
+
   // Update private counselor notes
   updateCounselorNotes: counselorProcedure
     .input(z.object({ referralId: z.string(), notes: z.string() }))
