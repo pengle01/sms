@@ -4,7 +4,7 @@ import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertTriangle, Plus } from "lucide-react";
+import { AlertTriangle, Plus, Printer } from "lucide-react";
 import { fmtDisplayDate } from "@/lib/dates";
 import { canViewCounselorNotes, canViewAllReferrals } from "@/lib/rbac";
 import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY } from "@/lib/schoolConfig";
@@ -103,6 +103,26 @@ export default async function TeacherReferralsPage({
           },
           include: referralInclude,
           orderBy: { createdAt: "asc" },
+        })
+      : [];
+
+  // History: homegroup referrals where my group's students are all resolved (HEADTEACHER_B only)
+  const groupHistory =
+    isHeadteacherB && headGroupIds.length > 0
+      ? await db.referral.findMany({
+          where: {
+            isDraft: false,
+            students: { some: { groupId: { in: headGroupIds }, status: "RESOLVED" } },
+            NOT: {
+              OR: [
+                { filerId: staff.id },
+                { students: { some: { groupId: { in: headGroupIds }, status: "PENDING" } } },
+              ],
+            },
+          },
+          include: referralInclude,
+          orderBy: { createdAt: "desc" },
+          take: 100,
         })
       : [];
 
@@ -251,6 +271,7 @@ export default async function TeacherReferralsPage({
   const GroupCard = ({ r }: { r: Referral }) => {
     const myStudents = r.students.filter((rs) => rs.groupId && headGroupIds.includes(rs.groupId));
     const pendingMine = myStudents.filter((rs) => rs.status === "PENDING");
+    const resolvedMine = myStudents.filter((rs) => rs.status === "RESOLVED");
     return (
       <div className={`rounded-2xl border-2 ${referralBorderClass(r)} bg-white overflow-hidden shadow-sm`}>
         {/* Card header */}
@@ -260,7 +281,20 @@ export default async function TeacherReferralsPage({
               {r.filer.user?.name ?? "—"} · {fmtDisplayDate(r.date)}
               {r.location && ` · ${r.location}`}
             </p>
-            <ReferralStatusBadge referral={r} />
+            <div className="flex items-center gap-2">
+              {resolvedMine.length > 0 && (
+                <a
+                  href={`/${locale}/teacher/referrals/${r.id}/print`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  Εκτύπωση
+                </a>
+              )}
+              <ReferralStatusBadge referral={r} />
+            </div>
           </div>
           <p className="mt-2 text-sm text-slate-800 leading-relaxed">{r.description}</p>
           {r.recommendation && r.recommendation !== "NO_RECOMMENDATION" && (
@@ -342,6 +376,19 @@ export default async function TeacherReferralsPage({
         </div>
       ) : (
         groupReferrals.map((r) => <GroupCard key={r.id} r={r} />)
+      )}
+    </div>
+  );
+
+  const historyContent = (
+    <div className="space-y-3">
+      {groupHistory.length === 0 ? (
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-12 text-center text-slate-400">
+          <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-30" />
+          Δεν υπάρχουν επιλυμένες καταγγελίες
+        </div>
+      ) : (
+        groupHistory.map((r) => <GroupCard key={r.id} r={r} />)
       )}
     </div>
   );
@@ -437,6 +484,12 @@ export default async function TeacherReferralsPage({
               count: groupReferrals.length,
               highlight: true,
               content: examineContent,
+            },
+            {
+              key: "history",
+              label: "Ιστορικό",
+              count: groupHistory.length,
+              content: historyContent,
             },
             {
               key: "mine",
