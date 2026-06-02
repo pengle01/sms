@@ -4,12 +4,11 @@ import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { AlertTriangle } from "lucide-react";
 import { NewReferralDialog } from "./NewReferralDialog";
 import { ResolveReferralDialog } from "./ResolveReferralDialog";
 import { ReferralStatusBadge, referralLeftAccentClass } from "@/components/referrals/ReferralStatusBadge";
-import { StudentInfoDialog } from "@/components/referrals/StudentInfoDialog";
+import { StudentsDropdown } from "@/components/referrals/StudentsDropdown";
 import { cn } from "@/lib/utils";
 import { fmtDisplayDate } from "@/lib/dates";
 import { getTranslations } from "next-intl/server";
@@ -198,24 +197,21 @@ export default async function ReferralsPage({
                       {fmtDisplayDate(r.date)}
                     </td>
                     <td className="px-5 py-3.5 text-sm">
-                      <div className="space-y-0.5">
-                        {r.students.map((rs) => (
-                          <div key={rs.id} className="flex items-center gap-1.5">
-                            <span className="font-medium text-slate-900">{rs.student.user?.name}</span>
-                            <Badge variant="outline" className="text-[10px] px-1.5">{rs.group?.name ?? "—"}</Badge>
-                            {rs.status === "RESOLVED" && (
-                              <Badge variant="outline" className="text-[10px] px-1.5 bg-green-50 text-green-700 border-green-200">
-                                {rs.resolution ? rs.resolution.action.replace(/_/g, " ") : "✓"}
-                              </Badge>
-                            )}
-                            <StudentInfoDialog
-                              studentId={rs.studentId}
-                              excludeReferralId={r.id}
-                              studentName={rs.student.user?.name ?? undefined}
-                            />
-                          </div>
-                        ))}
-                      </div>
+                      <StudentsDropdown
+                        canViewInfo
+                        students={r.students.map((rs) => ({
+                          referralStudentId: rs.id,
+                          studentId: rs.studentId,
+                          name: rs.student.user?.name ?? "—",
+                          group: rs.group?.name ?? null,
+                          status: rs.status,
+                          actionLabel:
+                            rs.status === "RESOLVED" && rs.resolution
+                              ? rs.resolution.action.replace(/_/g, " ")
+                              : null,
+                          referralId: r.id,
+                        }))}
+                      />
                     </td>
                     <td className="px-5 py-3.5 text-slate-600 max-w-xs">
                       <span className="line-clamp-2 text-sm">{r.description}</span>

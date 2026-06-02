@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, Plus } from "lucide-react";
 import { fmtDisplayDate } from "@/lib/dates";
@@ -13,6 +12,7 @@ import { ResolveReferralDialog } from "./ResolveReferralDialog";
 import { DeleteDraftButton } from "./DeleteDraftButton";
 import { ReferralStatusBadge, referralBorderClass, referralLeftAccentClass } from "@/components/referrals/ReferralStatusBadge";
 import { StudentInfoDialog } from "@/components/referrals/StudentInfoDialog";
+import { StudentsDropdown } from "@/components/referrals/StudentsDropdown";
 import { ReferralTabs } from "@/components/referrals/ReferralTabs";
 import { overallStatus } from "@/lib/referralStatus";
 import type { Role } from "@/generated/prisma";
@@ -24,11 +24,6 @@ const ACTION_LABEL: Record<string, string> = {
   WARNING: "Προειδοποίηση",
   OTHER: "Άλλο",
 };
-const STUDENT_STATUS_BADGE: Record<string, string> = {
-  PENDING: "bg-amber-50 text-amber-700 border-amber-200",
-  RESOLVED: "bg-green-50 text-green-700 border-green-200",
-};
-
 // Include shape — same as in router
 const referralInclude = {
   filer: { include: { user: { select: { name: true } } } },
@@ -178,37 +173,23 @@ export default async function TeacherReferralsPage({
           <p className="line-clamp-2">{r.description}</p>
           {r.location && <p className="text-xs text-slate-400 mt-0.5">{r.location}</p>}
         </td>
-        {/* Students column with per-student status */}
+        {/* Students column — single inline, multiple in a dropdown */}
         <td className="px-4 py-3 text-sm min-w-[160px]">
-          <div className="space-y-1">
-            {students.map((rs) => (
-              <div key={rs.id} className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-slate-800 font-medium">{rs.student.user?.name}</span>
-                <span className="text-xs text-slate-400">{rs.group?.name}</span>
-                <Badge
-                  variant="outline"
-                  className={`text-[10px] px-1.5 py-0 h-4 ${STUDENT_STATUS_BADGE[rs.status] ?? ""}`}
-                >
-                  {rs.status === "RESOLVED" && rs.resolution
-                    ? ACTION_LABEL[rs.resolution.action] ?? rs.resolution.action
-                    : "Εκκρεμής"}
-                </Badge>
-                {canViewStudentInfo && (
-                  <StudentInfoDialog
-                    studentId={rs.studentId}
-                    excludeReferralId={r.id}
-                    studentName={rs.student.user?.name ?? undefined}
-                  />
-                )}
-              </div>
-            ))}
-            {r.students.length > students.length && (
-              <p className="text-xs text-slate-400">
-                +{r.students.length - students.length} άλλο
-                {r.students.length - students.length !== 1 ? "ι" : "ς"}
-              </p>
-            )}
-          </div>
+          <StudentsDropdown
+            canViewInfo={canViewStudentInfo}
+            students={students.map((rs) => ({
+              referralStudentId: rs.id,
+              studentId: rs.studentId,
+              name: rs.student.user?.name ?? "—",
+              group: rs.group?.name ?? null,
+              status: rs.status,
+              actionLabel:
+                rs.status === "RESOLVED" && rs.resolution
+                  ? ACTION_LABEL[rs.resolution.action] ?? rs.resolution.action
+                  : null,
+              referralId: r.id,
+            }))}
+          />
         </td>
         <td className="px-4 py-3 text-sm">
           <ReferralStatusBadge referral={r} />
