@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ChevronRight, Loader2, X, Printer, MessageSquare, CheckCircle2, Plus, CalendarDays } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { totalPeriodsForDays } from "@/lib/schoolConfig";
+import { totalPeriodsForDays } from "@/lib/periods";
 
 const ACTIONS = [
   { value: "PEDAGOGICAL_DIALOGUE", label: "Παιδαγωγικός Διάλογος" },
