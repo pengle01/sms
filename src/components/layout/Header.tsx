@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { LogOut, Globe, Menu, X } from "lucide-react";
 import { SidebarContent } from "./SidebarContent";
 import { NotificationBell } from "./NotificationBell";
+import { AppearanceDialog } from "./AppearanceDialog";
 import type { Role } from "@/generated/prisma";
 
 interface HeaderProps {
@@ -112,9 +113,10 @@ export function Header({ userName, userImage, locale, pageTitle, role, portal, p
                     <p className="text-xs text-slate-500 mt-0.5">{role.replace(/_/g, " ")}</p>
                   )}
                 </div>
+                <AppearanceDialog />
                 <a
                   href={`/api/logout?locale=${locale}`}
-                  className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 active:bg-red-100 touch-manipulation"
+                  className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 active:bg-red-100 touch-manipulation border-t border-slate-100"
                 >
                   <LogOut className="w-4 h-4" />
                   {t("logout")}

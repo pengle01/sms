@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/server/auth";
+import { db } from "@/server/db";
 import "@/app/globals.css";
 
 // lang is set per-locale below; suppressHydrationWarning stops React
@@ -21,9 +24,27 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Per-account appearance, applied on <html> so colour + font cascade everywhere.
+  let colorTheme = "emerald";
+  let fontSize = "small";
+  const session = await getServerSession(authOptions);
+  if (session?.user?.id) {
+    const prefs = await db.user.findUnique({
+      where: { id: session.user.id },
+      select: { colorTheme: true, fontSize: true },
+    });
+    colorTheme = prefs?.colorTheme ?? colorTheme;
+    fontSize = prefs?.fontSize ?? fontSize;
+  }
+
   return (
-    <html suppressHydrationWarning className={`${inter.variable} h-full`}>
+    <html
+      suppressHydrationWarning
+      data-theme={colorTheme}
+      data-font={fontSize}
+      className={`${inter.variable} h-full`}
+    >
       <body
         suppressHydrationWarning
         className="min-h-full antialiased bg-background text-foreground font-[family-name:var(--font-inter)]"

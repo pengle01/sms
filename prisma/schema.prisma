@@ -132,6 +132,9 @@ model User {
   role         Role
   entraId      String?  @unique
   isActive     Boolean  @default(true)
+  // Per-account appearance preferences
+  colorTheme   String   @default("emerald") // emerald | ocean | violet | rose | amber
+  fontSize     String   @default("small")   // small | medium | large
 
   accounts Account[]
   sessions Session[]

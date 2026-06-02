@@ -131,3 +131,87 @@
     @apply font-sans;
   }
 }
+
+/* ── Per-account appearance ──────────────────────────────────────────────────
+   The app's primary palette is emerald (literal `emerald-*` utilities). In
+   Tailwind v4 those compile to var(--color-emerald-*), so re-skinning the whole
+   app is just a matter of overriding that scale (plus the shadcn primary tokens)
+   under a [data-theme] selector on <html>. Default (emerald) needs no override. */
+
+[data-theme="ocean"] {
+  --color-emerald-50: oklch(0.97 0.014 254.604);
+  --color-emerald-100: oklch(0.932 0.032 255.585);
+  --color-emerald-200: oklch(0.882 0.059 254.128);
+  --color-emerald-300: oklch(0.809 0.105 251.813);
+  --color-emerald-400: oklch(0.707 0.165 254.624);
+  --color-emerald-500: oklch(0.623 0.214 259.815);
+  --color-emerald-600: oklch(0.546 0.245 262.881);
+  --color-emerald-700: oklch(0.488 0.243 264.376);
+  --color-emerald-800: oklch(0.424 0.199 265.638);
+  --color-emerald-900: oklch(0.379 0.146 265.522);
+  --color-emerald-950: oklch(0.282 0.091 267.935);
+}
+
+[data-theme="violet"] {
+  --color-emerald-50: oklch(0.969 0.016 293.756);
+  --color-emerald-100: oklch(0.943 0.029 294.588);
+  --color-emerald-200: oklch(0.894 0.057 293.283);
+  --color-emerald-300: oklch(0.811 0.111 293.571);
+  --color-emerald-400: oklch(0.702 0.183 293.541);
+  --color-emerald-500: oklch(0.606 0.25 292.717);
+  --color-emerald-600: oklch(0.541 0.281 293.009);
+  --color-emerald-700: oklch(0.491 0.27 292.581);
+  --color-emerald-800: oklch(0.432 0.232 292.759);
+  --color-emerald-900: oklch(0.38 0.189 293.745);
+  --color-emerald-950: oklch(0.283 0.141 291.089);
+}
+
+[data-theme="rose"] {
+  --color-emerald-50: oklch(0.969 0.015 12.422);
+  --color-emerald-100: oklch(0.941 0.03 12.58);
+  --color-emerald-200: oklch(0.892 0.058 10.001);
+  --color-emerald-300: oklch(0.81 0.117 11.638);
+  --color-emerald-400: oklch(0.712 0.194 13.428);
+  --color-emerald-500: oklch(0.645 0.246 16.439);
+  --color-emerald-600: oklch(0.586 0.253 17.585);
+  --color-emerald-700: oklch(0.514 0.222 16.935);
+  --color-emerald-800: oklch(0.455 0.188 13.697);
+  --color-emerald-900: oklch(0.41 0.159 10.272);
+  --color-emerald-950: oklch(0.271 0.105 12.094);
+}
+
+[data-theme="amber"] {
+  --color-emerald-50: oklch(0.987 0.022 95.277);
+  --color-emerald-100: oklch(0.962 0.059 95.617);
+  --color-emerald-200: oklch(0.924 0.12 95.746);
+  --color-emerald-300: oklch(0.879 0.169 91.605);
+  --color-emerald-400: oklch(0.828 0.189 84.429);
+  --color-emerald-500: oklch(0.769 0.188 70.08);
+  --color-emerald-600: oklch(0.666 0.179 58.318);
+  --color-emerald-700: oklch(0.555 0.163 48.998);
+  --color-emerald-800: oklch(0.473 0.137 46.201);
+  --color-emerald-900: oklch(0.414 0.112 45.904);
+  --color-emerald-950: oklch(0.279 0.077 45.635);
+}
+
+/* Keep shadcn primary tokens in sync with the chosen palette */
+[data-theme="ocean"],
+[data-theme="violet"],
+[data-theme="rose"],
+[data-theme="amber"] {
+  --primary: var(--color-emerald-600);
+  --ring: var(--color-emerald-400);
+  --accent: var(--color-emerald-50);
+  --accent-foreground: var(--color-emerald-800);
+  --sidebar-primary: var(--color-emerald-600);
+  --sidebar-accent: var(--color-emerald-50);
+  --sidebar-accent-foreground: var(--color-emerald-800);
+  --sidebar-ring: var(--color-emerald-400);
+  --chart-1: var(--color-emerald-600);
+  --chart-2: var(--color-emerald-400);
+}
+
+/* Lettering size — scales the root rem so all text grows proportionally.
+   "small" is the existing 16px baseline. */
+html[data-font="medium"] { font-size: 112.5%; } /* 18px */
+html[data-font="large"]  { font-size: 125%; }   /* 20px */
