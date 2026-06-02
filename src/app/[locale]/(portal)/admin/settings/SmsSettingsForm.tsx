@@ -1,0 +1,100 @@
+"use client";
+
+import { useState } from "react";
+import { trpc } from "@/trpc/client";
+import { toast } from "sonner";
+import { Loader2, Eye, EyeOff } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+interface Props {
+  initial: { apiUrl: string; apiKey: string; senderId: string };
+}
+
+export function SmsSettingsForm({ initial }: Props) {
+  const [apiUrl, setApiUrl]     = useState(initial.apiUrl);
+  const [apiKey, setApiKey]     = useState(initial.apiKey);
+  const [senderId, setSenderId] = useState(initial.senderId);
+  const [showKey, setShowKey]   = useState(false);
+
+  const { mutate, isPending } = trpc.settings.upsertMany.useMutation({
+    onSuccess: () => toast.success("SMS settings saved"),
+    onError: (e) => toast.error(e.message),
+  });
+
+  const save = () =>
+    mutate([
+      { key: "sms_api_url",   value: apiUrl.trim() },
+      { key: "sms_api_key",   value: apiKey.trim() },
+      { key: "sms_sender_id", value: senderId.trim() || "SCHOOL" },
+    ]);
+
+  const configured = !!initial.apiUrl && !!initial.apiKey;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${configured ? "bg-green-500" : "bg-slate-300"}`} />
+        <span className="text-xs text-slate-500">{configured ? "Configured" : "Not configured"}</span>
+      </div>
+
+      <div className="space-y-3">
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-slate-700">API Endpoint URL</label>
+          <input
+            type="url"
+            value={apiUrl}
+            onChange={(e) => setApiUrl(e.target.value)}
+            placeholder="https://api.websms.com.cy/api/send"
+            className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+          <p className="text-xs text-slate-400">Obtain from websms.com.cy — SMS via API</p>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-slate-700">API Key</label>
+          <div className="relative">
+            <input
+              type={showKey ? "text" : "password"}
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="Your WebSMS API key"
+              className="w-full h-9 px-3 pr-9 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <button
+              type="button"
+              onClick={() => setShowKey((v) => !v)}
+              className="absolute right-2 top-2 text-slate-400 hover:text-slate-600"
+            >
+              {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+          <p className="text-xs text-slate-400">websms.com.cy/en/account/api-key</p>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-slate-700">Sender ID</label>
+          <input
+            type="text"
+            value={senderId}
+            onChange={(e) => setSenderId(e.target.value.slice(0, 11))}
+            placeholder="SCHOOL"
+            maxLength={11}
+            className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+          <p className="text-xs text-slate-400">Name shown on recipient's phone (max 11 chars)</p>
+        </div>
+      </div>
+
+      <div className="flex justify-end">
+        <Button
+          onClick={save}
+          disabled={isPending}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+        >
+          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Save
+        </Button>
+      </div>
+    </div>
+  );
+}

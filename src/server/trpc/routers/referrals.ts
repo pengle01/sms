@@ -27,7 +27,7 @@ const referralInclude = {
     include: {
       student: { include: { user: { select: { name: true } } } },
       group: { select: { name: true } },
-      resolution: true,
+      resolution: { include: { expulsionDays: { orderBy: { date: "asc" as const } } } },
     },
     orderBy: { student: { user: { name: "asc" } } } as const,
   },
@@ -281,8 +281,7 @@ export const referralsRouter = createTRPCRouter({
         action: z.enum(["DETENTION", "PEDAGOGICAL_DIALOGUE", "WRITTEN_AGREEMENT", "WARNING", "OTHER"]),
         notes: z.string().optional(),
         counselorNotes: z.string().optional(),
-        expulsionStartDate: z.string().optional(), // ISO date, only for DETENTION
-        expulsionEndDate: z.string().optional(),
+        expulsionDays: z.array(z.string()).optional(), // ISO date strings, only for DETENTION
         parentContacted: z.boolean().default(false),
         parentContactDate: z.string().optional(),
         parentContactMethod: z.string().optional(),
@@ -333,23 +332,29 @@ export const referralsRouter = createTRPCRouter({
         throw new TRPCError({ code: "BAD_REQUEST", message: "No students to resolve" });
 
       return ctx.db.$transaction(async (tx) => {
-        // Create per-student resolutions
-        await tx.referralStudentResolution.createMany({
-          data: resolvableIds.map((rsId) => ({
-            referralStudentId: rsId,
-            action: input.action,
-            notes: input.notes,
-            counselorNotes: input.counselorNotes,
-            expulsionStartDate: input.action === "DETENTION" && input.expulsionStartDate
-              ? new Date(input.expulsionStartDate) : undefined,
-            expulsionEndDate: input.action === "DETENTION" && input.expulsionEndDate
-              ? new Date(input.expulsionEndDate) : undefined,
-            parentContacted: input.parentContacted,
-            parentContactDate: input.parentContactDate ? new Date(input.parentContactDate) : undefined,
-            parentContactMethod: input.parentContactMethod,
-            resolvedById: ctx.session.user.id,
-          })),
-        });
+        // Create per-student resolutions (individually to support nested expulsionDays)
+        const expulsionDates =
+          input.action === "DETENTION" && input.expulsionDays?.length
+            ? input.expulsionDays.map((d) => ({ date: new Date(d) }))
+            : [];
+
+        await Promise.all(
+          resolvableIds.map((rsId) =>
+            tx.referralStudentResolution.create({
+              data: {
+                referralStudentId: rsId,
+                action: input.action,
+                notes: input.notes,
+                counselorNotes: input.counselorNotes,
+                parentContacted: input.parentContacted,
+                parentContactDate: input.parentContactDate ? new Date(input.parentContactDate) : undefined,
+                parentContactMethod: input.parentContactMethod,
+                resolvedById: ctx.session.user.id,
+                ...(expulsionDates.length ? { expulsionDays: { create: expulsionDates } } : {}),
+              },
+            })
+          )
+        );
 
         // Mark those students as RESOLVED
         await tx.referralStudent.updateMany({

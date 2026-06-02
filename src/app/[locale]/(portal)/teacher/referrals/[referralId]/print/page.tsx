@@ -2,6 +2,7 @@ import { db } from "@/server/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
+import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY, totalPeriodsForDays } from "@/lib/schoolConfig";
 import { PrintTrigger } from "./PrintTrigger";
 
 const ACTION_LABEL: Record<string, string> = {
@@ -36,20 +37,33 @@ export default async function PrintResolutionPage({
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login`);
 
-  const referral = await db.referral.findUnique({
-    where: { id: referralId },
-    include: {
-      filer: { include: { user: { select: { name: true } } } },
-      students: {
-        include: {
-          student: { include: { user: { select: { name: true } } } },
-          group: { select: { name: true } },
-          resolution: { include: { resolvedBy: { select: { name: true } } } },
+  const [referral, periodsPerDay] = await Promise.all([
+    db.referral.findUnique({
+      where: { id: referralId },
+      include: {
+        filer: { include: { user: { select: { name: true } } } },
+        students: {
+          include: {
+            student: { include: { user: { select: { name: true } } } },
+            group: { select: { name: true } },
+            resolution: {
+              include: {
+                resolvedBy: { select: { name: true } },
+                expulsionDays: { orderBy: { date: "asc" } },
+              },
+            },
+          },
+          orderBy: { student: { user: { name: "asc" } } },
         },
-        orderBy: { student: { user: { name: "asc" } } },
       },
-    },
-  });
+    }),
+    getPeriodsPerDay(),
+  ]);
+  const periodsConfig = { ...DEFAULT_PERIODS_PER_DAY, ...periodsPerDay };
+
+  function totalExpulsionPeriods(days: { date: Date }[]): number {
+    return totalPeriodsForDays(periodsConfig, days.map((d) => d.date));
+  }
 
   if (!referral) redirect(`/${locale}/teacher/referrals`);
 
@@ -155,13 +169,28 @@ export default async function PrintResolutionPage({
                             {ACTION_LABEL[rs.resolution.action] ?? rs.resolution.action}
                           </td>
                         </tr>
-                        {rs.resolution.action === "DETENTION" && rs.resolution.expulsionStartDate && (
+                        {rs.resolution.action === "DETENTION" && rs.resolution.expulsionDays.length > 0 && (
                           <tr className="border-b border-slate-100">
-                            <td className="px-4 py-1.5 font-medium text-slate-600">Αποβολή</td>
+                            <td className="px-4 py-1.5 font-medium text-slate-600 align-top">Αποβολή</td>
                             <td className="px-4 py-1.5 text-slate-900">
-                              {fmt(rs.resolution.expulsionStartDate)}
-                              {rs.resolution.expulsionEndDate &&
-                                ` έως ${fmt(rs.resolution.expulsionEndDate)}`}
+                              <div className="space-y-0.5">
+                                {rs.resolution.expulsionDays.map((d) => {
+                                  const dow = d.date.getDay();
+                                  const periods = dow >= 1 && dow <= 5 ? (periodsConfig[dow] ?? 7) : 0;
+                                  return (
+                                    <div key={d.id} className="flex items-center justify-between gap-4">
+                                      <span>{fmt(d.date)}</span>
+                                      <span className="text-slate-500 text-xs">{periods} περίοδοι</span>
+                                    </div>
+                                  );
+                                })}
+                                <div className="border-t border-slate-200 pt-1 flex items-center justify-between gap-4 font-semibold">
+                                  <span>
+                                    Σύνολο ({rs.resolution.expulsionDays.length} {rs.resolution.expulsionDays.length === 1 ? "ημέρα" : "ημέρες"})
+                                  </span>
+                                  <span>{totalExpulsionPeriods(rs.resolution.expulsionDays)} περίοδοι</span>
+                                </div>
+                              </div>
                             </td>
                           </tr>
                         )}

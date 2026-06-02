@@ -3,6 +3,7 @@ import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY, getMaxTestsPerWeek, DEFAULT_MAX_TESTS_PER_WEEK } from "@/lib/schoolConfig";
+import { getSmsConfig } from "@/lib/sms";
 
 export default async function AdminSettingsPage({
   params,
@@ -15,9 +16,11 @@ export default async function AdminSettingsPage({
 
   const { PeriodsForm } = await import("./PeriodsForm");
   const { MaxTestsForm } = await import("./MaxTestsForm");
-  const [periodsPerDay, maxTestsPerWeek] = await Promise.all([
+  const { SmsSettingsForm } = await import("./SmsSettingsForm");
+  const [periodsPerDay, maxTestsPerWeek, smsConfig] = await Promise.all([
     getPeriodsPerDay(),
     getMaxTestsPerWeek(),
+    getSmsConfig(),
   ]);
   const initial = { ...DEFAULT_PERIODS_PER_DAY, ...periodsPerDay };
   const maxTestsInitial = maxTestsPerWeek ?? DEFAULT_MAX_TESTS_PER_WEEK;
@@ -44,6 +47,15 @@ export default async function AdminSettingsPage({
         </CardHeader>
         <CardContent>
           <MaxTestsForm initial={maxTestsInitial} />
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">SMS Gateway (WebSMS / Cytacom)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <SmsSettingsForm initial={smsConfig} />
         </CardContent>
       </Card>
     </div>

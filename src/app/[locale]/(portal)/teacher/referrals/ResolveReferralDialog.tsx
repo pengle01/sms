@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ChevronRight, Loader2, X, Printer, MessageSquare, CheckCircle2 } from "lucide-react";
+import { ChevronRight, Loader2, X, Printer, MessageSquare, CheckCircle2, Plus, CalendarDays } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { totalPeriodsForDays } from "@/lib/schoolConfig";
 
 const ACTIONS = [
   { value: "PEDAGOGICAL_DIALOGUE", label: "Παιδαγωγικός Διάλογος" },
@@ -25,14 +26,25 @@ interface Props {
   canViewCounselorNotes?: boolean;
   groupResolve?: boolean;
   locale?: string;
+  periodsConfig?: Record<number, number>; // DOW 1-5 → period count
 }
 
-function defaultSmsMessage(studentNames: string[], startDate?: string, endDate?: string): string {
+// Total school periods across selected expulsion dates
+function calcPeriods(dates: string[], periodsConfig: Record<number, number>): number {
+  return totalPeriodsForDays(periodsConfig, dates);
+}
+
+function fmtDate(iso: string): string {
+  return new Date(iso + "T12:00:00").toLocaleDateString("el-GR", {
+    weekday: "short", day: "2-digit", month: "2-digit", year: "numeric",
+  });
+}
+
+function defaultSmsMessage(studentNames: string[], expulsionDays: string[]): string {
   const names = studentNames.join(", ");
-  if (startDate) {
-    const start = new Date(startDate).toLocaleDateString("el-GR", { day: "2-digit", month: "2-digit", year: "numeric" });
-    const end = endDate ? new Date(endDate).toLocaleDateString("el-GR", { day: "2-digit", month: "2-digit", year: "numeric" }) : start;
-    return `Αξιότιμε κηδεμόνα, ο/η ${names} αποβλήθηκε από το σχολείο από ${start} έως ${end} λόγω πειθαρχικού παραπτώματος. Για πληροφορίες επικοινωνήστε με τη Διεύθυνση.`;
+  if (expulsionDays.length > 0) {
+    const fmtted = expulsionDays.map(fmtDate).join(", ");
+    return `Αξιότιμε κηδεμόνα, ο/η ${names} αποβλήθηκε από το σχολείο τις ημερομηνίες: ${fmtted}, λόγω πειθαρχικού παραπτώματος. Για πληροφορίες επικοινωνήστε με τη Διεύθυνση.`;
   }
   return `Αξιότιμε κηδεμόνα, το πειθαρχικό θέμα του/της ${names} εξετάστηκε και ελήφθη απόφαση. Για πληροφορίες επικοινωνήστε με τη Διεύθυνση.`;
 }
@@ -45,6 +57,7 @@ export function ResolveReferralDialog({
   canViewCounselorNotes = false,
   groupResolve = false,
   locale = "el",
+  periodsConfig = { 1: 7, 2: 7, 3: 7, 4: 7, 5: 7 },
 }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -54,21 +67,35 @@ export function ResolveReferralDialog({
   const [action, setAction] = useState<Action>("PEDAGOGICAL_DIALOGUE");
   const [notes, setNotes] = useState("");
   const [counselorNotes, setCounselorNotes] = useState("");
-  const [expulsionStartDate, setExpulsionStartDate] = useState("");
-  const [expulsionEndDate, setExpulsionEndDate] = useState("");
+  const [expulsionDays, setExpulsionDays] = useState<string[]>([]);
+  const [dateInput, setDateInput] = useState("");
   const [parentContacted, setParentContacted] = useState(false);
   const [parentContactDate, setParentContactDate] = useState("");
   const [parentContactMethod, setParentContactMethod] = useState("");
 
   // SMS state
-  const [sendingSms, setSendingSms] = useState(false);
   const [smsMessage, setSmsMessage] = useState("");
   const [showSmsPanel, setShowSmsPanel] = useState(false);
+
+  const totalPeriods = useMemo(
+    () => calcPeriods(expulsionDays, periodsConfig),
+    [expulsionDays, periodsConfig]
+  );
+
+  const addDay = () => {
+    if (!dateInput) return;
+    const dow = new Date(dateInput + "T12:00:00").getDay();
+    if (dow === 0 || dow === 6) { toast.error("Το Σαββατοκύριακο δεν μετράει σε σχολικές μέρες"); return; }
+    setExpulsionDays((prev) => prev.includes(dateInput) ? prev : [...prev, dateInput].sort());
+    setDateInput("");
+  };
+
+  const removeDay = (d: string) => setExpulsionDays((prev) => prev.filter((x) => x !== d));
 
   const { mutate: resolve, isPending: resolving } = trpc.referrals.resolve.useMutation({
     onSuccess: () => {
       setResolved(true);
-      setSmsMessage(defaultSmsMessage(studentNames, expulsionStartDate, expulsionEndDate));
+      setSmsMessage(defaultSmsMessage(studentNames, expulsionDays));
       router.refresh();
     },
     onError: (e) => toast.error(e.message),
@@ -80,10 +107,9 @@ export function ResolveReferralDialog({
       const failed = data.results.filter((r) => !r.success).length;
       if (sent > 0) toast.success(`SMS εστάλη σε ${sent} επαφή/ές`);
       if (failed > 0) toast.error(`${failed} αποστολή/ές απέτυχαν`);
-      setSendingSms(false);
       setShowSmsPanel(false);
     },
-    onError: (e) => { toast.error(e.message); setSendingSms(false); },
+    onError: (e) => toast.error(e.message),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -94,48 +120,33 @@ export function ResolveReferralDialog({
       action,
       notes: notes || undefined,
       counselorNotes: counselorNotes || undefined,
-      expulsionStartDate: action === "DETENTION" ? expulsionStartDate || undefined : undefined,
-      expulsionEndDate: action === "DETENTION" ? expulsionEndDate || undefined : undefined,
+      expulsionDays: action === "DETENTION" ? expulsionDays : undefined,
       parentContacted,
       parentContactDate: parentContactDate || undefined,
       parentContactMethod: parentContactMethod || undefined,
     });
   };
 
-  const handlePrint = () => {
-    window.open(`/${locale}/teacher/referrals/${referralId}/print?auto=1`, "_blank");
-  };
-
-  const handleSendSms = () => {
-    if (!smsMessage.trim()) return;
-    setSendingSms(true);
-    sendSms({ referralId, referralStudentId, message: smsMessage });
-  };
+  const handlePrint = () => window.open(`/${locale}/teacher/referrals/${referralId}/print?auto=1`, "_blank");
 
   const studentLabel = studentNames.length === 1 ? studentNames[0]! : `${studentNames.length} μαθητές`;
 
-  // ─── Trigger buttons ───────────────────────────────────────────────────────
+  // ─── Trigger buttons ──────────────────────────────────────────────────────
   if (!open) {
-    if (groupResolve) {
-      return (
-        <button onClick={() => setOpen(true)}
-          className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-[0.98] transition-all touch-manipulation">
-          <span className="text-sm font-semibold text-white">Επίλυση Ομαδικά ({studentNames.length} μαθητές)</span>
-          <ChevronRight className="w-4 h-4 text-slate-300" />
-        </button>
-      );
-    }
-    if (referralStudentId) {
-      return (
-        <button onClick={() => setOpen(true)}
-          className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 active:scale-[0.98] transition-all touch-manipulation">
-          <span className="text-sm font-semibold text-slate-800">{studentLabel}</span>
-          <span className="flex items-center gap-1 text-emerald-700 font-semibold text-sm">
-            Επίλυση <ChevronRight className="w-4 h-4" />
-          </span>
-        </button>
-      );
-    }
+    if (groupResolve) return (
+      <button onClick={() => setOpen(true)}
+        className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-[0.98] transition-all touch-manipulation">
+        <span className="text-sm font-semibold text-white">Επίλυση Ομαδικά ({studentNames.length} μαθητές)</span>
+        <ChevronRight className="w-4 h-4 text-slate-300" />
+      </button>
+    );
+    if (referralStudentId) return (
+      <button onClick={() => setOpen(true)}
+        className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 active:scale-[0.98] transition-all touch-manipulation">
+        <span className="text-sm font-semibold text-slate-800">{studentLabel}</span>
+        <span className="flex items-center gap-1 text-emerald-700 font-semibold text-sm">Επίλυση <ChevronRight className="w-4 h-4" /></span>
+      </button>
+    );
     return (
       <button onClick={() => setOpen(true)}
         className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-700 font-medium text-sm touch-manipulation">
@@ -163,7 +174,7 @@ export function ResolveReferralDialog({
             </button>
           </div>
 
-          {/* ── POST-RESOLVE STATE ── */}
+          {/* ── POST-RESOLVE ── */}
           {resolved ? (
             <div className="space-y-4">
               <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-green-50 border border-green-200 text-green-800">
@@ -172,15 +183,12 @@ export function ResolveReferralDialog({
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                {/* Print button */}
                 <button onClick={handlePrint}
                   className="flex flex-col items-center gap-2 px-4 py-5 rounded-2xl border-2 border-slate-200 hover:border-slate-400 hover:bg-slate-50 transition-colors touch-manipulation">
                   <Printer className="w-7 h-7 text-slate-600" />
                   <span className="text-sm font-semibold text-slate-700">Εκτύπωση</span>
                   <span className="text-xs text-slate-400">Απόφαση παραπτώματος</span>
                 </button>
-
-                {/* SMS button */}
                 <button onClick={() => setShowSmsPanel((v) => !v)}
                   className="flex flex-col items-center gap-2 px-4 py-5 rounded-2xl border-2 border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50 transition-colors touch-manipulation">
                   <MessageSquare className="w-7 h-7 text-emerald-600" />
@@ -189,22 +197,15 @@ export function ResolveReferralDialog({
                 </button>
               </div>
 
-              {/* SMS compose panel */}
               {showSmsPanel && (
                 <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
                   <label className="text-sm font-semibold text-emerald-800">Μήνυμα SMS</label>
-                  <textarea
-                    value={smsMessage}
-                    onChange={(e) => setSmsMessage(e.target.value)}
-                    rows={4}
-                    className="w-full px-3 py-2 rounded-xl border border-emerald-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none bg-white"
-                  />
+                  <textarea value={smsMessage} onChange={(e) => setSmsMessage(e.target.value)} rows={4}
+                    className="w-full px-3 py-2 rounded-xl border border-emerald-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none bg-white" />
                   <p className="text-xs text-slate-400">{smsMessage.length} χαρακτήρες</p>
-                  <Button
-                    onClick={handleSendSms}
+                  <Button onClick={() => sendSms({ referralId, referralStudentId, message: smsMessage })}
                     disabled={smsPending || !smsMessage.trim()}
-                    className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold touch-manipulation"
-                  >
+                    className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold touch-manipulation">
                     {smsPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Αποστολή SMS στους Γονείς
                   </Button>
@@ -240,7 +241,7 @@ export function ResolveReferralDialog({
                         }`}>
                         <input type="radio" name="action" value={a.value}
                           checked={action === a.value}
-                          onChange={() => setAction(a.value)}
+                          onChange={() => { setAction(a.value); if (a.value !== "DETENTION") setExpulsionDays([]); }}
                           className="sr-only" />
                         <span className="text-sm font-medium">{a.label}</span>
                       </label>
@@ -248,25 +249,56 @@ export function ResolveReferralDialog({
                   </div>
                 </div>
 
-                {/* Expulsion dates — shown only for DETENTION */}
+                {/* Expulsion days — multi-date picker for DETENTION */}
                 {action === "DETENTION" && (
                   <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-3">
-                    <label className="text-sm font-semibold text-red-800">Ημερομηνίες Αποβολής</label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-medium text-red-700">Από</label>
-                        <input type="date" value={expulsionStartDate}
-                          onChange={(e) => setExpulsionStartDate(e.target.value)}
-                          className="w-full h-10 px-3 rounded-xl border border-red-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 bg-white" />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-medium text-red-700">Έως</label>
-                        <input type="date" value={expulsionEndDate}
-                          onChange={(e) => setExpulsionEndDate(e.target.value)}
-                          min={expulsionStartDate}
-                          className="w-full h-10 px-3 rounded-xl border border-red-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 bg-white" />
-                      </div>
+                    <div className="flex items-center gap-2">
+                      <CalendarDays className="w-4 h-4 text-red-600" />
+                      <label className="text-sm font-semibold text-red-800">Ημέρες Αποβολής</label>
                     </div>
+
+                    {/* Add date */}
+                    <div className="flex gap-2">
+                      <input type="date" value={dateInput}
+                        onChange={(e) => setDateInput(e.target.value)}
+                        className="flex-1 h-10 px-3 rounded-xl border border-red-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 bg-white" />
+                      <button type="button" onClick={addDay} disabled={!dateInput}
+                        className="flex items-center gap-1.5 px-3 h-10 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-medium disabled:opacity-40 touch-manipulation">
+                        <Plus className="w-4 h-4" /> Προσθήκη
+                      </button>
+                    </div>
+
+                    {/* Selected days list */}
+                    {expulsionDays.length > 0 && (
+                      <div className="space-y-1.5">
+                        {expulsionDays.map((d) => {
+                          const dow = new Date(d + "T12:00:00").getDay();
+                          const periods = periodsConfig[dow] ?? 7;
+                          return (
+                            <div key={d} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-red-200">
+                              <div>
+                                <span className="text-sm font-medium text-red-900">{fmtDate(d)}</span>
+                                <span className="ml-2 text-xs text-red-500">{periods} ώρες</span>
+                              </div>
+                              <button type="button" onClick={() => removeDay(d)}
+                                className="text-red-400 hover:text-red-700 p-1 touch-manipulation">
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Summary */}
+                    {expulsionDays.length > 0 && (
+                      <div className="flex items-center justify-between pt-1 border-t border-red-200 text-sm">
+                        <span className="font-semibold text-red-800">Σύνολο</span>
+                        <span className="font-bold text-red-900">
+                          {expulsionDays.length} ημέρ{expulsionDays.length === 1 ? "α" : "ες"} · {totalPeriods} ώρ{totalPeriods === 1 ? "α" : "ες"}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
 

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   periodsForDow,
   maxPeriodCount,
+  totalPeriodsForDays,
   DEFAULT_PERIODS_PER_DAY,
   DEFAULT_MAX_TESTS_PER_WEEK,
 } from "@/lib/schoolConfig";
@@ -53,5 +54,38 @@ describe("maxPeriodCount", () => {
   it("handles a uniform config", () => {
     const config = { 1: 5, 2: 5, 3: 5, 4: 5, 5: 5 };
     expect(maxPeriodCount(config)).toBe(5);
+  });
+});
+
+describe("totalPeriodsForDays", () => {
+  // 2026-06-01 is a Monday → Mon-Fri run through 2026-06-05 (Fri)
+  it("sums periods for consecutive weekdays", () => {
+    const days = ["2026-06-01", "2026-06-02", "2026-06-03"]; // Mon, Tue, Wed
+    expect(totalPeriodsForDays(DEFAULT_PERIODS_PER_DAY, days)).toBe(21);
+  });
+
+  it("returns zero for an empty list", () => {
+    expect(totalPeriodsForDays(DEFAULT_PERIODS_PER_DAY, [])).toBe(0);
+  });
+
+  it("ignores weekend days", () => {
+    const days = ["2026-06-06", "2026-06-07"]; // Sat, Sun
+    expect(totalPeriodsForDays(DEFAULT_PERIODS_PER_DAY, days)).toBe(0);
+  });
+
+  it("uses the configured period count per day", () => {
+    const config = { ...DEFAULT_PERIODS_PER_DAY, 5: 4 }; // Friday has 4
+    const days = ["2026-06-04", "2026-06-05"]; // Thu (7) + Fri (4)
+    expect(totalPeriodsForDays(config, days)).toBe(11);
+  });
+
+  it("accepts Date objects as well as ISO strings", () => {
+    const days = [new Date("2026-06-01T12:00:00"), new Date("2026-06-02T12:00:00")];
+    expect(totalPeriodsForDays(DEFAULT_PERIODS_PER_DAY, days)).toBe(14);
+  });
+
+  it("falls back to 7 periods for a weekday missing from config", () => {
+    const config = { 1: 7 }; // only Monday defined
+    expect(totalPeriodsForDays(config, ["2026-06-02"])).toBe(7); // Tuesday → fallback 7
   });
 });

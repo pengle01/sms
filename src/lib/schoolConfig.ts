@@ -23,6 +23,19 @@ export function maxPeriodCount(config: PeriodsPerDay): number {
   return Math.max(...Object.values(config));
 }
 
+// Pure: total school periods across a set of expulsion days.
+// Weekend days (Sat/Sun) contribute zero. Accepts Date objects or ISO date strings.
+export function totalPeriodsForDays(
+  config: PeriodsPerDay,
+  days: (Date | string)[]
+): number {
+  return days.reduce<number>((sum, d) => {
+    const date = d instanceof Date ? d : new Date(d + "T12:00:00");
+    const dow = date.getDay(); // 0=Sun … 6=Sat
+    return sum + (dow >= 1 && dow <= 5 ? (config[dow] ?? 7) : 0);
+  }, 0);
+}
+
 export const DEFAULT_MAX_TESTS_PER_WEEK = 4;
 
 export async function getMaxTestsPerWeek(): Promise<number> {

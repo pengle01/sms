@@ -560,14 +560,24 @@ model ReferralStudentResolution {
   action            ResolutionAction
   notes             String?         @db.Text
   counselorNotes    String?         @db.Text
-  expulsionStartDate DateTime?
-  expulsionEndDate   DateTime?
   parentContacted   Boolean         @default(false)
   parentContactDate   DateTime?
   parentContactMethod String?
   resolvedById      String
   resolvedBy        User            @relation("ReferralStudentResolver", fields: [resolvedById], references: [id])
   resolvedAt        DateTime        @default(now())
+
+  expulsionDays     ReferralExpulsionDay[]
+}
+
+model ReferralExpulsionDay {
+  id           String                    @id @default(cuid())
+  resolutionId String
+  resolution   ReferralStudentResolution @relation(fields: [resolutionId], references: [id], onDelete: Cascade)
+  date         DateTime                  @db.Date
+
+  @@unique([resolutionId, date])
+  @@index([resolutionId])
 }
 
 model ReferralResolution {

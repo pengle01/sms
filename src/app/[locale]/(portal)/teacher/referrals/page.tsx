@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, Plus } from "lucide-react";
 import { fmtDisplayDate } from "@/lib/dates";
 import { canViewCounselorNotes } from "@/lib/rbac";
+import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY } from "@/lib/schoolConfig";
 import { ResolveReferralDialog } from "./ResolveReferralDialog";
 import { DeleteDraftButton } from "./DeleteDraftButton";
 import type { Role } from "@/generated/prisma";
@@ -43,7 +44,7 @@ const referralInclude = {
     include: {
       student: { include: { user: { select: { name: true } } } },
       group: { select: { name: true } },
-      resolution: true,
+      resolution: { include: { expulsionDays: { orderBy: { date: "asc" as const } } } },
     },
     orderBy: { student: { user: { name: "asc" as const } } },
   },
@@ -94,6 +95,8 @@ export default async function TeacherReferralsPage({
   const isHeadteacherB = role === "HEADTEACHER_B";
   const showCounselorNotes = canViewCounselorNotes(role);
   const headGroupIds = staff.homeroomHeadGroups.map((g) => g.id);
+
+  const periodsConfig = { ...DEFAULT_PERIODS_PER_DAY, ...(await getPeriodsPerDay()) };
 
   // Translate a status filter value into a Prisma where-fragment (derived state)
   const statusWhere = (value?: string) => {
@@ -238,6 +241,7 @@ export default async function TeacherReferralsPage({
               recommendation={r.recommendation}
               canViewCounselorNotes={showCounselorNotes}
               locale={locale}
+              periodsConfig={periodsConfig}
             />
           )}
           {status === "RESOLVED" && !canResolve && (
@@ -384,6 +388,7 @@ export default async function TeacherReferralsPage({
                         canViewCounselorNotes={showCounselorNotes}
                         groupResolve
                         locale={locale}
+              periodsConfig={periodsConfig}
                       />
                       <p className="text-xs text-slate-400 mt-1 pl-1">Κοινή ποινή για όλους</p>
                     </div>
@@ -409,6 +414,7 @@ export default async function TeacherReferralsPage({
                           recommendation={r.recommendation}
                           canViewCounselorNotes={showCounselorNotes}
                           locale={locale}
+              periodsConfig={periodsConfig}
                         />
                         <p className="text-xs text-slate-400 mt-1 pl-1">{rs.group?.name}</p>
                       </div>
