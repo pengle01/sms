@@ -10,7 +10,7 @@ import { canViewCounselorNotes, canViewAllReferrals } from "@/lib/rbac";
 import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY } from "@/lib/schoolConfig";
 import { ResolveReferralDialog } from "./ResolveReferralDialog";
 import { DeleteDraftButton } from "./DeleteDraftButton";
-import { ReferralStatusBadge, referralBorderClass, referralLeftAccentClass } from "@/components/referrals/ReferralStatusBadge";
+import { ReferralStatusBadge, ReferralGroupSignals, referralBorderClass, referralLeftAccentClass } from "@/components/referrals/ReferralStatusBadge";
 import { StudentInfoDialog } from "@/components/referrals/StudentInfoDialog";
 import { StudentsDropdown } from "@/components/referrals/StudentsDropdown";
 import { ReferralTabs } from "@/components/referrals/ReferralTabs";
@@ -215,6 +215,7 @@ export default async function TeacherReferralsPage({
         </td>
         <td className="px-4 py-3 text-sm">
           <ReferralStatusBadge referral={r} />
+          <ReferralGroupSignals referral={r} className="mt-1.5" />
         </td>
         <td className="px-4 py-3 text-sm">
           {status === "DRAFT" && r.filerId === staff.id && (
@@ -276,7 +277,7 @@ export default async function TeacherReferralsPage({
     const pendingMine = myStudents.filter((rs) => rs.status === "PENDING");
     const resolvedMine = myStudents.filter((rs) => rs.status === "RESOLVED");
     return (
-      <div className={`rounded-2xl border-2 ${referralBorderClass(r)} bg-white overflow-hidden shadow-sm`}>
+      <div className={`rounded-2xl border-2 ${referralBorderClass(r, headGroupIds)} bg-white overflow-hidden shadow-sm`}>
         {/* Card header */}
         <div className="px-5 py-4 border-b border-slate-100 bg-slate-50">
           <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -296,9 +297,12 @@ export default async function TeacherReferralsPage({
                   Εκτύπωση
                 </a>
               )}
-              <ReferralStatusBadge referral={r} />
+              {/* Badge reflects only this headteacher's own students */}
+              <ReferralStatusBadge referral={r} scopeGroupIds={headGroupIds} />
             </div>
           </div>
+          {/* When other homegroups are involved, show each headteacher's progress */}
+          <ReferralGroupSignals referral={r} className="mt-2" />
           <p className="mt-2 text-sm text-slate-800 leading-relaxed">{r.description}</p>
           {r.recommendation && r.recommendation !== "NO_RECOMMENDATION" && (
             <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">

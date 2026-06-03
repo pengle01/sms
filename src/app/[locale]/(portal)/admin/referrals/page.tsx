@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle } from "lucide-react";
 import { NewReferralDialog } from "./NewReferralDialog";
 import { ResolveReferralDialog } from "./ResolveReferralDialog";
-import { ReferralStatusBadge, referralLeftAccentClass } from "@/components/referrals/ReferralStatusBadge";
+import { ReferralStatusBadge, ReferralGroupSignals, referralLeftAccentClass } from "@/components/referrals/ReferralStatusBadge";
 import { StudentsDropdown } from "@/components/referrals/StudentsDropdown";
 import { cn } from "@/lib/utils";
 import { fmtDisplayDate } from "@/lib/dates";
@@ -221,6 +221,7 @@ export default async function ReferralsPage({
                     <td className="px-5 py-3.5 text-slate-500 text-sm">{r.filer.user?.name}</td>
                     <td className="px-5 py-3.5">
                       <ReferralStatusBadge referral={r} />
+                      <ReferralGroupSignals referral={r} className="mt-1.5" />
                     </td>
                     <td className="px-5 py-3.5">
                       {pendingNames.length > 0 && (
