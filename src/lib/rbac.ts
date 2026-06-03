@@ -62,12 +62,12 @@ export function isStaff(role: Role): boolean {
 }
 
 /**
- * Who may view/generate a student's access code: the system admin, the office
- * admin, and the student's own homeroom teacher or homeroom headteacher.
+ * Who may view a student's access code: the system admin, the office admin,
+ * and the student's own homeroom teacher or homeroom headteacher.
  * `group` is the student's homeroom (its homeroomTeacherId / homeroomHeadteacherId);
  * `viewerStaffId` is the requesting staff member's StaffProfile id (if any).
  */
-export function canManageAccessCode(
+export function canViewAccessCode(
   role: Role,
   viewerStaffId: string | null | undefined,
   group: { homeroomTeacherId: string | null; homeroomHeadteacherId: string | null } | null
@@ -78,6 +78,12 @@ export function canManageAccessCode(
     group.homeroomTeacherId === viewerStaffId ||
     group.homeroomHeadteacherId === viewerStaffId
   );
+}
+
+// Only the system admin may generate or regenerate access codes;
+// everyone else with access can merely view them.
+export function canGenerateAccessCode(role: Role): boolean {
+  return role === "SUPER_ADMIN";
 }
 
 // Only the system admin approves registrations and role assignments

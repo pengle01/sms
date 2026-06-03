@@ -1,32 +1,32 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { trpc } from "@/trpc/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { KeyRound, Loader2, RefreshCw, Check, Copy } from "lucide-react";
 import { toast } from "sonner";
 
-type Labels = {
-  title: string;
-  description: string;
-  none: string;
-  generate: string;
-  regenerate: string;
-  regenerateWarning: string;
-  studentClaimed: string;
-  studentNotClaimed: string;
-  guardianClaims: string; // "{n} guardian account(s)"
-  copied: string;
-  copy: string;
-};
-
 export function AccessCodeCard({
   studentProfileId,
-  labels,
+  canGenerate = false,
 }: {
   studentProfileId: string;
-  labels: Labels;
+  // Only the system admin may generate/regenerate; others just view.
+  canGenerate?: boolean;
 }) {
+  const t = useTranslations("accessCode");
   const utils = trpc.useUtils();
   const { data, isLoading } = trpc.accessCodes.get.useQuery({ studentProfileId });
   const generate = trpc.accessCodes.generate.useMutation({
@@ -37,30 +37,35 @@ export function AccessCodeCard({
 
   const code = data?.code ?? null;
 
-  function handleGenerate() {
-    if (code && !confirm(labels.regenerateWarning)) return;
-    generate.mutate({ studentProfileId });
-  }
-
   function handleCopy() {
     if (!code) return;
     navigator.clipboard.writeText(code).then(() => {
       setCopied(true);
-      toast.success(labels.copied);
+      toast.success(t("copied"));
       setTimeout(() => setCopied(false), 1500);
     });
   }
+
+  const generateButton = (
+    <button
+      disabled={generate.isPending}
+      className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-60"
+    >
+      {generate.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+      {code ? t("regenerate") : t("generate")}
+    </button>
+  );
 
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <KeyRound className="w-4 h-4" />
-          {labels.title}
+          {t("title")}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-sm text-slate-500">{labels.description}</p>
+        <p className="text-sm text-slate-500">{t("description")}</p>
 
         {isLoading ? (
           <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
@@ -73,29 +78,49 @@ export function AccessCodeCard({
               <button
                 onClick={handleCopy}
                 className="inline-flex items-center justify-center h-10 w-10 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50"
-                title={labels.copy}
+                title={t("copy")}
               >
                 {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
               </button>
             </div>
 
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-              <span>{data?.studentClaimedAt ? labels.studentClaimed : labels.studentNotClaimed}</span>
-              <span>{labels.guardianClaims.replace("{n}", String(data?.guardianClaims ?? 0))}</span>
+              <span>{data?.studentClaimedAt ? t("studentClaimed") : t("studentNotClaimed")}</span>
+              <span>{t("guardianClaims", { n: data?.guardianClaims ?? 0 })}</span>
             </div>
           </div>
         ) : (
-          <p className="text-sm text-slate-400">{labels.none}</p>
+          <p className="text-sm text-slate-400">{canGenerate ? t("none") : t("noneViewer")}</p>
         )}
 
-        <button
-          onClick={handleGenerate}
-          disabled={generate.isPending}
-          className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-60"
-        >
-          {generate.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-          {code ? labels.regenerate : labels.generate}
-        </button>
+        {canGenerate &&
+          (code ? (
+            // Regenerating kills the old code — confirm first.
+            <AlertDialog>
+              <AlertDialogTrigger render={generateButton} />
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{t("regenerate")}</AlertDialogTitle>
+                  <AlertDialogDescription>{t("regenerateWarning")}</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => generate.mutate({ studentProfileId })}>
+                    {t("regenerateConfirm")}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          ) : (
+            <button
+              onClick={() => generate.mutate({ studentProfileId })}
+              disabled={generate.isPending}
+              className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-60"
+            >
+              {generate.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              {t("generate")}
+            </button>
+          ))}
       </CardContent>
     </Card>
   );

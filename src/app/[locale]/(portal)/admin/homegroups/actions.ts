@@ -14,19 +14,19 @@ async function requireSuperAdmin() {
 export async function assignHomeroomTeacher(groupId: string, staffId: string | null) {
   await requireSuperAdmin();
   await db.group.update({ where: { id: groupId }, data: { homeroomTeacherId: staffId } });
-  revalidatePath("/[locale]/admin/groups", "page");
+  revalidatePath("/[locale]/admin/homegroups", "page");
 }
 
 export async function assignHomeroomHeadteacher(groupId: string, staffId: string | null) {
   await requireSuperAdmin();
   await db.group.update({ where: { id: groupId }, data: { homeroomHeadteacherId: staffId } });
-  revalidatePath("/[locale]/admin/groups", "page");
+  revalidatePath("/[locale]/admin/homegroups", "page");
 }
 
 export async function assignHomeroomCounselor(groupId: string, staffId: string | null) {
   await requireSuperAdmin();
   await db.group.update({ where: { id: groupId }, data: { counselorId: staffId } });
-  revalidatePath("/[locale]/admin/groups", "page");
+  revalidatePath("/[locale]/admin/homegroups", "page");
 }
 
 export interface GroupImportResult {
@@ -135,7 +135,7 @@ export async function importGroupAssignments(
     }
   }
 
-  revalidatePath("/[locale]/admin/groups", "page");
+  revalidatePath("/[locale]/admin/homegroups", "page");
   return { success: true, assigned, skipped, errors };
 }
 

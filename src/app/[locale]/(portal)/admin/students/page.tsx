@@ -7,6 +7,7 @@ import { GraduationCap, Search, Upload } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { StudentRow } from "./student-row";
+import { GenerateAllCodesButton } from "./GenerateAllCodesButton";
 
 export default async function StudentsPage({
   params,
@@ -28,7 +29,7 @@ export default async function StudentsPage({
   // Show table only when: all school (no grade filter), specific homegroup, or search active
   const showTable = !gradeNum || !!groupId || !!search;
 
-  const [homeroomGroups, allTotal] = await Promise.all([
+  const [homeroomGroups, allTotal, missingCodes] = await Promise.all([
     gradeNum
       ? db.group.findMany({
           where: { grade: gradeNum, students: { some: {} } },
@@ -36,6 +37,7 @@ export default async function StudentsPage({
         })
       : Promise.resolve([]),
     db.studentProfile.count(),
+    db.studentProfile.count({ where: { accessCode: { is: null }, user: { isActive: true } } }),
   ]);
 
   const where = {
@@ -82,6 +84,7 @@ export default async function StudentsPage({
         </div>
         {session?.user?.role === "SUPER_ADMIN" && (
           <div className="flex items-center gap-2 flex-wrap">
+            <GenerateAllCodesButton missing={missingCodes} />
             <Link
               href={`/${locale}/admin/students/import`}
               className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50"

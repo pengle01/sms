@@ -8,7 +8,8 @@ import type { Role } from "@/generated/prisma";
 import {
   LayoutDashboard, ClipboardList, AlertTriangle, BookOpen,
   Calendar, CalendarRange, FileText, Bell, Users, Settings, Shield,
-  Search, GraduationCap, Home, Backpack, Plus, BookMarked,
+  Search, GraduationCap, Home, Backpack, Plus, BookMarked, ShieldAlert,
+  CircleUser,
 } from "lucide-react";
 
 interface NavItem {
@@ -31,6 +32,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "activities",   href: "activities",        icon: CalendarRange,   roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "students",     href: "students",          icon: GraduationCap,   roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR"] },
   { key: "groups",       href: "groups",            icon: Home,            roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B"] },
+  { key: "profile",      href: "profile",           icon: CircleUser,      roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
 
   // ── Office portal (/office) — student data & attendance ─────────────
   { key: "dashboard",    href: "dashboard",         icon: LayoutDashboard, roles: ["SCHOOL_ADMIN"] },
@@ -45,7 +47,9 @@ const NAV_ITEMS: NavItem[] = [
   { key: "users",        href: "users",             icon: Users,           roles: ["SUPER_ADMIN"] },
   { key: "students",     href: "students",          icon: GraduationCap,   roles: ["SUPER_ADMIN"] },
   { key: "timetable",    href: "timetable",         icon: Calendar,        roles: ["SUPER_ADMIN"] },
-  { key: "groups",       href: "groups",            icon: Home,            roles: ["SUPER_ADMIN"] },
+  { key: "homegroups",   href: "homegroups",        icon: Home,            roles: ["SUPER_ADMIN"] },
+  { key: "allGroups",    href: "groups",            icon: BookMarked,      roles: ["SUPER_ADMIN"] },
+  { key: "checks",       href: "checks",            icon: ShieldAlert,     roles: ["SUPER_ADMIN"] },
   { key: "referrals",    href: "referrals",         icon: AlertTriangle,   roles: ["SUPER_ADMIN"] },
   { key: "calendar",     href: "calendar",          icon: CalendarRange,   roles: ["SUPER_ADMIN"] },
   { key: "auditLog",     href: "audit-log",         icon: Shield,          roles: ["SUPER_ADMIN"] },

@@ -44,6 +44,8 @@ export default async function TeacherDashboardPage({
     },
   });
   if (!staff && (session.user.role as Role) === "TEACHER") redirect(`/${locale}/teacher/setup`);
+  // ΠΜΠ is required staff information — ask for it on sign-in until provided.
+  if (staff && !staff.pmp) redirect(`/${locale}/teacher/profile?required=1`);
 
   const homeroomGroup = staff
     ? ([...(staff.homeroomGroups ?? []), ...(staff.homeroomHeadGroups ?? [])].find(Boolean) ?? null)

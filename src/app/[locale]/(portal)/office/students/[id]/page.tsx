@@ -20,7 +20,6 @@ export default async function OfficeStudentDetailPage({
   if (!student) notFound();
 
   const tNav = await getTranslations("nav");
-  const tCode = await getTranslations("accessCode");
 
   return (
     <div className="space-y-6">
@@ -41,22 +40,7 @@ export default async function OfficeStudentDetailPage({
         </div>
       </div>
 
-      <AccessCodeCard
-        studentProfileId={id}
-        labels={{
-          title: tCode("title"),
-          description: tCode("description"),
-          none: tCode("none"),
-          generate: tCode("generate"),
-          regenerate: tCode("regenerate"),
-          regenerateWarning: tCode("regenerateWarning"),
-          studentClaimed: tCode("studentClaimed"),
-          studentNotClaimed: tCode("studentNotClaimed"),
-          guardianClaims: tCode("guardianClaims"),
-          copied: tCode("copied"),
-          copy: tCode("copy"),
-        }}
-      />
+      <AccessCodeCard studentProfileId={id} />
     </div>
   );
 }

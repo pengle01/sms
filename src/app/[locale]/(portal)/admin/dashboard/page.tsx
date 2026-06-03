@@ -8,6 +8,8 @@ import { ClipboardList, AlertTriangle, Bell, Users, CheckCircle2 } from "lucide-
 import { getNow, utcMidnight } from "@/lib/dates";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import { getPeriodsPerDay } from "@/lib/schoolConfig";
+import { computeIntegrityReport } from "@/lib/integrityChecks";
 
 export default async function AdminDashboardPage({
   params,
@@ -56,6 +58,48 @@ export default async function AdminDashboardPage({
   const todaySlots = allSlots.filter((s) => s.dayOfWeek === todayDow);
   const markedSlotIds = new Set(markedRaw.map((r) => r.timetableSlotId));
 
+  // Live data-integrity check (super admin only) — see /admin/checks for detail.
+  let integrityIssues = 0;
+  if (session.user.role === "SUPER_ADMIN") {
+    const [checkStudents, checkSlots, checkGroups, periodsPerDay] = await Promise.all([
+      db.studentProfile.findMany({
+        where: { user: { isActive: true } },
+        select: {
+          id: true,
+          groupId: true,
+          user: { select: { name: true } },
+          subjectGroups: { select: { groupId: true } },
+        },
+      }),
+      db.timetableSlot.findMany({ select: { groupId: true, dayOfWeek: true, period: true } }),
+      db.group.findMany({
+        select: {
+          id: true,
+          name: true,
+          _count: { select: { students: true, studentGroups: true, timetableSlots: true } },
+        },
+      }),
+      getPeriodsPerDay(),
+    ]);
+    integrityIssues = computeIntegrityReport({
+      students: checkStudents.map((s) => ({
+        id: s.id,
+        name: s.user?.name ?? null,
+        groupId: s.groupId,
+        subjectGroupIds: s.subjectGroups.map((sg) => sg.groupId),
+      })),
+      slots: checkSlots,
+      groups: checkGroups.map((g) => ({
+        id: g.id,
+        name: g.name,
+        homeroomCount: g._count.students,
+        enrolledCount: g._count.studentGroups,
+        slotCount: g._count.timetableSlots,
+      })),
+      periodsPerDay,
+    }).totalIssues;
+  }
+
   const maxPeriod = allSlots.reduce((m, s) => Math.max(m, s.period), 0);
   const slotByPeriod = Object.fromEntries(todaySlots.map((s) => [s.period, s]));
 
@@ -84,6 +128,18 @@ export default async function AdminDashboardPage({
         </h2>
         <p className="text-slate-500 mt-1">{t("today")}</p>
       </div>
+
+      {/* Data-integrity warning — live, super admin only */}
+      {integrityIssues > 0 && (
+        <Link
+          href={`/${locale}/admin/checks`}
+          className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-amber-800 hover:bg-amber-100 transition-colors"
+        >
+          <AlertTriangle className="w-5 h-5 shrink-0" />
+          <p className="font-medium flex-1">{t("integrityWarning", { count: integrityIssues })}</p>
+          <span className="text-sm font-semibold whitespace-nowrap">{t("viewChecks")} →</span>
+        </Link>
+      )}
 
       {/* Today's schedule — only for staff with a linked profile */}
       {staff && (

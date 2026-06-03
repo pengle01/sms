@@ -4,16 +4,18 @@ import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { GraduationCap, Users, ChevronRight } from "lucide-react";
-import { InlineTeacherAssign } from "./InlineTeacherAssign";
-import { GroupAssignmentImport } from "./GroupAssignmentImport";
+import { Card, CardContent } from "@/components/ui/card";
+import { GraduationCap, Search, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { getTranslations } from "next-intl/server";
+import { isHomegroupWhere } from "@/lib/homegroupFilter";
 
-export default async function GroupsPage({
+export default async function GroupsDirectoryPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ search?: string; grade?: string; type?: string; page?: string }>;
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
@@ -22,170 +24,183 @@ export default async function GroupsPage({
   const t = await getTranslations("groups");
   const tCommon = await getTranslations("common");
 
-  const [groups, teachers, headteachers, counselors] = await Promise.all([
+  const { search, grade, type, page: pageStr } = await searchParams;
+  const gradeNum = grade ? parseInt(grade) : undefined;
+  const page = Math.max(1, parseInt(pageStr ?? "1"));
+  const limit = 40;
+
+  const where = {
+    ...(search ? { name: { contains: search, mode: "insensitive" as const } } : {}),
+    ...(gradeNum ? { grade: gradeNum } : {}),
+    ...(type === "homegroup"
+      ? isHomegroupWhere()
+      : type === "subject"
+        ? { NOT: isHomegroupWhere() }
+        : {}),
+  };
+
+  const [total, groups] = await Promise.all([
+    db.group.count({ where }),
     db.group.findMany({
+      where,
       include: {
-        homeroomTeacher:   { include: { user: { select: { name: true } } } },
-        homeroomHeadteacher: { include: { user: { select: { name: true } } } },
-        counselor:         { include: { user: { select: { name: true } } } },
         _count: { select: { students: true, studentGroups: true } },
+        homeroomTeacher: { include: { user: { select: { name: true } } } },
       },
       orderBy: [{ grade: "asc" }, { name: "asc" }],
-    }),
-    db.staffProfile.findMany({
-      where: { user: { role: "TEACHER" } },
-      include: { user: { select: { name: true } } },
-      orderBy: { user: { name: "asc" } },
-    }),
-    db.staffProfile.findMany({
-      where: { user: { role: "HEADTEACHER_B" } },
-      include: { user: { select: { name: true } } },
-      orderBy: { user: { name: "asc" } },
-    }),
-    db.staffProfile.findMany({
-      where: { user: { role: "STUDENT_COUNSELOR" } },
-      include: { user: { select: { name: true } } },
-      orderBy: { user: { name: "asc" } },
+      skip: (page - 1) * limit,
+      take: limit,
     }),
   ]);
 
-  const teacherOptions    = teachers.map((t) => ({ id: t.id, name: t.user?.name ?? t.id }));
-  const headteacherOptions = headteachers.map((t) => ({ id: t.id, name: t.user?.name ?? t.id }));
-  const counselorOptions  = counselors.map((t) => ({ id: t.id, name: t.user?.name ?? t.id }));
+  const totalPages = Math.ceil(total / limit);
 
-  const homerooms = groups.filter((g) => g._count.students > 0);
-  const supportGroups = groups.filter((g) => g._count.students === 0);
-
-  const byGrade = homerooms.reduce<Record<number, typeof homerooms>>((acc, g) => {
-    (acc[g.grade] ??= []).push(g);
-    return acc;
-  }, {});
-
-  const gradeLabel: Record<number, string> = {
-    1: t("year1"),
-    2: t("year2"),
-    3: t("year3"),
+  const buildHref = (extra: Record<string, string | undefined>) => {
+    const p = new URLSearchParams();
+    const merged = { search: search ?? "", grade: grade ?? "", type: type ?? "", ...extra };
+    for (const [k, v] of Object.entries(merged)) if (v) p.set(k, v);
+    const qs = p.toString();
+    return qs ? `?${qs}` : `/${locale}/admin/groups`;
   };
 
-  const assignedTeacher    = homerooms.filter((g) => g.homeroomTeacherId).length;
-  const assignedHead       = homerooms.filter((g) => g.homeroomHeadteacherId).length;
-  const assignedCounselor  = homerooms.filter((g) => g.counselorId).length;
-  const unassignedTeacher  = homerooms.length - assignedTeacher;
-  const unassignedHead     = homerooms.length - assignedHead;
-  const unassignedCounselor = homerooms.length - assignedCounselor;
-
-  const assignedLabel = tCommon("allAssigned");
-  const unassignedLabel = (n: number) => `${n} ${tCommon("unassigned")}`;
+  const isHomegroup = (g: (typeof groups)[number]) =>
+    g._count.students > 0 || !!g.homeroomTeacherId || !!g.homeroomHeadteacherId || !!g.counselorId;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>
-          <p className="text-slate-500 text-sm mt-1">
-            {t("teachers")}:{" "}
-            {unassignedTeacher > 0
-              ? <span className="text-amber-600 font-medium">{unassignedLabel(unassignedTeacher)}</span>
-              : <span className="text-emerald-600 font-medium">{assignedLabel}</span>}
-            {" · "}
-            {t("headteachersB")}:{" "}
-            {unassignedHead > 0
-              ? <span className="text-amber-600 font-medium">{unassignedLabel(unassignedHead)}</span>
-              : <span className="text-emerald-600 font-medium">{assignedLabel}</span>}
-            {" · "}
-            {t("counselors")}:{" "}
-            {unassignedCounselor > 0
-              ? <span className="text-amber-600 font-medium">{unassignedLabel(unassignedCounselor)}</span>
-              : <span className="text-emerald-600 font-medium">{assignedLabel}</span>}
-          </p>
-        </div>
-        <GroupAssignmentImport />
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-2xl font-bold text-slate-900">{t("directoryTitle")}</h2>
+        <p className="text-slate-500 text-sm mt-1">{t("groupsCount", { count: total })}</p>
       </div>
 
-      {Object.entries(byGrade).map(([grade, gradeGroups]) => (
-        <Card key={grade}>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold text-slate-500 uppercase tracking-wide">
-              {gradeLabel[Number(grade)]}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100">
-                  <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide w-24">Group</th>
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide w-16">
-                    <Users className="w-3.5 h-3.5 inline mr-1" />Students
-                  </th>
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("homeroomStaff")}</th>
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide w-36">{t("counselorColumn")}</th>
-                  <th className="w-10" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {gradeGroups.map((g) => (
+      {/* Search + filters */}
+      <form method="GET" className="flex gap-2 flex-wrap items-center">
+        <div className="relative flex-1 max-w-xs min-w-48">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            name="search"
+            defaultValue={search}
+            placeholder={t("searchPlaceholder")}
+            className="w-full h-9 pl-9 pr-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+        </div>
+        <select
+          name="grade"
+          defaultValue={grade ?? ""}
+          className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+        >
+          <option value="">{t("allYears")}</option>
+          <option value="1">{t("year1")}</option>
+          <option value="2">{t("year2")}</option>
+          <option value="3">{t("year3")}</option>
+        </select>
+        <select
+          name="type"
+          defaultValue={type ?? ""}
+          className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+        >
+          <option value="">{t("typeAll")}</option>
+          <option value="homegroup">{t("typeHomegroup")}</option>
+          <option value="subject">{t("typeSubject")}</option>
+        </select>
+        <button
+          type="submit"
+          className="h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
+        >
+          {tCommon("search")}
+        </button>
+        {(search || grade || type) && (
+          <Link
+            href={`/${locale}/admin/groups`}
+            className="h-9 px-3 flex items-center text-sm text-slate-500 hover:text-slate-800"
+          >
+            {tCommon("clear")}
+          </Link>
+        )}
+      </form>
+
+      <Card>
+        <CardContent className="p-0 overflow-x-auto">
+          <table className="w-full text-sm min-w-[560px]">
+            <thead>
+              <tr className="border-b border-slate-100">
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colName")}</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colYear")}</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colType")}</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colStudents")}</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colEnrolled")}</th>
+                <th className="w-10" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {groups.map((g) => {
+                const home = isHomegroup(g);
+                return (
                   <tr key={g.id} className="hover:bg-slate-50/60">
-                    <td className="px-5 py-3 font-semibold text-slate-800">{g.name}</td>
+                    <td className="px-5 py-3">
+                      <Link
+                        href={`/${locale}/admin/groups/${g.id}`}
+                        className="font-semibold text-slate-800 hover:text-emerald-700"
+                      >
+                        {g.name}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-slate-500">{g.grade}</td>
+                    <td className="px-4 py-3">
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-xs",
+                          home
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : "bg-slate-50 text-slate-500 border-slate-200"
+                        )}
+                      >
+                        {home ? t("typeHomegroup") : t("typeSubject")}
+                      </Badge>
+                    </td>
                     <td className="px-4 py-3 text-slate-500">{g._count.students}</td>
-                    <td className="px-4 py-3">
-                      <InlineTeacherAssign
-                        groupId={g.id}
-                        currentTeacherId={g.homeroomTeacherId}
-                        currentHeadteacherId={g.homeroomHeadteacherId}
-                        currentCounselorId={g.counselorId}
-                        teachers={teacherOptions}
-                        headteachers={headteacherOptions}
-                        counselors={counselorOptions}
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      {g.counselor?.user?.name ? (
-                        <span className="text-sm text-slate-700 font-medium">
-                          {g.counselor.user.name}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-slate-300">—</span>
-                      )}
-                    </td>
+                    <td className="px-4 py-3 text-slate-500">{g._count.studentGroups}</td>
                     <td className="px-3 py-3">
                       <Link
                         href={`/${locale}/admin/groups/${g.id}`}
                         className="text-slate-300 hover:text-slate-600 transition-colors"
-                        title="View group"
                       >
                         <ChevronRight className="w-4 h-4" />
                       </Link>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
-      ))}
+                );
+              })}
+              {groups.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-5 py-16 text-center text-slate-400">
+                    <GraduationCap className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                    {t("noFilterResults")}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
 
-      {homerooms.length === 0 && (
-        <div className="text-center py-20 text-slate-400">
-          <GraduationCap className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">{t("noGroups")}</p>
-          <p className="text-sm mt-1">{t("importToCreate")}</p>
-        </div>
-      )}
-
-      {supportGroups.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
-            {t("supportGroups", { count: supportGroups.length })}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {supportGroups.map((g) => (
-              <Link key={g.id} href={`/${locale}/admin/groups/${g.id}`}>
-                <Badge variant="outline" className="text-slate-500 hover:text-slate-800 hover:border-slate-400 transition-colors cursor-pointer">
-                  {g.name}
-                  <span className="ml-1.5 text-slate-400">{g._count.studentGroups}</span>
-                </Badge>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm text-slate-600">
+          <span>{tCommon("pageOf", { page, total: totalPages })}</span>
+          <div className="flex gap-2">
+            {page > 1 && (
+              <Link href={buildHref({ page: String(page - 1) })}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50">
+                {tCommon("previous")}
               </Link>
-            ))}
+            )}
+            {page < totalPages && (
+              <Link href={buildHref({ page: String(page + 1) })}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50">
+                {tCommon("next")}
+              </Link>
+            )}
           </div>
         </div>
       )}

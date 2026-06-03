@@ -8,7 +8,7 @@ import {
   ACCESS_CODE_LENGTH,
   OTP_LENGTH,
 } from "@/lib/accessCode";
-import { canManageAccessCode } from "@/lib/rbac";
+import { canViewAccessCode, canGenerateAccessCode } from "@/lib/rbac";
 
 describe("normalizeCode", () => {
   it("uppercases and strips separators", () => {
@@ -51,23 +51,33 @@ describe("randomOtp", () => {
   });
 });
 
-describe("canManageAccessCode", () => {
+describe("canViewAccessCode", () => {
   const group = { homeroomTeacherId: "staff_home", homeroomHeadteacherId: "staff_head" };
 
   it("always allows system and office admins", () => {
-    expect(canManageAccessCode("SUPER_ADMIN", null, null)).toBe(true);
-    expect(canManageAccessCode("SCHOOL_ADMIN", null, null)).toBe(true);
+    expect(canViewAccessCode("SUPER_ADMIN", null, null)).toBe(true);
+    expect(canViewAccessCode("SCHOOL_ADMIN", null, null)).toBe(true);
   });
 
   it("allows the student's homeroom teacher and headteacher", () => {
-    expect(canManageAccessCode("TEACHER", "staff_home", group)).toBe(true);
-    expect(canManageAccessCode("HEADTEACHER_B", "staff_head", group)).toBe(true);
+    expect(canViewAccessCode("TEACHER", "staff_home", group)).toBe(true);
+    expect(canViewAccessCode("HEADTEACHER_B", "staff_head", group)).toBe(true);
   });
 
   it("denies other staff and unrelated homerooms", () => {
-    expect(canManageAccessCode("TEACHER", "staff_other", group)).toBe(false);
-    expect(canManageAccessCode("TEACHER", null, group)).toBe(false);
-    expect(canManageAccessCode("HEADMASTER", "staff_other", group)).toBe(false);
-    expect(canManageAccessCode("STUDENT", "staff_home", group)).toBe(false);
+    expect(canViewAccessCode("TEACHER", "staff_other", group)).toBe(false);
+    expect(canViewAccessCode("TEACHER", null, group)).toBe(false);
+    expect(canViewAccessCode("HEADMASTER", "staff_other", group)).toBe(false);
+    expect(canViewAccessCode("STUDENT", "staff_home", group)).toBe(false);
+  });
+});
+
+describe("canGenerateAccessCode", () => {
+  it("only the system admin may generate codes", () => {
+    expect(canGenerateAccessCode("SUPER_ADMIN")).toBe(true);
+    expect(canGenerateAccessCode("SCHOOL_ADMIN")).toBe(false);
+    expect(canGenerateAccessCode("TEACHER")).toBe(false);
+    expect(canGenerateAccessCode("HEADTEACHER_B")).toBe(false);
+    expect(canGenerateAccessCode("HEADMASTER")).toBe(false);
   });
 });

@@ -6,10 +6,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChevronLeft, Pencil, User, Phone, Mail, Calendar, MapPin,
   CreditCard, Globe, Users, MessageSquare, BookOpen, Clock, Layers,
+  CalendarDays, AlertTriangle,
 } from "lucide-react";
 import { fmtDisplayDate } from "@/lib/dates";
-import { getTranslations } from "next-intl/server";
 import { AccessCodeCard } from "@/components/access/AccessCodeCard";
+import { getPeriodsPerDay } from "@/lib/schoolConfig";
+import { periodsForDow, maxPeriodCount } from "@/lib/periods";
+import { cn } from "@/lib/utils";
+
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"] as const;
 
 export default async function StudentDetailPage({
   params,
@@ -54,7 +59,43 @@ export default async function StudentDetailPage({
 
   const { user, group, subjectGroups, parents, smsContacts, grades, attendance } = student;
 
-  const tCode = await getTranslations("accessCode");
+  // Weekly timetable = union of homegroup + subject-group slots. Cells with
+  // more than one slot are scheduling conflicts and are flagged.
+  const groupIds = [
+    ...(student.groupId ? [student.groupId] : []),
+    ...subjectGroups.map((sg) => sg.groupId),
+  ];
+  const [slots, periodsPerDay] = await Promise.all([
+    groupIds.length > 0
+      ? db.timetableSlot.findMany({
+          where: { groupId: { in: groupIds } },
+          include: {
+            course: { select: { name: true } },
+            group: { select: { name: true } },
+          },
+          orderBy: [{ dayOfWeek: "asc" }, { period: "asc" }],
+        })
+      : Promise.resolve([]),
+    getPeriodsPerDay(),
+  ]);
+
+  type Slot = (typeof slots)[number];
+  const cells = new Map<number, Slot[]>(); // dow*100+period → all slots in that cell
+  for (const s of slots) {
+    const key = s.dayOfWeek * 100 + s.period;
+    cells.set(key, [...(cells.get(key) ?? []), s]);
+  }
+  const allPeriods = Array.from({ length: maxPeriodCount(periodsPerDay) }, (_, i) => i + 1);
+  const dayPeriodCount = (dow: number) => periodsForDow(periodsPerDay, dow).length;
+  const conflictCells = [...cells.values()].filter((c) => c.length >= 2).length;
+  const gapCells = groupIds.length > 0
+    ? [1, 2, 3, 4, 5].reduce(
+        (sum, dow) =>
+          sum +
+          periodsForDow(periodsPerDay, dow).filter((p) => !cells.has(dow * 100 + p)).length,
+        0
+      )
+    : 0;
 
   const absentCount  = attendance.filter((a) => a.status === "ABSENT").length;
   const lateCount    = attendance.filter((a) => a.status === "LATE").length;
@@ -99,22 +140,106 @@ export default async function StudentDetailPage({
         </div>
       </div>
 
-      <AccessCodeCard
-        studentProfileId={id}
-        labels={{
-          title: tCode("title"),
-          description: tCode("description"),
-          none: tCode("none"),
-          generate: tCode("generate"),
-          regenerate: tCode("regenerate"),
-          regenerateWarning: tCode("regenerateWarning"),
-          studentClaimed: tCode("studentClaimed"),
-          studentNotClaimed: tCode("studentNotClaimed"),
-          guardianClaims: tCode("guardianClaims"),
-          copied: tCode("copied"),
-          copy: tCode("copy"),
-        }}
-      />
+      <AccessCodeCard studentProfileId={id} canGenerate />
+
+      {/* Weekly timetable with conflict highlighting */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <CalendarDays className="w-4 h-4 text-slate-400" />
+              Weekly timetable
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              {conflictCells > 0 && (
+                <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs">
+                  {conflictCells} conflict{conflictCells !== 1 ? "s" : ""}
+                </Badge>
+              )}
+              {gapCells > 0 && (
+                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
+                  {gapCells} free period{gapCells !== 1 ? "s" : ""}
+                </Badge>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {groupIds.length === 0 ? (
+            <p className="px-5 py-8 text-sm text-slate-400 text-center">
+              No groups assigned — the student has no timetable.
+            </p>
+          ) : (
+            <>
+              {conflictCells > 0 && (
+                <div className="flex items-center gap-2 border-b border-red-100 bg-red-50 px-5 py-3 text-sm text-red-700">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  Two of this student&apos;s groups have a lesson at the same time — the
+                  conflicting cells are highlighted below. Fix it from{" "}
+                  <Link href={`/${locale}/admin/checks`} className="font-semibold underline">
+                    Data Checks
+                  </Link>.
+                </div>
+              )}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[640px]">
+                  <thead>
+                    <tr className="border-b border-slate-100">
+                      <th className="w-10 px-3 py-2.5 text-xs font-semibold text-slate-400" />
+                      {DAYS.map((d) => (
+                        <th key={d} className="px-3 py-2.5 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                          {d}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {allPeriods.map((period) => (
+                      <tr key={period}>
+                        <td className="px-3 py-2 text-center text-xs font-bold text-slate-400">{period}</td>
+                        {[1, 2, 3, 4, 5].map((dow) => {
+                          const inDay = period <= dayPeriodCount(dow);
+                          const cellSlots = cells.get(dow * 100 + period) ?? [];
+                          const conflict = cellSlots.length >= 2;
+                          return (
+                            <td
+                              key={dow}
+                              className={cn(
+                                "px-3 py-2 align-top",
+                                !inDay && "bg-slate-50/60",
+                                conflict && "bg-red-50",
+                                inDay && cellSlots.length === 0 && "bg-amber-50/40"
+                              )}
+                            >
+                              {!inDay ? null : cellSlots.length === 0 ? (
+                                <span className="text-[11px] text-amber-500">free</span>
+                              ) : (
+                                <div className="space-y-1">
+                                  {cellSlots.map((s) => (
+                                    <div key={s.id} className={cn(conflict && "rounded-md border border-red-200 bg-white px-1.5 py-1")}>
+                                      <p className={cn("text-xs font-medium truncate", conflict ? "text-red-700" : "text-slate-800")}>
+                                        {s.course.name}
+                                      </p>
+                                      <p className={cn("text-[11px] truncate", s.groupId === student.groupId ? "text-slate-400" : "text-indigo-500")}>
+                                        {s.group.name}
+                                        {s.room ? ` · ${s.room}` : ""}
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left column */}

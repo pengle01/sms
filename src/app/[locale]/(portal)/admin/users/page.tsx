@@ -235,7 +235,12 @@ export default async function UsersPage({
                     return (
                       <tr key={u.id} className={cn("hover:bg-slate-50", !u.isActive && "opacity-50")}>
                         <td className="px-5 py-3">
-                          <p className="font-medium text-slate-900">{u.name ?? "—"}</p>
+                          <Link
+                            href={`/${locale}/admin/users/${u.id}`}
+                            className="font-medium text-slate-900 hover:text-emerald-700"
+                          >
+                            {u.name ?? "—"}
+                          </Link>
                           {u.nameEl && u.nameEl !== u.name && (
                             <p className="text-xs text-slate-400 mt-0.5">{u.nameEl}</p>
                           )}

@@ -162,6 +162,7 @@ model StaffProfile {
   user       User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
   phone      String?
   department String?
+  pmp        String? // ΠΜΠ — personnel/payroll number, asked at first sign-in
 
   homeroomGroups        Group[]            @relation("HomeroomTeacher")
   homeroomHeadGroups    Group[]            @relation("HomeroomHeadteacher")
