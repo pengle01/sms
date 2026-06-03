@@ -202,6 +202,7 @@ model StudentProfile {
   exitPermits            ExitPermit[]
   activityParticipations   ActivityParticipant[]
   chaperoneRequestStudents ChaperoneRequestStudent[]
+  accessCode               StudentAccessCode?
 }
 
 model ParentProfile {
@@ -759,6 +760,43 @@ model LdAuditResult {
 model GlobalSetting {
   key   String @id
   value String
+}
+
+// ─── Self-service access (students & parents) ─────────────────────────────────
+
+// One redeemable access code per student. The student redeems it once to set up
+// their account; any number of guardians can redeem the same code to create
+// their own (separate, email-verified) parent accounts. Stays valid until an
+// authorised staff member regenerates it.
+model StudentAccessCode {
+  id               String         @id @default(cuid())
+  studentProfileId String         @unique
+  studentProfile   StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  code             String         @unique
+  studentClaimedAt DateTime?
+  guardianClaims   Int            @default(0)
+  createdById      String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+// Short-lived staging row for the email-verification (OTP) step of redemption.
+// Holds the already-hashed password and the pending account details until the
+// emailed code is confirmed, then it is consumed.
+model EmailOtp {
+  id               String   @id @default(cuid())
+  email            String
+  codeHash         String
+  purpose          String   // "ACTIVATE_STUDENT" | "ACTIVATE_GUARDIAN"
+  studentProfileId String
+  name             String?
+  passwordHash     String
+  expiresAt        DateTime
+  attempts         Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  @@index([email])
+  @@index([expiresAt])
 }
 
 // ─── School Calendar ──────────────────────────────────────────────────────────

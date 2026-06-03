@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { periodLabel } from "@/lib/periods";
+import { useTranslations } from "next-intl";
 
 export type DayRow = {
   period: number;
@@ -18,6 +20,8 @@ export type DayRow = {
 
 interface Student {
   id: string;
+  studentId?: string | null;
+  groupName?: string | null;
   user: { name: string | null };
 }
 
@@ -51,6 +55,7 @@ export function StudentList({
   locale,
 }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const t = useTranslations("locate");
 
   const periodStrip = !isWeekend
     ? Array.from({ length: currentPeriod }, (_, i) => i + 1)
@@ -59,7 +64,7 @@ export function StudentList({
   return (
     <div className="space-y-1.5">
       <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-        {groupName} · {students.length} student{students.length !== 1 ? "s" : ""}
+        {groupName} · {t("studentsCount", { count: students.length })}
       </p>
       <Card>
         <CardContent className="p-0">
@@ -85,12 +90,22 @@ export function StudentList({
                         isExpanded ? "text-emerald-700" : "text-slate-900"
                       )}>
                         {s.user?.name}
+                        {s.groupName && (
+                          <span className="ml-2 inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-500 align-middle">
+                            {s.groupName}
+                          </span>
+                        )}
+                        {s.studentId && (
+                          <span className="ml-2 font-mono text-[11px] font-normal text-slate-400">
+                            {s.studentId}
+                          </span>
+                        )}
                       </span>
                       {periodStrip.length > 0 && (
                         <div className="flex items-end gap-1.5 mt-1">
                           {periodStrip.map((p) => (
                             <div key={p} className="flex flex-col items-center gap-0.5">
-                              <span className="text-[9px] leading-none font-semibold text-slate-400">P{p}</span>
+                              <span className="text-[9px] leading-none font-semibold text-slate-400">{periodLabel(p, locale)}</span>
                               <span className={`w-3 h-3 rounded-full ${dot(actPeriods.has(p), periods[p])}`} />
                             </div>
                           ))}
@@ -106,7 +121,7 @@ export function StudentList({
                   {isExpanded && (
                     <div className="border-t border-slate-100 bg-slate-50/80 px-4 pt-3 pb-4">
                       {isWeekend ? (
-                        <p className="text-sm text-slate-400 py-2">No school today.</p>
+                        <p className="text-sm text-slate-400 py-2">{t("noSchoolToday")}</p>
                       ) : (
                         <table className="w-full text-sm">
                           <tbody>
@@ -124,19 +139,19 @@ export function StudentList({
                                     "py-2 pr-3 text-xs font-bold w-10",
                                     isCurrent ? "text-emerald-600" : "text-slate-400"
                                   )}>
-                                    P{row.period}
+                                    {periodLabel(row.period, locale)}
                                     {isCurrent && <span className="ml-1 text-[9px]">▶</span>}
                                   </td>
                                   {row.isActivity ? (
                                     <td colSpan={3} className="py-2">
                                       <span className="font-medium text-violet-700">{row.activityName}</span>
-                                      <Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0 bg-violet-50 text-violet-700 border-violet-200">Activity</Badge>
+                                      <Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0 bg-violet-50 text-violet-700 border-violet-200">{t("activity")}</Badge>
                                     </td>
                                   ) : row.courseName ? (
                                     <>
                                       <td className="py-2 font-medium text-slate-800">{row.courseName}</td>
                                       <td className="py-2 text-slate-400 text-xs">{row.staffName ?? ""}</td>
-                                      <td className="py-2 text-slate-400 text-xs text-right">{row.room ? `Room ${row.room}` : ""}</td>
+                                      <td className="py-2 text-slate-400 text-xs text-right">{row.room ? t("room", { room: row.room }) : ""}</td>
                                     </>
                                   ) : (
                                     <td colSpan={3} className="py-2 text-slate-300">—</td>
@@ -153,7 +168,7 @@ export function StudentList({
                           className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-emerald-700 transition-colors"
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
-                          Full week schedule
+                          {t("fullWeek")}
                         </Link>
                       </div>
                     </div>
@@ -162,7 +177,7 @@ export function StudentList({
               );
             })}
             {students.length === 0 && (
-              <p className="px-4 py-8 text-center text-sm text-slate-400">No students in this group</p>
+              <p className="px-4 py-8 text-center text-sm text-slate-400">{t("noStudentsInGroup")}</p>
             )}
           </div>
         </CardContent>

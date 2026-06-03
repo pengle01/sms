@@ -10,6 +10,9 @@ import { getNow, utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { getPeriodsPerDay, periodsForDow, maxPeriodCount } from "@/lib/schoolConfig";
 import { actionLabel } from "@/lib/referralLabels";
+import { canManageAccessCode } from "@/lib/rbac";
+import { AccessCodeCard } from "@/components/access/AccessCodeCard";
+import { getTranslations } from "next-intl/server";
 import type { Role } from "@/generated/prisma";
 
 const DOW_LABELS = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
@@ -152,6 +155,9 @@ export default async function StudentSchedulePage({
     }
   }
 
+  const canManageCode = canManageAccessCode(role, viewerStaff?.id, student.group);
+  const tCode = canManageCode ? await getTranslations("accessCode") : null;
+
   const backUrl = from === "homegroup"
     ? `/${locale}/teacher/homegroup${groupId ? `?groupId=${groupId}` : ""}`
     : student.group
@@ -206,6 +212,25 @@ export default async function StudentSchedulePage({
           </Link>
         </div>
       </div>
+
+      {canManageCode && tCode && (
+        <AccessCodeCard
+          studentProfileId={studentId}
+          labels={{
+            title: tCode("title"),
+            description: tCode("description"),
+            none: tCode("none"),
+            generate: tCode("generate"),
+            regenerate: tCode("regenerate"),
+            regenerateWarning: tCode("regenerateWarning"),
+            studentClaimed: tCode("studentClaimed"),
+            studentNotClaimed: tCode("studentNotClaimed"),
+            guardianClaims: tCode("guardianClaims"),
+            copied: tCode("copied"),
+            copy: tCode("copy"),
+          }}
+        />
+      )}
 
       {/* Full dossier — personal info, contacts, referrals (authorised viewers only) */}
       {canViewFull && (

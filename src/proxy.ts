@@ -9,7 +9,7 @@ import type { Role } from "@/generated/prisma";
 const intlMiddleware = createMiddleware(routing);
 
 // Public routes that don't require authentication
-const PUBLIC_PATHS = ["/login", "/register", "/api/auth", "/api/logout"];
+const PUBLIC_PATHS = ["/login", "/register", "/activate", "/api/auth", "/api/logout"];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname.includes(p));

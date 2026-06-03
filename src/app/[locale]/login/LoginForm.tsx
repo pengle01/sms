@@ -23,6 +23,7 @@ interface LoginFormProps {
 
 export function LoginForm({ locale, isDev, urlError }: LoginFormProps) {
   const t = useTranslations("auth");
+  const tActivate = useTranslations("activate");
 
   const errorMessage = urlError ? (ERROR_MESSAGES[urlError] ?? `Error: ${urlError}`) : null;
   const otherLocale = locale === "el" ? "en" : "el";
@@ -143,6 +144,12 @@ export function LoginForm({ locale, isDev, urlError }: LoginFormProps) {
         New staff or chaperone?{" "}
         <Link href={`/${locale}/register`} className="text-lime-400 hover:text-lime-300 font-medium">
           Create an account
+        </Link>
+      </p>
+
+      <p className="text-center text-sm text-emerald-300/60 mt-1">
+        <Link href={`/${locale}/activate`} className="text-lime-400 hover:text-lime-300 font-medium">
+          {tActivate("haveCode")}
         </Link>
       </p>
     </div>

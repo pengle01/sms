@@ -10,7 +10,7 @@ export const gradesRouter = createTRPCRouter({
       z.object({
         studentId: z.string(),
         courseId: z.string(),
-        period: z.enum(["TERM1", "TERM2", "FINAL"]),
+        period: z.enum(["TERM1", "TERM2"]),
         value: z.number().min(0).max(20),
         notes: z.string().optional(),
       })
@@ -61,7 +61,7 @@ export const gradesRouter = createTRPCRouter({
     .input(
       z.object({
         studentId: z.string(),
-        period: z.enum(["TERM1", "TERM2", "FINAL"]).optional(),
+        period: z.enum(["TERM1", "TERM2"]).optional(),
       })
     )
     .query(async ({ ctx, input }) => {

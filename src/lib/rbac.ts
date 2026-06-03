@@ -61,6 +61,25 @@ export function isStaff(role: Role): boolean {
   return STAFF_ROLES.includes(role);
 }
 
+/**
+ * Who may view/generate a student's access code: the system admin, the office
+ * admin, and the student's own homeroom teacher or homeroom headteacher.
+ * `group` is the student's homeroom (its homeroomTeacherId / homeroomHeadteacherId);
+ * `viewerStaffId` is the requesting staff member's StaffProfile id (if any).
+ */
+export function canManageAccessCode(
+  role: Role,
+  viewerStaffId: string | null | undefined,
+  group: { homeroomTeacherId: string | null; homeroomHeadteacherId: string | null } | null
+): boolean {
+  if (role === "SUPER_ADMIN" || role === "SCHOOL_ADMIN") return true;
+  if (!isEducator(role) || !viewerStaffId || !group) return false;
+  return (
+    group.homeroomTeacherId === viewerStaffId ||
+    group.homeroomHeadteacherId === viewerStaffId
+  );
+}
+
 // Only the system admin approves registrations and role assignments
 export function canManageClaims(role: Role): boolean {
   return role === "SUPER_ADMIN";

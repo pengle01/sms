@@ -8,13 +8,16 @@ import { cn } from "@/lib/utils";
 import { StudentList, type DayRow } from "./StudentList";
 import { getPeriodsPerDay, periodsForDow } from "@/lib/schoolConfig";
 import { getTranslations } from "next-intl/server";
+import { parseLocateTab, studentSearchWhere, type LocateTab } from "@/lib/studentSearch";
+import type { Prisma } from "@/generated/prisma";
+import { Search } from "lucide-react";
 
 export default async function TeacherLocatePage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ groupId?: string; grade?: string }>;
+  searchParams: Promise<{ tab?: string; groupId?: string; grade?: string; q?: string }>;
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
@@ -22,7 +25,9 @@ export default async function TeacherLocatePage({
 
   const t = await getTranslations("locate");
 
-  const { groupId, grade } = await searchParams;
+  const { tab: tabParam, groupId, grade, q } = await searchParams;
+  const tab = parseLocateTab(tabParam);
+  const query = (q ?? "").trim();
 
   const now = getNow();
 
@@ -41,26 +46,36 @@ export default async function TeacherLocatePage({
   const minutesSinceStart = (now.getHours() - startHour) * 60 + now.getMinutes();
   const currentPeriod = Math.min(maxPeriod, Math.max(1, Math.ceil(minutesSinceStart / 45)));
 
-  // Homeroom groups only
-  const homeroomGroups = gradeNum
+  // Homeroom groups only (group-browse tab)
+  const homeroomGroups = tab === "group" && gradeNum
     ? await db.group.findMany({
         where: { grade: gradeNum, students: { some: {} } },
         orderBy: [{ grade: "asc" }, { name: "asc" }],
       })
     : [];
 
-  // Students in selected group
-  const students = groupId
+  // Which students to load depends on the active tab: the selected homeroom
+  // group, or the name/ID search query.
+  const studentWhere: Prisma.StudentProfileWhereInput | null =
+    tab === "group"
+      ? groupId
+        ? { groupId, user: { isActive: true } }
+        : null
+      : studentSearchWhere(tab, query);
+
+  const students = studentWhere
     ? await db.studentProfile.findMany({
-        where: { groupId, user: { isActive: true } },
+        where: studentWhere,
         include: {
           user: { select: { name: true } },
+          group: { select: { name: true } },
           attendance: {
             where: { date: today, timetableSlot: { period: { lte: currentPeriod } } },
             include: { timetableSlot: { select: { period: true } } },
           },
         },
         orderBy: { user: { name: "asc" } },
+        ...(tab === "group" ? {} : { take: 50 }),
       })
     : [];
 
@@ -166,6 +181,21 @@ export default async function TeacherLocatePage({
 
   const selectedGroup = groupId ? homeroomGroups.find((g) => g.id === groupId) ?? null : null;
 
+  const studentRows = students.map((s) => ({
+    id: s.id,
+    studentId: s.studentId,
+    // In group-browse mode the homegroup is already shown in the header, so we
+    // only annotate each row with it when results span groups (name/ID search).
+    groupName: tab === "group" ? null : s.group?.name ?? null,
+    user: { name: s.user?.name },
+  }));
+
+  const tabs: { key: LocateTab; label: string }[] = [
+    { key: "group", label: t("searchTabGroup") },
+    { key: "name", label: t("searchTabName") },
+    { key: "id", label: t("searchTabId") },
+  ];
+
   return (
     <div className="space-y-6">
       <div>
@@ -177,67 +207,130 @@ export default async function TeacherLocatePage({
         )}
       </div>
 
-      {/* Step 1 — Year */}
-      <div className="space-y-1.5">
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("year")}</p>
-        <div className="flex gap-2 flex-wrap">
-          {[1, 2, 3].map((g) => (
-            <Link
-              key={g}
-              href={`?grade=${g}`}
-              className={cn(
-                "h-10 px-6 rounded-xl text-sm font-medium transition-colors border",
-                gradeNum === g
-                  ? "bg-emerald-600 text-white border-emerald-600"
-                  : "bg-white text-slate-600 border-slate-200 hover:border-emerald-400 hover:text-emerald-700"
-              )}
-            >
-              {t("yearN", { n: g })}
-            </Link>
-          ))}
-        </div>
+      {/* Search mode tabs */}
+      <div className="flex gap-1 border-b border-slate-200">
+        {tabs.map((tb) => (
+          <Link
+            key={tb.key}
+            href={`?tab=${tb.key}`}
+            className={cn(
+              "px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
+              tab === tb.key
+                ? "border-emerald-600 text-emerald-700"
+                : "border-transparent text-slate-500 hover:text-slate-800"
+            )}
+          >
+            {tb.label}
+          </Link>
+        ))}
       </div>
 
-      {/* Step 2 — Homegroup */}
-      {gradeNum && (
-        <div className="space-y-1.5">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("homegroup")}</p>
-          <div className="flex gap-2 flex-wrap">
-            {homeroomGroups.map((g) => (
-              <Link
-                key={g.id}
-                href={`?grade=${gradeNum}&groupId=${g.id}`}
-                className={cn(
-                  "h-10 px-5 rounded-xl text-sm font-medium transition-colors border",
-                  groupId === g.id
-                    ? "bg-slate-800 text-white border-slate-800"
-                    : "bg-white text-slate-600 border-slate-200 hover:border-slate-400 hover:text-slate-800"
-                )}
-              >
-                {g.name}
-              </Link>
-            ))}
+      {tab === "group" ? (
+        <>
+          {/* Step 1 — Year */}
+          <div className="space-y-1.5">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("year")}</p>
+            <div className="flex gap-2 flex-wrap">
+              {[1, 2, 3].map((g) => (
+                <Link
+                  key={g}
+                  href={`?grade=${g}`}
+                  className={cn(
+                    "h-10 px-6 rounded-xl text-sm font-medium transition-colors border",
+                    gradeNum === g
+                      ? "bg-emerald-600 text-white border-emerald-600"
+                      : "bg-white text-slate-600 border-slate-200 hover:border-emerald-400 hover:text-emerald-700"
+                  )}
+                >
+                  {t("yearN", { n: g })}
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
 
-      {/* Step 3 — Students */}
-      {groupId && selectedGroup && (
-        <StudentList
-          students={students.map((s) => ({ id: s.id, user: { name: s.user?.name } }))}
-          groupName={selectedGroup.name}
-          schedules={schedules}
-          periodAttendance={periodAttendance}
-          activityPeriods={activityPeriods}
-          currentPeriod={currentPeriod}
-          isWeekend={isWeekend}
-          locale={locale}
-        />
-      )}
+          {/* Step 2 — Homegroup */}
+          {gradeNum && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("homegroup")}</p>
+              <div className="flex gap-2 flex-wrap">
+                {homeroomGroups.map((g) => (
+                  <Link
+                    key={g.id}
+                    href={`?grade=${gradeNum}&groupId=${g.id}`}
+                    className={cn(
+                      "h-10 px-5 rounded-xl text-sm font-medium transition-colors border",
+                      groupId === g.id
+                        ? "bg-slate-800 text-white border-slate-800"
+                        : "bg-white text-slate-600 border-slate-200 hover:border-slate-400 hover:text-slate-800"
+                    )}
+                  >
+                    {g.name}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
 
-      {!gradeNum && <p className="text-sm text-slate-400">{t("selectYear")}</p>}
-      {gradeNum && !groupId && homeroomGroups.length === 0 && (
-        <p className="text-sm text-slate-400">{t("noHomegroups", { n: gradeNum })}</p>
+          {/* Step 3 — Students */}
+          {groupId && selectedGroup && (
+            <StudentList
+              students={studentRows}
+              groupName={selectedGroup.name}
+              schedules={schedules}
+              periodAttendance={periodAttendance}
+              activityPeriods={activityPeriods}
+              currentPeriod={currentPeriod}
+              isWeekend={isWeekend}
+              locale={locale}
+            />
+          )}
+
+          {!gradeNum && <p className="text-sm text-slate-400">{t("selectYear")}</p>}
+          {gradeNum && !groupId && homeroomGroups.length === 0 && (
+            <p className="text-sm text-slate-400">{t("noHomegroups", { n: gradeNum })}</p>
+          )}
+        </>
+      ) : (
+        <>
+          {/* Name / ID search */}
+          <form method="GET" className="flex gap-2 flex-wrap">
+            <input type="hidden" name="tab" value={tab} />
+            <div className="relative flex-1 min-w-52">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                name="q"
+                defaultValue={query}
+                autoFocus
+                placeholder={tab === "name" ? t("searchByName") : t("searchById")}
+                className="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+            <button
+              type="submit"
+              className="h-10 px-5 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
+            >
+              {t("search")}
+            </button>
+          </form>
+
+          {query && students.length > 0 && (
+            <StudentList
+              students={studentRows}
+              groupName={t("results")}
+              schedules={schedules}
+              periodAttendance={periodAttendance}
+              activityPeriods={activityPeriods}
+              currentPeriod={currentPeriod}
+              isWeekend={isWeekend}
+              locale={locale}
+            />
+          )}
+
+          {!query && <p className="text-sm text-slate-400">{t("enterSearch")}</p>}
+          {query && students.length === 0 && (
+            <p className="text-sm text-slate-400">{t("noResults")}</p>
+          )}
+        </>
       )}
     </div>
   );

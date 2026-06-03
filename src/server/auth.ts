@@ -77,7 +77,11 @@ export const authOptions: NextAuthOptions = {
         const user = await db.user.findUnique({ where: { email } });
 
         if (!user || !user.passwordHash || !user.isActive) return null;
-        if (!IS_DEV && user.role !== "PARENT" && user.role !== "CHAPERONE") return null;
+        // Staff authenticate via Entra SSO; students, parents and chaperones use
+        // email + password (set up through the access-code activation flow).
+        if (!IS_DEV && user.role !== "PARENT" && user.role !== "CHAPERONE" && user.role !== "STUDENT") {
+          return null;
+        }
 
         const valid = await bcrypt.compare(credentials.password, user.passwordHash);
         if (!valid) return null;

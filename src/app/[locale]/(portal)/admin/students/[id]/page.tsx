@@ -8,6 +8,8 @@ import {
   CreditCard, Globe, Users, MessageSquare, BookOpen, Clock, Layers,
 } from "lucide-react";
 import { fmtDisplayDate } from "@/lib/dates";
+import { getTranslations } from "next-intl/server";
+import { AccessCodeCard } from "@/components/access/AccessCodeCard";
 
 export default async function StudentDetailPage({
   params,
@@ -52,6 +54,8 @@ export default async function StudentDetailPage({
 
   const { user, group, subjectGroups, parents, smsContacts, grades, attendance } = student;
 
+  const tCode = await getTranslations("accessCode");
+
   const absentCount  = attendance.filter((a) => a.status === "ABSENT").length;
   const lateCount    = attendance.filter((a) => a.status === "LATE").length;
   const presentCount = attendance.filter((a) => a.status === "PRESENT").length;
@@ -94,6 +98,23 @@ export default async function StudentDetailPage({
           </div>
         </div>
       </div>
+
+      <AccessCodeCard
+        studentProfileId={id}
+        labels={{
+          title: tCode("title"),
+          description: tCode("description"),
+          none: tCode("none"),
+          generate: tCode("generate"),
+          regenerate: tCode("regenerate"),
+          regenerateWarning: tCode("regenerateWarning"),
+          studentClaimed: tCode("studentClaimed"),
+          studentNotClaimed: tCode("studentNotClaimed"),
+          guardianClaims: tCode("guardianClaims"),
+          copied: tCode("copied"),
+          copy: tCode("copy"),
+        }}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left column */}

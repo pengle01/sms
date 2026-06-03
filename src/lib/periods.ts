@@ -4,6 +4,11 @@ export type PeriodsPerDay = Record<number, number>; // DOW 1–5 → period coun
 
 export const DEFAULT_PERIODS_PER_DAY: PeriodsPerDay = { 1: 7, 2: 7, 3: 7, 4: 7, 5: 7 };
 
+// Short period label, localised: "Π1" in Greek, "P1" otherwise.
+export function periodLabel(period: number, locale: string): string {
+  return `${locale === "el" ? "Π" : "P"}${period}`;
+}
+
 export function periodsForDow(config: PeriodsPerDay, dow: number): number[] {
   const count = config[dow] ?? 7;
   return Array.from({ length: count }, (_, i) => i + 1);
