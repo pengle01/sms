@@ -23,12 +23,12 @@ import { createSpecialDay, updateSpecialDay, deleteSpecialDay } from "./actions"
 import { localDateStr } from "@/lib/dates";
 import type { SpecialDay, SpecialDayType } from "@/generated/prisma";
 
+// CHRISTMAS / EASTER are ministry dates managed under Settings → School Year
+// & Terms, so they are not offered here.
 const SPECIAL_DAY_TYPES: SpecialDayType[] = [
   "INTERCALARY",
   "EXCURSION",
   "BANK_HOLIDAY",
-  "CHRISTMAS",
-  "EASTER",
   "OTHER_HOLIDAY",
   "SCHOOL_EVENT",
 ];

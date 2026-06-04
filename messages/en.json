@@ -56,16 +56,16 @@
     "allGroups": "All Groups",
     "checks": "Data Checks",
     "profile": "My Profile",
-    "staff": "Staff",
+    "staff": "Staff Profiles",
     "settings": "Settings",
     "auditLog": "Audit Log",
     "locate": "Locate Student",
     "myAttendance": "My Attendance",
     "myGrades": "My Grades",
+    "mySchedule": "My Schedule",
     "myTests": "My Tests",
     "children": "My Children",
     "users": "Users",
-    "staff": "Staff Profiles",
     "claims": "Claims",
     "myStudents": "My Students",
     "newRequest": "New Request",
@@ -114,7 +114,13 @@
       "inClass": "In class — {room} with {teacher}",
       "unknown": "Location unknown"
     },
-    "daysShort": { "1": "Mon", "2": "Tue", "3": "Wed", "4": "Thu", "5": "Fri" },
+    "daysShort": {
+      "1": "Mon",
+      "2": "Tue",
+      "3": "Wed",
+      "4": "Thu",
+      "5": "Fri"
+    },
     "done": "Done",
     "fillIn": "Fill in",
     "mark": "Mark",
@@ -232,7 +238,8 @@
     "colType": "Type",
     "colGrade": "Grade",
     "typeBig": "Big test",
-    "typeSmall": "Small test"
+    "typeSmall": "Small test",
+    "searchCourse": "Search course…"
   },
   "profile": {
     "title": "My Profile",
@@ -338,7 +345,11 @@
     "errStudentClaimed": "The student account has already been activated.",
     "errOtpInvalid": "Wrong verification code.",
     "errOtpExpired": "The verification code expired. Please start again.",
-    "errEmailSend": "Could not send email. Please contact the school."
+    "errEmailSend": "Could not send email. Please contact the school.",
+    "errGuardianCap": "The maximum number of guardians (2) has already registered for this student. Please contact the school.",
+    "roleTakenStudent": "Already activated",
+    "roleTakenGuardian": "Maximum number reached",
+    "changeCode": "Change code"
   },
   "noticeboard": {
     "title": "Noticeboard",
@@ -455,14 +466,6 @@
   },
   "calendar": {
     "title": "Calendar",
-    "terms": "School Terms",
-    "addTerm": "Add Term",
-    "editTerm": "Edit Term",
-    "termLabel": "Label",
-    "termStart": "Start Date",
-    "termEnd": "End Date",
-    "termDeadline": "Test Deadline",
-    "noTerms": "No terms configured",
     "specialDays": "Special Days",
     "addSpecialDay": "Add Special Day",
     "editSpecialDay": "Edit Special Day",
@@ -475,8 +478,6 @@
     "eventStartPeriod": "Start Period",
     "eventEndPeriod": "End Period",
     "noSpecialDays": "No special days configured",
-    "afterDeadline": "Date is after the test deadline for this term",
-    "noActiveTerm": "No active school term for this date",
     "holiday": "Holiday",
     "excursion": "Excursion",
     "intercalary": "Intercalary",
@@ -508,7 +509,15 @@
     "typeBig": "Big · 45 min",
     "typeSmall": "Small · 20 min",
     "noStaff": "No staff profile found.",
-    "dow": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    "dow": [
+      "Sun",
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat"
+    ],
     "grades": "Grades →"
   },
   "testGrades": {
@@ -526,6 +535,8 @@
     "upcoming": "Upcoming",
     "past": "Past",
     "noUpcoming": "No tests scheduled",
+    "noResults": "No tests found",
+    "searchCourse": "Search subject…",
     "colDate": "Date",
     "colSubject": "Subject",
     "colPeriod": "Period",
@@ -533,6 +544,34 @@
     "colGrade": "Grade",
     "typeBig": "Big · 45 min",
     "typeSmall": "Small · 20 min"
+  },
+  "myAttendance": {
+    "title": "My Attendance",
+    "noGroup": "No group",
+    "absences": "Absences",
+    "lateArrivals": "Late arrivals",
+    "log": "Absence / Late Log",
+    "colDate": "Date",
+    "colPeriod": "Period",
+    "colCourse": "Course",
+    "colStatus": "Status",
+    "colDelay": "Delay",
+    "statusAbsent": "Absent",
+    "statusLate": "Late",
+    "statusAll": "All statuses",
+    "autoAbsent": "Auto-Absent",
+    "minutes": "{n} min",
+    "yearTitle": "School Year",
+    "wholeYear": "Whole year",
+    "noAbsences": "No absences this month",
+    "noResults": "No records found",
+    "searchCourse": "Search course…"
+  },
+  "mySchedule": {
+    "title": "My Schedule",
+    "noGroup": "No group",
+    "noTimetable": "No timetable available",
+    "room": "Room {room}"
   },
   "locate": {
     "title": "Locate Student",

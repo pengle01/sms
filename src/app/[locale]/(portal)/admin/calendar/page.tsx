@@ -16,17 +16,16 @@ export default async function AdminCalendarPage({
 
   const t = await getTranslations("calendar");
 
-  const [terms, specialDays] = await Promise.all([
-    db.schoolTerm.findMany({ orderBy: { startDate: "asc" } }),
-    db.specialDay.findMany({ orderBy: [{ startDate: "asc" }, { type: "asc" }] }),
-  ]);
+  const specialDays = await db.specialDay.findMany({
+    orderBy: [{ startDate: "asc" }, { type: "asc" }],
+  });
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>
       </div>
-      <CalendarClient terms={terms} specialDays={specialDays} />
+      <CalendarClient specialDays={specialDays} />
     </div>
   );
 }

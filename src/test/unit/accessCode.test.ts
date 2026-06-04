@@ -4,9 +4,12 @@ import {
   isWellFormedCode,
   randomAccessCode,
   randomOtp,
+  canAddGuardian,
+  roleAvailability,
   ACCESS_CODE_ALPHABET,
   ACCESS_CODE_LENGTH,
   OTP_LENGTH,
+  MAX_GUARDIAN_CLAIMS,
 } from "@/lib/accessCode";
 import { canViewAccessCode, canGenerateAccessCode } from "@/lib/rbac";
 
@@ -48,6 +51,57 @@ describe("randomOtp", () => {
       expect(o).toHaveLength(OTP_LENGTH);
       expect(/^\d+$/.test(o)).toBe(true);
     }
+  });
+});
+
+describe("canAddGuardian", () => {
+  it("allows new guardians below the cap", () => {
+    expect(canAddGuardian(0, false)).toBe(true);
+    expect(canAddGuardian(1, false)).toBe(true);
+  });
+
+  it("blocks a new guardian at or above the cap", () => {
+    expect(canAddGuardian(MAX_GUARDIAN_CLAIMS, false)).toBe(false);
+    expect(canAddGuardian(MAX_GUARDIAN_CLAIMS + 1, false)).toBe(false);
+  });
+
+  it("always lets an already-linked guardian re-activate", () => {
+    expect(canAddGuardian(MAX_GUARDIAN_CLAIMS, true)).toBe(true);
+    expect(canAddGuardian(MAX_GUARDIAN_CLAIMS + 5, true)).toBe(true);
+  });
+
+  it("caps at exactly two guardians", () => {
+    expect(MAX_GUARDIAN_CLAIMS).toBe(2);
+  });
+});
+
+describe("roleAvailability", () => {
+  it("offers both roles on a fresh code", () => {
+    expect(roleAvailability({ studentClaimedAt: null, guardianClaims: 0 })).toEqual({
+      student: true,
+      guardian: true,
+    });
+  });
+
+  it("withdraws the student role once claimed", () => {
+    expect(roleAvailability({ studentClaimedAt: new Date(), guardianClaims: 0 })).toEqual({
+      student: false,
+      guardian: true,
+    });
+  });
+
+  it("withdraws the guardian role at the cap", () => {
+    expect(roleAvailability({ studentClaimedAt: null, guardianClaims: MAX_GUARDIAN_CLAIMS })).toEqual({
+      student: true,
+      guardian: false,
+    });
+  });
+
+  it("offers nothing on a fully claimed code", () => {
+    expect(roleAvailability({ studentClaimedAt: new Date(), guardianClaims: MAX_GUARDIAN_CLAIMS })).toEqual({
+      student: false,
+      guardian: false,
+    });
   });
 });
 

@@ -2,17 +2,19 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Loader2, CheckCircle2 } from "lucide-react";
+import { Loader2, CheckCircle2, KeyRound } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { startActivation, verifyActivation } from "./actions";
+import { checkAccessCode, startActivation, verifyActivation } from "./actions";
 
 type Labels = Record<string, string>;
+type Availability = { student: boolean; guardian: boolean };
 
 export function ActivateForm({ locale, labels }: { locale: string; labels: Labels }) {
   const t = (k: string) => labels[k] ?? k;
 
-  const [step, setStep] = useState<"details" | "otp" | "done">("details");
+  const [step, setStep] = useState<"code" | "details" | "otp" | "done">("code");
   const [role, setRole] = useState<"student" | "guardian" | "">("");
+  const [avail, setAvail] = useState<Availability>({ student: true, guardian: true });
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -22,6 +24,21 @@ export function ActivateForm({ locale, labels }: { locale: string; labels: Label
   const [otpId, setOtpId] = useState("");
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
+
+  function submitCode() {
+    setError("");
+    startTransition(async () => {
+      const res = await checkAccessCode({ code });
+      if (!res.ok) return setError(t(res.error));
+      const availability = { student: res.student, guardian: res.guardian };
+      setAvail(availability);
+      // Pre-select when only one role is still available.
+      if (availability.student && !availability.guardian) setRole("student");
+      else if (availability.guardian && !availability.student) setRole("guardian");
+      else setRole("");
+      setStep("details");
+    });
+  }
 
   function submitDetails() {
     setError("");
@@ -99,35 +116,77 @@ export function ActivateForm({ locale, labels }: { locale: string; labels: Label
     );
   }
 
+  if (step === "code") {
+    return (
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">{t("codeLabel")}</label>
+          <input
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder={t("codePlaceholder")}
+            className={cn(inputClass, "font-mono tracking-widest uppercase")}
+            autoFocus
+          />
+        </div>
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <button
+          onClick={submitCode}
+          disabled={pending || code.trim().length === 0}
+          className="w-full inline-flex items-center justify-center gap-2 h-11 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-60"
+        >
+          {pending && <Loader2 className="w-4 h-4 animate-spin" />}
+          {t("continue")}
+        </button>
+      </div>
+    );
+  }
+
+  // step === "details"
+  const roles = [
+    { key: "student" as const, label: t("roleStudent"), available: avail.student, takenHint: t("roleTakenStudent") },
+    { key: "guardian" as const, label: t("roleGuardian"), available: avail.guardian, takenHint: t("roleTakenGuardian") },
+  ];
+
   return (
     <div className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">{t("codeLabel")}</label>
-        <input
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          placeholder={t("codePlaceholder")}
-          className={cn(inputClass, "font-mono tracking-widest uppercase")}
-          autoFocus
-        />
+      {/* Verified code summary + way back */}
+      <div className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-100 px-3 py-2">
+        <span className="inline-flex items-center gap-2 text-sm font-mono tracking-widest text-slate-700">
+          <KeyRound className="w-4 h-4 text-emerald-600" />
+          {code.toUpperCase().replace(/[^A-Z0-9]/g, "")}
+        </span>
+        <button
+          type="button"
+          onClick={() => { setStep("code"); setError(""); setRole(""); }}
+          className="text-xs text-slate-400 hover:text-slate-600"
+        >
+          {t("changeCode")}
+        </button>
       </div>
 
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-1.5">{t("chooseRole")}</label>
         <div className="grid grid-cols-2 gap-2">
-          {(["student", "guardian"] as const).map((r) => (
+          {roles.map((r) => (
             <button
-              key={r}
+              key={r.key}
               type="button"
-              onClick={() => setRole(r)}
+              disabled={!r.available}
+              onClick={() => setRole(r.key)}
               className={cn(
-                "h-11 rounded-xl border text-sm font-medium transition-colors",
-                role === r
-                  ? "border-emerald-600 bg-emerald-50 text-emerald-700"
-                  : "border-slate-200 text-slate-600 hover:border-slate-300"
+                "h-14 rounded-xl border text-sm font-medium transition-colors flex flex-col items-center justify-center gap-0.5",
+                !r.available
+                  ? "border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed"
+                  : role === r.key
+                    ? "border-emerald-600 bg-emerald-50 text-emerald-700"
+                    : "border-slate-200 text-slate-600 hover:border-slate-300"
               )}
             >
-              {r === "student" ? t("roleStudent") : t("roleGuardian")}
+              {r.label}
+              {!r.available && (
+                <span className="text-[11px] font-normal text-slate-400">{r.takenHint}</span>
+              )}
             </button>
           ))}
         </div>
@@ -158,7 +217,7 @@ export function ActivateForm({ locale, labels }: { locale: string; labels: Label
 
       <button
         onClick={submitDetails}
-        disabled={pending}
+        disabled={pending || !role}
         className="w-full inline-flex items-center justify-center gap-2 h-11 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-60"
       >
         {pending && <Loader2 className="w-4 h-4 animate-spin" />}

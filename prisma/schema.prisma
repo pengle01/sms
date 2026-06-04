@@ -801,15 +801,8 @@ model EmailOtp {
 }
 
 // ─── School Calendar ──────────────────────────────────────────────────────────
-
-model SchoolTerm {
-  id           String   @id @default(cuid())
-  label        String
-  startDate    DateTime @db.Date
-  endDate      DateTime @db.Date
-  testDeadline DateTime @db.Date
-  createdAt    DateTime @default(now())
-}
+// Term dates and test deadlines live in the "termDates" GlobalSetting
+// (Settings → School Year & Terms), not in a table.
 
 model SpecialDay {
   id                       String         @id @default(cuid())

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { trpc } from "@/trpc/client";
 import { toast } from "sonner";
-import { Loader2, Check, Minus, Plus } from "lucide-react";
+import { Minus, Plus } from "lucide-react";
+import { EditControls } from "./EditControls";
 
 interface Props {
   initial: number;
@@ -11,11 +12,12 @@ interface Props {
 
 export function MaxTestsForm({ initial }: Props) {
   const [value, setValue] = useState(initial);
+  const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [pending, startTransition] = useTransition();
 
-  const { mutate } = trpc.settings.upsert.useMutation({
+  const { mutate, isPending } = trpc.settings.upsert.useMutation({
     onSuccess: () => {
+      setEditing(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     },
@@ -23,13 +25,11 @@ export function MaxTestsForm({ initial }: Props) {
   });
 
   const change = (delta: number) => {
-    const next = Math.min(10, Math.max(2, value + delta));
-    setValue(next);
+    setValue((v) => Math.min(10, Math.max(2, v + delta)));
     setSaved(false);
-    startTransition(() => {
-      mutate({ key: "maxTestsPerWeek", value: String(next) });
-    });
   };
+
+  const save = () => mutate({ key: "maxTestsPerWeek", value: String(value) });
 
   return (
     <div className="space-y-4">
@@ -43,7 +43,7 @@ export function MaxTestsForm({ initial }: Props) {
           <button
             type="button"
             onClick={() => change(-1)}
-            disabled={value <= 2 || pending}
+            disabled={!editing || value <= 2 || isPending}
             className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             <Minus className="w-4 h-4" />
@@ -54,7 +54,7 @@ export function MaxTestsForm({ initial }: Props) {
           <button
             type="button"
             onClick={() => change(+1)}
-            disabled={value >= 10 || pending}
+            disabled={!editing || value >= 10 || isPending}
             className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -62,12 +62,16 @@ export function MaxTestsForm({ initial }: Props) {
         </div>
 
         <span className="text-sm text-slate-400">tests / week</span>
-
-        <div className="w-5 flex-shrink-0">
-          {pending && <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />}
-          {saved && !pending && <Check className="w-4 h-4 text-emerald-500" />}
-        </div>
       </div>
+
+      <EditControls
+        editing={editing}
+        pending={isPending}
+        saved={saved}
+        onEdit={() => setEditing(true)}
+        onCancel={() => { setValue(initial); setEditing(false); }}
+        onSave={save}
+      />
     </div>
   );
 }

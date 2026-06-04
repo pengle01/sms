@@ -8,7 +8,9 @@ import { cn } from "@/lib/utils";
 import { StudentList, type DayRow } from "./StudentList";
 import { getPeriodsPerDay, periodsForDow } from "@/lib/schoolConfig";
 import { getTranslations } from "next-intl/server";
-import { parseLocateTab, studentSearchWhere, type LocateTab } from "@/lib/studentSearch";
+import { locateHref, parseLocateTab, studentSearchWhere, type LocateTab } from "@/lib/studentSearch";
+import { suggestionList } from "@/lib/textSearch";
+import { SuggestInput } from "@/components/SuggestInput";
 import type { Prisma } from "@/generated/prisma";
 import { Search } from "lucide-react";
 
@@ -28,6 +30,10 @@ export default async function TeacherLocatePage({
   const { tab: tabParam, groupId, grade, q } = await searchParams;
   const tab = parseLocateTab(tabParam);
   const query = (q ?? "").trim();
+
+  // Current filter state — links merge overrides on top so switching tab /
+  // year / group never resets the other filters.
+  const current = { tab, grade, groupId, q: query };
 
   const now = getNow();
 
@@ -181,6 +187,18 @@ export default async function TeacherLocatePage({
 
   const selectedGroup = groupId ? homeroomGroups.find((g) => g.id === groupId) ?? null : null;
 
+  // Autocomplete for the search tabs: real names / student IDs from the DB
+  const suggestionRows =
+    tab === "group"
+      ? []
+      : await db.studentProfile.findMany({
+          where: { user: { isActive: true } },
+          select: { studentId: true, user: { select: { name: true } } },
+        });
+  const suggestions = suggestionList(
+    suggestionRows.map((s) => (tab === "name" ? s.user?.name : s.studentId))
+  );
+
   const studentRows = students.map((s) => ({
     id: s.id,
     studentId: s.studentId,
@@ -212,7 +230,7 @@ export default async function TeacherLocatePage({
         {tabs.map((tb) => (
           <Link
             key={tb.key}
-            href={`?tab=${tb.key}`}
+            href={locateHref(current, { tab: tb.key })}
             className={cn(
               "px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
               tab === tb.key
@@ -234,7 +252,8 @@ export default async function TeacherLocatePage({
               {[1, 2, 3].map((g) => (
                 <Link
                   key={g}
-                  href={`?grade=${g}`}
+                  /* Switching year clears the group selection (it belongs to the old year). */
+                  href={locateHref(current, { grade: String(g), groupId: g === gradeNum ? groupId : undefined })}
                   className={cn(
                     "h-10 px-6 rounded-xl text-sm font-medium transition-colors border",
                     gradeNum === g
@@ -256,7 +275,7 @@ export default async function TeacherLocatePage({
                 {homeroomGroups.map((g) => (
                   <Link
                     key={g.id}
-                    href={`?grade=${gradeNum}&groupId=${g.id}`}
+                    href={locateHref(current, { groupId: g.id })}
                     className={cn(
                       "h-10 px-5 rounded-xl text-sm font-medium transition-colors border",
                       groupId === g.id
@@ -295,22 +314,20 @@ export default async function TeacherLocatePage({
           {/* Name / ID search */}
           <form method="GET" className="flex gap-2 flex-wrap">
             <input type="hidden" name="tab" value={tab} />
+            {/* Keep the group-tab selection alive while searching */}
+            {grade && <input type="hidden" name="grade" value={grade} />}
+            {groupId && <input type="hidden" name="groupId" value={groupId} />}
             <div className="relative flex-1 min-w-52">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
+              <SuggestInput
                 name="q"
                 defaultValue={query}
                 autoFocus
                 placeholder={tab === "name" ? t("searchByName") : t("searchById")}
+                suggestions={suggestions}
                 className="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
-            <button
-              type="submit"
-              className="h-10 px-5 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
-            >
-              {t("search")}
-            </button>
           </form>
 
           {query && students.length > 0 && (

@@ -23,6 +23,7 @@ interface HeaderProps {
 
 export function Header({ userName, userImage, locale, pageTitle, role, portal, pendingClaimsCount }: HeaderProps) {
   const t = useTranslations("auth");
+  const tRoles = useTranslations("roles");
   const router = useRouter();
   const profileRef = useRef<HTMLDivElement>(null);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -110,7 +111,7 @@ export function Header({ userName, userImage, locale, pageTitle, role, portal, p
                 <div className="px-4 py-2.5 border-b border-slate-100">
                   <p className="text-sm font-semibold text-slate-900 truncate">{userName}</p>
                   {role && (
-                    <p className="text-xs text-slate-500 mt-0.5">{role.replace(/_/g, " ")}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{tRoles(role)}</p>
                   )}
                 </div>
                 <AppearanceDialog />

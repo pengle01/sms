@@ -6,6 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Search, MapPin } from "lucide-react";
 import { getNow, utcMidnight } from "@/lib/dates";
+import { studentNameOrIdWhere } from "@/lib/studentSearch";
+import { suggestionList } from "@/lib/textSearch";
+import { SuggestInput } from "@/components/SuggestInput";
+import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
 
 export default async function LocatePage({
   params,
@@ -36,7 +40,8 @@ export default async function LocatePage({
     db.studentProfile.findMany({
       where: {
         ...(groupId ? { groupId } : {}),
-        ...(search ? { user: { name: { contains: search, mode: "insensitive" } } } : {}),
+        // Single box matches name OR student ID
+        ...(search ? studentNameOrIdWhere(search) ?? {} : {}),
         user: { isActive: true },
       },
       include: {
@@ -66,6 +71,13 @@ export default async function LocatePage({
 
   const slotByGroup = Object.fromEntries(currentSlots.map((s) => [s.groupId, s]));
 
+  // Autocomplete: active student names (scoped to the selected group)
+  const suggestionRows = await db.studentProfile.findMany({
+    where: { ...(groupId ? { groupId } : {}), user: { isActive: true } },
+    select: { user: { select: { name: true } } },
+  });
+  const suggestions = suggestionList(suggestionRows.map((s) => s.user?.name));
+
   return (
     <div className="space-y-5">
       <div>
@@ -79,14 +91,15 @@ export default async function LocatePage({
       <form method="GET" className="flex gap-3 flex-wrap">
         <div className="relative flex-1 min-w-52">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
+          <SuggestInput
             name="search"
             defaultValue={search}
-            placeholder="Search by name…"
+            placeholder="Search by name or student ID…"
+            suggestions={suggestions}
             className="w-full h-9 pl-9 pr-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
-        <select
+        <AutoSubmitSelect
           name="groupId"
           defaultValue={groupId ?? ""}
           className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
@@ -95,10 +108,7 @@ export default async function LocatePage({
           {groups.map((g) => (
             <option key={g.id} value={g.id}>{g.name}</option>
           ))}
-        </select>
-        <button type="submit" className="h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700">
-          Search
-        </button>
+        </AutoSubmitSelect>
       </form>
 
       {/* Current schedule overview (by group) */}
@@ -161,7 +171,12 @@ export default async function LocatePage({
                     (lastAttendance.status === "ABSENT");
                   return (
                     <tr key={s.id} className="hover:bg-slate-50">
-                      <td className="px-5 py-3.5 font-medium text-slate-900">{s.user?.name}</td>
+                      <td className="px-5 py-3.5 font-medium text-slate-900">
+                        {s.user?.name}
+                        {s.studentId && (
+                          <span className="ml-2 text-xs font-normal text-slate-400">{s.studentId}</span>
+                        )}
+                      </td>
                       <td className="px-5 py-3.5">
                         <Badge variant="outline" className="text-xs">{s.group?.name ?? "—"}</Badge>
                       </td>

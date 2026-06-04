@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { trpc } from "@/trpc/client";
 import { toast } from "sonner";
-import { Loader2, Eye, EyeOff } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Eye, EyeOff } from "lucide-react";
+import { EditControls } from "./EditControls";
 
 interface Props {
   initial: { apiUrl: string; apiKey: string; senderId: string };
@@ -15,9 +15,15 @@ export function SmsSettingsForm({ initial }: Props) {
   const [apiKey, setApiKey]     = useState(initial.apiKey);
   const [senderId, setSenderId] = useState(initial.senderId);
   const [showKey, setShowKey]   = useState(false);
+  const [editing, setEditing]   = useState(false);
+  const [saved, setSaved]       = useState(false);
 
   const { mutate, isPending } = trpc.settings.upsertMany.useMutation({
-    onSuccess: () => toast.success("SMS settings saved"),
+    onSuccess: () => {
+      setEditing(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    },
     onError: (e) => toast.error(e.message),
   });
 
@@ -43,9 +49,10 @@ export function SmsSettingsForm({ initial }: Props) {
           <input
             type="url"
             value={apiUrl}
+            disabled={!editing}
             onChange={(e) => setApiUrl(e.target.value)}
             placeholder="https://api.websms.com.cy/api/send"
-            className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-50 disabled:text-slate-500"
           />
           <p className="text-xs text-slate-400">Obtain from websms.com.cy — SMS via API</p>
         </div>
@@ -56,9 +63,10 @@ export function SmsSettingsForm({ initial }: Props) {
             <input
               type={showKey ? "text" : "password"}
               value={apiKey}
+              disabled={!editing}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="Your WebSMS API key"
-              className="w-full h-9 px-3 pr-9 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full h-9 px-3 pr-9 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-50 disabled:text-slate-500"
             />
             <button
               type="button"
@@ -76,25 +84,30 @@ export function SmsSettingsForm({ initial }: Props) {
           <input
             type="text"
             value={senderId}
+            disabled={!editing}
             onChange={(e) => setSenderId(e.target.value.slice(0, 11))}
             placeholder="SCHOOL"
             maxLength={11}
-            className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-50 disabled:text-slate-500"
           />
           <p className="text-xs text-slate-400">Name shown on recipient's phone (max 11 chars)</p>
         </div>
       </div>
 
-      <div className="flex justify-end">
-        <Button
-          onClick={save}
-          disabled={isPending}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white"
-        >
-          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Save
-        </Button>
-      </div>
+      <EditControls
+        editing={editing}
+        pending={isPending}
+        saved={saved}
+        onEdit={() => setEditing(true)}
+        onCancel={() => {
+          setApiUrl(initial.apiUrl);
+          setApiKey(initial.apiKey);
+          setSenderId(initial.senderId);
+          setShowKey(false);
+          setEditing(false);
+        }}
+        onSave={save}
+      />
     </div>
   );
 }

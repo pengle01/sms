@@ -11,48 +11,9 @@ async function requireSuperAdmin() {
   if (!session || session.user.role !== "SUPER_ADMIN") throw new Error("Forbidden");
 }
 
-// ── School Terms ──────────────────────────────────────────────────────────────
-
-export async function createTerm(data: {
-  label: string;
-  startDate: string;
-  endDate: string;
-  testDeadline: string;
-}) {
-  await requireSuperAdmin();
-  await db.schoolTerm.create({
-    data: {
-      label: data.label.trim(),
-      startDate: utcMidnight(data.startDate),
-      endDate: utcMidnight(data.endDate),
-      testDeadline: utcMidnight(data.testDeadline),
-    },
-  });
-  revalidatePath("/[locale]/admin/calendar", "page");
-}
-
-export async function updateTerm(
-  id: string,
-  data: { label: string; startDate: string; endDate: string; testDeadline: string }
-) {
-  await requireSuperAdmin();
-  await db.schoolTerm.update({
-    where: { id },
-    data: {
-      label: data.label.trim(),
-      startDate: utcMidnight(data.startDate),
-      endDate: utcMidnight(data.endDate),
-      testDeadline: utcMidnight(data.testDeadline),
-    },
-  });
-  revalidatePath("/[locale]/admin/calendar", "page");
-}
-
-export async function deleteTerm(id: string) {
-  await requireSuperAdmin();
-  await db.schoolTerm.delete({ where: { id } });
-  revalidatePath("/[locale]/admin/calendar", "page");
-}
+// School terms are no longer managed here — term dates (and test deadlines)
+// live in the "termDates" GlobalSetting, edited under Settings → School Year
+// & Terms.
 
 // ── Special Days ──────────────────────────────────────────────────────────────
 

@@ -25,6 +25,7 @@ export function GradeReport({
   grades,
   testGrades,
   labels,
+  toolbar,
 }: {
   heading: string;
   subheading: string;
@@ -35,6 +36,8 @@ export function GradeReport({
     testSchedule: { date: Date; type: "BIG" | "SMALL"; course: { name: string } };
   }>;
   labels: GradeReportLabels;
+  /** Optional controls (e.g. a search form) rendered between heading and tables. */
+  toolbar?: React.ReactNode;
 }) {
   const byCourse: Record<string, { course: { name: string; code: string }; grades: typeof grades }> = {};
   for (const g of grades) {
@@ -56,6 +59,8 @@ export function GradeReport({
         <h2 className="text-2xl font-bold text-slate-900">{heading}</h2>
         <p className="text-slate-500 text-sm mt-1">{subheading}</p>
       </div>
+
+      {toolbar}
 
       {!hasAny && (
         <div className="flex flex-col items-center justify-center py-24 text-slate-400">

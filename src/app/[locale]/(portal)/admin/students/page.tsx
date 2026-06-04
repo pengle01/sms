@@ -6,6 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { GraduationCap, Search, Upload } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { pickQueryString } from "@/lib/listFilters";
+import { suggestionList } from "@/lib/textSearch";
+import { SuggestInput } from "@/components/SuggestInput";
 import { StudentRow } from "./student-row";
 import { GenerateAllCodesButton } from "./GenerateAllCodesButton";
 
@@ -65,12 +68,29 @@ export default async function StudentsPage({
 
   const totalPages = Math.ceil(total / limit);
 
+  // Autocomplete: student names scoped to the selected homegroup/year
+  const suggestionRows = await db.studentProfile.findMany({
+    where: {
+      ...(groupId ? { groupId } : gradeNum ? { group: { grade: gradeNum } } : {}),
+      user: { isActive: true },
+    },
+    select: { user: { select: { name: true } } },
+  });
+  const suggestions = suggestionList(suggestionRows.map((s) => s.user?.name));
+
   const buildHref = (extra: Record<string, string | undefined>) => {
     const p = new URLSearchParams();
     const merged = { grade: grade ?? "", groupId: groupId ?? "", search: search ?? "", ...extra };
     for (const [k, v] of Object.entries(merged)) if (v) p.set(k, v);
     return `?${p.toString()}`;
   };
+
+  // Current filters travel with each row link so the detail page's "Back to
+  // students" returns to exactly this view (pills, search, page intact).
+  const listFilters = pickQueryString(
+    { grade, groupId, search, page: page > 1 ? String(page) : undefined },
+    ["grade", "groupId", "search", "page"]
+  );
 
   const selectedGroup = groupId ? homeroomGroups.find((g) => g.id === groupId) : null;
 
@@ -164,19 +184,14 @@ export default async function StudentsPage({
         {groupId && <input type="hidden" name="groupId" value={groupId} />}
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
+          <SuggestInput
             name="search"
             defaultValue={search}
             placeholder="Search by name…"
+            suggestions={suggestions}
             className="w-full h-9 pl-9 pr-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
-        <button
-          type="submit"
-          className="h-9 px-4 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50"
-        >
-          Search
-        </button>
         {search && (
           <Link
             href={buildHref({ search: undefined, page: undefined })}
@@ -218,7 +233,7 @@ export default async function StudentsPage({
             </thead>
             <tbody className="divide-y divide-slate-50">
               {students.map((s) => (
-                <StudentRow key={s.id} href={`/${locale}/admin/students/${s.id}`}>
+                <StudentRow key={s.id} href={`/${locale}/admin/students/${s.id}${listFilters}`}>
                   <td className="px-5 py-3 font-medium text-slate-900">{s.user?.name}</td>
                   <td className="px-5 py-3 text-slate-500 font-mono text-xs">{s.studentId}</td>
                   {!groupId && (

@@ -5,11 +5,10 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CalendarRange, Plus, Pencil, BookOpen } from "lucide-react";
-import { TermForm } from "./TermForm";
+import { CalendarRange, Plus, Pencil } from "lucide-react";
 import { SpecialDayForm } from "./SpecialDayForm";
 import { localDateStr, fmtDisplayDate } from "@/lib/dates";
-import type { SchoolTerm, SpecialDay, SpecialDayType } from "@/generated/prisma";
+import type { SpecialDay, SpecialDayType } from "@/generated/prisma";
 
 const RANGE_TYPES: SpecialDayType[] = ["CHRISTMAS", "EASTER"];
 
@@ -28,67 +27,17 @@ function fmtDate(d: Date) {
 }
 
 interface Props {
-  terms: SchoolTerm[];
   specialDays: SpecialDay[];
 }
 
-export function CalendarClient({ terms, specialDays }: Props) {
+export function CalendarClient({ specialDays }: Props) {
   const t = useTranslations("calendar");
-
-  const [termOpen, setTermOpen] = useState(false);
-  const [editTerm, setEditTerm] = useState<SchoolTerm | undefined>(undefined);
 
   const [dayOpen, setDayOpen] = useState(false);
   const [editDay, setEditDay] = useState<SpecialDay | undefined>(undefined);
 
   return (
     <div className="space-y-6">
-      {/* School Terms */}
-      <Card>
-        <CardHeader className="pb-3 flex flex-row items-center justify-between gap-4">
-          <CardTitle className="text-base flex items-center gap-2">
-            <BookOpen className="w-4 h-4" />
-            {t("terms")}
-          </CardTitle>
-          <Button size="sm" variant="outline" onClick={() => { setEditTerm(undefined); setTermOpen(true); }}>
-            <Plus className="w-3.5 h-3.5 mr-1" />
-            {t("addTerm")}
-          </Button>
-        </CardHeader>
-        <CardContent className="p-0 overflow-x-auto">
-          {terms.length === 0 ? (
-            <p className="px-5 py-8 text-center text-slate-400 text-sm">{t("noTerms")}</p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("termLabel")}</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("termStart")}</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("termEnd")}</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("termDeadline")}</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {terms.map((term) => (
-                  <tr key={term.id} className="hover:bg-slate-50">
-                    <td className="px-5 py-3 font-medium text-slate-900">{term.label}</td>
-                    <td className="px-4 py-3 text-slate-600">{fmtDate(term.startDate)}</td>
-                    <td className="px-4 py-3 text-slate-600">{fmtDate(term.endDate)}</td>
-                    <td className="px-4 py-3 text-slate-600">{fmtDate(term.testDeadline)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setEditTerm(term); setTermOpen(true); }}>
-                        <Pencil className="w-3.5 h-3.5" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </CardContent>
-      </Card>
-
       {/* Special Days */}
       <Card>
         <CardHeader className="pb-3 flex flex-row items-center justify-between gap-4">
@@ -154,7 +103,6 @@ export function CalendarClient({ terms, specialDays }: Props) {
         </CardContent>
       </Card>
 
-      <TermForm open={termOpen} term={editTerm} onClose={() => setTermOpen(false)} />
       <SpecialDayForm open={dayOpen} day={editDay} onClose={() => setDayOpen(false)} />
     </div>
   );

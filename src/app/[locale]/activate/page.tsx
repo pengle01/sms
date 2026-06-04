@@ -12,7 +12,8 @@ const LABEL_KEYS = [
   "sendCode", "otpSent", "otpLabel", "verify", "back", "done", "doneHint", "goToLogin",
   "errGeneric", "errCodeInvalid", "errRoleInvalid", "errEmailRequired", "errPasswordWeak",
   "errPasswordMismatch", "errEmailTaken", "errStudentClaimed", "errOtpInvalid", "errOtpExpired",
-  "errEmailSend",
+  "errEmailSend", "errGuardianCap",
+  "roleTakenStudent", "roleTakenGuardian", "changeCode",
 ] as const;
 
 export default async function ActivatePage({

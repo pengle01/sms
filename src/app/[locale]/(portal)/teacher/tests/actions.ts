@@ -5,8 +5,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { revalidatePath } from "next/cache";
 import { utcMidnight, fmtDisplayDate } from "@/lib/dates";
-import { getMaxTestsPerWeek } from "@/lib/schoolConfig";
-import { getActiveTerm, isSchoolClosed } from "@/lib/calendar";
+import { getActiveTermInfo, getMaxTestsPerWeek } from "@/lib/schoolConfig";
+import { isSchoolClosed } from "@/lib/calendar";
 import { TestType } from "@/generated/prisma";
 
 export type TestConflict = {
@@ -68,7 +68,7 @@ export async function scheduleTest(data: {
   // Reject school holidays and non-term dates
   const [schoolClosed, activeTerm] = await Promise.all([
     isSchoolClosed(targetDate),
-    getActiveTerm(targetDate),
+    getActiveTermInfo(targetDate),
   ]);
   if (schoolClosed) return { success: false, message: "School is closed on this date." };
   if (!activeTerm) return { success: false, message: "No active school term for this date." };

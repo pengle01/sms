@@ -9,6 +9,9 @@ import { GraduationCap, Search, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getTranslations } from "next-intl/server";
 import { isHomegroupWhere } from "@/lib/homegroupFilter";
+import { suggestionList } from "@/lib/textSearch";
+import { SuggestInput } from "@/components/SuggestInput";
+import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
 
 export default async function GroupsDirectoryPage({
   params,
@@ -39,7 +42,7 @@ export default async function GroupsDirectoryPage({
         : {}),
   };
 
-  const [total, groups] = await Promise.all([
+  const [total, groups, allNames] = await Promise.all([
     db.group.count({ where }),
     db.group.findMany({
       where,
@@ -51,7 +54,14 @@ export default async function GroupsDirectoryPage({
       skip: (page - 1) * limit,
       take: limit,
     }),
+    // Autocomplete: every group name (scoped to the active grade/type filters)
+    db.group.findMany({
+      where: { ...(gradeNum ? { grade: gradeNum } : {}) },
+      select: { name: true },
+    }),
   ]);
+
+  const suggestions = suggestionList(allNames.map((g) => g.name));
 
   const totalPages = Math.ceil(total / limit);
 
@@ -77,14 +87,15 @@ export default async function GroupsDirectoryPage({
       <form method="GET" className="flex gap-2 flex-wrap items-center">
         <div className="relative flex-1 max-w-xs min-w-48">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
+          <SuggestInput
             name="search"
             defaultValue={search}
             placeholder={t("searchPlaceholder")}
+            suggestions={suggestions}
             className="w-full h-9 pl-9 pr-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
-        <select
+        <AutoSubmitSelect
           name="grade"
           defaultValue={grade ?? ""}
           className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
@@ -93,8 +104,8 @@ export default async function GroupsDirectoryPage({
           <option value="1">{t("year1")}</option>
           <option value="2">{t("year2")}</option>
           <option value="3">{t("year3")}</option>
-        </select>
-        <select
+        </AutoSubmitSelect>
+        <AutoSubmitSelect
           name="type"
           defaultValue={type ?? ""}
           className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
@@ -102,13 +113,7 @@ export default async function GroupsDirectoryPage({
           <option value="">{t("typeAll")}</option>
           <option value="homegroup">{t("typeHomegroup")}</option>
           <option value="subject">{t("typeSubject")}</option>
-        </select>
-        <button
-          type="submit"
-          className="h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
-        >
-          {tCommon("search")}
-        </button>
+        </AutoSubmitSelect>
         {(search || grade || type) && (
           <Link
             href={`/${locale}/admin/groups`}

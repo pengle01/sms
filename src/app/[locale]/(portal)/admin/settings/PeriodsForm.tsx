@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { trpc } from "@/trpc/client";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { EditControls } from "./EditControls";
 
 const DAYS = [
   { dow: 1, label: "Monday" },
@@ -20,9 +19,15 @@ interface Props {
 
 export function PeriodsForm({ initial }: Props) {
   const [values, setValues] = useState<Record<number, number>>(initial);
+  const [editing, setEditing] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const { mutate, isPending } = trpc.settings.upsert.useMutation({
-    onSuccess: () => toast.success("Saved"),
+    onSuccess: () => {
+      setEditing(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    },
     onError: (e) => toast.error(e.message),
   });
 
@@ -39,12 +44,17 @@ export function PeriodsForm({ initial }: Props) {
               {[7, 8].map((n) => (
                 <button
                   key={n}
+                  disabled={!editing}
                   onClick={() => setValues((v) => ({ ...v, [dow]: n }))}
-                  className={`px-5 py-1.5 text-sm font-medium transition-colors ${
+                  className={`px-5 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed ${
                     values[dow] === n
-                      ? "bg-emerald-600 text-white"
-                      : "bg-white text-slate-500 hover:bg-slate-50"
-                  } ${n === 8 ? "border-l border-slate-200" : ""}`}
+                      ? editing
+                        ? "bg-emerald-600 text-white"
+                        : "bg-slate-200 text-slate-700"
+                      : "bg-white text-slate-400"
+                  } ${editing && values[dow] !== n ? "hover:bg-slate-50 text-slate-500" : ""} ${
+                    n === 8 ? "border-l border-slate-200" : ""
+                  }`}
                 >
                   {n}
                 </button>
@@ -54,16 +64,14 @@ export function PeriodsForm({ initial }: Props) {
         ))}
       </div>
 
-      <div className="flex justify-end pt-1">
-        <Button
-          onClick={save}
-          disabled={isPending}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white"
-        >
-          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Save
-        </Button>
-      </div>
+      <EditControls
+        editing={editing}
+        pending={isPending}
+        saved={saved}
+        onEdit={() => setEditing(true)}
+        onCancel={() => { setValues(initial); setEditing(false); }}
+        onSave={save}
+      />
     </div>
   );
 }

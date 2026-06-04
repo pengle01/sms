@@ -20,3 +20,41 @@ export function studentSearchWhere(tab: "name" | "id", q: string) {
     ? { user: { name: { contains: term, mode: "insensitive" as const }, isActive: true } }
     : { studentId: { contains: term, mode: "insensitive" as const }, user: { isActive: true } };
 }
+
+/**
+ * Combined name-OR-studentId search for the admin locator's single search box.
+ * Returns `null` when the query is empty (same contract as studentSearchWhere).
+ */
+export function studentNameOrIdWhere(q: string) {
+  const term = q.trim();
+  if (!term) return null;
+  return {
+    OR: [
+      { user: { name: { contains: term, mode: "insensitive" as const } } },
+      { studentId: { contains: term, mode: "insensitive" as const } },
+    ],
+    user: { isActive: true },
+  };
+}
+
+export interface LocateParams {
+  tab?: string;
+  grade?: string;
+  groupId?: string;
+  q?: string;
+}
+
+/**
+ * Build a locator href that keeps the currently-set filters and applies the
+ * given overrides on top. Pass `undefined` in overrides to drop a param (e.g.
+ * clear the selected group when switching grade). Empty values are omitted.
+ */
+export function locateHref(current: LocateParams, overrides: Partial<LocateParams>): string {
+  const merged = { ...current, ...overrides };
+  const sp = new URLSearchParams();
+  for (const key of ["tab", "grade", "groupId", "q"] as const) {
+    const v = merged[key];
+    if (v) sp.set(key, v);
+  }
+  return `?${sp.toString()}`;
+}

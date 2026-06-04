@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, CalendarCheck } from "lucide-react";
 import { utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
-import { getActiveTerm } from "@/lib/calendar";
+import { getActiveTermInfo } from "@/lib/schoolConfig";
 import { getTranslations } from "next-intl/server";
 import { DeleteTestButton } from "./DeleteTestButton";
 
@@ -22,6 +22,7 @@ export default async function TeacherTestsPage({
 
   const t = await getTranslations("calendar");
   const tTests = await getTranslations("tests");
+  const tGrades = await getTranslations("grades");
   const localeTag = locale === "el" ? "el-GR" : "en-US";
 
   const staff = await db.staffProfile.findUnique({ where: { userId: session.user.id } });
@@ -36,7 +37,7 @@ export default async function TeacherTestsPage({
 
   const today = utcMidnight(localDateStr());
   const thirtyDaysAgo = new Date(today);
-  const [activeTerm] = await Promise.all([getActiveTerm(today)]);
+  const activeTerm = await getActiveTermInfo(today);
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
   const tests = await db.testSchedule.findMany({
@@ -121,7 +122,7 @@ export default async function TeacherTestsPage({
           <h2 className="text-2xl font-bold text-slate-900">{tTests("title")}</h2>
           {activeTerm ? (
             <p className="text-slate-500 text-sm mt-1">
-              {t("currentTerm", { label: activeTerm.label })}
+              {t("currentTerm", { label: tGrades(activeTerm.term === "TERM1" ? "term1" : "term2") })}
               {" · "}
               {t("testDeadlineNote", { date: fmtDisplayDate(activeTerm.testDeadline) })}
             </p>

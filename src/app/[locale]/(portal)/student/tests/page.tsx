@@ -4,9 +4,12 @@ import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarCheck } from "lucide-react";
+import { CalendarCheck, Search } from "lucide-react";
 import { utcMidnight, fmtDisplayDate } from "@/lib/dates";
 import { getTranslations } from "next-intl/server";
+import { periodLabel } from "@/lib/periods";
+import { matchesSearch, suggestionList } from "@/lib/textSearch";
+import { SuggestInput } from "@/components/SuggestInput";
 
 function gradeColor(v: number) {
   if (v >= 17) return "text-green-700 font-bold";
@@ -17,10 +20,14 @@ function gradeColor(v: number) {
 
 export default async function StudentTestsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ q?: string }>;
 }) {
   const { locale } = await params;
+  const { q } = await searchParams;
+  const query = (q ?? "").trim();
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login`);
 
@@ -60,13 +67,17 @@ export default async function StudentTestsPage({
 
   const gradeMap = new Map(gradeRows.map((g) => [g.testScheduleId, g.value]));
 
-  const upcoming = tests.filter((t) => t.date >= today);
-  const past = tests.filter((t) => t.date < today);
+  const suggestions = suggestionList(tests.map((row) => row.course.name));
+  const visible = tests.filter((row) => matchesSearch(row.course.name, query));
+  const upcoming = visible.filter((t) => t.date >= today);
+  const past = visible.filter((t) => t.date < today);
 
   const DOW = tShared.raw("dow") as string[];
   const formatDate = (d: Date) => `${DOW[d.getUTCDay()]} ${fmtDisplayDate(d)}`;
   const fmtPeriod = (period: number, periodCount: number) =>
-    periodCount > 1 ? `P${period}–${period + periodCount - 1}` : `P${period}`;
+    periodCount > 1
+      ? `${periodLabel(period, locale)}–${period + periodCount - 1}`
+      : periodLabel(period, locale);
 
   const TypeBadge = ({ type }: { type: "BIG" | "SMALL" }) => (
     <Badge
@@ -154,10 +165,24 @@ export default async function StudentTestsPage({
         <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>
       </div>
 
+      {/* Subject search */}
+      <form method="GET" className="flex gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-48 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <SuggestInput
+            name="q"
+            defaultValue={query}
+            placeholder={t("searchCourse")}
+            suggestions={suggestions}
+            className="w-full h-9 pl-9 pr-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+        </div>
+      </form>
+
       {upcoming.length === 0 && past.length === 0 && (
         <div className="flex flex-col items-center justify-center py-24 text-slate-400">
           <CalendarCheck className="w-12 h-12 mb-3 opacity-30" />
-          <p>{t("noUpcoming")}</p>
+          <p>{query ? t("noResults") : t("noUpcoming")}</p>
         </div>
       )}
 

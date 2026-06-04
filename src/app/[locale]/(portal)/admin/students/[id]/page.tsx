@@ -9,6 +9,7 @@ import {
   CalendarDays, AlertTriangle,
 } from "lucide-react";
 import { fmtDisplayDate } from "@/lib/dates";
+import { pickQueryString } from "@/lib/listFilters";
 import { AccessCodeCard } from "@/components/access/AccessCodeCard";
 import { getPeriodsPerDay } from "@/lib/schoolConfig";
 import { periodsForDow, maxPeriodCount } from "@/lib/periods";
@@ -18,10 +19,21 @@ const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"] as const;
 
 export default async function StudentDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; id: string }>;
+  searchParams: Promise<{ grade?: string; groupId?: string; search?: string; page?: string }>;
 }) {
   const { locale, id } = await params;
+
+  // List filters forwarded by the students table — "Back to students" returns
+  // to the same pills/search/page instead of the bare list.
+  const backHref = `/${locale}/admin/students${pickQueryString(await searchParams, [
+    "grade",
+    "groupId",
+    "search",
+    "page",
+  ])}`;
 
   const student = await db.studentProfile.findUnique({
     where: { id },
@@ -106,7 +118,7 @@ export default async function StudentDetailPage({
       {/* Header */}
       <div>
         <Link
-          href={`/${locale}/admin/students`}
+          href={backHref}
           className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 mb-3"
         >
           <ChevronLeft className="w-4 h-4" />

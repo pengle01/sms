@@ -9,6 +9,33 @@ export const ACCESS_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 export const ACCESS_CODE_LENGTH = 8;
 export const OTP_LENGTH = 6;
 
+// At most this many guardian accounts may redeem a student's code.
+export const MAX_GUARDIAN_CLAIMS = 2;
+
+/**
+ * Whether a guardian may (re)claim a student's access code. A guardian whose
+ * account is already linked to the student is always allowed back in (e.g. to
+ * reset their password via re-activation) — only *new* links count toward the
+ * cap.
+ */
+export function canAddGuardian(guardianClaims: number, alreadyLinked: boolean): boolean {
+  return alreadyLinked || guardianClaims < MAX_GUARDIAN_CLAIMS;
+}
+
+/**
+ * Which activation roles a code still offers — drives the role picker so only
+ * available roles can be selected (student is one-shot; guardians are capped).
+ */
+export function roleAvailability(access: {
+  studentClaimedAt: Date | string | null;
+  guardianClaims: number;
+}): { student: boolean; guardian: boolean } {
+  return {
+    student: !access.studentClaimedAt,
+    guardian: access.guardianClaims < MAX_GUARDIAN_CLAIMS,
+  };
+}
+
 /** Uppercase and strip spaces/dashes so "abcd-1234" matches "ABCD1234". */
 export function normalizeCode(input: string): string {
   return input.toUpperCase().replace(/[^A-Z0-9]/g, "");

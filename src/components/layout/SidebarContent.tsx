@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSchoolName } from "./SchoolNameContext";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/generated/prisma";
@@ -56,6 +57,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "settings",     href: "settings",          icon: Settings,        roles: ["SUPER_ADMIN"] },
 
   // ── Student portal ───────────────────────────────────────────────────
+  { key: "mySchedule",   href: "schedule",          icon: Calendar,        roles: ["STUDENT"] },
   { key: "myAttendance", href: "attendance",        icon: ClipboardList,   roles: ["STUDENT"] },
   { key: "myGrades",     href: "grades",            icon: BookOpen,        roles: ["STUDENT"] },
   { key: "myTests",      href: "tests",             icon: FileText,        roles: ["STUDENT"] },
@@ -82,6 +84,8 @@ interface SidebarContentProps {
 export function SidebarContent({ role, locale, portal, userName, onNavigate, pendingClaimsCount }: SidebarContentProps) {
   const t = useTranslations("nav");
   const tCommon = useTranslations("common");
+  const tRoles = useTranslations("roles");
+  const schoolName = useSchoolName();
   const pathname = usePathname();
   const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(role));
 
@@ -93,7 +97,7 @@ export function SidebarContent({ role, locale, portal, userName, onNavigate, pen
           <GraduationCap className="w-5 h-5 text-emerald-900" />
         </div>
         <span className="font-semibold text-white text-sm leading-tight">
-          {tCommon("appName")}
+          {schoolName ?? tCommon("appName")}
         </span>
       </div>
 
@@ -137,7 +141,7 @@ export function SidebarContent({ role, locale, portal, userName, onNavigate, pen
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-white truncate">{userName}</p>
-            <p className="text-xs text-emerald-400 truncate">{role.replace(/_/g, " ")}</p>
+            <p className="text-xs text-emerald-400 truncate">{tRoles(role)}</p>
           </div>
         </div>
       </div>

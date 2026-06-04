@@ -1,7 +1,8 @@
 import { db } from "@/server/db";
 import { utcMidnight } from "@/lib/dates";
-import { getPeriodsPerDay } from "@/lib/schoolConfig";
-import type { SpecialDayType } from "@/generated/prisma";
+import { getPeriodsPerDay, getSchoolYear } from "@/lib/schoolConfig";
+import { configuredHolidayFor, type DateRange } from "@/lib/schoolYear";
+import type { SpecialDay, SpecialDayType } from "@/generated/prisma";
 
 export type { SpecialDayType };
 
@@ -14,38 +15,65 @@ export function isHolidayType(type: SpecialDayType | null): boolean {
   );
 }
 
+// Christmas/Easter are ministry dates kept in the termDates setting (Settings
+// → School Year & Terms), not SpecialDay rows. They are merged into reads
+// here as synthetic entries so week views, dashboards, and test scheduling
+// treat them exactly like any other holiday.
+function syntheticHoliday(type: "CHRISTMAS" | "EASTER", range: DateRange): SpecialDay {
+  return {
+    id: `config-${type.toLowerCase()}`,
+    type,
+    startDate: range.start,
+    endDate: new Date(range.end.getTime() - 86_400_000), // exclusive → inclusive
+    label: null,
+    intercalaryMeetingPeriod: null,
+    eventStartPeriod: null,
+    eventEndPeriod: null,
+    createdAt: range.start,
+  };
+}
+
+async function configuredHolidays(): Promise<SpecialDay[]> {
+  const ranges = await getSchoolYear();
+  const out: SpecialDay[] = [];
+  if (ranges.christmas) out.push(syntheticHoliday("CHRISTMAS", ranges.christmas));
+  if (ranges.easter) out.push(syntheticHoliday("EASTER", ranges.easter));
+  return out;
+}
+
 export async function getSpecialDaysInRange(start: Date, end: Date) {
-  return db.specialDay.findMany({
-    where: {
-      startDate: { lte: end },
-      endDate: { gte: start },
-    },
-    orderBy: { startDate: "asc" },
-  });
+  const [rows, holidays] = await Promise.all([
+    db.specialDay.findMany({
+      where: {
+        startDate: { lte: end },
+        endDate: { gte: start },
+      },
+      orderBy: { startDate: "asc" },
+    }),
+    configuredHolidays(),
+  ]);
+  const overlapping = holidays.filter((h) => h.startDate <= end && h.endDate >= start);
+  return [...rows, ...overlapping].sort(
+    (a, b) => a.startDate.getTime() - b.startDate.getTime()
+  );
 }
 
 export async function getSpecialDayForDate(date: Date): Promise<SpecialDayType | null> {
-  const day = await db.specialDay.findFirst({
-    where: {
-      startDate: { lte: date },
-      endDate: { gte: date },
-    },
-  });
-  return day?.type ?? null;
+  const [day, ranges] = await Promise.all([
+    db.specialDay.findFirst({
+      where: {
+        startDate: { lte: date },
+        endDate: { gte: date },
+      },
+    }),
+    getSchoolYear(),
+  ]);
+  return day?.type ?? configuredHolidayFor(date, ranges);
 }
 
 export async function isSchoolClosed(date: Date): Promise<boolean> {
   const type = await getSpecialDayForDate(date);
   return isHolidayType(type);
-}
-
-export async function getActiveTerm(date: Date) {
-  return db.schoolTerm.findFirst({
-    where: {
-      startDate: { lte: date },
-      endDate: { gte: date },
-    },
-  });
 }
 
 export async function getPeriodsForDate(date: Date, dow: number): Promise<number> {
