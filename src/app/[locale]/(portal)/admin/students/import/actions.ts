@@ -1,7 +1,6 @@
 "use server";
 
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/server/auth";
+import { getSuperAdminAuth } from "@/server/authz";
 import { db } from "@/server/db";
 import * as XLSX from "xlsx";
 import { Gender, ParentRole, Role } from "@/generated/prisma/enums";
@@ -72,8 +71,8 @@ function parseDob(val: unknown): Date | undefined {
 }
 
 export async function importStudents(_prev: ImportResult | null, formData: FormData): Promise<ImportResult> {
-  const session = await getServerSession(authOptions);
-  if (session?.user?.role !== "SUPER_ADMIN") {
+  const auth = await getSuperAdminAuth();
+  if (!auth) {
     return { success: false, studentsCreated: 0, studentsUpdated: 0, groupsCreated: 0, parentsCreated: 0, smsContactsCreated: 0, skipped: 0, errors: ["Unauthorized"] };
   }
 

@@ -1,7 +1,6 @@
 "use server";
 
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/server/auth";
+import { getSuperAdminAuth } from "@/server/authz";
 import { db } from "@/server/db";
 import { Prisma } from "@/generated/prisma";
 import * as XLSX from "xlsx";
@@ -17,8 +16,8 @@ export async function importEnrollment(
   _prev: EnrollmentImportResult | null,
   formData: FormData,
 ): Promise<EnrollmentImportResult> {
-  const session = await getServerSession(authOptions);
-  if (session?.user?.role !== "SUPER_ADMIN") {
+  const auth = await getSuperAdminAuth();
+  if (!auth) {
     return { success: false, studentsEnrolled: 0, linksCreated: 0, errors: ["Unauthorized"] };
   }
 

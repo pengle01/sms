@@ -1,6 +1,5 @@
 import { db } from "@/server/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/server/auth";
+import { getSuperAdminAuth } from "@/server/authz";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -19,8 +18,8 @@ export default async function ChecksPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "SUPER_ADMIN") redirect(`/${locale}/login`);
+  const auth = await getSuperAdminAuth();
+  if (!auth) redirect(`/${locale}/login`);
 
   const t = await getTranslations("checks");
 

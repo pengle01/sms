@@ -130,6 +130,12 @@ model User {
   passwordHash String?  // Parents only — staff use Entra ID
   image        String?
   role         Role
+  // Secondary roles granted on top of the primary one. Currently only
+  // SUPER_ADMIN is ever assigned here (a teacher who also administers the
+  // system keeps their teacher role and features). Authorization: the primary
+  // role drives everything; an extra SUPER_ADMIN additionally unlocks the
+  // admin portal + admin procedures (see authz.ts / trpc/init.ts).
+  extraRoles   Role[]   @default([])
   entraId      String?  @unique
   isActive     Boolean  @default(true)
   // Per-account appearance preferences
@@ -163,6 +169,8 @@ model StaffProfile {
   phone      String?
   department String?
   pmp        String? // ΠΜΠ — personnel/payroll number, asked at first sign-in
+  // Designation: deputy B responsible for special education (set by admin)
+  specialEducation Boolean @default(false)
 
   homeroomGroups        Group[]            @relation("HomeroomTeacher")
   homeroomHeadGroups    Group[]            @relation("HomeroomHeadteacher")

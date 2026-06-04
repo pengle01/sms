@@ -79,9 +79,11 @@ interface SidebarContentProps {
   userName?: string;
   onNavigate?: () => void;
   pendingClaimsCount?: number;
+  /** Other portal this user may switch to (e.g. teacher with extra admin role). */
+  crossPortal?: "admin" | "teacher";
 }
 
-export function SidebarContent({ role, locale, portal, userName, onNavigate, pendingClaimsCount }: SidebarContentProps) {
+export function SidebarContent({ role, locale, portal, userName, onNavigate, pendingClaimsCount, crossPortal }: SidebarContentProps) {
   const t = useTranslations("nav");
   const tCommon = useTranslations("common");
   const tRoles = useTranslations("roles");
@@ -130,6 +132,20 @@ export function SidebarContent({ role, locale, portal, userName, onNavigate, pen
           );
         })}
       </nav>
+
+      {/* Portal switch (e.g. teacher who also administers the system) */}
+      {crossPortal && (
+        <div className="px-3 pb-2 flex-shrink-0">
+          <Link
+            href={`/${locale}/${crossPortal}/dashboard`}
+            onClick={onNavigate}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium border border-emerald-800 text-emerald-200 hover:text-white hover:bg-emerald-800/60 transition-colors"
+          >
+            <Shield className="w-4 h-4 flex-shrink-0" />
+            {crossPortal === "admin" ? t("portalAdmin") : t("portalTeacher")}
+          </Link>
+        </div>
+      )}
 
       {/* User */}
       <div className="px-4 py-4 border-t border-emerald-900 flex-shrink-0">

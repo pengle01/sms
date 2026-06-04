@@ -1,14 +1,13 @@
 "use server";
 
 import { db } from "@/server/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/server/auth";
+import { getSuperAdminAuth } from "@/server/authz";
 import { revalidatePath } from "next/cache";
 import { utcMidnight } from "@/lib/dates";
 
 async function requireSuperAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "SUPER_ADMIN") throw new Error("Forbidden");
+  const auth = await getSuperAdminAuth();
+  if (!auth) throw new Error("Forbidden");
 }
 
 // School terms are no longer managed here — term dates (and test deadlines)

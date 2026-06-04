@@ -71,7 +71,9 @@
     "newRequest": "New Request",
     "activities": "Activities",
     "homegroup": "My Homegroup",
-    "calendar": "Calendar"
+    "calendar": "Calendar",
+    "portalAdmin": "System Administration",
+    "portalTeacher": "Teacher Portal"
   },
   "dashboard": {
     "welcome": "Welcome, {name}",

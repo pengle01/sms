@@ -20,10 +20,12 @@ export default async function TeacherPortalLayout({
 
   const { session } = auth;
   const role = auth.role;
+  // Teachers with an extra SUPER_ADMIN grant get a link to the admin portal.
+  const adminLink = auth.roles.includes("SUPER_ADMIN");
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
-      <Sidebar role={role} locale={locale} portal="teacher" userName={session.user?.name ?? undefined} />
+      <Sidebar role={role} locale={locale} portal="teacher" userName={session.user?.name ?? undefined} crossPortal={adminLink ? "admin" : undefined} />
       <div className="flex-1 flex flex-col min-w-0">
         <Header
           userName={session.user?.name ?? undefined}
@@ -31,6 +33,7 @@ export default async function TeacherPortalLayout({
           locale={locale}
           role={role}
           portal="teacher"
+          crossPortal={adminLink ? "admin" : undefined}
         />
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           {children}

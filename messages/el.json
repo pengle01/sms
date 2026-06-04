@@ -71,7 +71,9 @@
     "newRequest": "Νέο Αίτημα",
     "activities": "Δραστηριότητες",
     "homegroup": "Τμήμα Μου",
-    "calendar": "Ημερολόγιο"
+    "calendar": "Ημερολόγιο",
+    "portalAdmin": "Διαχείριση Συστήματος",
+    "portalTeacher": "Πύλη Εκπαιδευτικού"
   },
   "dashboard": {
     "welcome": "Καλώς ήρθατε, {name}",

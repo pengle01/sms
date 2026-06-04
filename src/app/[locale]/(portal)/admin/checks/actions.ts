@@ -1,17 +1,15 @@
 "use server";
 
 import { db } from "@/server/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/server/auth";
+import { getSuperAdminAuth } from "@/server/authz";
 import { revalidatePath } from "next/cache";
 import { writeAudit, requestMeta } from "@/server/audit";
 
 export type FixResult = { ok: true } | { ok: false; error: string };
 
 async function requireSuperAdmin(): Promise<string | null> {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "SUPER_ADMIN") return null;
-  return session.user.id;
+  const auth = await getSuperAdminAuth();
+  return auth?.userId ?? null;
 }
 
 function revalidateAffected() {

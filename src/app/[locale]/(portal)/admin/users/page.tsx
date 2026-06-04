@@ -1,6 +1,5 @@
 import { db } from "@/server/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/server/auth";
+import { getSuperAdminAuth } from "@/server/authz";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -47,8 +46,8 @@ export default async function UsersPage({
 }) {
   const { locale } = await params;
   const { role: roleParam } = await searchParams;
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "SUPER_ADMIN") redirect(`/${locale}/login`);
+  const auth = await getSuperAdminAuth();
+  if (!auth) redirect(`/${locale}/login`);
 
   const activeTab = FILTER_TABS.find((t) => t.key === roleParam)?.key ?? "all";
   const showUnlinked = activeTab === "unlinked";
@@ -70,6 +69,7 @@ export default async function UsersPage({
                 id: true,
                 phone: true,
                 department: true,
+                specialEducation: true,
                 homeroomGroups: { select: { name: true } },
                 homeroomHeadGroups: { select: { name: true } },
                 _count: { select: { timetableSlots: true } },
@@ -249,11 +249,23 @@ export default async function UsersPage({
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          {meta && (
-                            <Badge variant="outline" className={cn("text-xs font-medium", meta.color)}>
-                              {meta.label}
-                            </Badge>
-                          )}
+                          <div className="flex flex-wrap gap-1">
+                            {meta && (
+                              <Badge variant="outline" className={cn("text-xs font-medium", meta.color)}>
+                                {meta.label}
+                              </Badge>
+                            )}
+                            {u.extraRoles.includes("SUPER_ADMIN") && (
+                              <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                                +Admin
+                              </Badge>
+                            )}
+                            {sp?.specialEducation && (
+                              <Badge variant="outline" className="text-xs bg-rose-50 text-rose-700 border-rose-200">
+                                Ειδ. Εκπ.
+                              </Badge>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-slate-500 text-xs">{u.email}</td>
                         <td className="px-4 py-3 text-slate-500 text-xs">

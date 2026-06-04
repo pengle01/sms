@@ -33,13 +33,15 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
   }
   const user = await ctx.db.user.findUnique({
     where: { id: ctx.session.user.id },
-    select: { isActive: true, role: true },
+    select: { isActive: true, role: true, extraRoles: true },
   });
   if (!user || !user.isActive) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Account inactive" });
   }
   const session = { ...ctx.session, user: { ...ctx.session.user, role: user.role } };
-  return next({ ctx: { ...ctx, session } });
+  // Primary + admin-granted extra roles (currently only SUPER_ADMIN).
+  const effectiveRoles: Role[] = [user.role, ...user.extraRoles.filter((r) => r !== user.role)];
+  return next({ ctx: { ...ctx, session, effectiveRoles } });
 });
 
 // Requires staff role
@@ -58,9 +60,9 @@ export const managementProcedure = protectedProcedure.use(({ ctx, next }) => {
   return next({ ctx });
 });
 
-// Requires super admin
+// Requires super admin (primary role or an admin-granted extra role)
 export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (ctx.session.user.role !== "SUPER_ADMIN") {
+  if (!ctx.effectiveRoles.includes("SUPER_ADMIN")) {
     throw new TRPCError({ code: "FORBIDDEN" });
   }
   return next({ ctx });

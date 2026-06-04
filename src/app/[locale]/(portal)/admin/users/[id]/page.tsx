@@ -1,12 +1,12 @@
 import { db } from "@/server/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/server/auth";
+import { getSuperAdminAuth } from "@/server/authz";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronLeft, CircleUser, Home, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RolesCard } from "./RolesCard";
 
 const ROLE_META: Record<string, { label: string; color: string }> = {
   SUPER_ADMIN:       { label: "Super Admin",  color: "bg-purple-100 text-purple-700 border-purple-200" },
@@ -25,8 +25,8 @@ export default async function UserDetailPage({
   params: Promise<{ locale: string; id: string }>;
 }) {
   const { locale, id } = await params;
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "SUPER_ADMIN") redirect(`/${locale}/login`);
+  const auth = await getSuperAdminAuth();
+  if (!auth) redirect(`/${locale}/login`);
 
   const user = await db.user.findUnique({
     where: { id },
@@ -51,6 +51,15 @@ export default async function UserDetailPage({
   const meta = ROLE_META[user.role];
   const sp = user.staffProfile;
   const scheduleName = sp?.timetableSlots[0]?.staffName ?? null;
+  const hasAdminGrant = user.extraRoles.includes("SUPER_ADMIN");
+
+  // Could revoking this user's grant leave the system without any admin?
+  const effectiveSuperAdmins = await db.user.count({
+    where: {
+      isActive: true,
+      OR: [{ role: "SUPER_ADMIN" }, { extraRoles: { has: "SUPER_ADMIN" } }],
+    },
+  });
 
   const infoRow = (label: string, value: React.ReactNode) => (
     <div className="flex items-start justify-between gap-4 py-2.5">
@@ -95,6 +104,16 @@ export default async function UserDetailPage({
             {meta && (
               <Badge variant="outline" className={cn("text-sm font-medium", meta.color)}>
                 {meta.label}
+              </Badge>
+            )}
+            {hasAdminGrant && (
+              <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-sm">
+                + System Admin
+              </Badge>
+            )}
+            {sp?.specialEducation && (
+              <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 text-sm">
+                Ειδική Εκπαίδευση
               </Badge>
             )}
             {!user.isActive && (
@@ -155,6 +174,17 @@ export default async function UserDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      <RolesCard
+        userId={user.id}
+        userName={user.name ?? user.email}
+        isPrimaryAdmin={user.role === "SUPER_ADMIN"}
+        hasAdminGrant={hasAdminGrant}
+        isSelf={auth.userId === user.id}
+        isLastSuperAdmin={hasAdminGrant && effectiveSuperAdmins <= 1}
+        hasStaffProfile={!!sp}
+        specialEducation={sp?.specialEducation ?? false}
+      />
 
       {!sp && (
         <p className="text-sm text-slate-400">

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getActiveAuth } from "@/server/authz";
-import { isAdminStaff } from "@/lib/rbac";
+import { isAdminStaff, isEducator } from "@/lib/rbac";
+import type { Role } from "@/generated/prisma";
 import { db } from "@/server/db";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
@@ -15,10 +16,15 @@ export default async function AdminPortalLayout({
   const { locale } = await params;
   const auth = await getActiveAuth();
 
-  if (!auth || !isAdminStaff(auth.role)) redirect(`/${locale}/login`);
+  // Primary SUPER_ADMIN or an admin-granted extra role both unlock the portal.
+  if (!auth || !auth.roles.some(isAdminStaff)) redirect(`/${locale}/login`);
 
   const { session } = auth;
-  const role = auth.role;
+  // Sidebar/nav items are filtered by role — inside the admin portal that is
+  // SUPER_ADMIN even when it's only the user's extra role.
+  const role: Role = auth.roles.includes("SUPER_ADMIN") ? "SUPER_ADMIN" : auth.role;
+  // Educators with an extra admin role get a link back to their own portal.
+  const teacherPortalLink = isEducator(auth.role);
 
   const pendingClaimsCount = await Promise.all([
     db.user.count({ where: { isActive: false } }),
@@ -28,7 +34,7 @@ export default async function AdminPortalLayout({
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
-      <Sidebar role={role} locale={locale} portal="admin" userName={session.user?.name ?? undefined} pendingClaimsCount={pendingClaimsCount} />
+      <Sidebar role={role} locale={locale} portal="admin" userName={session.user?.name ?? undefined} pendingClaimsCount={pendingClaimsCount} crossPortal={teacherPortalLink ? "teacher" : undefined} />
 
       <div className="flex-1 flex flex-col min-w-0">
         <Header
@@ -38,6 +44,7 @@ export default async function AdminPortalLayout({
           role={role}
           portal="admin"
           pendingClaimsCount={pendingClaimsCount}
+          crossPortal={teacherPortalLink ? "teacher" : undefined}
         />
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           {children}

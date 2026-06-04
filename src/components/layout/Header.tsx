@@ -19,9 +19,10 @@ interface HeaderProps {
   role?: Role;
   portal?: string;
   pendingClaimsCount?: number;
+  crossPortal?: "admin" | "teacher";
 }
 
-export function Header({ userName, userImage, locale, pageTitle, role, portal, pendingClaimsCount }: HeaderProps) {
+export function Header({ userName, userImage, locale, pageTitle, role, portal, pendingClaimsCount, crossPortal }: HeaderProps) {
   const t = useTranslations("auth");
   const tRoles = useTranslations("roles");
   const router = useRouter();
@@ -154,6 +155,7 @@ export function Header({ userName, userImage, locale, pageTitle, role, portal, p
               userName={userName}
               onNavigate={() => setDrawerOpen(false)}
               pendingClaimsCount={pendingClaimsCount}
+              crossPortal={crossPortal}
             />
           </div>
         </>,

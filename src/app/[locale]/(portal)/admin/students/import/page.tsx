@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/server/auth";
+import { getSuperAdminAuth } from "@/server/authz";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
@@ -7,9 +6,8 @@ import { ImportForm } from "./import-form";
 
 export default async function ImportStudentsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  const session = await getServerSession(authOptions);
-
-  if (session?.user?.role !== "SUPER_ADMIN") redirect(`/${locale}/admin/students`);
+  const auth = await getSuperAdminAuth();
+  if (!auth) redirect(`/${locale}/admin/students`);
 
   return (
     <div className="space-y-6">

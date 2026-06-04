@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/server/auth";
+import { getSuperAdminAuth } from "@/server/authz";
 import { db } from "@/server/db";
 import Link from "next/link";
 import { Upload, CalendarDays } from "lucide-react";
@@ -14,13 +13,13 @@ export default async function TimetablePage({
   params: Promise<{ locale: string }>;
   searchParams: Promise<{ group?: string; teacher?: string; view?: string }>;
 }) {
-  const [{ locale }, sp, session] = await Promise.all([
+  const [{ locale }, sp, adminAuth] = await Promise.all([
     params,
     searchParams,
-    getServerSession(authOptions),
+    getSuperAdminAuth(),
   ]);
 
-  const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
+  const isSuperAdmin = !!adminAuth;
   const view = sp.view ?? "group";
 
   const [groups, teacherNames, slotCount] = await Promise.all([

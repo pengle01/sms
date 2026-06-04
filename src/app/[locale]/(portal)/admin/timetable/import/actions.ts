@@ -1,7 +1,6 @@
 "use server";
 
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/server/auth";
+import { getSuperAdminAuth } from "@/server/authz";
 import { db } from "@/server/db";
 import { Prisma } from "@/generated/prisma";
 import * as XLSX from "xlsx";
@@ -50,8 +49,8 @@ export async function importSchedule(
   _prev: ScheduleImportResult | null,
   formData: FormData,
 ): Promise<ScheduleImportResult> {
-  const session = await getServerSession(authOptions);
-  if (session?.user?.role !== "SUPER_ADMIN") {
+  const auth = await getSuperAdminAuth();
+  if (!auth) {
     return { success: false, slotsCreated: 0, slotsUpdated: 0, coursesCreated: 0, groupsCreated: 0, errors: ["Unauthorized"] };
   }
 

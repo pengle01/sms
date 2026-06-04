@@ -1,6 +1,5 @@
 import { db } from "@/server/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/server/auth";
+import { getSuperAdminAuth } from "@/server/authz";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { GraduationCap, Search, Upload } from "lucide-react";
@@ -19,10 +18,10 @@ export default async function StudentsPage({
   params: Promise<{ locale: string }>;
   searchParams: Promise<{ search?: string; grade?: string; groupId?: string; page?: string }>;
 }) {
-  const [{ locale }, { search, grade, groupId, page: pageStr }, session] = await Promise.all([
+  const [{ locale }, { search, grade, groupId, page: pageStr }, adminAuth] = await Promise.all([
     params,
     searchParams,
-    getServerSession(authOptions),
+    getSuperAdminAuth(),
   ]);
 
   const gradeNum = grade ? parseInt(grade) : undefined;
@@ -102,7 +101,7 @@ export default async function StudentsPage({
           <h2 className="text-2xl font-bold text-slate-900">Students</h2>
           <p className="text-slate-500 text-sm mt-1">{allTotal} students enrolled</p>
         </div>
-        {session?.user?.role === "SUPER_ADMIN" && (
+        {adminAuth && (
           <div className="flex items-center gap-2 flex-wrap">
             <GenerateAllCodesButton missing={missingCodes} />
             <Link

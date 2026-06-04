@@ -1,6 +1,5 @@
 import { db } from "@/server/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/server/auth";
+import { getSuperAdminAuth } from "@/server/authz";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -32,8 +31,8 @@ export default async function StaffProfilesPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "SUPER_ADMIN") redirect(`/${locale}/login`);
+  const auth = await getSuperAdminAuth();
+  if (!auth) redirect(`/${locale}/login`);
 
   const [staffProfiles, linkableUsers] = await Promise.all([
     db.staffProfile.findMany({

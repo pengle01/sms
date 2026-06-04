@@ -2,12 +2,12 @@
 
 import { db } from "@/server/db";
 import { revalidatePath } from "next/cache";
-import { getActiveAuth } from "@/server/authz";
+import { getSuperAdminAuth } from "@/server/authz";
 import { writeAudit, requestMeta } from "@/server/audit";
 
 async function requireSuperAdmin() {
-  const auth = await getActiveAuth();
-  if (!auth || auth.role !== "SUPER_ADMIN") throw new Error("Forbidden");
+  const auth = await getSuperAdminAuth();
+  if (!auth) throw new Error("Forbidden");
   return auth;
 }
 

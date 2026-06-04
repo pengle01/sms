@@ -1,6 +1,5 @@
 import { db } from "@/server/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/server/auth";
+import { getSuperAdminAuth } from "@/server/authz";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,8 +20,8 @@ export default async function ReferralsPage({
   searchParams: Promise<{ status?: string; group?: string; page?: string }>;
 }) {
   const { locale } = await params;
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "SUPER_ADMIN") redirect(`/${locale}/login`);
+  const auth = await getSuperAdminAuth();
+  if (!auth) redirect(`/${locale}/login`);
 
   const t = await getTranslations("referrals");
   const tCommon = await getTranslations("common");

@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/server/auth";
+import { getSuperAdminAuth } from "@/server/authz";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY, getMaxTestsPerWeek, DEFAULT_MAX_TESTS_PER_WEEK, getSchoolYear, getTermDatesConfig, getSchoolName } from "@/lib/schoolConfig";
@@ -11,8 +10,8 @@ export default async function AdminSettingsPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "SUPER_ADMIN") redirect(`/${locale}/login`);
+  const auth = await getSuperAdminAuth();
+  if (!auth) redirect(`/${locale}/login`);
 
   const { PeriodsForm } = await import("./PeriodsForm");
   const { MaxTestsForm } = await import("./MaxTestsForm");

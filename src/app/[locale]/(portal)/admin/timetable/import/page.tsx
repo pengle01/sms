@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/server/auth";
+import { getSuperAdminAuth } from "@/server/authz";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
@@ -13,8 +12,8 @@ export default async function TimetableImportPage({
 }) {
   const { locale } = await params;
 
-  const session = await getServerSession(authOptions);
-  if (session?.user?.role !== "SUPER_ADMIN") {
+  const auth = await getSuperAdminAuth();
+  if (!auth) {
     redirect(`/${locale}/admin`);
   }
 

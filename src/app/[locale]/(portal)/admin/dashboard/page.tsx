@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/server/auth";
+import { getSuperAdminAuth } from "@/server/authz";
 import { db } from "@/server/db";
 import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +20,7 @@ export default async function AdminDashboardPage({
   const { locale } = await params;
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login`);
+  const isAdmin = !!(await getSuperAdminAuth());
 
   const t = await getTranslations("dashboard");
   const tCommon = await getTranslations("common");
@@ -60,7 +62,7 @@ export default async function AdminDashboardPage({
 
   // Live data-integrity check (super admin only) — see /admin/checks for detail.
   let integrityIssues = 0;
-  if (session.user.role === "SUPER_ADMIN") {
+  if (isAdmin) {
     const [checkStudents, checkSlots, checkGroups, periodsPerDay] = await Promise.all([
       db.studentProfile.findMany({
         where: { user: { isActive: true } },
