@@ -38,7 +38,8 @@ interface Props {
 
 function dot(isActivity: boolean, status: string | undefined): string {
   if (isActivity)            return "bg-violet-400";
-  if (!status)               return "bg-yellow-300";
+  if (!status)               return "bg-slate-300";
+  if (status === "PERMIT")   return "bg-yellow-400"; // absence covered by exit permit
   if (status === "PRESENT")  return "bg-green-500";
   if (status === "LATE")     return "bg-amber-400";
   return "bg-red-500";

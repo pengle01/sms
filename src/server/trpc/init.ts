@@ -68,9 +68,10 @@ export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   return next({ ctx });
 });
 
-// Counselor + headmaster only (for private notes)
+// Counselor + headmaster only (for private notes). Effective roles so an
+// extra SUPER_ADMIN grant matches a primary one.
 export const counselorProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (!canViewCounselorNotes(ctx.session.user.role as Role)) {
+  if (!ctx.effectiveRoles.some(canViewCounselorNotes)) {
     throw new TRPCError({ code: "FORBIDDEN" });
   }
   return next({ ctx });

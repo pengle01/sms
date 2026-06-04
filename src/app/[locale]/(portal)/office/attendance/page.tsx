@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { staffDisplayName } from "@/lib/staffName";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
@@ -48,6 +49,7 @@ export default async function OfficeAttendancePage({
         },
         timetableSlot: { include: { course: true } },
         staff: { include: { user: { select: { name: true } } } },
+        exitPermit: { select: { reason: true, fromPeriod: true } },
       },
       orderBy: [{ student: { user: { name: "asc" } } }, { timetableSlot: { period: "asc" } }],
     }),
@@ -81,7 +83,7 @@ export default async function OfficeAttendancePage({
       existing.daysLate = Math.max(existing.daysLate, daysLate);
     } else {
       lateMap.set(key, {
-        staffName: r.staff.user?.name ?? "Unknown",
+        staffName: staffDisplayName(r.staff, "Unknown"),
         attendanceDateStr,
         count: 1,
         daysLate,
@@ -209,6 +211,15 @@ export default async function OfficeAttendancePage({
                     >
                       {a.isAutoAbsent ? "Auto-Absent" : a.status}
                     </Badge>
+                    {a.exitPermit && (
+                      <Badge
+                        variant="outline"
+                        className="ml-1.5 bg-yellow-50 text-yellow-700 border-yellow-300"
+                        title={a.exitPermit.reason}
+                      >
+                        Exit Permit
+                      </Badge>
+                    )}
                   </td>
                   <td className="px-5 py-3 text-slate-500">
                     {a.minutesDelayed > 0 ? `${a.minutesDelayed} min` : "—"}

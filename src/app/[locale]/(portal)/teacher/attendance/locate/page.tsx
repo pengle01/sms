@@ -90,7 +90,9 @@ export default async function TeacherLocatePage({
   for (const s of students) {
     periodAttendance[s.id] = {};
     for (const a of s.attendance) {
-      periodAttendance[s.id]![a.timetableSlot?.period ?? a.intercalaryPeriod ?? 0] = a.status;
+      // Absence covered by an exit permit shows yellow, not red
+      periodAttendance[s.id]![a.timetableSlot?.period ?? a.intercalaryPeriod ?? 0] =
+        a.exitPermitId ? "PERMIT" : a.status;
     }
   }
 
@@ -172,7 +174,7 @@ export default async function TeacherLocatePage({
         period: p,
         courseName: periodMap[p]?.course.name ?? null,
         room: periodMap[p]?.room ?? null,
-        staffName: periodMap[p]?.staffName ?? periodMap[p]?.staff?.user?.name ?? null,
+        staffName: periodMap[p]?.staff?.scheduleName ?? periodMap[p]?.staffName ?? periodMap[p]?.staff?.user?.name ?? null,
         isActivity: !!actByPeriod[p],
         activityName: actByPeriod[p],
       }));

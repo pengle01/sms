@@ -67,6 +67,7 @@ export default async function UsersPage({
             staffProfile: {
               select: {
                 id: true,
+                scheduleName: true,
                 phone: true,
                 department: true,
                 specialEducation: true,
@@ -174,7 +175,7 @@ export default async function UsersPage({
                     ];
                     return (
                       <tr key={sp.id} className="hover:bg-amber-50/60">
-                        <td className="px-5 py-3 font-mono text-xs text-slate-600">{sp.id}</td>
+                        <td className="px-5 py-3 font-mono text-xs text-slate-600">{sp.scheduleName ?? sp.id}</td>
                         <td className="px-4 py-3 text-slate-500">{sp._count.timetableSlots}</td>
                         <td className="px-4 py-3">
                           {homerooms.length > 0 ? (
@@ -239,8 +240,11 @@ export default async function UsersPage({
                             href={`/${locale}/admin/users/${u.id}`}
                             className="font-medium text-slate-900 hover:text-emerald-700"
                           >
-                            {u.name ?? "—"}
+                            {sp?.scheduleName ?? u.name ?? "—"}
                           </Link>
+                          {sp?.scheduleName && u.name && sp.scheduleName !== u.name && (
+                            <p className="text-xs text-slate-400 mt-0.5">{u.name}</p>
+                          )}
                           {u.nameEl && u.nameEl !== u.name && (
                             <p className="text-xs text-slate-400 mt-0.5">{u.nameEl}</p>
                           )}

@@ -9,7 +9,8 @@ import { writeAudit, requestMeta } from "@/server/audit";
 
 export async function updateStudent(id: string, locale: string, formData: FormData) {
   const auth = await getActiveAuth();
-  if (!auth || (!isOfficeAdmin(auth.role) && !isAdminStaff(auth.role))) {
+  // Effective roles: extra SUPER_ADMIN grants count.
+  if (!auth || !auth.roles.some((r) => isOfficeAdmin(r) || isAdminStaff(r))) {
     throw new Error("Unauthorized");
   }
 

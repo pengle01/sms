@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { slotTeacherName } from "@/lib/staffName";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
@@ -137,7 +138,7 @@ export default async function LocatePage({
                       <Badge variant="outline" className="text-xs">{slot.group.name}</Badge>
                     </td>
                     <td className="px-5 py-3 font-medium text-slate-900">{slot.course.name}</td>
-                    <td className="px-5 py-3 text-slate-600">{slot.staff?.user?.name ?? slot.staffName ?? "—"}</td>
+                    <td className="px-5 py-3 text-slate-600">{slotTeacherName(slot)}</td>
                     <td className="px-5 py-3 text-slate-500">{slot.room ?? "—"}</td>
                   </tr>
                 ))}

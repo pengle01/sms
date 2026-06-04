@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { staffDisplayName, slotTeacherName } from "@/lib/staffName";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { redirect, notFound } from "next/navigation";
@@ -82,8 +83,8 @@ export default async function GroupDetailPage({
             Grade {group.grade}
             {group.students.length > 0 && ` · ${group.students.length} homeroom`}
             {group.studentGroups.length > 0 && ` · ${group.studentGroups.length} enrolled`}
-            {group.homeroomTeacher && ` · ${group.homeroomTeacher.user?.name}`}
-            {group.homeroomHeadteacher && ` · ${group.homeroomHeadteacher.user?.name} (B')`}
+            {group.homeroomTeacher && ` · ${staffDisplayName(group.homeroomTeacher)}`}
+            {group.homeroomHeadteacher && ` · ${staffDisplayName(group.homeroomHeadteacher)} (B')`}
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
@@ -200,7 +201,7 @@ export default async function GroupDetailPage({
                       <div key={slot.id} className="flex items-center gap-3 text-sm px-3 py-2 rounded-lg bg-slate-50">
                         <span className="text-slate-400 w-6 text-center font-mono text-xs">{slot.period}</span>
                         <span className="font-medium text-slate-900 flex-1">{slot.course.name}</span>
-                        <span className="text-slate-500 text-xs">{slot.staff?.user?.name ?? slot.staffName ?? "—"}</span>
+                        <span className="text-slate-500 text-xs">{slotTeacherName(slot)}</span>
                         {slot.room && (
                           <span className="text-slate-400 text-xs">Rm {slot.room}</span>
                         )}

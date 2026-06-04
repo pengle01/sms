@@ -4,10 +4,10 @@ import { authOptions } from "@/server/auth";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { fmtDisplayDate } from "@/lib/dates";
+import { fmtDisplayDate, utcMidnight } from "@/lib/dates";
 import { getTranslations } from "next-intl/server";
 import { GradeForm } from "./GradeForm";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Lock } from "lucide-react";
 
 export default async function TestGradesPage({
   params,
@@ -49,6 +49,9 @@ export default async function TestGradesPage({
 
   const gradeMap = new Map(test.testGrades.map((g) => [g.studentId, g]));
 
+  // No grading before the test has taken place.
+  const beforeTestDate = test.date > utcMidnight();
+
   const DOW = tTests.raw("dow") as string[];
   const dateLabel = `${DOW[test.date.getUTCDay()]} ${fmtDisplayDate(test.date)}`;
   const periodLabel =
@@ -84,12 +87,20 @@ export default async function TestGradesPage({
         </div>
       </div>
 
+      {beforeTestDate && (
+        <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-600">
+          <Lock className="w-4 h-4 flex-shrink-0 text-slate-400" />
+          {t("beforeTestDate")}
+        </div>
+      )}
+
       {students.length === 0 ? (
         <p className="text-sm text-slate-400">{t("noStudents")}</p>
       ) : (
         <GradeForm
           testId={testId}
           locale={locale}
+          locked={beforeTestDate}
           students={students.map((s) => {
             const g = gradeMap.get(s.id);
             return {

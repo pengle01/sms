@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { staffDisplayName } from "@/lib/staffName";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
@@ -97,7 +98,7 @@ export default async function ActivitiesPage({
                   <p className="text-sm text-slate-500 mt-0.5">
                     {periodRange(a.startPeriod, a.endPeriod)}
                     {a.location && ` · ${a.location}`}
-                    {" · "}{a.filer.user?.name}
+                    {" · "}{staffDisplayName(a.filer)}
                   </p>
                 </div>
                 <div className="flex items-center gap-1 text-sm text-slate-500 flex-shrink-0">
@@ -131,7 +132,7 @@ export default async function ActivitiesPage({
                   <p className="text-sm text-slate-500 mt-0.5">
                     {periodRange(a.startPeriod, a.endPeriod)}
                     {a.location && ` · ${a.location}`}
-                    {" · "}{a.filer.user?.name}
+                    {" · "}{staffDisplayName(a.filer)}
                   </p>
                 </Link>
                 <div className="flex items-center gap-1 text-sm text-slate-500 flex-shrink-0">
@@ -178,7 +179,7 @@ export default async function ActivitiesPage({
                       <p className="text-sm text-slate-400 mt-0.5">
                         {periodRange(a.startPeriod, a.endPeriod)}
                         {a.location && ` · ${a.location}`}
-                        {" · "}{a.filer.user?.name}
+                        {" · "}{staffDisplayName(a.filer)}
                       </p>
                     </div>
                     <div className="flex items-center gap-1 text-sm text-slate-400 flex-shrink-0">

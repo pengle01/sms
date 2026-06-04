@@ -1,6 +1,5 @@
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/server/auth";
+import { getActiveAuth } from "@/server/authz";
 import { canManageClaims } from "@/lib/rbac";
 import { db } from "@/server/db";
 import type { Role } from "@/generated/prisma";
@@ -13,8 +12,9 @@ export default async function ClaimsPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const session = await getServerSession(authOptions);
-  if (!session?.user || !canManageClaims(session.user.role as Role)) {
+  const auth = await getActiveAuth();
+  // Effective roles: a teacher with an extra SUPER_ADMIN grant manages claims.
+  if (!auth || !auth.roles.some(canManageClaims)) {
     redirect(`/${locale}/login`);
   }
 

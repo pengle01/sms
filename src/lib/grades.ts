@@ -43,3 +43,27 @@ export function gradeColorClass(v: number): string {
   if (v >= 10) return "text-amber-700";
   return "text-red-700";
 }
+
+// ─── Term locking ─────────────────────────────────────────────────────────────
+// Grade entry stays FROZEN until the super admin unlocks the term in Settings.
+
+export type GradesUnlocked = Record<GradePeriod, boolean>;
+export const GRADES_UNLOCKED_KEY = "grades_unlocked";
+
+/** Parse the stored unlock state; missing/invalid config means all terms locked. */
+export function parseGradesUnlocked(raw: string | null | undefined): GradesUnlocked {
+  const out: GradesUnlocked = { TERM1: false, TERM2: false };
+  if (!raw) return out;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed && typeof parsed === "object") {
+      for (const p of GRADE_PERIODS) {
+        const v = (parsed as Record<string, unknown>)[p];
+        if (typeof v === "boolean") out[p] = v;
+      }
+    }
+  } catch {
+    // default: locked
+  }
+  return out;
+}

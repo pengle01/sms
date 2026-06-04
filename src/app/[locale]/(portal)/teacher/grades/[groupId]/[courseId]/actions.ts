@@ -6,6 +6,7 @@ import { authOptions } from "@/server/auth";
 import { revalidatePath } from "next/cache";
 import { isManagement } from "@/lib/rbac";
 import { parseGradeInput, isGradePeriod } from "@/lib/grades";
+import { getGradesUnlocked } from "@/lib/schoolConfig";
 import { writeAudit, requestMeta } from "@/server/audit";
 import type { Role } from "@/generated/prisma";
 
@@ -24,6 +25,12 @@ export async function saveGrades(input: {
   if (!staff) return { success: false, message: "No staff profile" };
 
   if (!isGradePeriod(input.period)) return { success: false, message: "Invalid term" };
+
+  // Terms stay frozen until the super admin unlocks them in Settings.
+  const unlocked = await getGradesUnlocked();
+  if (!unlocked[input.period]) {
+    return { success: false, message: "Η βαθμολογία του τετραμήνου είναι κλειδωμένη." };
+  }
 
   const role = session.user.role as Role;
 

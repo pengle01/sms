@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { staffDisplayName } from "@/lib/staffName";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { redirect, notFound } from "next/navigation";
@@ -87,7 +88,7 @@ export default async function ActivityDetailPage({
             {dateLabel} · {periodRange(activity.startPeriod, activity.endPeriod)}
             {activity.location && ` · ${activity.location}`}
           </p>
-          <p className="text-slate-400 text-xs mt-0.5">Organised by {activity.filer.user?.name}</p>
+          <p className="text-slate-400 text-xs mt-0.5">Organised by {staffDisplayName(activity.filer)}</p>
         </div>
       </div>
 

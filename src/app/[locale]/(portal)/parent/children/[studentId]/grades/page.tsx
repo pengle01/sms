@@ -31,25 +31,19 @@ export default async function ParentChildGradesPage({
 
   const t = await getTranslations("grades");
 
-  const [grades, testGrades] = await Promise.all([
-    db.grade.findMany({
-      where: { studentId },
-      include: { course: true },
-      orderBy: [{ course: { name: "asc" } }, { period: "asc" }],
-    }),
-    db.testGrade.findMany({
-      where: { studentId, value: { not: null } },
-      include: { testSchedule: { include: { course: { select: { name: true } } } } },
-      orderBy: { testSchedule: { date: "desc" } },
-    }),
-  ]);
+  // Term marks only — test marks live on the child's Tests page.
+  const grades = await db.grade.findMany({
+    where: { studentId },
+    include: { course: true },
+    orderBy: [{ course: { name: "asc" } }, { period: "asc" }],
+  });
 
   return (
     <GradeReport
       heading={student.user?.name ?? t("title")}
       subheading={`${t("title")} · ${student.group?.name ?? ""} · ${t("scale")}`}
       grades={grades}
-      testGrades={testGrades}
+      testGrades={[]}
       labels={{
         term1: t("term1"),
         term2: t("term2"),

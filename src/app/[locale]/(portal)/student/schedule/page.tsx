@@ -60,7 +60,7 @@ export default async function StudentSchedulePage({
     grid.set(s.dayOfWeek * 100 + s.period, { ...s, isSubjectGroup: true });
   }
 
-  const teacherName = (s: Slot) => s.staffName ?? s.staff?.user?.name ?? null;
+  const teacherName = (s: Slot) => s.staff?.scheduleName ?? s.staffName ?? s.staff?.user?.name ?? null;
 
   const allPeriods = Array.from({ length: maxPeriodCount(periodsConfig) }, (_, i) => i + 1);
   const days = [1, 2, 3, 4, 5];

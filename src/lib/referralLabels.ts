@@ -25,3 +25,16 @@ export const ACTION_LABEL: Record<string, string> = {
 export function actionLabel(value: string): string {
   return ACTION_LABEL[value] ?? value;
 }
+
+/**
+ * Compact one-line summary of a resolved punishment, e.g.
+ * "Αποβολή · 2 ημέρες" or "Προειδοποίηση". Details/notes are shown separately.
+ */
+export function resolutionSummary(resolution: {
+  action: string;
+  expulsionDays?: { date: Date }[] | null;
+}): string {
+  const base = actionLabel(resolution.action);
+  const days = resolution.expulsionDays?.length ?? 0;
+  return days > 0 ? `${base} · ${days} ημέρ${days === 1 ? "α" : "ες"}` : base;
+}

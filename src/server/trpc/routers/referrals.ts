@@ -71,7 +71,7 @@ export const referralsRouter = createTRPCRouter({
         }),
       ]);
       if (!staff) throw new TRPCError({ code: "NOT_FOUND" });
-      const filerDisplayName = claim?.staffName ?? staff.user?.name ?? "Εκπαιδευτικός";
+      const filerDisplayName = staff.scheduleName ?? claim?.staffName ?? staff.user?.name ?? "Εκπαιδευτικός";
 
       const students = await ctx.db.studentProfile.findMany({
         where: { id: { in: input.studentIds } },
@@ -145,7 +145,7 @@ export const referralsRouter = createTRPCRouter({
         }),
       ]);
       if (!staff) throw new TRPCError({ code: "NOT_FOUND" });
-      const filerDisplayName = claim?.staffName ?? staff.user?.name ?? "Εκπαιδευτικός";
+      const filerDisplayName = staff.scheduleName ?? claim?.staffName ?? staff.user?.name ?? "Εκπαιδευτικός";
 
       const referral = await ctx.db.referral.findUnique({
         where: { id: input.referralId },
@@ -265,16 +265,11 @@ export const referralsRouter = createTRPCRouter({
         }),
       ]);
 
-      // Extra-info visible to filer only; counselor notes controlled by role
-      const viewerStaff =
-        role !== "SUPER_ADMIN"
-          ? await ctx.db.staffProfile.findUnique({ where: { userId }, select: { id: true } })
-          : null;
-
+      // Everyone who can see a referral sees its full info; only the private
+      // counselor notes stay role-gated.
       const sanitized = items.map((r) => ({
         ...r,
         counselorNotes: canViewCounselorNotes(role) ? r.counselorNotes : undefined,
-        extraInfo: viewerStaff?.id === r.filerId ? r.extraInfo : undefined,
       }));
 
       return { items: sanitized, total, page: input.page };
@@ -294,14 +289,16 @@ export const referralsRouter = createTRPCRouter({
 
   // Resolve students in a referral.
   // Pass referralStudentId to resolve a single student; omit to resolve all eligible.
-  // HEADTEACHER_B → limited to students from their homegroup.
-  // Management / Admin → all pending students.
+  // ONLY the corresponding headteacher may resolve: a student can be resolved
+  // solely by the homeroom headteacher of their group, whoever the caller is.
   resolve: managementProcedure
     .input(
       z.object({
         referralId: z.string(),
         referralStudentId: z.string().optional(),
         action: z.enum(["DETENTION", "PEDAGOGICAL_DIALOGUE", "WRITTEN_AGREEMENT", "WARNING", "OTHER"]),
+        // Required description of the punishment imposed/agreed.
+        actionDetails: z.string().trim().min(5, "Απαιτείται περιγραφή της ποινής"),
         notes: z.string().optional(),
         counselorNotes: z.string().optional(),
         expulsionDays: z.array(z.string()).optional(), // ISO date strings, only for DETENTION
@@ -311,8 +308,6 @@ export const referralsRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const role = ctx.session.user.role as Role;
-
       // Punishments may only be scheduled today or in the future, never the past.
       if (
         input.action === "DETENTION" &&
@@ -336,22 +331,16 @@ export const referralsRouter = createTRPCRouter({
       });
       if (!referral) throw new TRPCError({ code: "NOT_FOUND" });
 
-      // Determine which students this user can resolve
-      let eligibleIds: string[];
-
-      if (role === "HEADTEACHER_B") {
-        const staff = await ctx.db.staffProfile.findUnique({
-          where: { userId: ctx.session.user.id },
-          include: { homeroomHeadGroups: { select: { id: true } } },
-        });
-        if (!staff) throw new TRPCError({ code: "NOT_FOUND" });
-        const headGroupIds = new Set(staff.homeroomHeadGroups.map((g) => g.id));
-        eligibleIds = referral.students
-          .filter((rs) => rs.groupId && headGroupIds.has(rs.groupId) && !rs.resolution)
-          .map((rs) => rs.id);
-      } else {
-        eligibleIds = referral.students.filter((rs) => !rs.resolution).map((rs) => rs.id);
-      }
+      // Only the homeroom headteacher of each student's group may resolve them.
+      const staff = await ctx.db.staffProfile.findUnique({
+        where: { userId: ctx.session.user.id },
+        include: { homeroomHeadGroups: { select: { id: true } } },
+      });
+      if (!staff) throw new TRPCError({ code: "NOT_FOUND" });
+      const headGroupIds = new Set(staff.homeroomHeadGroups.map((g) => g.id));
+      const eligibleIds = referral.students
+        .filter((rs) => rs.groupId && headGroupIds.has(rs.groupId) && !rs.resolution)
+        .map((rs) => rs.id);
 
       // If a specific student was requested, resolve only them (after checking eligibility)
       let resolvableIds: string[];
@@ -379,6 +368,7 @@ export const referralsRouter = createTRPCRouter({
               data: {
                 referralStudentId: rsId,
                 action: input.action,
+                actionDetails: input.actionDetails,
                 notes: input.notes,
                 counselorNotes: input.counselorNotes,
                 parentContacted: input.parentContacted,
@@ -438,6 +428,95 @@ export const referralsRouter = createTRPCRouter({
       });
 
       return result;
+    }),
+
+  // A headteacher asks to UNLOCK a resolution THEY made. The admin only
+  // approves the unlocking — approval deletes the resolution and the student
+  // moves back to PENDING (the referral returns to the examine tab).
+  requestResolutionUnlock: managementProcedure
+    .input(
+      z.object({
+        resolutionId: z.string(),
+        reason: z.string().trim().min(5, "Απαιτείται αιτιολόγηση του ξεκλειδώματος"),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const resolution = await ctx.db.referralStudentResolution.findUnique({
+        where: { id: input.resolutionId },
+        include: {
+          expulsionDays: { orderBy: { date: "asc" } },
+          referralStudent: {
+            include: {
+              referral: { select: { number: true } },
+              student: { include: { user: { select: { name: true } } } },
+              unlockRequests: { where: { status: "PENDING" }, select: { id: true } },
+            },
+          },
+        },
+      });
+      if (!resolution) throw new TRPCError({ code: "NOT_FOUND" });
+      // Only the headteacher who made the decision may ask to unlock it.
+      if (resolution.resolvedById !== ctx.session.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Μόνο όποιος έλαβε την απόφαση μπορεί να ζητήσει ξεκλείδωμα" });
+      }
+      if (resolution.referralStudent.unlockRequests.length > 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Εκκρεμεί ήδη αίτημα ξεκλειδώματος" });
+      }
+
+      // Snapshot the decision — approval deletes the resolution itself.
+      const snapshot = JSON.stringify({
+        action: resolution.action,
+        actionDetails: resolution.actionDetails,
+        notes: resolution.notes,
+        expulsionDays: resolution.expulsionDays.map((d) => d.date.toISOString().slice(0, 10)),
+        resolvedAt: resolution.resolvedAt.toISOString(),
+      });
+
+      const request = await ctx.db.$transaction(async (tx) => {
+        const created = await tx.resolutionUnlockRequest.create({
+          data: {
+            referralStudentId: resolution.referralStudentId,
+            requestedById: ctx.session.user.id,
+            reason: input.reason,
+            snapshot,
+          },
+        });
+
+        // Notify every active super admin (primary or extra-role grant).
+        const admins = await tx.user.findMany({
+          where: {
+            isActive: true,
+            OR: [{ role: "SUPER_ADMIN" }, { extraRoles: { has: "SUPER_ADMIN" } }],
+          },
+          select: { id: true },
+        });
+        const studentName = resolution.referralStudent.student.user?.name ?? "";
+        for (const admin of admins) {
+          await tx.notification.create({
+            data: {
+              userId: admin.id,
+              type: "RESOLUTION_UNLOCK_REQUESTED",
+              title: "Αίτημα ξεκλειδώματος απόφασης",
+              body: `Καταγγελία #${resolution.referralStudent.referral.number} · ${studentName}: ${input.reason.slice(0, 80)}`,
+              linkUrl: `/admin/referrals`,
+              read: false,
+            },
+          });
+        }
+
+        return created;
+      });
+
+      await writeAudit({
+        userId: ctx.session.user.id,
+        action: "referral.unlockRequest",
+        resource: "ResolutionUnlockRequest",
+        resourceId: request.id,
+        details: { referralStudentId: resolution.referralStudentId },
+        ...reqMeta(ctx.req),
+      });
+
+      return request;
     }),
 
   // Send SMS to parents of resolved students in a referral

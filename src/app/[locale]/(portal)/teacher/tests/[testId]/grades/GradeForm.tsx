@@ -16,6 +16,7 @@ export function GradeForm({
   students,
   locale,
   labels,
+  locked = false,
 }: {
   testId: string;
   students: Student[];
@@ -27,6 +28,8 @@ export function GradeForm({
     colScore: string;
     invalidGrade: string;
   };
+  /** Read-only before the test date — grading opens on the day of the test. */
+  locked?: boolean;
 }) {
   const [values, setValues] = useState<Record<string, string>>(
     Object.fromEntries(students.map((s) => [s.id, s.existingValue]))
@@ -84,8 +87,9 @@ export function GradeForm({
                     step={0.5}
                     placeholder="—"
                     value={values[s.id] ?? ""}
+                    disabled={locked}
                     onChange={(e) => setValues((v) => ({ ...v, [s.id]: e.target.value }))}
-                    className="w-24 rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-900 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                    className="w-24 rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-900 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100 disabled:bg-slate-50 disabled:text-slate-400"
                   />
                 </td>
               </tr>
@@ -94,16 +98,18 @@ export function GradeForm({
         </table>
       </div>
 
-      <div className="flex items-center gap-4">
-        <button
-          onClick={handleSave}
-          disabled={isPending}
-          className="inline-flex items-center gap-2 h-9 px-5 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-60"
-        >
-          {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-          {labels.saveAll}
-        </button>
-      </div>
+      {!locked && (
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleSave}
+            disabled={isPending}
+            className="inline-flex items-center gap-2 h-9 px-5 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-60"
+          >
+            {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+            {labels.saveAll}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

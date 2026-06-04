@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { staffDisplayName } from "@/lib/staffName";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
@@ -13,18 +14,14 @@ import { DeleteDraftButton } from "./DeleteDraftButton";
 import { ReferralStatusBadge, ReferralGroupSignals, referralBorderClass, referralLeftAccentClass } from "@/components/referrals/ReferralStatusBadge";
 import { StudentInfoDialog } from "@/components/referrals/StudentInfoDialog";
 import { StudentsDropdown } from "@/components/referrals/StudentsDropdown";
+import { ReferralInfo } from "@/components/referrals/ReferralInfo";
 import { ReferralTabs } from "@/components/referrals/ReferralTabs";
 import { overallStatus } from "@/lib/referralStatus";
-import { recommendationLabel } from "@/lib/referralLabels";
+import { recommendationLabel, resolutionSummary } from "@/lib/referralLabels";
+import { parseReferralSearchTab, referralSearchWhere } from "@/lib/referralSearch";
+import { UnlockResolutionDialog } from "./UnlockResolutionDialog";
 import type { Role } from "@/generated/prisma";
 
-const ACTION_LABEL: Record<string, string> = {
-  DETENTION: "Αποβολή",
-  PEDAGOGICAL_DIALOGUE: "Παιδαγωγικός Διάλογος",
-  WRITTEN_AGREEMENT: "Γραπτή Συμφωνία",
-  WARNING: "Προειδοποίηση",
-  OTHER: "Άλλο",
-};
 // Include shape — same as in router
 const referralInclude = {
   filer: { include: { user: { select: { name: true } } } },
@@ -32,7 +29,13 @@ const referralInclude = {
     include: {
       student: { include: { user: { select: { name: true } } } },
       group: { select: { name: true } },
-      resolution: { include: { expulsionDays: { orderBy: { date: "asc" as const } } } },
+      resolution: {
+        include: {
+          expulsionDays: { orderBy: { date: "asc" as const } },
+          resolvedBy: { select: { name: true } },
+        },
+      },
+      unlockRequests: { where: { status: "PENDING" as const }, select: { id: true } },
     },
     orderBy: { student: { user: { name: "asc" as const } } },
   },
@@ -43,7 +46,7 @@ export default async function TeacherReferralsPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ status?: string; group?: string; page?: string }>;
+  searchParams: Promise<{ status?: string; group?: string; page?: string; stype?: string; q?: string }>;
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
@@ -57,6 +60,10 @@ export default async function TeacherReferralsPage({
   const groupFilter = sp.group;
   const page = Math.max(1, parseInt(sp.page ?? "1"));
   const limit = 25;
+  // Search by referral no. / student name / student ID / filing teacher
+  const searchTab = parseReferralSearchTab(sp.stype);
+  const searchQuery = (sp.q ?? "").trim();
+  const searchWhere = referralSearchWhere(searchTab, searchQuery);
 
   const staff = await db.staffProfile.findUnique({
     where: { userId },
@@ -80,8 +87,12 @@ export default async function TeacherReferralsPage({
     return {};
   };
 
+  // Search applies to every list seen by headteachers/management.
+  const canSearch = isManagement || isHeadteacherB;
+  const searchAnd = canSearch && searchWhere ? { AND: [searchWhere] } : {};
+
   // My filed referrals (all roles, all states incl. drafts)
-  const myWhere = { filerId: staff.id, ...statusWhere(statusFilter) };
+  const myWhere = { filerId: staff.id, ...statusWhere(statusFilter), ...searchAnd };
   const [myTotal, myReferrals] = await Promise.all([
     db.referral.count({ where: myWhere }),
     db.referral.findMany({
@@ -101,6 +112,7 @@ export default async function TeacherReferralsPage({
             isDraft: false,
             students: { some: { groupId: { in: headGroupIds }, status: "PENDING" } },
             NOT: { filerId: staff.id },
+            ...searchAnd,
           },
           include: referralInclude,
           orderBy: { createdAt: "asc" },
@@ -120,6 +132,7 @@ export default async function TeacherReferralsPage({
                 { students: { some: { groupId: { in: headGroupIds }, status: "PENDING" } } },
               ],
             },
+            ...searchAnd,
           },
           include: referralInclude,
           orderBy: { createdAt: "desc" },
@@ -130,6 +143,7 @@ export default async function TeacherReferralsPage({
   // Management: all submitted referrals with filters
   const allWhere = {
     isDraft: false,
+    ...searchAnd,
     ...statusWhere(statusFilter && statusFilter !== "ALL" ? statusFilter : undefined),
     ...(groupFilter ? { students: { some: { groupId: groupFilter } } } : {}),
   };
@@ -151,7 +165,7 @@ export default async function TeacherReferralsPage({
 
   const buildHref = (overrides: Record<string, string | undefined>) => {
     const p = new URLSearchParams();
-    const merged = { status: statusFilter, group: groupFilter, ...overrides };
+    const merged = { status: statusFilter, group: groupFilter, stype: searchQuery ? searchTab : undefined, q: searchQuery || undefined, ...overrides };
     for (const [k, v] of Object.entries(merged)) if (v && v !== "ALL") p.set(k, v);
     const qs = p.toString();
     return qs ? `?${qs}` : "?";
@@ -179,21 +193,20 @@ export default async function TeacherReferralsPage({
       .map((rs) => rs.student.user?.name ?? "")
       .filter(Boolean);
 
+    // Only the corresponding homegroup headteacher resolves (via the examine
+    // tab, where resolverGroupIds is set) — management only views.
     const canResolve =
-      resolverGroupIds !== undefined
-        ? students.some((rs) => rs.status === "PENDING")
-        : isManagement && students.some((rs) => rs.status === "PENDING");
+      resolverGroupIds !== undefined && students.some((rs) => rs.status === "PENDING");
 
     return (
       <tr className={`hover:bg-slate-50 align-top ${referralLeftAccentClass(r)}`}>
         <td className="px-4 py-3 text-sm font-semibold text-slate-700 whitespace-nowrap">#{r.number}</td>
         <td className="px-4 py-3 text-slate-500 text-sm whitespace-nowrap">{fmtDisplayDate(r.date)}</td>
         {showFiler && (
-          <td className="px-4 py-3 text-sm text-slate-600">{r.filer.user?.name ?? "—"}</td>
+          <td className="px-4 py-3 text-sm text-slate-600">{staffDisplayName(r.filer)}</td>
         )}
         <td className="px-4 py-3 text-sm text-slate-700 max-w-xs">
-          <p className="line-clamp-2">{r.description}</p>
-          {r.location && <p className="text-xs text-slate-400 mt-0.5">{r.location}</p>}
+          <ReferralInfo referral={r} />
         </td>
         {/* Students column — single inline, multiple in a dropdown */}
         <td className="px-4 py-3 text-sm min-w-[160px]">
@@ -207,8 +220,9 @@ export default async function TeacherReferralsPage({
               status: rs.status,
               actionLabel:
                 rs.status === "RESOLVED" && rs.resolution
-                  ? ACTION_LABEL[rs.resolution.action] ?? rs.resolution.action
+                  ? resolutionSummary(rs.resolution)
                   : null,
+              actionDetails: rs.resolution?.actionDetails ?? null,
               referralId: r.id,
             }))}
           />
@@ -233,11 +247,22 @@ export default async function TeacherReferralsPage({
           )}
           {status === "RESOLVED" && !canResolve && (
             <span className="text-xs text-slate-400">
-              {students[0]?.resolution
-                ? ACTION_LABEL[students[0].resolution.action] ?? students[0].resolution.action
-                : "Επιλύθηκε"}
+              {students[0]?.resolution ? resolutionSummary(students[0].resolution) : "Επιλύθηκε"}
             </span>
           )}
+          {/* Ask to unlock resolutions this user made (admin approval needed) */}
+          {students
+            .filter((rs) => rs.resolution && rs.resolution.resolvedById === userId)
+            .map((rs) => (
+              <div key={rs.id} className="mt-1.5">
+                <UnlockResolutionDialog
+                  resolutionId={rs.resolution!.id}
+                  studentName={rs.student.user?.name ?? "—"}
+                  currentSummary={resolutionSummary(rs.resolution!)}
+                  hasPendingUnlock={rs.unlockRequests.length > 0}
+                />
+              </div>
+            ))}
         </td>
       </tr>
     );
@@ -282,7 +307,7 @@ export default async function TeacherReferralsPage({
         <div className="px-5 py-4 border-b border-slate-100 bg-slate-50">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-              <span className="text-slate-700">#{r.number}</span> · {r.filer.user?.name ?? "—"} · {fmtDisplayDate(r.date)}
+              <span className="text-slate-700">#{r.number}</span> · {staffDisplayName(r.filer)} · {fmtDisplayDate(r.date)}
               {r.location && ` · ${r.location}`}
             </p>
             <div className="flex items-center gap-2">
@@ -303,7 +328,18 @@ export default async function TeacherReferralsPage({
           </div>
           {/* When other homegroups are involved, show each headteacher's progress */}
           <ReferralGroupSignals referral={r} className="mt-2" />
-          <p className="mt-2 text-sm text-slate-800 leading-relaxed">{r.description}</p>
+          <p className="mt-2 text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">{r.description}</p>
+          {/* Full incident details — visible to everyone who can see the referral */}
+          {(r.incidentTime || r.extraInfo) && (
+            <div className="mt-2 space-y-0.5 text-xs text-slate-500">
+              {r.incidentTime && (
+                <p><span className="font-semibold text-slate-600">Ώρα συμβάντος:</span> {r.incidentTime}</p>
+              )}
+              {r.extraInfo && (
+                <p className="whitespace-pre-wrap"><span className="font-semibold text-slate-600">Επιπλέον πληροφορίες:</span> {r.extraInfo}</p>
+              )}
+            </div>
+          )}
           {r.recommendation && r.recommendation !== "NO_RECOMMENDATION" && (
             <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
               <span className="font-semibold">Εισήγηση:</span>
@@ -331,21 +367,45 @@ export default async function TeacherReferralsPage({
 
           {myStudents.map((rs) =>
             rs.status === "RESOLVED" ? (
-              <div key={rs.id} className="flex items-center justify-between gap-3 px-5 py-4 bg-green-50/40">
-                <div>
-                  <p className="text-sm font-semibold text-slate-600">{rs.student.user?.name}</p>
-                  <p className="text-xs text-slate-400">{rs.group?.name}</p>
+              <div key={rs.id} className="px-5 py-4 bg-green-50/40">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-600">{rs.student.user?.name}</p>
+                    <p className="text-xs text-slate-400">{rs.group?.name}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <StudentInfoDialog
+                      studentId={rs.studentId}
+                      excludeReferralId={r.id}
+                      studentName={rs.student.user?.name ?? undefined}
+                    />
+                    <span className="text-xs font-medium text-green-700 bg-green-100 border border-green-200 px-2.5 py-1 rounded-lg">
+                      {rs.resolution ? resolutionSummary(rs.resolution) : "Επιλύθηκε"}
+                    </span>
+                    {rs.resolution && rs.resolution.resolvedById === userId && (
+                      <UnlockResolutionDialog
+                        resolutionId={rs.resolution.id}
+                        studentName={rs.student.user?.name ?? "—"}
+                        currentSummary={resolutionSummary(rs.resolution)}
+                        hasPendingUnlock={rs.unlockRequests.length > 0}
+                      />
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <StudentInfoDialog
-                    studentId={rs.studentId}
-                    excludeReferralId={r.id}
-                    studentName={rs.student.user?.name ?? undefined}
-                  />
-                  <span className="text-xs font-medium text-green-700 bg-green-100 border border-green-200 px-2.5 py-1 rounded-lg">
-                    {rs.resolution ? ACTION_LABEL[rs.resolution.action] ?? rs.resolution.action : "Επιλύθηκε"}
-                  </span>
-                </div>
+                {/* Punishment details — what exactly was imposed, by whom */}
+                {rs.resolution && (
+                  <div className="mt-2 text-xs text-slate-500 space-y-0.5">
+                    {rs.resolution.actionDetails && <p>{rs.resolution.actionDetails}</p>}
+                    {rs.resolution.expulsionDays.length > 0 && (
+                      <p>
+                        Ημέρες: {rs.resolution.expulsionDays.map((d) => fmtDisplayDate(d.date)).join(", ")}
+                      </p>
+                    )}
+                    <p className="text-slate-400">
+                      {rs.resolution.resolvedBy?.name ?? "—"} · {fmtDisplayDate(rs.resolution.resolvedAt)}
+                    </p>
+                  </div>
+                )}
               </div>
             ) : (
               <div key={rs.id} className="px-5 py-3">
@@ -437,6 +497,38 @@ export default async function TeacherReferralsPage({
           Νέα Καταγγελία
         </Link>
       </div>
+
+      {/* Search — referral no. / student name / student ID / filing teacher */}
+      {canSearch && (
+        <form method="GET" className="flex gap-2 flex-wrap items-center">
+          {statusFilter && <input type="hidden" name="status" value={statusFilter} />}
+          {groupFilter && <input type="hidden" name="group" value={groupFilter} />}
+          <select
+            name="stype"
+            defaultValue={searchTab}
+            className="h-9 px-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+          >
+            <option value="number">Αρ. Καταγγελίας</option>
+            <option value="student">Όνομα Μαθητή</option>
+            <option value="studentId">Αρ. Μητρώου</option>
+            <option value="filer">Εκπαιδευτικός</option>
+          </select>
+          <input
+            name="q"
+            defaultValue={searchQuery}
+            placeholder="Αναζήτηση…"
+            className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 min-w-48"
+          />
+          <button type="submit" className="h-9 px-4 rounded-lg bg-slate-800 text-white text-sm font-medium hover:bg-slate-700">
+            Αναζήτηση
+          </button>
+          {searchQuery && (
+            <Link href={buildHref({ q: undefined, stype: undefined, page: undefined })} className="h-9 px-2 flex items-center text-sm text-slate-400 hover:text-slate-700">
+              Καθαρισμός
+            </Link>
+          )}
+        </form>
+      )}
 
       {/* Management: all referrals */}
       {isManagement && (

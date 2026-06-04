@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import { staffDisplayName } from "@/lib/staffName";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/server/auth";
 import { getSuperAdminAuth } from "@/server/authz";
@@ -250,7 +251,7 @@ export default async function AdminDashboardPage({
                     <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{r.description}</p>
                   </div>
                   <div className="flex items-center gap-2 ml-4">
-                    <span className="text-xs text-slate-400">{r.filer.user?.name}</span>
+                    <span className="text-xs text-slate-400">{staffDisplayName(r.filer)}</span>
                     <Badge variant="outline" className="text-xs border-amber-300 text-amber-700">
                       {tReferrals("pending")}
                     </Badge>

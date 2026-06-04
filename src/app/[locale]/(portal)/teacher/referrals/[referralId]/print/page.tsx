@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { staffDisplayName } from "@/lib/staffName";
 import { redirect } from "next/navigation";
 import { getActiveAuth } from "@/server/authz";
 import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY, totalPeriodsForDays } from "@/lib/schoolConfig";
@@ -137,7 +138,7 @@ export default async function PrintResolutionPage({
               <tbody>
                 <tr className="border-b border-slate-100">
                   <td className="py-1.5 font-medium text-slate-600 w-40">Καταγγέλλων</td>
-                  <td className="py-1.5 text-slate-900">{referral.filer.user?.name ?? "—"}</td>
+                  <td className="py-1.5 text-slate-900">{staffDisplayName(referral.filer)}</td>
                 </tr>
                 <tr className="border-b border-slate-100">
                   <td className="py-1.5 font-medium text-slate-600">Ημερ. Παραπτώματος</td>
@@ -190,6 +191,12 @@ export default async function PrintResolutionPage({
                             {ACTION_LABEL[rs.resolution.action] ?? rs.resolution.action}
                           </td>
                         </tr>
+                        {rs.resolution.actionDetails && (
+                          <tr className="border-b border-slate-100">
+                            <td className="px-4 py-1.5 font-medium text-slate-600 align-top">Περιγραφή ποινής</td>
+                            <td className="px-4 py-1.5 text-slate-800">{rs.resolution.actionDetails}</td>
+                          </tr>
+                        )}
                         {rs.resolution.action === "DETENTION" && rs.resolution.expulsionDays.length > 0 && (
                           <tr className="border-b border-slate-100">
                             <td className="px-4 py-1.5 font-medium text-slate-600 align-top">Αποβολή</td>

@@ -2,10 +2,21 @@
 // Always construct dates using toLocaleDateString("en-CA") + "T00:00:00.000Z"
 // so the JavaScript Date value matches what Prisma reads from the DB.
 
+// Normalize a YYYY-M-D-ish string to strict YYYY-MM-DD, or null when it isn't
+// a parsable calendar date. Tolerates single-digit month/day ("2026-3-9").
+export function normalizeIsoDate(value: string | undefined | null): string | null {
+  const m = value?.trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (!m) return null;
+  const iso = `${m[1]}-${m[2]!.padStart(2, "0")}-${m[3]!.padStart(2, "0")}`;
+  return isNaN(new Date(iso + "T00:00:00.000Z").getTime()) ? null : iso;
+}
+
 // Returns the current date/time. When NEXT_PUBLIC_TEST_DATE is set (dev only),
 // returns that date at the current local time so day-of-week logic still works.
+// A malformed override falls back to the real date instead of poisoning every
+// date-based query with Invalid Date.
 export function getNow(): Date {
-  const override = process.env.NEXT_PUBLIC_TEST_DATE;
+  const override = normalizeIsoDate(process.env.NEXT_PUBLIC_TEST_DATE);
   if (!override) return new Date();
   const real = new Date();
   const base = new Date(override + "T00:00:00");

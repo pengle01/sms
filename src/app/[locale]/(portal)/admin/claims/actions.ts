@@ -11,7 +11,8 @@ import { Prisma } from "@/generated/prisma";
 
 async function requireAdmin() {
   const auth = await getActiveAuth();
-  if (!auth || !canManageClaims(auth.role)) redirect("/");
+  // Effective roles: extra SUPER_ADMIN grants count.
+  if (!auth || !auth.roles.some(canManageClaims)) redirect("/");
   return auth;
 }
 
@@ -33,7 +34,8 @@ export async function approveRegistrationAction(userId: string, role: Role) {
       });
       const staffName = user.teacherClaim?.staffName;
       if (staffName) {
-        const createData: Prisma.StaffProfileUncheckedCreateInput = { userId };
+        // scheduleName: the timetable's coding becomes the canonical display name.
+        const createData: Prisma.StaffProfileUncheckedCreateInput = { userId, scheduleName: staffName };
         const profile = await tx.staffProfile.create({ data: createData });
         await tx.timetableSlot.updateMany({ where: { staffName, staffId: null }, data: { staffId: profile.id } });
         await tx.teacherClaim.update({ where: { userId }, data: { status: "APPROVED" } });
@@ -75,8 +77,11 @@ export async function approveTeacherClaimAction(claimId: string) {
 
   let profile = await db.staffProfile.findUnique({ where: { userId: claim.userId } });
   if (!profile) {
-    const createData: Prisma.StaffProfileUncheckedCreateInput = { userId: claim.userId };
+    const createData: Prisma.StaffProfileUncheckedCreateInput = { userId: claim.userId, scheduleName: claim.staffName };
     profile = await db.staffProfile.create({ data: createData });
+  } else if (profile.scheduleName !== claim.staffName) {
+    // Existing profile claiming a schedule name: adopt the timetable's coding.
+    profile = await db.staffProfile.update({ where: { id: profile.id }, data: { scheduleName: claim.staffName } });
   }
   await db.timetableSlot.updateMany({ where: { staffName: claim.staffName, staffId: null }, data: { staffId: profile.id } });
   await db.teacherClaim.update({ where: { id: claimId }, data: { status: "APPROVED" } });

@@ -10,7 +10,7 @@ import {
   LayoutDashboard, ClipboardList, AlertTriangle, BookOpen,
   Calendar, CalendarRange, FileText, Bell, Users, Settings, Shield,
   Search, GraduationCap, Home, Backpack, Plus, BookMarked, ShieldAlert,
-  CircleUser,
+  CircleUser, BellRing, LogOut,
 } from "lucide-react";
 
 interface NavItem {
@@ -31,15 +31,13 @@ const NAV_ITEMS: NavItem[] = [
   { key: "tests",        href: "tests",               icon: FileText,        roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","TEACHER"] },
   { key: "noticeboard",  href: "noticeboard",       icon: Bell,            roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "activities",   href: "activities",        icon: CalendarRange,   roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
-  { key: "students",     href: "students",          icon: GraduationCap,   roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR"] },
-  { key: "groups",       href: "groups",            icon: Home,            roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B"] },
+  { key: "duty",         href: "duty",              icon: BellRing,        roles: ["HEADTEACHER_A","HEADTEACHER_B"] },
   { key: "profile",      href: "profile",           icon: CircleUser,      roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
 
   // ── Office portal (/office) — student data & attendance ─────────────
   { key: "dashboard",    href: "dashboard",         icon: LayoutDashboard, roles: ["SCHOOL_ADMIN"] },
   { key: "attendance",   href: "attendance",        icon: ClipboardList,   roles: ["SCHOOL_ADMIN"] },
   { key: "students",     href: "students",          icon: GraduationCap,   roles: ["SCHOOL_ADMIN"] },
-  { key: "groups",       href: "groups",            icon: Home,            roles: ["SCHOOL_ADMIN"] },
   { key: "noticeboard",  href: "noticeboard",       icon: Bell,            roles: ["SCHOOL_ADMIN"] },
 
   // ── Admin portal (/admin) — registrations & system ───────────────────
@@ -52,8 +50,9 @@ const NAV_ITEMS: NavItem[] = [
   { key: "allGroups",    href: "groups",            icon: BookMarked,      roles: ["SUPER_ADMIN"] },
   { key: "checks",       href: "checks",            icon: ShieldAlert,     roles: ["SUPER_ADMIN"] },
   { key: "referrals",    href: "referrals",         icon: AlertTriangle,   roles: ["SUPER_ADMIN"] },
+  { key: "permits",      href: "permits",           icon: LogOut,          roles: ["SUPER_ADMIN"] },
+  { key: "noticeboard",  href: "notifications",     icon: Bell,            roles: ["SUPER_ADMIN"] },
   { key: "calendar",     href: "calendar",          icon: CalendarRange,   roles: ["SUPER_ADMIN"] },
-  { key: "auditLog",     href: "audit-log",         icon: Shield,          roles: ["SUPER_ADMIN"] },
   { key: "settings",     href: "settings",          icon: Settings,        roles: ["SUPER_ADMIN"] },
 
   // ── Student portal ───────────────────────────────────────────────────

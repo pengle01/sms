@@ -374,7 +374,7 @@ export default async function StudentSchedulePage({
                           ) : slot ? (
                             <>
                               <td className="px-5 py-3 font-medium text-slate-900">{slot.course.name}</td>
-                              <td className="px-5 py-3 text-slate-500">{slot.staffName ?? slot.staff?.user?.name ?? "—"}</td>
+                              <td className="px-5 py-3 text-slate-500">{slot.staff?.scheduleName ?? slot.staffName ?? slot.staff?.user?.name ?? "—"}</td>
                               <td className="px-5 py-3 text-slate-400">{slot.room ?? ""}</td>
                             </>
                           ) : (
@@ -483,8 +483,8 @@ export default async function StudentSchedulePage({
                           ) : slot ? (
                             <div className="space-y-0.5">
                               <p className="font-medium text-slate-800 leading-tight text-xs">{slot.course.name}</p>
-                              {(slot.staffName ?? slot.staff?.user?.name) && (
-                                <p className="text-[11px] text-slate-500 leading-tight">{slot.staffName ?? slot.staff?.user?.name}</p>
+                              {(slot.staff?.scheduleName ?? slot.staffName ?? slot.staff?.user?.name) && (
+                                <p className="text-[11px] text-slate-500 leading-tight">{slot.staff?.scheduleName ?? slot.staffName ?? slot.staff?.user?.name}</p>
                               )}
                               {slot.room && (
                                 <p className="text-[11px] text-slate-400 leading-tight">Room {slot.room}</p>

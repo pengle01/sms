@@ -2,6 +2,7 @@ import { db } from "@/server/db";
 import { utcMidnight } from "@/lib/dates";
 import { getPeriodsPerDay, getSchoolYear } from "@/lib/schoolConfig";
 import { configuredHolidayFor, type DateRange } from "@/lib/schoolYear";
+import { dutyDowFor } from "@/lib/dutyRoster";
 import type { SpecialDay, SpecialDayType } from "@/generated/prisma";
 
 export type { SpecialDayType };
@@ -74,6 +75,20 @@ export async function getSpecialDayForDate(date: Date): Promise<SpecialDayType |
 export async function isSchoolClosed(date: Date): Promise<boolean> {
   const type = await getSpecialDayForDate(date);
   return isHolidayType(type);
+}
+
+/**
+ * Deputies on duty (Εφημερεύοντες Βοηθοί) for the given date — resolved from
+ * the fixed weekly schedule. Empty on weekends. This is the single
+ * integration point for routing duty events (referrals, exit permits, …).
+ */
+export async function getOnDutyDeputies(date: Date) {
+  const dow = dutyDowFor(date);
+  if (!dow) return [];
+  return db.dutyRosterEntry.findMany({
+    where: { dayOfWeek: dow },
+    include: { staffProfile: { include: { user: { select: { id: true, name: true } } } } },
+  });
 }
 
 export async function getPeriodsForDate(date: Date, dow: number): Promise<number> {

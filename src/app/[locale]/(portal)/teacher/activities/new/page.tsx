@@ -118,7 +118,7 @@ export default async function NewActivityPage({
       testWarnings.push({
         courseName: t.course.name,
         groupName: t.group.name,
-        staffName: t.staff?.user?.name ?? null,
+        staffName: t.staff?.scheduleName ?? t.staff?.user?.name ?? null,
         type: t.type,
         periodLabel: t.periodCount > 1 ? `P${t.period}–${t.period + t.periodCount - 1}` : `P${t.period}`,
         affectedCount,

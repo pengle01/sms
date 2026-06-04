@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, staffProcedure, protectedProcedure } from "../init";
 import { TRPCError } from "@trpc/server";
+import { GRADES_UNLOCKED_KEY, parseGradesUnlocked } from "@/lib/grades";
 import type { Role } from "@/generated/prisma";
 
 export const gradesRouter = createTRPCRouter({
@@ -20,6 +21,14 @@ export const gradesRouter = createTRPCRouter({
         where: { userId: ctx.session.user.id },
       });
       if (!staff) throw new TRPCError({ code: "NOT_FOUND" });
+
+      // Terms stay frozen until the super admin unlocks them in Settings.
+      const unlockSetting = await ctx.db.globalSetting.findUnique({
+        where: { key: GRADES_UNLOCKED_KEY },
+      });
+      if (!parseGradesUnlocked(unlockSetting?.value)[input.period]) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Grades for this term are locked" });
+      }
 
       // Verify teacher is assigned to this course (unless management)
       const role = ctx.session.user.role as Role;

@@ -182,7 +182,7 @@ export function RolesCard({
       <CardContent className="divide-y divide-slate-50">
         {row("System administrator", adminControl, adminHint)}
         {row(
-          "Special education (Υποδιευθυντής Β΄)",
+          "Special education (Βοηθός Διευθυντής)",
           specialEdControl,
           "Deputy B responsible for special education."
         )}

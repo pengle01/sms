@@ -1,5 +1,6 @@
 import { db } from "@/server/db";
 import { DEFAULT_PERIODS_PER_DAY, type PeriodsPerDay } from "@/lib/periods";
+import { GRADES_UNLOCKED_KEY, parseGradesUnlocked, type GradesUnlocked } from "@/lib/grades";
 import { getNow } from "@/lib/dates";
 import {
   activeTermFor,
@@ -26,6 +27,13 @@ export async function getPeriodsPerDay(): Promise<PeriodsPerDay> {
   } catch {
     return DEFAULT_PERIODS_PER_DAY;
   }
+}
+
+// ── Grade entry locking ──────────────────────────────────────────────────────
+
+export async function getGradesUnlocked(): Promise<GradesUnlocked> {
+  const setting = await db.globalSetting.findUnique({ where: { key: GRADES_UNLOCKED_KEY } });
+  return parseGradesUnlocked(setting?.value);
 }
 
 export const DEFAULT_MAX_TESTS_PER_WEEK = 4;

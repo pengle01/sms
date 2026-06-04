@@ -75,6 +75,7 @@ export function ResolveReferralDialog({
 
   // Form state
   const [action, setAction] = useState<Action>("PEDAGOGICAL_DIALOGUE");
+  const [actionDetails, setActionDetails] = useState("");
   const [notes, setNotes] = useState("");
   const [counselorNotes, setCounselorNotes] = useState("");
   const [expulsionDays, setExpulsionDays] = useState<string[]>([]);
@@ -137,10 +138,15 @@ export function ResolveReferralDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (actionDetails.trim().length < 5) {
+      toast.error("Περιγράψτε την ποινή (τουλάχιστον 5 χαρακτήρες)");
+      return;
+    }
     resolve({
       referralId,
       referralStudentId,
       action,
+      actionDetails: actionDetails.trim(),
       notes: notes || undefined,
       counselorNotes: counselorNotes || undefined,
       expulsionDays: action === "DETENTION" ? expulsionDays : undefined,
@@ -270,6 +276,15 @@ export function ResolveReferralDialog({
                       </label>
                     ))}
                   </div>
+                </div>
+
+                {/* Punishment description — required for every action type */}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-slate-700">Περιγραφή Ποινής *</label>
+                  <textarea value={actionDetails} onChange={(e) => setActionDetails(e.target.value)} rows={2}
+                    required
+                    placeholder="Τι ακριβώς επιβλήθηκε/συμφωνήθηκε…"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none" />
                 </div>
 
                 {/* Expulsion days — multi-date picker for DETENTION */}

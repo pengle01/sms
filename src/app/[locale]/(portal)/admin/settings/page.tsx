@@ -1,7 +1,10 @@
 import { getSuperAdminAuth } from "@/server/authz";
 import { redirect } from "next/navigation";
+import { db } from "@/server/db";
+import { DUTY_ELIGIBLE_ROLES } from "@/lib/dutyRoster";
+import { staffDisplayName } from "@/lib/staffName";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY, getMaxTestsPerWeek, DEFAULT_MAX_TESTS_PER_WEEK, getSchoolYear, getTermDatesConfig, getSchoolName } from "@/lib/schoolConfig";
+import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY, getMaxTestsPerWeek, DEFAULT_MAX_TESTS_PER_WEEK, getSchoolYear, getTermDatesConfig, getSchoolName, getGradesUnlocked } from "@/lib/schoolConfig";
 import { getSmsConfig } from "@/lib/sms";
 
 export default async function AdminSettingsPage({
@@ -18,13 +21,22 @@ export default async function AdminSettingsPage({
   const { SmsSettingsForm } = await import("./SmsSettingsForm");
   const { TermDatesForm } = await import("./TermDatesForm");
   const { SchoolNameForm } = await import("./SchoolNameForm");
-  const [periodsPerDay, maxTestsPerWeek, smsConfig, termConfig, schoolYear, schoolName] = await Promise.all([
+  const { DutyRosterForm } = await import("./DutyRosterForm");
+  const { GradesUnlockForm } = await import("./GradesUnlockForm");
+  const [periodsPerDay, maxTestsPerWeek, smsConfig, termConfig, schoolYear, schoolName, gradesUnlocked, dutyEntries, dutyDeputies] = await Promise.all([
     getPeriodsPerDay(),
     getMaxTestsPerWeek(),
     getSmsConfig(),
     getTermDatesConfig(),
     getSchoolYear(),
     getSchoolName(),
+    getGradesUnlocked(),
+    db.dutyRosterEntry.findMany({ select: { dayOfWeek: true, staffProfileId: true } }),
+    db.staffProfile.findMany({
+      where: { user: { is: { role: { in: DUTY_ELIGIBLE_ROLES }, isActive: true } } },
+      select: { id: true, scheduleName: true, user: { select: { name: true } } },
+      orderBy: { user: { name: "asc" } },
+    }),
   ]);
   const initial = { ...DEFAULT_PERIODS_PER_DAY, ...periodsPerDay };
   const maxTestsInitial = maxTestsPerWeek ?? DEFAULT_MAX_TESTS_PER_WEEK;
@@ -44,6 +56,14 @@ export default async function AdminSettingsPage({
     easterStart: termConfig?.easterStart ?? "",
     easterEnd: termConfig?.easterEnd ?? "",
   };
+
+  // Weekly on-duty schedule: weekday → assigned staffProfileIds
+  const dutyInitial: Record<number, string[]> = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+  for (const e of dutyEntries) dutyInitial[e.dayOfWeek]?.push(e.staffProfileId);
+  const deputyOptions = dutyDeputies.map((d) => ({
+    staffProfileId: d.id,
+    name: staffDisplayName(d, d.id),
+  }));
 
   return (
     <div className="space-y-6">
@@ -67,6 +87,24 @@ export default async function AdminSettingsPage({
         </CardHeader>
         <CardContent>
           <TermDatesForm initial={termInitial} />
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-xl">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Εφημερεύοντες Βοηθοί (On-Duty Deputies)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DutyRosterForm initial={dutyInitial} deputies={deputyOptions} />
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Grade Entry (Βαθμολογία)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <GradesUnlockForm initial={gradesUnlocked} />
         </CardContent>
       </Card>
 

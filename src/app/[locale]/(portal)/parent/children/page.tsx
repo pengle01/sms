@@ -4,7 +4,7 @@ import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { GraduationCap, BookOpen, ClipboardList } from "lucide-react";
+import { GraduationCap, BookOpen, ClipboardList, FileText } from "lucide-react";
 import { utcMidnight, monthStart, localDateStr } from "@/lib/dates";
 import Link from "next/link";
 
@@ -125,6 +125,13 @@ export default async function ParentChildrenPage({
                   >
                     <BookOpen className="w-3.5 h-3.5" />
                     Grades
+                  </Link>
+                  <Link
+                    href={`/${locale}/parent/children/${s.id}/tests`}
+                    className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg border border-slate-200 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    Tests
                   </Link>
                 </div>
               </CardContent>

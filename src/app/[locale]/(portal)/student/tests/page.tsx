@@ -70,7 +70,8 @@ export default async function StudentTestsPage({
   const suggestions = suggestionList(tests.map((row) => row.course.name));
   const visible = tests.filter((row) => matchesSearch(row.course.name, query));
   const upcoming = visible.filter((t) => t.date >= today);
-  const past = visible.filter((t) => t.date < today);
+  // Past tests newest-first — the latest marks on top
+  const past = visible.filter((t) => t.date < today).reverse();
 
   const DOW = tShared.raw("dow") as string[];
   const formatDate = (d: Date) => `${DOW[d.getUTCDay()]} ${fmtDisplayDate(d)}`;

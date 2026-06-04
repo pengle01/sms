@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getActiveAuth } from "@/server/authz";
 import { isEducator } from "@/lib/rbac";
+import { db } from "@/server/db";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 
@@ -22,13 +23,19 @@ export default async function TeacherPortalLayout({
   const role = auth.role;
   // Teachers with an extra SUPER_ADMIN grant get a link to the admin portal.
   const adminLink = auth.roles.includes("SUPER_ADMIN");
+  // Display name follows the timetable's coding (e.g. "ΗΥ-ΜΑΣΙΑ Μ. ΒΔ").
+  const staff = await db.staffProfile.findUnique({
+    where: { userId: auth.userId },
+    select: { scheduleName: true },
+  });
+  const displayName = staff?.scheduleName ?? session.user?.name ?? undefined;
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
-      <Sidebar role={role} locale={locale} portal="teacher" userName={session.user?.name ?? undefined} crossPortal={adminLink ? "admin" : undefined} />
+      <Sidebar role={role} locale={locale} portal="teacher" userName={displayName} crossPortal={adminLink ? "admin" : undefined} />
       <div className="flex-1 flex flex-col min-w-0">
         <Header
-          userName={session.user?.name ?? undefined}
+          userName={displayName}
           userImage={session.user.image ?? undefined}
           locale={locale}
           role={role}

@@ -11,7 +11,8 @@ import { Prisma } from "@/generated/prisma";
 
 async function requireAdmin() {
   const auth = await getActiveAuth();
-  if (!auth || !hasMinRole(auth.role, "HEADMASTER")) {
+  // Effective roles: extra SUPER_ADMIN grants count.
+  if (!auth || !auth.roles.some((r) => hasMinRole(r, "HEADMASTER"))) {
     redirect("/");
   }
   return auth;
@@ -36,7 +37,8 @@ export async function approveUserAction(formData: FormData) {
 
       const staffName = user.teacherClaim?.staffName;
       if (staffName) {
-        const createData: Prisma.StaffProfileUncheckedCreateInput = { userId };
+        // scheduleName: the timetable's coding becomes the canonical display name.
+        const createData: Prisma.StaffProfileUncheckedCreateInput = { userId, scheduleName: staffName };
         const profile = await tx.staffProfile.create({ data: createData });
         await tx.timetableSlot.updateMany({
           where: { staffName, staffId: null },

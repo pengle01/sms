@@ -29,27 +29,15 @@ export default async function StudentGradesPage({
 
   const t = await getTranslations("grades");
 
-  const [grades, testGrades] = await Promise.all([
-    db.grade.findMany({
-      where: { studentId: student.id },
-      include: { course: true },
-      orderBy: [{ course: { name: "asc" } }, { period: "asc" }],
-    }),
-    db.testGrade.findMany({
-      where: { studentId: student.id, value: { not: null } },
-      include: { testSchedule: { include: { course: { select: { name: true } } } } },
-      orderBy: { testSchedule: { date: "desc" } },
-    }),
-  ]);
+  // Term marks only — test marks live on the "My Tests" page.
+  const grades = await db.grade.findMany({
+    where: { studentId: student.id },
+    include: { course: true },
+    orderBy: [{ course: { name: "asc" } }, { period: "asc" }],
+  });
 
-  const suggestions = suggestionList([
-    ...grades.map((g) => g.course.name),
-    ...testGrades.map((tg) => tg.testSchedule.course.name),
-  ]);
+  const suggestions = suggestionList(grades.map((g) => g.course.name));
   const visibleGrades = grades.filter((g) => matchesSearch(g.course.name, query));
-  const visibleTestGrades = testGrades.filter((tg) =>
-    matchesSearch(tg.testSchedule.course.name, query)
-  );
 
   return (
     <GradeReport
@@ -70,7 +58,7 @@ export default async function StudentGradesPage({
         </form>
       }
       grades={visibleGrades}
-      testGrades={visibleTestGrades}
+      testGrades={[]}
       labels={{
         term1: t("term1"),
         term2: t("term2"),

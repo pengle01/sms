@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { UserX, Users } from "lucide-react";
 import { StaffLinkControls } from "./StaffLinkControls";
+import { staffDisplayName } from "@/lib/staffName";
 
 const ROLE_LABEL: Record<string, string> = {
   TEACHER:           "Teacher",
@@ -98,7 +99,7 @@ export default async function StaffProfilesPage({
                   ];
                   return (
                     <tr key={sp.id} className="hover:bg-amber-50/60">
-                      <td className="px-5 py-3 font-medium text-slate-800">{sp.id}</td>
+                      <td className="px-5 py-3 font-medium text-slate-800">{sp.scheduleName ?? sp.id}</td>
                       <td className="px-4 py-3 text-slate-500">{sp._count.timetableSlots}</td>
                       <td className="px-4 py-3">
                         {homerooms.length > 0 ? (
@@ -155,7 +156,7 @@ export default async function StaffProfilesPage({
                 ];
                 return (
                   <tr key={sp.id} className="hover:bg-slate-50">
-                    <td className="px-5 py-3 font-medium text-slate-900">{sp.user?.name ?? "—"}</td>
+                    <td className="px-5 py-3 font-medium text-slate-900">{staffDisplayName(sp)}</td>
                     <td className="px-4 py-3">
                       <Badge variant="outline" className={`text-xs font-medium ${roleColor}`}>
                         {ROLE_LABEL[sp.user!.role] ?? sp.user!.role}

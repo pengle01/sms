@@ -152,6 +152,8 @@ model User {
   uploadedNotices               Notice[]
   resolvedReferrals             ReferralResolution[]
   resolvedReferralStudents      ReferralStudentResolution[] @relation("ReferralStudentResolver")
+  resolutionUnlockRequests      ResolutionUnlockRequest[]   @relation("ResolutionUnlockRequester")
+  resolutionUnlockDecisions     ResolutionUnlockRequest[]   @relation("ResolutionUnlockDecider")
   notifications                 Notification[]
   auditLogs            AuditLog[]
   chaperoneAssignments ActivityChaperone[]
@@ -169,6 +171,9 @@ model StaffProfile {
   phone      String?
   department String?
   pmp        String? // ΠΜΠ — personnel/payroll number, asked at first sign-in
+  // Canonical display name in the timetable's coding (e.g. "ΗΥ-ΜΑΣΙΑ Μ. ΒΔ").
+  // Copied from the schedule's staffName when the profile is linked to slots.
+  scheduleName String?
   // Designation: deputy B responsible for special education (set by admin)
   specialEducation Boolean @default(false)
 
@@ -183,6 +188,7 @@ model StaffProfile {
   timetableSlots    TimetableSlot[]
   testSchedules     TestSchedule[]
   grades            Grade[]
+  dutyDays          DutyRosterEntry[]
 }
 
 model StudentProfile {
@@ -263,7 +269,8 @@ model SmsContact {
   parentProfileId String?
   parentProfile   ParentProfile? @relation(fields: [parentProfileId], references: [id], onDelete: SetNull)
 
-  smsLogs SmsLog[]
+  smsLogs     SmsLog[]
+  exitPermits ExitPermit[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -355,6 +362,9 @@ model Attendance {
   minutesDelayed  Int              @default(0)
   isAutoAbsent    Boolean          @default(false)
   smsSent         Boolean          @default(false)
+  // Absence covered by an exit permit (Άδεια Εξόδου) — informs the office admin
+  exitPermitId    String?
+  exitPermit      ExitPermit?      @relation(fields: [exitPermitId], references: [id], onDelete: SetNull)
   // Intercalary period attendance (when timetableSlotId is null)
   intercalaryGroupId String?
   intercalaryPeriod  Int?
@@ -370,16 +380,27 @@ model Attendance {
 
 // ─── Exit Permits ─────────────────────────────────────────────────────────────
 
+// Issued by the day's on-duty deputy (Εφημερεύων Βοηθός) after the parents
+// agree by phone. Covers fromPeriod → end of the school day.
 model ExitPermit {
-  id        String         @id @default(cuid())
-  studentId String
-  student   StudentProfile @relation(fields: [studentId], references: [id])
-  issuerId  String
-  issuer    StaffProfile   @relation("PermitIssuer", fields: [issuerId], references: [id])
-  reason    String
-  issuedAt  DateTime       @default(now())
-  expiresAt DateTime?
-  active    Boolean        @default(true)
+  id          String         @id @default(cuid())
+  studentId   String
+  student     StudentProfile @relation(fields: [studentId], references: [id])
+  issuerId    String
+  issuer      StaffProfile   @relation("PermitIssuer", fields: [issuerId], references: [id])
+  date        DateTime       @db.Date // school day it covers
+  fromPeriod  Int // student leaves from this period to end of day
+  reason      String
+  // The parent/guardian the deputy spoke with (picked from the student's contacts);
+  // contactNote is the free-text fallback when no contacts are on record.
+  smsContactId String?
+  smsContact   SmsContact?   @relation(fields: [smsContactId], references: [id], onDelete: SetNull)
+  contactNote String?
+  issuedAt    DateTime       @default(now())
+  active      Boolean        @default(true) // false = cancelled
+  attendance  Attendance[]
+
+  @@index([date, studentId])
 }
 
 // ─── Activities ───────────────────────────────────────────────────────────────
@@ -564,7 +585,8 @@ model ReferralStudent {
   group      Group?              @relation("ReferralStudentGroup", fields: [groupId], references: [id])
   status     ReferralStudentStatus @default(PENDING)
 
-  resolution ReferralStudentResolution?
+  resolution     ReferralStudentResolution?
+  unlockRequests ResolutionUnlockRequest[]
 
   @@unique([referralId, studentId])
   @@index([studentId])
@@ -576,6 +598,9 @@ model ReferralStudentResolution {
   referralStudentId String          @unique
   referralStudent   ReferralStudent @relation(fields: [referralStudentId], references: [id], onDelete: Cascade)
   action            ResolutionAction
+  // Required description of the punishment (what exactly was imposed/agreed).
+  // Nullable only for legacy rows created before the field existed.
+  actionDetails     String?         @db.Text
   notes             String?         @db.Text
   counselorNotes    String?         @db.Text
   parentContacted   Boolean         @default(false)
@@ -586,6 +611,35 @@ model ReferralStudentResolution {
   resolvedAt        DateTime        @default(now())
 
   expulsionDays     ReferralExpulsionDay[]
+}
+
+enum EditRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// A headteacher's request to UNLOCK a resolution they made. Admin approval
+// deletes the resolution and moves the student back to PENDING — the referral
+// returns to the examine tab so it can be resolved afresh.
+model ResolutionUnlockRequest {
+  id                String          @id @default(cuid())
+  referralStudentId String
+  referralStudent   ReferralStudent @relation(fields: [referralStudentId], references: [id], onDelete: Cascade)
+  requestedById     String
+  requestedBy       User            @relation("ResolutionUnlockRequester", fields: [requestedById], references: [id])
+  reason            String          @db.Text // why the unlock is needed
+  // Snapshot of the resolution at request time (JSON) — kept for the trail,
+  // since approval deletes the resolution itself.
+  snapshot          String?         @db.Text
+  status            EditRequestStatus @default(PENDING)
+  decidedById       String?
+  decidedBy         User?           @relation("ResolutionUnlockDecider", fields: [decidedById], references: [id])
+  decidedAt         DateTime?
+  createdAt         DateTime        @default(now())
+
+  @@index([status])
+  @@index([referralStudentId])
 }
 
 model ReferralExpulsionDay {
@@ -811,6 +865,18 @@ model EmailOtp {
 // ─── School Calendar ──────────────────────────────────────────────────────────
 // Term dates and test deadlines live in the "termDates" GlobalSetting
 // (Settings → School Year & Terms), not in a table.
+
+// Fixed weekly on-duty schedule (Εφημερεύοντες Βοηθοί): which deputy heads
+// are on duty on each school day. Resolved per-date via getOnDutyDeputies().
+model DutyRosterEntry {
+  id             String       @id @default(cuid())
+  dayOfWeek      Int          // 1 (Mon) – 5 (Fri)
+  staffProfileId String
+  staffProfile   StaffProfile @relation(fields: [staffProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([dayOfWeek, staffProfileId])
+  @@index([dayOfWeek])
+}
 
 model SpecialDay {
   id                       String         @id @default(cuid())

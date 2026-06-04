@@ -8,13 +8,17 @@ export type StudentItem = {
   group: string | null;
   status: string; // PENDING | RESOLVED
   actionLabel: string | null; // shown when resolved
+  actionDetails?: string | null; // punishment description (tooltip)
   referralId: string;
 };
 
-function StatusBadge({ status, actionLabel }: { status: string; actionLabel: string | null }) {
+function StatusBadge({ status, actionLabel, actionDetails }: { status: string; actionLabel: string | null; actionDetails?: string | null }) {
   if (status === "RESOLVED") {
     return (
-      <span className="inline-block text-[10px] px-1.5 py-0 leading-4 rounded border bg-green-50 text-green-700 border-green-200">
+      <span
+        title={actionDetails ?? undefined}
+        className="inline-block text-[10px] px-1.5 py-0 leading-4 rounded border bg-green-50 text-green-700 border-green-200"
+      >
         {actionLabel ?? "Επιλύθηκε"}
       </span>
     );
@@ -31,7 +35,7 @@ function StudentRow({ s, canViewInfo }: { s: StudentItem; canViewInfo: boolean }
     <div className="flex items-center gap-1.5 flex-wrap">
       <span className="text-slate-800 font-medium">{s.name}</span>
       {s.group && <span className="text-xs text-slate-400">{s.group}</span>}
-      <StatusBadge status={s.status} actionLabel={s.actionLabel} />
+      <StatusBadge status={s.status} actionLabel={s.actionLabel} actionDetails={s.actionDetails} />
       {canViewInfo && (
         <StudentInfoDialog studentId={s.studentId} excludeReferralId={s.referralId} studentName={s.name} />
       )}

@@ -4,6 +4,7 @@ import { db } from "@/server/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { revalidatePath } from "next/cache";
+import { utcMidnight } from "@/lib/dates";
 
 export type SaveGradesResult = { success: true } | { success: false; message: string };
 
@@ -20,6 +21,11 @@ export async function saveTestGrades(
   const test = await db.testSchedule.findUnique({ where: { id: testId } });
   if (!test) return { success: false, message: "Test not found" };
   if (test.staffId !== staff.id) return { success: false, message: "Not authorized" };
+
+  // No grading before the test has taken place.
+  if (test.date > utcMidnight()) {
+    return { success: false, message: "Η βαθμολόγηση είναι διαθέσιμη από την ημέρα του διαγωνίσματος." };
+  }
 
   for (const g of grades) {
     const rawValue = g.value.trim();

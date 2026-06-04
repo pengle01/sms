@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { staffDisplayName } from "@/lib/staffName";
 import { getSuperAdminAuth } from "@/server/authz";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -41,7 +42,7 @@ export default async function HomegroupsPage({
     AND: [isHomegroupWhere(), homegroupWhere({ teacher, headteacher, counselor, missing })],
   };
 
-  const [groups, teachers, headteachers, counselors, slotNames] = await Promise.all([
+  const [groups, teachers, headteachers, counselors] = await Promise.all([
     db.group.findMany({
       where,
       include: {
@@ -67,17 +68,11 @@ export default async function HomegroupsPage({
       include: { user: { select: { name: true } } },
       orderBy: { user: { name: "asc" } },
     }),
-    // Schedule names — same encoding the timetable uses (e.g. "ΓΕΩΡΓΙΟΥ ΒΔ").
-    db.timetableSlot.findMany({
-      where: { staffId: { not: null }, staffName: { not: null } },
-      select: { staffId: true, staffName: true },
-      distinct: ["staffId"],
-    }),
   ]);
 
-  const scheduleName = new Map(slotNames.map((s) => [s.staffId!, s.staffName!]));
-  const staffLabel = (s: { id: string; user: { name: string | null } | null }) =>
-    scheduleName.get(s.id) ?? s.user?.name ?? s.id;
+  // Schedule coding (e.g. "ΗΥ-ΜΑΣΙΑ Μ. ΒΔ") is the canonical staff label.
+  const staffLabel = (s: { id: string; scheduleName: string | null; user: { name: string | null } | null }) =>
+    staffDisplayName(s, s.id);
   const sortByLabel = (a: { name: string }, b: { name: string }) =>
     a.name.localeCompare(b.name, "el");
 

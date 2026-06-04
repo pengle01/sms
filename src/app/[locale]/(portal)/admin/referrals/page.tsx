@@ -1,23 +1,26 @@
 import { db } from "@/server/db";
+import { staffDisplayName } from "@/lib/staffName";
 import { getSuperAdminAuth } from "@/server/authz";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle } from "lucide-react";
 import { NewReferralDialog } from "./NewReferralDialog";
-import { ResolveReferralDialog } from "./ResolveReferralDialog";
 import { ReferralStatusBadge, ReferralGroupSignals, referralLeftAccentClass } from "@/components/referrals/ReferralStatusBadge";
 import { StudentsDropdown } from "@/components/referrals/StudentsDropdown";
-import { cn } from "@/lib/utils";
-import { fmtDisplayDate } from "@/lib/dates";
+import { ReferralInfo } from "@/components/referrals/ReferralInfo";
+import { fmtDisplayDate, fmtDisplayDateTime } from "@/lib/dates";
 import { getTranslations } from "next-intl/server";
+import { resolutionSummary, actionLabel } from "@/lib/referralLabels";
+import { parseReferralSearchTab, referralSearchWhere } from "@/lib/referralSearch";
+import { decideResolutionUnlock } from "./actions";
 
 export default async function ReferralsPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ status?: string; group?: string; page?: string }>;
+  searchParams: Promise<{ status?: string; group?: string; page?: string; stype?: string; q?: string }>;
 }) {
   const { locale } = await params;
   const auth = await getSuperAdminAuth();
@@ -26,9 +29,12 @@ export default async function ReferralsPage({
   const t = await getTranslations("referrals");
   const tCommon = await getTranslations("common");
 
-  const { status: statusFilter, group: groupFilter, page: pageStr } = await searchParams;
+  const { status: statusFilter, group: groupFilter, page: pageStr, stype, q } = await searchParams;
   const page = Math.max(1, parseInt(pageStr ?? "1"));
   const limit = 20;
+  const searchTab = parseReferralSearchTab(stype);
+  const searchQuery = (q ?? "").trim();
+  const searchWhere = referralSearchWhere(searchTab, searchQuery);
 
   // Status filter mapped to a derived where-fragment
   const statusWhere = (value?: string) => {
@@ -40,9 +46,27 @@ export default async function ReferralsPage({
   const where = {
     ...statusWhere(statusFilter && statusFilter !== "ALL" ? statusFilter : undefined),
     ...(groupFilter ? { students: { some: { groupId: groupFilter } } } : {}),
+    ...(searchWhere ? { AND: [searchWhere] } : {}),
   };
 
-  const [total, referrals, students, groups, groupSummary] = await Promise.all([
+  // Pending resolution-unlock requests awaiting an admin decision
+  const unlockRequests = await db.resolutionUnlockRequest.findMany({
+    where: { status: "PENDING" },
+    include: {
+      requestedBy: { select: { name: true } },
+      referralStudent: {
+        include: {
+          referral: { select: { number: true } },
+          student: { include: { user: { select: { name: true } } } },
+          group: { select: { name: true } },
+          resolution: { include: { expulsionDays: { orderBy: { date: "asc" } } } },
+        },
+      },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+
+  const [total, referrals, students, groups] = await Promise.all([
     db.referral.count({ where }),
     db.referral.findMany({
       where,
@@ -66,21 +90,13 @@ export default async function ReferralsPage({
       orderBy: { user: { name: "asc" } },
     }),
     db.group.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    db.group.findMany({
-      orderBy: { name: "asc" },
-      select: {
-        id: true,
-        name: true,
-        referralStudents: { select: { id: true, status: true } },
-      },
-    }),
   ]);
 
   const totalPages = Math.ceil(total / limit);
 
   const buildHref = (overrides: Record<string, string | undefined>) => {
     const p = new URLSearchParams();
-    const merged = { status: statusFilter, group: groupFilter, ...overrides };
+    const merged = { status: statusFilter, group: groupFilter, stype: searchQuery ? searchTab : undefined, q: searchQuery || undefined, ...overrides };
     for (const [k, v] of Object.entries(merged)) {
       if (v && v !== "ALL") p.set(k, v);
     }
@@ -98,40 +114,95 @@ export default async function ReferralsPage({
         <NewReferralDialog students={students} locale={locale} />
       </div>
 
-      {/* Homegroup summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-        {groupSummary.map((g) => {
-          const total = g.referralStudents.length;
-          const pending = g.referralStudents.filter((rs) => rs.status === "PENDING").length;
-          const isActive = groupFilter === g.id;
-          return (
-            <Link
-              key={g.id}
-              href={buildHref({ group: isActive ? undefined : g.id, page: undefined })}
-              className={cn(
-                "rounded-lg border px-3 py-2.5 text-sm transition-colors",
-                isActive
-                  ? "bg-emerald-600 border-emerald-600 text-white"
-                  : "bg-white border-slate-200 hover:border-emerald-300 hover:bg-emerald-50 text-slate-700"
-              )}
-            >
-              <p className="font-semibold truncate">{g.name}</p>
-              <p className={cn("text-xs mt-0.5", isActive ? "text-emerald-100" : "text-slate-400")}>
-                {t("total", { count: total })}
-                {pending > 0 && (
-                  <span className={cn("ml-1.5 font-semibold", isActive ? "text-amber-200" : "text-amber-600")}>
-                    · {pending} {t("pending").toLowerCase()}
-                  </span>
-                )}
-              </p>
-            </Link>
-          );
-        })}
-      </div>
+      {/* Pending resolution-unlock requests */}
+      {unlockRequests.length > 0 && (
+        <Card className="border-amber-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base text-amber-800">
+              Pending unlock requests ({unlockRequests.length})
+            </CardTitle>
+            <p className="text-xs text-slate-400">
+              A headteacher asked to unlock a completed resolution. Approving deletes the decision and the referral
+              moves back to pending for a fresh resolution; denying keeps the original.
+            </p>
+          </CardHeader>
+          <CardContent className="divide-y divide-slate-100 space-y-0">
+            {unlockRequests.map((ur) => {
+              const rs = ur.referralStudent;
+              return (
+                <div key={ur.id} className="py-4 first:pt-0 last:pb-0">
+                  <div className="flex items-start justify-between gap-4 flex-wrap">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-900">
+                        #{rs.referral.number} · {rs.student.user?.name}
+                        {rs.group?.name && <span className="ml-2 text-xs font-normal text-slate-400">{rs.group.name}</span>}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Requested by {ur.requestedBy.name ?? "—"} · {fmtDisplayDateTime(ur.createdAt)}
+                      </p>
+                      <p className="text-xs text-amber-700 mt-1">
+                        <span className="font-semibold">Reason:</span> {ur.reason}
+                      </p>
+                      {rs.resolution && (
+                        <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-xs max-w-md">
+                          <p className="font-semibold text-slate-500 uppercase tracking-wide text-[10px] mb-1">
+                            Current decision (deleted on approval)
+                          </p>
+                          <p className="text-slate-800 font-medium">{resolutionSummary(rs.resolution)}</p>
+                          {rs.resolution.actionDetails && <p className="text-slate-500 mt-0.5">{rs.resolution.actionDetails}</p>}
+                          {rs.resolution.expulsionDays.length > 0 && (
+                            <p className="text-slate-500 mt-0.5">
+                              {rs.resolution.expulsionDays.map((d) => fmtDisplayDate(d.date)).join(", ")}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-2 flex-shrink-0">
+                      <form action={decideResolutionUnlock.bind(null, ur.id, true)}>
+                        <button
+                          type="submit"
+                          className="h-8 px-3 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700"
+                        >
+                          Approve unlock
+                        </button>
+                      </form>
+                      <form action={decideResolutionUnlock.bind(null, ur.id, false)}>
+                        <button
+                          type="submit"
+                          className="h-8 px-3 rounded-lg border border-red-200 text-red-600 text-xs font-semibold hover:bg-red-50"
+                        >
+                          Deny
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filters */}
       <form method="GET" className="flex gap-3 flex-wrap items-center">
         {groupFilter && <input type="hidden" name="group" value={groupFilter} />}
+        <select
+          name="stype"
+          defaultValue={searchTab}
+          className="h-9 px-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+        >
+          <option value="number">Referral no.</option>
+          <option value="student">Student name</option>
+          <option value="studentId">Student ID</option>
+          <option value="filer">Filing teacher</option>
+        </select>
+        <input
+          name="q"
+          defaultValue={searchQuery}
+          placeholder={tCommon("search") + "…"}
+          className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 min-w-44"
+        />
         <select
           name="status"
           defaultValue={statusFilter ?? "ALL"}
@@ -157,7 +228,7 @@ export default async function ReferralsPage({
         >
           {tCommon("filter")}
         </button>
-        {(statusFilter || groupFilter) && (
+        {(statusFilter || groupFilter || searchQuery) && (
           <Link href="?" className="h-9 px-3 flex items-center text-sm text-slate-500 hover:text-slate-800">
             {tCommon("clear")}
           </Link>
@@ -182,15 +253,10 @@ export default async function ReferralsPage({
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("description")}</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("filedBy")}</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("status")}</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("actionsHeader")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {referrals.map((r) => {
-                const pendingNames = r.students
-                  .filter((rs) => rs.status === "PENDING")
-                  .map((rs) => rs.student.user?.name ?? "")
-                  .filter(Boolean);
                 return (
                   <tr key={r.id} className={`hover:bg-slate-50 align-top ${referralLeftAccentClass(r)}`}>
                     <td className="px-5 py-3.5 text-sm font-semibold text-slate-700 whitespace-nowrap">#{r.number}</td>
@@ -208,31 +274,27 @@ export default async function ReferralsPage({
                           status: rs.status,
                           actionLabel:
                             rs.status === "RESOLVED" && rs.resolution
-                              ? rs.resolution.action.replace(/_/g, " ")
+                              ? actionLabel(rs.resolution.action)
                               : null,
+                          actionDetails: rs.resolution?.actionDetails ?? null,
                           referralId: r.id,
                         }))}
                       />
                     </td>
-                    <td className="px-5 py-3.5 text-slate-600 max-w-xs">
-                      <span className="line-clamp-2 text-sm">{r.description}</span>
+                    <td className="px-5 py-3.5 text-slate-600 max-w-xs text-sm">
+                      <ReferralInfo referral={r} />
                     </td>
-                    <td className="px-5 py-3.5 text-slate-500 text-sm">{r.filer.user?.name}</td>
+                    <td className="px-5 py-3.5 text-slate-500 text-sm">{staffDisplayName(r.filer)}</td>
                     <td className="px-5 py-3.5">
                       <ReferralStatusBadge referral={r} />
                       <ReferralGroupSignals referral={r} className="mt-1.5" />
-                    </td>
-                    <td className="px-5 py-3.5">
-                      {pendingNames.length > 0 && (
-                        <ResolveReferralDialog referralId={r.id} studentName={pendingNames} />
-                      )}
                     </td>
                   </tr>
                 );
               })}
               {referrals.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-5 py-16 text-center text-slate-400">
+                  <td colSpan={6} className="px-5 py-16 text-center text-slate-400">
                     <AlertTriangle className="w-10 h-10 mx-auto mb-2 opacity-30" />
                     {t("noReferrals")}
                   </td>

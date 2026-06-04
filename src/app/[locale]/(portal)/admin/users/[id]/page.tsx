@@ -50,7 +50,7 @@ export default async function UserDetailPage({
 
   const meta = ROLE_META[user.role];
   const sp = user.staffProfile;
-  const scheduleName = sp?.timetableSlots[0]?.staffName ?? null;
+  const scheduleName = sp?.scheduleName ?? sp?.timetableSlots[0]?.staffName ?? null;
   const hasAdminGrant = user.extraRoles.includes("SUPER_ADMIN");
 
   // Could revoking this user's grant leave the system without any admin?
@@ -95,7 +95,10 @@ export default async function UserDetailPage({
         </Link>
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900">{user.name ?? "—"}</h2>
+            <h2 className="text-2xl font-bold text-slate-900">{scheduleName ?? user.name ?? "—"}</h2>
+            {scheduleName && user.name && scheduleName !== user.name && (
+              <p className="text-slate-500 text-sm mt-0.5">{user.name}</p>
+            )}
             {user.nameEl && user.nameEl !== user.name && (
               <p className="text-slate-500 text-sm mt-0.5">{user.nameEl}</p>
             )}

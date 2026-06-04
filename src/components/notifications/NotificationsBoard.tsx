@@ -90,11 +90,6 @@ export function NotificationsBoard({ locale }: { locale: string }) {
           )}
         >
           Ειδοποιήθηκαν
-          {noticed.length > 0 && (
-            <span className="min-w-[20px] h-5 flex items-center justify-center rounded-full bg-slate-400 text-white text-[11px] font-bold px-1">
-              {noticed.length}
-            </span>
-          )}
         </button>
       </div>
 

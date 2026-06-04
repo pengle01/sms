@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { createTRPCRouter, staffProcedure, managementProcedure } from "../init";
 import { TRPCError } from "@trpc/server";
+import { permitByStudent } from "@/lib/exitPermit";
+import { utcMidnight } from "@/lib/dates";
 
 export const attendanceRouter = createTRPCRouter({
   // Mark attendance for a timetable slot on a given date
@@ -32,10 +34,28 @@ export const attendanceRouter = createTRPCRouter({
 
       const date = new Date(input.records[0]?.date ?? new Date());
 
+      const slot = await ctx.db.timetableSlot.findFirst({
+        where: { id: input.records[0]?.timetableSlotId },
+      });
+
+      // Active exit permits covering this date/period — link the absence so the
+      // office admin sees it was part of an Άδεια Εξόδου.
+      const permits = slot
+        ? await ctx.db.exitPermit.findMany({
+            where: {
+              date,
+              active: true,
+              studentId: { in: input.records.map((r) => r.studentId) },
+            },
+          })
+        : [];
+      const permitFor = slot ? permitByStudent(permits, date, slot.period) : {};
+
       const upserted = await ctx.db.$transaction(
         input.records.map((r) => {
           const isAutoAbsent = r.minutesDelayed > threshold;
           const status = isAutoAbsent ? "ABSENT" : r.status;
+          const exitPermitId = permitFor[r.studentId]?.id ?? null;
 
           return ctx.db.attendance.upsert({
             where: {
@@ -53,21 +73,20 @@ export const attendanceRouter = createTRPCRouter({
               status,
               minutesDelayed: r.minutesDelayed,
               isAutoAbsent,
+              exitPermitId,
             },
             update: {
               status,
               minutesDelayed: r.minutesDelayed,
               isAutoAbsent,
               staffId: staff.id,
+              exitPermitId,
             },
           });
         })
       );
 
       // Trigger SMS for period-1 absences (fire-and-forget; handled by a separate service call)
-      const slot = await ctx.db.timetableSlot.findFirst({
-        where: { id: input.records[0]?.timetableSlotId },
-      });
       if (slot?.period === 1) {
         // IDs of students newly marked absent in period 1
         const absentIds = upserted
@@ -119,10 +138,21 @@ export const attendanceRouter = createTRPCRouter({
 
       const dateObj = new Date(input.date);
 
+      // Link absences to a covering exit permit (Άδεια Εξόδου)
+      const permits = await ctx.db.exitPermit.findMany({
+        where: {
+          date: dateObj,
+          active: true,
+          studentId: { in: input.records.map((r) => r.studentId) },
+        },
+      });
+      const permitFor = permitByStudent(permits, dateObj, input.period);
+
       await ctx.db.$transaction(
         input.records.map((r) => {
           const isAutoAbsent = r.minutesDelayed > threshold;
           const status = isAutoAbsent ? "ABSENT" : r.status;
+          const exitPermitId = permitFor[r.studentId]?.id ?? null;
 
           return ctx.db.attendance.upsert({
             where: {
@@ -142,12 +172,14 @@ export const attendanceRouter = createTRPCRouter({
               isAutoAbsent,
               intercalaryGroupId: input.groupId,
               intercalaryPeriod: input.period,
+              exitPermitId,
             },
             update: {
               status,
               minutesDelayed: r.minutesDelayed,
               isAutoAbsent,
               staffId: staff.id,
+              exitPermitId,
             },
           });
         })
@@ -199,12 +231,12 @@ export const attendanceRouter = createTRPCRouter({
       const minute = now.getMinutes();
       const totalMinutes = hour * 60 + minute;
 
-      // Priority 1: Active exit permit
+      // Priority 1: Active exit permit for today (covers fromPeriod → end of day)
       const permit = await ctx.db.exitPermit.findFirst({
         where: {
           studentId: input.studentId,
           active: true,
-          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+          date: utcMidnight(now),
         },
       });
       if (permit) {
@@ -248,7 +280,7 @@ export const attendanceRouter = createTRPCRouter({
           status: "IN_CLASS" as const,
           room: slot.room,
           course: slot.course.name,
-          teacher: slot.staff?.user?.name ?? slot.staffName ?? null,
+          teacher: slot.staff?.scheduleName ?? slot.staffName ?? slot.staff?.user?.name ?? null,
           period: slot.period,
         };
       }

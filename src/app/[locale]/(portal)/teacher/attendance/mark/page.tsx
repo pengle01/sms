@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { AttendanceMarkForm } from "./AttendanceMarkForm";
 
 export default async function TeacherMarkAttendancePage({
@@ -30,7 +31,8 @@ export default async function TeacherMarkAttendancePage({
   let slot: { id: string; room: string | null; course: { name: string } } | null = null;
   let existingRecords: Record<string, { status: "PRESENT" | "ABSENT" | "LATE"; minutesDelayed: number }> = {};
   let studentLocations: Record<string, { type: "activity" | "support"; name: string }> = {};
-  let prevPeriodsRecords: Record<string, Record<number, { status: string; minutesDelayed: number; isAutoAbsent: boolean }>> = {};
+  let exitPermits: Record<string, { reason: string; fromPeriod: number }> = {};
+  let prevPeriodsRecords: Record<string, Record<number, { status: string; minutesDelayed: number; isAutoAbsent: boolean; exitPermit?: boolean }>> = {};
   let prevActivityPeriods: Record<string, number[]> = {};
   const prevPeriods = period > 1 ? Array.from({ length: period - 1 }, (_, i) => i + 1) : [];
 
@@ -142,6 +144,7 @@ export default async function TeacherMarkAttendancePage({
                 status: true,
                 minutesDelayed: true,
                 isAutoAbsent: true,
+                exitPermitId: true,
                 timetableSlot: { select: { period: true } },
               },
             })
@@ -165,6 +168,7 @@ export default async function TeacherMarkAttendancePage({
           status: r.status,
           minutesDelayed: r.minutesDelayed,
           isAutoAbsent: r.isAutoAbsent,
+          exitPermit: !!r.exitPermitId,
         };
       }
 
@@ -191,6 +195,28 @@ export default async function TeacherMarkAttendancePage({
     } // end else (non-intercalary)
   }
 
+  // Active exit permits (Άδεια Εξόδου) covering this date/period — shown in
+  // yellow; the teacher still marks the student absent.
+  if (students.length > 0) {
+    const permits = await db.exitPermit.findMany({
+      where: {
+        date: attendanceDateObj,
+        active: true,
+        fromPeriod: { lte: period },
+        studentId: { in: students.map((s) => s.id) },
+      },
+      select: { studentId: true, reason: true, fromPeriod: true },
+    });
+    for (const p of permits) {
+      const existing = exitPermits[p.studentId];
+      if (!existing || p.fromPeriod < existing.fromPeriod) {
+        exitPermits[p.studentId] = { reason: p.reason, fromPeriod: p.fromPeriod };
+      }
+    }
+  }
+
+  const t = await getTranslations("attendance");
+
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-3">
@@ -199,17 +225,17 @@ export default async function TeacherMarkAttendancePage({
           className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          My Schedule
+          {t("backToSchedule")}
         </Link>
       </div>
 
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">Mark Attendance</h2>
+        <h2 className="text-2xl font-bold text-slate-900">{t("markAttendance")}</h2>
         <p className="text-slate-500 text-sm mt-1">
           {fmtDisplayDate(attendanceDateObj)}
           {!isToday && (
             <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-              Past date
+              {t("pastDate")}
             </span>
           )}
         </p>
@@ -226,6 +252,7 @@ export default async function TeacherMarkAttendancePage({
         isToday={isToday}
         existingRecords={existingRecords}
         studentLocations={studentLocations}
+        exitPermits={exitPermits}
         prevPeriodsRecords={prevPeriodsRecords}
         prevActivityPeriods={prevActivityPeriods}
         intercalaryGroupId={isIntercalary || isExcursion ? groupId : undefined}

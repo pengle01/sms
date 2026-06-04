@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { localDateStr, utcMidnight, monthStart, monthEnd } from "@/lib/dates";
+import { localDateStr, utcMidnight, monthStart, monthEnd, normalizeIsoDate } from "@/lib/dates";
 
 describe("localDateStr", () => {
   it("formats a known date as YYYY-MM-DD", () => {
@@ -67,5 +67,29 @@ describe("monthEnd", () => {
   it("monthEnd equals monthStart of the next month", () => {
     expect(monthEnd(2024, 6).getTime()).toBe(monthStart(2024, 7).getTime());
     expect(monthEnd(2024, 12).getTime()).toBe(monthStart(2025, 1).getTime());
+  });
+});
+
+describe("normalizeIsoDate", () => {
+  it("keeps strict YYYY-MM-DD values", () => {
+    expect(normalizeIsoDate("2026-03-09")).toBe("2026-03-09");
+  });
+
+  it("zero-pads single-digit month/day", () => {
+    expect(normalizeIsoDate("2026-3-9")).toBe("2026-03-09");
+    expect(normalizeIsoDate("2026-12-1")).toBe("2026-12-01");
+  });
+
+  it("trims surrounding whitespace", () => {
+    expect(normalizeIsoDate(" 2026-03-09 ")).toBe("2026-03-09");
+  });
+
+  it("rejects garbage so getNow falls back to the real date", () => {
+    expect(normalizeIsoDate(undefined)).toBeNull();
+    expect(normalizeIsoDate(null)).toBeNull();
+    expect(normalizeIsoDate("")).toBeNull();
+    expect(normalizeIsoDate("not a date")).toBeNull();
+    expect(normalizeIsoDate("2026-13-40")).toBeNull();
+    expect(normalizeIsoDate("16-03-2026")).toBeNull();
   });
 });

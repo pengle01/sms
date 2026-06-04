@@ -6,6 +6,7 @@ import {
   parseGradeInput,
   gradeColorClass,
   GRADE_PERIODS,
+  parseGradesUnlocked,
 } from "@/lib/grades";
 
 describe("grade periods", () => {
@@ -62,5 +63,23 @@ describe("gradeColorClass", () => {
     expect(gradeColorClass(14)).toBe("text-emerald-700");
     expect(gradeColorClass(11)).toBe("text-amber-700");
     expect(gradeColorClass(8)).toBe("text-red-700");
+  });
+});
+
+describe("parseGradesUnlocked", () => {
+  it("defaults to all terms locked", () => {
+    expect(parseGradesUnlocked(null)).toEqual({ TERM1: false, TERM2: false });
+    expect(parseGradesUnlocked(undefined)).toEqual({ TERM1: false, TERM2: false });
+    expect(parseGradesUnlocked("")).toEqual({ TERM1: false, TERM2: false });
+  });
+
+  it("reads the stored unlock flags", () => {
+    expect(parseGradesUnlocked('{"TERM1":true,"TERM2":false}')).toEqual({ TERM1: true, TERM2: false });
+    expect(parseGradesUnlocked('{"TERM1":true,"TERM2":true}')).toEqual({ TERM1: true, TERM2: true });
+  });
+
+  it("ignores junk values and unknown keys", () => {
+    expect(parseGradesUnlocked('{"TERM1":"yes","TERM3":true}')).toEqual({ TERM1: false, TERM2: false });
+    expect(parseGradesUnlocked("not json")).toEqual({ TERM1: false, TERM2: false });
   });
 });
