@@ -290,6 +290,13 @@ export default async function TeacherDashboardPage({
                           {period}
                         </span>
                         <span className="text-sm italic text-slate-300">{t("freePeriod")}</span>
+                        {/* quiet entry to spontaneously cover a class this period */}
+                        <Link
+                          href={`/${locale}/teacher/attendance/mark?period=${dbPeriod}&claim=1`}
+                          className="ml-auto text-xs text-slate-300 hover:text-emerald-600 transition-colors flex-shrink-0"
+                        >
+                          {t("claimCta")}
+                        </Link>
                       </div>
                     );
                   }

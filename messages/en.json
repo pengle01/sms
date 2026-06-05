@@ -112,7 +112,13 @@
     "attendanceTab": "Attendance",
     "noStudyHalls": "No groups need attendance today.",
     "attendanceTaken": "Done",
-    "attendancePending": "Pending"
+    "attendancePending": "Pending",
+    "toiletTab": "Toilet",
+    "wcOutNow": "Out of class now",
+    "wcNoneOut": "Nobody is out right now.",
+    "wcReturned": "Returned today",
+    "wcNone": "No toilet breaks today.",
+    "wcNth": "{n}th exit today"
   },
   "dashboard": {
     "welcome": "Welcome, {name}",
@@ -138,7 +144,8 @@
     "studyHall": "Duty study hall",
     "coveredToday": "Absent — covered",
     "studyHallsTitle": "Substitutions",
-    "studyHallsHint": "Groups from today's substitution plan without a substitute — headteachers take their attendance."
+    "studyHallsHint": "Groups from today's substitution plan without a substitute — headteachers take their attendance.",
+    "claimCta": "Cover a group →"
   },
   "attendance": {
     "title": "Attendance",
@@ -195,7 +202,16 @@
     "noGroup": "No group selected.",
     "pastDate": "Past date",
     "backToSchedule": "My Schedule",
-    "substitutionBadge": "Substitution"
+    "substitutionBadge": "Substitution",
+    "claimAddSecond": "Cover a second group",
+    "claimPickerTitle": "Which group will you cover in Period {period}?",
+    "claimPickerHint": "The cover is recorded in your name and logged.",
+    "claimBadge": "Cover",
+    "claimOf": "Covering: {group}",
+    "claimNone": "No lessons in this period.",
+    "wcStartHint": "Toilet break — time is recorded",
+    "wcReturnHint": "Tap when the student returns",
+    "wcDoneHint": "Completed toilet break"
   },
   "homegroup": {
     "title": "My Homegroup",
@@ -719,5 +735,33 @@
     "errRoomChange": "Fill in the group and the new room.",
     "errNotFound": "Request not found.",
     "errPastCancel": "Past requests cannot be cancelled."
+  },
+  "staffNotify": {
+    "composeTitle": "New Notification to Teachers",
+    "composeSubtitle": "Compose a message — recipients see it in their notifications.",
+    "newMessage": "New Notification",
+    "backToBoard": "Notifications",
+    "fieldTitle": "Title *",
+    "fieldMessage": "Message *",
+    "recipients": "Recipients",
+    "allTeachers": "All teachers",
+    "pickRecipients": "Pick recipients",
+    "filterPlaceholder": "Search teacher…",
+    "selectedCount": "{count} selected",
+    "noMatches": "No teachers found.",
+    "send": "Send",
+    "sending": "Sending…",
+    "sentBanner": "The notification was sent to {count} teachers.",
+    "err_title": "A title is required.",
+    "err_body": "A message is required.",
+    "err_recipients": "Pick at least one recipient.",
+    "sentHistory": "Sent",
+    "noSent": "You have not sent any notifications.",
+    "readOf": "{seen}/{total} seen",
+    "quickPick": "Quick pick",
+    "homeroomChip": "Homeroom teachers",
+    "selectVisible": "Select visible",
+    "clearVisible": "Deselect visible",
+    "homeroomGradeChip": "Homeroom {grade}"
   }
 }

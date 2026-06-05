@@ -5,13 +5,14 @@ import { trpc } from "@/trpc/client";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import {
-  Bell, FileWarning, CheckCircle2, CheckCheck, Clock,
+  Bell, FileWarning, CheckCircle2, CheckCheck, Clock, MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TYPE_ICON: Record<string, React.ReactNode> = {
   REFERRAL_CREATED: <FileWarning className="w-5 h-5 text-amber-500" />,
   REFERRAL_RESOLVED: <CheckCircle2 className="w-5 h-5 text-green-500" />,
+  STAFF_MESSAGE: <MessageSquare className="w-5 h-5 text-emerald-500" />,
 };
 
 function relativeTime(date: Date | string): string {

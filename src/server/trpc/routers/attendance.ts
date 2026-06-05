@@ -3,6 +3,7 @@ import { createTRPCRouter, staffProcedure, managementProcedure } from "../init";
 import { TRPCError } from "@trpc/server";
 import { permitByStudent } from "@/lib/exitPermit";
 import { utcMidnight } from "@/lib/dates";
+import { writeAudit } from "@/server/audit";
 
 export const attendanceRouter = createTRPCRouter({
   // Mark attendance for a timetable slot on a given date
@@ -37,6 +38,28 @@ export const attendanceRouter = createTRPCRouter({
       const slot = await ctx.db.timetableSlot.findFirst({
         where: { id: input.records[0]?.timetableSlotId },
       });
+
+      // Ad-hoc claim visibility: marking a slot that is neither mine nor a
+      // finalized-substitution assignment is a Κάλυψη — leave an audit trail
+      // so management can trace who covered which class.
+      if (slot && slot.staffId !== staff.id) {
+        const assignment = await ctx.db.substitutionPlanEntry.findFirst({
+          where: {
+            plan: { date: utcMidnight(input.records[0]!.date), status: "FINAL" },
+            timetableSlotId: slot.id,
+          },
+          select: { id: true },
+        });
+        if (!assignment) {
+          await writeAudit({
+            userId: ctx.session.user.id,
+            action: "attendance.claimMark",
+            resource: "timetableSlot",
+            resourceId: slot.id,
+            details: { groupId: slot.groupId, period: slot.period, date: input.records[0]!.date },
+          });
+        }
+      }
 
       // Active exit permits covering this date/period — link the absence so the
       // office admin sees it was part of an Άδεια Εξόδου.

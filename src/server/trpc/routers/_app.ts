@@ -9,6 +9,7 @@ import { studentsRouter, parentsRouter } from "./students";
 import { groupsRouter } from "./groups";
 import { preferencesRouter } from "./preferences";
 import { accessCodesRouter } from "./accessCodes";
+import { toiletRouter } from "./toilet";
 
 export const appRouter = createTRPCRouter({
   attendance: attendanceRouter,
@@ -22,6 +23,7 @@ export const appRouter = createTRPCRouter({
   groups: groupsRouter,
   preferences: preferencesRouter,
   accessCodes: accessCodesRouter,
+  toilet: toiletRouter,
 });
 
 export type AppRouter = typeof appRouter;

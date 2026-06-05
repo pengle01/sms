@@ -177,6 +177,7 @@ model User {
   substitutionPlansGenerated    SubstitutionPlan[]          @relation("SubstitutionPlanGenerator")
   substitutionPlansFinalized    SubstitutionPlan[]          @relation("SubstitutionPlanFinalizer")
   notifications                 Notification[]
+  sentNotifications             Notification[] @relation("SentNotifications")
   auditLogs            AuditLog[]
   chaperoneAssignments ActivityChaperone[]
   teacherClaim         TeacherClaim?
@@ -218,6 +219,7 @@ model StaffProfile {
   substitutionRequests     SubstitutionRequest[]   @relation("SubstitutionRequester")
   substitutionAbsences     SubstitutionPlanEntry[] @relation("SubstitutionAbsent")
   substitutionAssignments  SubstitutionPlanEntry[] @relation("SubstitutionSubstitute")
+  toiletBreaks             ToiletBreak[]
 }
 
 model StudentProfile {
@@ -247,6 +249,7 @@ model StudentProfile {
   activityParticipations   ActivityParticipant[]
   chaperoneRequestStudents ChaperoneRequestStudent[]
   accessCode               StudentAccessCode?
+  toiletBreaks             ToiletBreak[]
 }
 
 model ParentProfile {
@@ -330,6 +333,7 @@ model Group {
   testSchedules     TestSchedule[]
   substitutionRequests    SubstitutionRequest[]   @relation("SubstitutionRequestGroup")
   substitutionPlanEntries SubstitutionPlanEntry[] @relation("SubstitutionEntryGroup")
+  toiletBreaks            ToiletBreak[]
 }
 
 // ─── Curriculum ───────────────────────────────────────────────────────────────
@@ -776,6 +780,25 @@ model ReferralResolution {
   resolvedAt   DateTime @default(now())
 }
 
+// ─── Toilet breaks (έξοδοι τουαλέτας κατά τη διάρκεια μαθήματος) ─────────────
+
+model ToiletBreak {
+  id         String         @id @default(cuid())
+  studentId  String
+  student    StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  staffId    String // who recorded the exit
+  staff      StaffProfile   @relation(fields: [staffId], references: [id])
+  groupId    String?
+  group      Group?         @relation(fields: [groupId], references: [id])
+  date       DateTime       @db.Date
+  period     Int
+  leftAt     DateTime
+  returnedAt DateTime? // null = still out
+
+  @@index([date, returnedAt])
+  @@index([studentId, date])
+}
+
 // ─── Notifications ────────────────────────────────────────────────────────────
 
 model Notification {
@@ -789,9 +812,13 @@ model Notification {
   read      Boolean   @default(false)
   noticedAt DateTime?
   createdAt DateTime  @default(now())
+  // Who composed it (staff messages) — enables the sender's read-receipt view
+  senderId  String?
+  sender    User?     @relation("SentNotifications", fields: [senderId], references: [id])
 
   @@index([userId, read])
   @@index([userId, noticedAt])
+  @@index([senderId])
 }
 
 // ─── Noticeboard ──────────────────────────────────────────────────────────────

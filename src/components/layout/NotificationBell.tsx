@@ -81,7 +81,10 @@ export function NotificationBell({ locale }: { locale: string }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-80 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden">
+        // On phones the bell sits mid-header and a right-anchored 320px panel
+        // bleeds off the left edge — span the viewport instead; from sm up,
+        // anchor to the bell as before.
+        <div className="fixed inset-x-3 top-14 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-1 sm:w-80 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100">
             <span className="text-sm font-semibold text-slate-800">Ειδοποιήσεις</span>
             {unread > 0 && (

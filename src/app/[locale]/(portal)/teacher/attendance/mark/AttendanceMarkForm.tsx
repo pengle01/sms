@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { getNow } from "@/lib/dates";
 import { periodLabel } from "@/lib/periods";
+import { breakMinutes } from "@/lib/toilet";
 import { trpc } from "@/trpc/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { CheckCircle, XCircle, Clock, Loader2, MapPin, CalendarRange, LogOut } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Loader2, MapPin, CalendarRange, LogOut, DoorOpen } from "lucide-react";
 
 type Student = { id: string; user: { name: string | null }; studentId: string };
 type Slot = { id: string; room: string | null; course: { name: string } } | null;
@@ -29,11 +30,16 @@ interface Props {
   studentLocations?: Record<string, { type: "activity" | "support"; name: string }>;
   /** Active exit permits (Άδεια Εξόδου) covering this period — shown yellow. */
   exitPermits?: Record<string, { reason: string; fromPeriod: number }>;
+  /** Today's toilet break per student: an open one, or this period's last. */
+  toiletBreaks?: Record<string, { id: string; leftAt: string; returnedAt: string | null }>;
   prevPeriodsRecords?: Record<string, Record<number, PeriodRecord>>;
   prevActivityPeriods?: Record<string, number[]>;
   intercalaryGroupId?: string;
   isExcursion?: boolean;
 }
+
+const fmtTime = (iso: string) =>
+  new Date(iso).toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Nicosia" });
 
 const STATUS_CONFIG = {
   PRESENT: { key: "present" as const, icon: CheckCircle, color: "text-green-600 bg-green-50 border-green-200" },
@@ -108,6 +114,7 @@ export function AttendanceMarkForm({
   existingRecords = {},
   studentLocations = {},
   exitPermits = {},
+  toiletBreaks = {},
   prevPeriodsRecords = {},
   prevActivityPeriods = {},
   intercalaryGroupId,
@@ -116,6 +123,34 @@ export function AttendanceMarkForm({
   const router = useRouter();
   const t = useTranslations("attendance");
   const locale = useLocale();
+
+  // ── Toilet breaks (WC): live per-student state ──────────────────────────
+  const [breaks, setBreaks] = useState(toiletBreaks);
+  const [wcNow, setWcNow] = useState(() => Date.now());
+  const anyOpen = Object.values(breaks).some((b) => b && b.returnedAt === null);
+  useEffect(() => {
+    if (!anyOpen) return; // tick the elapsed counter only while someone is out
+    const iv = setInterval(() => setWcNow(Date.now()), 30_000);
+    return () => clearInterval(iv);
+  }, [anyOpen]);
+
+  const { mutate: wcStart, isPending: wcStarting } = trpc.toilet.start.useMutation({
+    onSuccess: (b) =>
+      setBreaks((m) => ({
+        ...m,
+        [b.studentId]: { id: b.id, leftAt: new Date(b.leftAt).toISOString(), returnedAt: b.returnedAt ? new Date(b.returnedAt).toISOString() : null },
+      })),
+    onError: (e) => toast.error(e.message),
+  });
+  const { mutate: wcEnd, isPending: wcEnding } = trpc.toilet.end.useMutation({
+    onSuccess: (b) =>
+      setBreaks((m) => ({
+        ...m,
+        [b.studentId]: { id: b.id, leftAt: new Date(b.leftAt).toISOString(), returnedAt: b.returnedAt ? new Date(b.returnedAt).toISOString() : null },
+      })),
+    onError: (e) => toast.error(e.message),
+  });
+  const wcPending = wcStarting || wcEnding;
   const [records, setRecords] = useState<Record<string, { status: AttendanceStatus; minutesDelayed: number }>>(
     () =>
       Object.fromEntries(
@@ -288,6 +323,55 @@ export function AttendanceMarkForm({
                           activityPeriods={prevActivityPeriods[student.id]}
                         />
                       </div>
+
+                      {/* Toilet break (WC): one tap out, one tap back */}
+                      {isToday && !intercalaryGroupId && (() => {
+                        const brk = breaks[student.id];
+                        if (brk && brk.returnedAt === null) {
+                          const mins = breakMinutes(brk.leftAt, null, new Date(wcNow));
+                          return (
+                            <button
+                              type="button"
+                              disabled={wcPending}
+                              onClick={() => wcEnd({ id: brk.id })}
+                              title={t("wcReturnHint")}
+                              className={`flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold transition-colors ${
+                                mins > 10
+                                  ? "border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
+                                  : "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                              }`}
+                            >
+                              <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${mins > 10 ? "bg-red-500" : "bg-amber-500"}`} />
+                              WC {fmtTime(brk.leftAt)} · {mins}′
+                            </button>
+                          );
+                        }
+                        return (
+                          <div className="flex items-center gap-1.5">
+                            {brk?.returnedAt && (
+                              <span className="text-[11px] text-slate-400 whitespace-nowrap" title={t("wcDoneHint")}>
+                                WC {fmtTime(brk.leftAt)}–{fmtTime(brk.returnedAt)} ({breakMinutes(brk.leftAt, brk.returnedAt, new Date(wcNow))}′)
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              disabled={wcPending}
+                              onClick={() =>
+                                wcStart({
+                                  studentId: student.id,
+                                  groupId: selectedGroupId,
+                                  period: selectedPeriod,
+                                  date: attendanceDate ?? new Date().toISOString().slice(0, 10),
+                                })
+                              }
+                              title={t("wcStartHint")}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-300 hover:text-amber-600 hover:border-amber-300 transition-colors"
+                            >
+                              <DoorOpen className="w-4 h-4" />
+                            </button>
+                          </div>
+                        );
+                      })()}
 
                       {/* Status buttons */}
                       <div className="flex flex-wrap gap-1.5">

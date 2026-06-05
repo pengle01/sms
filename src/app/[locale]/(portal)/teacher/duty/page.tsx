@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { BellOff, CheckCircle2, LogOut, Phone, Printer, Search, X } from "lucide-react";
 import { issueExitPermit, cancelExitPermit } from "./actions";
 import { ReferralTabs } from "@/components/referrals/ReferralTabs";
+import { ToiletPanel } from "./ToiletPanel";
 
 export default async function TeacherDutyPage({
   params,
@@ -45,7 +46,7 @@ export default async function TeacherDutyPage({
 
   const today = utcMidnight();
   const todayDow = dutyDowFor(today);
-  const [todayEntries, me, overrides] = await Promise.all([
+  const [todayEntries, me, overrides, toiletRows] = await Promise.all([
     todayDow
       ? db.dutyRosterEntry.findMany({
           where: { dayOfWeek: todayDow },
@@ -54,7 +55,27 @@ export default async function TeacherDutyPage({
       : Promise.resolve([]),
     db.staffProfile.findUnique({ where: { userId: auth.userId }, select: { id: true } }),
     getDayOverrides(today),
+    // today's toilet breaks — surfaced live on the Τουαλέτα tab
+    db.toiletBreak.findMany({
+      where: { date: today },
+      include: {
+        student: { select: { user: { select: { name: true } } } },
+        group: { select: { name: true } },
+        staff: { select: { scheduleName: true } },
+      },
+      orderBy: { leftAt: "asc" },
+    }),
   ]);
+  const toiletBreaks = toiletRows.map((b) => ({
+    id: b.id,
+    studentId: b.studentId,
+    studentName: b.student.user?.name ?? "—",
+    groupName: b.group?.name ?? null,
+    period: b.period,
+    leftAt: b.leftAt.toISOString(),
+    returnedAt: b.returnedAt?.toISOString() ?? null,
+    staffName: b.staff.scheduleName,
+  }));
   // Study-hall groups from today's finalized substitution plan — every
   // headteacher sees them here and takes their attendance.
   const studyHallsToday = overrides?.studyHalls ?? [];
@@ -560,6 +581,11 @@ export default async function TeacherDutyPage({
             key: "attendance",
             label: t("attendanceTab"),
             content: attendanceContent,
+          },
+          {
+            key: "toilet",
+            label: t("toiletTab"),
+            content: <ToiletPanel breaks={toiletBreaks} />,
           },
         ]}
       />

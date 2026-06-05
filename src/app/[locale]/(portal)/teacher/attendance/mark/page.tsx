@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { isDutyEligible } from "@/lib/dutyRoster";
 import type { Role } from "@/generated/prisma";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Plus } from "lucide-react";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { AttendanceMarkForm } from "./AttendanceMarkForm";
@@ -15,13 +15,13 @@ export default async function TeacherMarkAttendancePage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ groupId?: string; period?: string; date?: string; intercalary?: string; excursion?: string }>;
+  searchParams: Promise<{ groupId?: string; period?: string; date?: string; intercalary?: string; excursion?: string; claim?: string; claimGroupId?: string }>;
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login`);
 
-  const { groupId, period: periodStr, date: dateParam, intercalary: intercalaryParam, excursion: excursionParam } = await searchParams;
+  const { groupId, period: periodStr, date: dateParam, intercalary: intercalaryParam, excursion: excursionParam, claim, claimGroupId } = await searchParams;
   const period = periodStr ? parseInt(periodStr) : 1;
   const isIntercalary = intercalaryParam === "1";
   const isExcursion = excursionParam === "1";
@@ -217,6 +217,101 @@ export default async function TeacherMarkAttendancePage({
     } // end else (non-intercalary)
   }
 
+  // ── Ad-hoc claim (Κάλυψη): cover/merge another group in the same period ──
+  // The claim is an intentional act: a picker step lists the period's lessons
+  // (with the scheduled teacher) and the records land on the claimed group's
+  // own slot, marked in the claimer's name.
+  const isClaiming = claim === "1" && !isIntercalary && !isExcursion && !!period;
+  const claimDow = new Date(attendanceDateStr + "T12:00:00").getDay();
+
+  // Picker options: every lesson happening this day/period except my current group
+  const claimOptions =
+    isClaiming && !claimGroupId
+      ? await db.timetableSlot.findMany({
+          where: { period, dayOfWeek: claimDow, ...(groupId ? { groupId: { not: groupId } } : {}) },
+          include: {
+            group: { select: { id: true, name: true } },
+            course: { select: { name: true } },
+            staff: { select: { scheduleName: true, user: { select: { name: true } } } },
+          },
+          orderBy: { group: { name: "asc" } },
+        })
+      : [];
+
+  // The claimed group's own slot + students + existing marks for that date
+  let claimed: {
+    slot: { id: string; room: string | null; course: { name: string } };
+    groupName: string;
+    teacherLabel: string | null;
+    students: { id: string; user: { name: string | null }; studentId: string }[];
+    existing: Record<string, { status: "PRESENT" | "ABSENT" | "LATE"; minutesDelayed: number }>;
+  } | null = null;
+  if (claimGroupId && !isIntercalary && !isExcursion && period) {
+    const claimedSlot = await db.timetableSlot.findFirst({
+      where: { groupId: claimGroupId, period, dayOfWeek: claimDow },
+      include: {
+        group: { select: { name: true } },
+        course: { select: { name: true } },
+        staff: { select: { scheduleName: true, user: { select: { name: true } } } },
+      },
+    });
+    if (claimedSlot) {
+      const [claimedStudents, claimedMarked] = await Promise.all([
+        db.studentProfile.findMany({
+          where: {
+            OR: [{ groupId: claimGroupId }, { subjectGroups: { some: { groupId: claimGroupId } } }],
+            user: { isActive: true },
+          },
+          include: { user: { select: { name: true } } },
+          orderBy: { user: { name: "asc" } },
+        }),
+        db.attendance.findMany({
+          where: { timetableSlotId: claimedSlot.id, date: attendanceDateObj },
+          select: { studentId: true, status: true, minutesDelayed: true },
+        }),
+      ]);
+      const existing: Record<string, { status: "PRESENT" | "ABSENT" | "LATE"; minutesDelayed: number }> = {};
+      for (const r of claimedMarked) {
+        existing[r.studentId] = {
+          status: (r.status === "EXCUSED" ? "ABSENT" : r.status) as "PRESENT" | "ABSENT" | "LATE",
+          minutesDelayed: r.minutesDelayed,
+        };
+      }
+      claimed = {
+        slot: claimedSlot,
+        groupName: claimedSlot.group.name,
+        teacherLabel: claimedSlot.staff?.scheduleName ?? claimedSlot.staffName ?? claimedSlot.staff?.user?.name ?? null,
+        students: claimedStudents,
+        existing,
+      };
+    }
+  }
+
+  // Toilet breaks (WC) for today: any still-open break + this period's
+  // completed ones, for every student on screen (own group and claimed).
+  const allStudentIds = [...students.map((s) => s.id), ...(claimed?.students.map((s) => s.id) ?? [])];
+  const toiletBreaks: Record<string, { id: string; leftAt: string; returnedAt: string | null }> = {};
+  if (allStudentIds.length > 0 && period && !isIntercalary && !isExcursion) {
+    const rows = await db.toiletBreak.findMany({
+      where: {
+        studentId: { in: allStudentIds },
+        date: attendanceDateObj,
+        OR: [{ returnedAt: null }, { period }],
+      },
+      orderBy: { leftAt: "asc" },
+    });
+    for (const b of rows) {
+      // an open break wins over an earlier completed one
+      if (!toiletBreaks[b.studentId] || b.returnedAt === null) {
+        toiletBreaks[b.studentId] = {
+          id: b.id,
+          leftAt: b.leftAt.toISOString(),
+          returnedAt: b.returnedAt?.toISOString() ?? null,
+        };
+      }
+    }
+  }
+
   // Active exit permits (Άδεια Εξόδου) covering this date/period — shown in
   // yellow; the teacher still marks the student absent.
   if (students.length > 0) {
@@ -263,23 +358,108 @@ export default async function TeacherMarkAttendancePage({
         </p>
       </div>
 
-      <AttendanceMarkForm
-        students={students}
-        slot={slot}
-        staffId={staff.id}
-        selectedGroupId={groupId}
-        selectedPeriod={period}
-        prevPeriods={prevPeriods}
-        attendanceDate={attendanceDateStr}
-        isToday={isToday}
-        existingRecords={existingRecords}
-        studentLocations={studentLocations}
-        exitPermits={exitPermits}
-        prevPeriodsRecords={prevPeriodsRecords}
-        prevActivityPeriods={prevActivityPeriods}
-        intercalaryGroupId={isIntercalary || isExcursion ? groupId : undefined}
-        isExcursion={isExcursion}
-      />
+      {/* Own lesson */}
+      {groupId && (
+        <AttendanceMarkForm
+          students={students}
+          slot={slot}
+          staffId={staff.id}
+          selectedGroupId={groupId}
+          selectedPeriod={period}
+          prevPeriods={prevPeriods}
+          attendanceDate={attendanceDateStr}
+          isToday={isToday}
+          existingRecords={existingRecords}
+          studentLocations={studentLocations}
+          exitPermits={exitPermits}
+          toiletBreaks={toiletBreaks}
+          prevPeriodsRecords={prevPeriodsRecords}
+          prevActivityPeriods={prevActivityPeriods}
+          intercalaryGroupId={isIntercalary || isExcursion ? groupId : undefined}
+          isExcursion={isExcursion}
+        />
+      )}
+
+      {/* Quiet entry to cover/merge a second group in the same period */}
+      {groupId && slot && !isClaiming && !claimed && (
+        <Link
+          href={`?groupId=${groupId}&period=${period}&date=${attendanceDateStr}&claim=1`}
+          className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-emerald-700 transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          {t("claimAddSecond")}
+        </Link>
+      )}
+
+      {/* The intention gate: pick which class to cover */}
+      {isClaiming && !claimGroupId && (
+        <div className="rounded-2xl border border-amber-200 bg-white overflow-hidden max-w-2xl">
+          <div className="px-5 py-3 bg-amber-50 border-b border-amber-100">
+            <p className="text-sm font-semibold text-amber-900">
+              {t("claimPickerTitle", { period })}
+            </p>
+            <p className="text-xs text-amber-700 mt-0.5">{t("claimPickerHint")}</p>
+          </div>
+          {claimOptions.length === 0 ? (
+            <p className="px-5 py-4 text-sm text-slate-400">{t("claimNone")}</p>
+          ) : (
+            <div className="divide-y divide-slate-50">
+              {claimOptions.map((s) => (
+                <Link
+                  key={s.id}
+                  href={`?${new URLSearchParams({
+                    ...(groupId ? { groupId } : {}),
+                    period: String(period),
+                    date: attendanceDateStr,
+                    claimGroupId: s.group.id,
+                  }).toString()}`}
+                  className="flex items-center justify-between gap-3 px-5 py-2.5 text-sm hover:bg-amber-50/40 transition-colors"
+                >
+                  <span className="font-medium text-slate-900">{s.group.name}</span>
+                  <span className="flex items-center gap-3 text-xs text-slate-500">
+                    <span>{s.course.name}</span>
+                    <span className="text-slate-400">
+                      {s.staff?.scheduleName ?? s.staffName ?? s.staff?.user?.name ?? "—"}
+                    </span>
+                    {s.room && <span className="font-mono text-slate-400">{s.room}</span>}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* The claimed group — its own clearly-labelled marking sheet */}
+      {claimed && (
+        <div className="rounded-2xl border-2 border-amber-200 overflow-hidden">
+          <div className="px-5 py-3 bg-amber-50 border-b border-amber-100 flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-amber-900">
+              {t("claimOf", { group: claimed.groupName })}
+              <span className="ml-2 font-normal text-amber-700">
+                {claimed.slot.course.name}
+                {claimed.teacherLabel && ` · ${claimed.teacherLabel}`}
+              </span>
+            </p>
+            <span className="inline-flex items-center rounded-full bg-amber-100 border border-amber-300 px-2 py-0.5 text-xs font-semibold text-amber-800">
+              {t("claimBadge")}
+            </span>
+          </div>
+          <div className="p-4 bg-white">
+            <AttendanceMarkForm
+              students={claimed.students}
+              slot={claimed.slot}
+              staffId={staff.id}
+              selectedGroupId={claimGroupId}
+              selectedPeriod={period}
+              attendanceDate={attendanceDateStr}
+              isToday={isToday}
+              existingRecords={claimed.existing}
+              toiletBreaks={toiletBreaks}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
