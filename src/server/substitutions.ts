@@ -185,10 +185,23 @@ export async function finalizePlan(date: Date, userId: string) {
   const studyHalls = plan.entries.filter((e) => e.kind === "STUDY_HALL");
   const deputies = studyHalls.length > 0 ? await getOnDutyDeputies(date) : [];
 
+  let finalized = false;
   await db.$transaction(async (tx) => {
-    await tx.substitutionPlan.update({
-      where: { id: plan.id },
+    // Atomic guard: only one finalize wins, even on double submission.
+    const res = await tx.substitutionPlan.updateMany({
+      where: { id: plan.id, status: "DRAFT" },
       data: { status: "FINAL", finalizedById: userId, finalizedAt: new Date() },
+    });
+    if (res.count === 0) return; // someone else finalized meanwhile
+    finalized = true;
+
+    // Re-finalizing a regenerated plan must REPLACE the previous batch, not
+    // stack on top of it — drop this date's old substitution notifications.
+    await tx.notification.deleteMany({
+      where: {
+        type: { in: ["SUBSTITUTION_ASSIGNED", "SUBSTITUTION_STUDY_HALL"] },
+        title: { endsWith: dateLabel },
+      },
     });
 
     for (const [subUserId, lines] of bySubUser) {
@@ -223,6 +236,7 @@ export async function finalizePlan(date: Date, userId: string) {
       });
     }
   });
+  if (!finalized) return { ok: false as const, error: "alreadyFinal" };
 
   await writeAudit({
     userId,

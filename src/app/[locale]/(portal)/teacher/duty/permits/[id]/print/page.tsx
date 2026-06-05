@@ -2,10 +2,16 @@ import { db } from "@/server/db";
 import { redirect, notFound } from "next/navigation";
 import { getActiveAuth } from "@/server/authz";
 import { isEducator } from "@/lib/rbac";
-import { getSchoolName } from "@/lib/schoolConfig";
+import { getSchoolName, getSchoolYear } from "@/lib/schoolConfig";
 import { staffDisplayName } from "@/lib/staffName";
-import { permitContactLabel } from "@/lib/exitPermit";
 import { PrintBar } from "./PrintBar";
+
+// Official ΑΔΕΙΑ ΕΞΟΔΟΥ form (per exit_permit.pdf): two copies on one A4 —
+// the top copy carries the return-time line, the bottom copy does not.
+
+function Dots({ w = "w-40" }: { w?: string }) {
+  return <span className={`inline-block ${w} border-b border-dotted border-slate-500 align-baseline`}>&nbsp;</span>;
+}
 
 export default async function PrintExitPermitPage({
   params,
@@ -24,7 +30,7 @@ export default async function PrintExitPermitPage({
     redirect(`/${locale}/login`);
   }
 
-  const [permit, schoolName] = await Promise.all([
+  const [permit, schoolName, schoolYear] = await Promise.all([
     db.exitPermit.findUnique({
       where: { id },
       include: {
@@ -35,83 +41,147 @@ export default async function PrintExitPermitPage({
           },
         },
         issuer: { include: { user: { select: { name: true } } } },
-        smsContact: { select: { name: true, role: true, phone: true } },
       },
     }),
     getSchoolName(),
+    getSchoolYear(),
   ]);
   if (!permit) notFound();
 
+  const startYear = schoolYear.yearStart.getUTCFullYear();
+  const yearLabel = `${startYear}-${startYear + 1}`;
+
+  const weekday = permit.date.toLocaleDateString("el-GR", { weekday: "long", timeZone: "UTC" });
   const dateLabel = permit.date.toLocaleDateString("el-GR", {
-    day: "2-digit", month: "long", year: "numeric",
+    day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC",
   });
   const timeLabel = permit.issuedAt.toLocaleTimeString("el-GR", {
     hour: "2-digit", minute: "2-digit", timeZone: "Asia/Nicosia",
   });
 
-  const row = (label: string, value: React.ReactNode) => (
-    <tr className="border-b border-slate-100">
-      <td className="py-2 font-medium text-slate-600 w-44">{label}</td>
-      <td className="py-2 text-slate-900">{value ?? "—"}</td>
-    </tr>
+  const Copy = ({ withReturn }: { withReturn: boolean }) => (
+    <div className="text-[12px] leading-snug text-slate-900">
+      {/* Header: school (Settings) + computed school year */}
+      <div className="flex justify-between text-xs mb-2">
+        <span>ΣΧΟΛΕΙΟ: {schoolName ?? "—"}</span>
+        <span>ΣΧΟΛΙΚΗ ΧΡΟΝΙΑ: {yearLabel}</span>
+      </div>
+
+      <h1 className="text-center font-bold underline underline-offset-2 mb-2">
+        ΑΔΕΙΑ ΕΞΟΔΟΥ ΑΠΟ ΤΟ ΣΧΟΛΕΙΟ
+      </h1>
+
+      <div className="flex justify-between gap-4">
+        <span>
+          <span className="font-semibold">Α. ΜΑΘΗΤΗΣ:</span>{" "}
+          {permit.student.studentId} {permit.student.user?.name ?? ""}
+        </span>
+        <span>
+          <span className="font-semibold">ΤΑΞΗ-ΤΜΗΜΑ:</span> {permit.student.group?.name ?? "—"}
+        </span>
+      </div>
+      <p>
+        <span className="font-semibold">Β. ΛΟΓΟΣ ΑΠΟΧΩΡΗΣΗΣ:</span>{" "}
+        <span className="ml-4">{permit.reason}</span>
+      </p>
+
+      <div className="mt-2 grid grid-cols-[auto_1fr] gap-x-6">
+        <span className="font-semibold">Γ. ΑΝΑΧΩΡΗΣΗ ΑΠΟ ΤΟ ΣΧΟΛΕΙΟ:</span>
+        <span>
+          Ημέρα: {weekday} <span className="ml-6">Ημερομηνία: {dateLabel}</span>
+          <span className="block">Ώρα: {timeLabel}</span>
+        </span>
+        {withReturn && (
+          <>
+            <span className="font-semibold">Δ. ΕΠΙΣΤΡΟΦΗ ΣΤΟ ΣΧΟΛΕΙΟ:</span>
+            <span>
+              Ώρα: <Dots w="w-24" />
+            </span>
+          </>
+        )}
+      </div>
+
+      {/* Signatures */}
+      <div className="mt-2 grid grid-cols-2 gap-10 text-center">
+        <div className="flex flex-col justify-end">
+          <p>Ο/Η Καθηγητής/τρια</p>
+          <p className="border-b border-slate-700 mx-6 mt-4">&nbsp;</p>
+        </div>
+        <div className="flex flex-col justify-end">
+          <p>Ο/Η Βοηθός Διευθυντής/τρια</p>
+          <p className="mt-auto">{staffDisplayName(permit.issuer)}</p>
+          <p className="border-b border-slate-700 mx-6">&nbsp;</p>
+        </div>
+      </div>
+
+      <hr className="my-2 border-slate-700" />
+
+      {/* Doctor / service certification */}
+      <h2 className="text-center font-bold underline underline-offset-2 mb-1">
+        ΟΤΑΝ Ο ΜΑΘΗΤΗΣ ΕΠΙΣΚΕΦΤΕΙ ΓΙΑΤΡΟ / ΑΛΛΗ ΥΠΗΡΕΣΙΑ
+      </h2>
+      <p>
+        Βεβαιώνω ότι ο πιο πάνω αναφερόμενος μαθητής με επισκέφτηκε σήμερα και ώρα: <Dots w="w-32" />
+      </p>
+      <div className="flex justify-between gap-4">
+        <span>Ημερομηνία: {dateLabel}</span>
+        <span>
+          Υπογραφή: <Dots w="w-48" />
+        </span>
+      </div>
+      <div className="flex justify-between gap-4">
+        <span>
+          Τηλέφωνο: <Dots w="w-48" />
+        </span>
+        <span>
+          Ολογράφως: <Dots w="w-48" />
+        </span>
+      </div>
+
+      <hr className="my-2 border-slate-700" />
+
+      {/* Parent declaration */}
+      <h2 className="text-center font-bold underline underline-offset-2 mb-1">
+        ΔΗΛΩΣΗ ΓΟΝΕΑ / ΚΗΔΕΜΟΝΑ
+      </h2>
+      <p>Κύριε Διευθυντή,</p>
+      <p className="ml-6">Δηλώνω ότι έλαβα γνώση για την άδεια εξόδου του παιδιού μου από το σχολείο</p>
+      <div className="flex justify-between gap-4">
+        <span>
+          Ημερομηνία: <Dots w="w-48" />
+        </span>
+        <span>
+          Υπογραφή: <Dots w="w-48" />
+        </span>
+      </div>
+    </div>
   );
 
   return (
     <>
       <PrintBar backHref={`/${locale}/teacher/duty${back ? `?${back}` : ""}`} />
 
-      <div className="min-h-screen bg-white print:bg-white">
-        <div className="max-w-xl mx-auto px-10 py-10 print:px-0 print:py-0 print:max-w-none relative">
-          {/* Header */}
-          <div className="text-center mb-6 pb-4 border-b-2 border-slate-800">
-            {schoolName && (
-              <p className="text-xs uppercase tracking-widest text-slate-500 mb-1">{schoolName}</p>
-            )}
-            <h1 className="text-xl font-bold text-slate-900 mt-1">ΑΔΕΙΑ ΕΞΟΔΟΥ</h1>
-            <p className="text-xs text-slate-500 mt-1">{dateLabel} · ώρα έκδοσης {timeLabel}</p>
+      <div className="min-h-screen print:min-h-0 bg-white print:bg-white">
+        <div className="max-w-2xl mx-auto px-10 py-8 print:max-w-none print:px-[12mm] print:py-[10mm]">
+          {/* Copy 1 — with the return-time line */}
+          <Copy withReturn />
+
+          {/* Cut line between the two copies */}
+          <div className="my-12 print:my-[16mm] flex items-center justify-center">
+            <span className="w-56 border-t border-dashed border-slate-300" />
           </div>
 
-          {/* Details */}
-          <table className="w-full text-sm mb-6">
-            <tbody>
-              {row("Μαθητής/τρια", permit.student.user?.name)}
-              {row("Τμήμα", permit.student.group?.name)}
-              {row("Αρ. Μητρώου", <span className="font-mono">{permit.student.studentId}</span>)}
-              {row(
-                "Αποχώρηση",
-                <span className="font-semibold">
-                  από την {permit.fromPeriod}η περίοδο έως το τέλος της ημέρας
-                </span>
-              )}
-              {row("Λόγος", permit.reason)}
-              {row("Επικοινωνία με γονέα", permitContactLabel(permit.smsContact, permit.contactNote))}
-              {row("Εξέδωσε", staffDisplayName(permit.issuer))}
-            </tbody>
-          </table>
-
-          {/* Handover note */}
-          <p className="text-xs text-slate-500 border border-slate-200 rounded p-3 bg-slate-50 mb-10">
-            Η παρούσα άδεια εκδόθηκε από τον/την εφημερεύοντα/ουσα βοηθό μετά από
-            τηλεφωνική συνεννόηση με τον γονέα/κηδεμόνα. Παραδίδεται στον/στην
-            διδάσκοντα/ουσα της τρέχουσας περιόδου. Ο/Η μαθητής/τρια σημειώνεται
-            απών/ούσα· η απουσία συνδέεται με την άδεια εξόδου.
-          </p>
-
-          {/* Signatures */}
-          <section className="grid grid-cols-2 gap-10 text-center text-xs text-slate-600">
-            <div>
-              <div className="border-t border-slate-400 pt-2 mt-8">Ο/Η Εφημερεύων/ουσα Βοηθός</div>
-            </div>
-            <div>
-              <div className="border-t border-slate-400 pt-2 mt-8">Ο/Η Διδάσκων/ουσα</div>
-            </div>
-          </section>
+          {/* Copy 2 — without the return-time line */}
+          <Copy withReturn={false} />
         </div>
       </div>
 
       <style>{`
         @media print {
-          @page { size: A5; margin: 15mm; }
+          /* margin: 0 removes the browser-added header/footer (date, title,
+             URL, page number live in the page margin); the inner container
+             carries the real margins via print padding instead. */
+          @page { size: A4; margin: 0; }
           body { background: white !important; }
         }
       `}</style>

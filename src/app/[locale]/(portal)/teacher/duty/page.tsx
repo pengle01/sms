@@ -11,11 +11,13 @@ import { locateHref, parseLocateTab, studentSearchWhere, type LocateTab, type Lo
 import { suggestionList } from "@/lib/textSearch";
 import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY } from "@/lib/schoolConfig";
 import { permitContactLabel } from "@/lib/exitPermit";
+import { getDayOverrides } from "@/server/substitutions";
 import { periodsForDow } from "@/lib/periods";
 import { SuggestInput } from "@/components/SuggestInput";
 import { cn } from "@/lib/utils";
-import { BellOff, LogOut, Phone, Printer, Search, X } from "lucide-react";
+import { BellOff, CheckCircle2, LogOut, Phone, Printer, Search, X } from "lucide-react";
 import { issueExitPermit, cancelExitPermit } from "./actions";
+import { ReferralTabs } from "@/components/referrals/ReferralTabs";
 
 export default async function TeacherDutyPage({
   params,
@@ -39,10 +41,11 @@ export default async function TeacherDutyPage({
 
   const t = await getTranslations("duty");
   const tLocate = await getTranslations("locate");
+  const tDash = await getTranslations("dashboard");
 
   const today = utcMidnight();
   const todayDow = dutyDowFor(today);
-  const [todayEntries, me] = await Promise.all([
+  const [todayEntries, me, overrides] = await Promise.all([
     todayDow
       ? db.dutyRosterEntry.findMany({
           where: { dayOfWeek: todayDow },
@@ -50,7 +53,25 @@ export default async function TeacherDutyPage({
         })
       : Promise.resolve([]),
     db.staffProfile.findUnique({ where: { userId: auth.userId }, select: { id: true } }),
+    getDayOverrides(today),
   ]);
+  // Study-hall groups from today's finalized substitution plan — every
+  // headteacher sees them here and takes their attendance.
+  const studyHallsToday = overrides?.studyHalls ?? [];
+
+  // Which of them already have attendance recorded today (green = done, red = pending)
+  const hallSlotIds = studyHallsToday
+    .map((e) => e.timetableSlotId)
+    .filter(Boolean) as string[];
+  const markedHalls =
+    hallSlotIds.length > 0
+      ? await db.attendance.findMany({
+          where: { date: today, timetableSlotId: { in: hallSlotIds } },
+          select: { timetableSlotId: true },
+          distinct: ["timetableSlotId"],
+        })
+      : [];
+  const markedHallSlotIds = new Set(markedHalls.map((m) => m.timetableSlotId));
   const onDutyToday = isOnDuty(todayEntries, todayDow, me?.id ?? null);
 
   // ── Permit desk: same tabbed locator as attendance/locate ────────────────
@@ -150,14 +171,72 @@ export default async function TeacherDutyPage({
     </>
   );
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">{t("permitsTitle")}</h2>
-        <p className="text-slate-500 text-sm mt-1">{t("permitsSubtitle")}</p>
-      </div>
+  // ── Tab: Απουσιολόγια — study-hall groups per period needing attendance ───
+  const attendanceContent =
+    studyHallsToday.length === 0 ? (
+      <p className="text-sm text-slate-400">{t("noStudyHalls")}</p>
+    ) : (
+      <Card className="border-sky-200 max-w-2xl">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">{tDash("studyHallsTitle")}</CardTitle>
+          <p className="text-xs text-slate-400">{tDash("studyHallsHint")}</p>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="divide-y divide-slate-50">
+            {studyHallsToday.map((e) => {
+              const marked = !!e.timetableSlotId && markedHallSlotIds.has(e.timetableSlotId);
+              return (
+                <Link
+                  key={e.id}
+                  href={`/${locale}/teacher/attendance/mark?groupId=${e.groupId}&period=${e.period}`}
+                  className={cn(
+                    "flex items-center gap-4 px-5 py-3 transition-colors border-l-4",
+                    marked
+                      ? "border-l-green-500 bg-green-50/40 hover:bg-green-50/70"
+                      : "border-l-red-500 bg-red-50/30 hover:bg-red-50/60"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "w-5 flex-shrink-0 text-center text-sm font-bold",
+                      marked ? "text-green-500" : "text-red-400"
+                    )}
+                  >
+                    {e.period}
+                  </span>
+                  <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-medium text-slate-900">{e.group?.name}</span>
+                    {e.timetableSlot?.course.name && (
+                      <span className="text-sm text-slate-400">{e.timetableSlot.course.name}</span>
+                    )}
+                    {e.absentStaff && (
+                      <span className="text-xs text-slate-400">({e.absentStaff.scheduleName})</span>
+                    )}
+                    {e.newRoom && (
+                      <span className="text-xs text-slate-400 font-mono">{tDash("room", { room: e.newRoom })}</span>
+                    )}
+                  </div>
+                  {marked ? (
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-700 flex-shrink-0">
+                      <CheckCircle2 className="w-4 h-4" />
+                      {t("attendanceTaken")}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-2 flex-shrink-0">
+                      <span className="text-xs font-semibold text-red-600">{t("attendancePending")}</span>
+                      <span className="text-xs font-medium text-emerald-600">{tDash("markAttendance")}</span>
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+    );
 
-      {!onDutyToday ? (
+  // ── Tab: Άδειες Εξόδου — the permit desk ──────────────────────────────────
+  const permitsContent = !onDutyToday ? (
         <Card className="max-w-xl">
           <CardContent className="py-4 flex items-center gap-3">
             <div className="flex items-center justify-center w-10 h-10 rounded-full flex-shrink-0 bg-slate-100 text-slate-400">
@@ -460,7 +539,30 @@ export default async function TeacherDutyPage({
             </CardContent>
           </Card>
         </div>
-      )}
+  );
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>
+        <p className="text-slate-500 text-sm mt-1">{t("subtitle")}</p>
+      </div>
+
+      {/* Clear separation: permits vs attendance */}
+      <ReferralTabs
+        tabs={[
+          {
+            key: "permits",
+            label: t("permitsTitle"),
+            content: permitsContent,
+          },
+          {
+            key: "attendance",
+            label: t("attendanceTab"),
+            content: attendanceContent,
+          },
+        ]}
+      />
     </div>
   );
 }

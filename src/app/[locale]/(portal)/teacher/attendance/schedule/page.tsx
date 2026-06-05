@@ -182,22 +182,13 @@ export default async function TeacherSchedulePage({
     { groupId: string; groupName: string; courseName: string | null; newRoom: string | null; isHall: boolean }
   >();
   if (staff) {
+    // Study halls are NOT injected into anyone's grid — headteachers see them
+    // on the dashboard card instead.
     const weekEntries = await db.substitutionPlanEntry.findMany({
       where: {
         plan: { status: "FINAL", date: { gte: utcMidnight(weekStartStr), lte: utcMidnight(weekEndStr) } },
-        OR: [
-          { kind: { in: ["COVER", "SWAP"] }, substituteStaffId: staff.id },
-          // study halls land on the on-duty deputy's grid for the matching weekday
-          ...((await db.dutyRosterEntry.findMany({
-            where: { staffProfileId: staff.id },
-            select: { dayOfWeek: true },
-          }).then((rows) =>
-            rows.map((r) => ({
-              kind: "STUDY_HALL" as const,
-              plan: { is: { date: utcMidnight(dowToDateStr[r.dayOfWeek] ?? weekStartStr) } },
-            }))
-          )) ?? []),
-        ],
+        kind: { in: ["COVER", "SWAP"] },
+        substituteStaffId: staff.id,
       },
       include: {
         plan: { select: { date: true } },

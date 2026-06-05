@@ -63,7 +63,7 @@ export function Header({ userName, userImage, locale, pageTitle, role, portal, p
 
   return (
     <>
-      <header className="flex items-center justify-between h-14 px-4 md:px-6 border-b border-slate-200 bg-white flex-shrink-0">
+      <header className="print:hidden flex items-center justify-between h-14 px-4 md:px-6 border-b border-slate-200 bg-white flex-shrink-0">
         {/* Left */}
         <div className="flex items-center gap-3">
           {role && portal && (

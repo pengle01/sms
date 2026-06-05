@@ -106,7 +106,13 @@
     },
     "errContact": "Select the parent/guardian you spoke with.",
     "contactsPick": "Select who you spoke with",
-    "issueTitle": "Issue an Exit Permit"
+    "issueTitle": "Issue an Exit Permit",
+    "title": "On Duty",
+    "subtitle": "Exit permits and duty attendance",
+    "attendanceTab": "Attendance",
+    "noStudyHalls": "No groups need attendance today.",
+    "attendanceTaken": "Done",
+    "attendancePending": "Pending"
   },
   "dashboard": {
     "welcome": "Welcome, {name}",
@@ -130,7 +136,9 @@
     "excursion": "Excursion",
     "substitution": "Substitution",
     "studyHall": "Duty study hall",
-    "coveredToday": "Absent — covered"
+    "coveredToday": "Absent — covered",
+    "studyHallsTitle": "Substitutions",
+    "studyHallsHint": "Groups from today's substitution plan without a substitute — headteachers take their attendance."
   },
   "attendance": {
     "title": "Attendance",

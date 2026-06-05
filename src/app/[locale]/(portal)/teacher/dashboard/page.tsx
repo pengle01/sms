@@ -6,7 +6,6 @@ import type { Role } from "@/generated/prisma";
 import { getNow, utcMidnight, fmtDisplayDate } from "@/lib/dates";
 import { getSpecialDayForDate } from "@/lib/calendar";
 import { getDayOverrides } from "@/server/substitutions";
-import { dutyDowFor } from "@/lib/dutyRoster";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, ClipboardList, AlertCircle } from "lucide-react";
 import Link from "next/link";
@@ -103,33 +102,19 @@ export default async function TeacherDashboardPage({
   const todaySlots = allSlots.filter((s) => s.dayOfWeek === todayDow);
   const markedSlotIds = new Set(markedRaw.map((r) => r.timetableSlotId));
 
-  // Substitution overrides for today (finalized plan only): lessons I cover,
-  // my own lessons that are covered/released, and — when I am the on-duty
-  // deputy — the study-hall groups.
+  // Substitution overrides for today (finalized plan only): lessons I cover
+  // and my own lessons that are covered/released. Study-hall groups are NOT
+  // injected into anyone's schedule — headteachers get a dedicated card
+  // listing every group per period that needs attendance taken.
   const overrides = staff && !isWeekend ? await getDayOverrides(today) : null;
   const coverByPeriod = new Map<number, NonNullable<typeof overrides>["entries"][number]>();
   const absentByPeriod = new Map<number, NonNullable<typeof overrides>["entries"][number]>();
-  const dutyHallByPeriod = new Map<number, NonNullable<typeof overrides>["entries"][number]>();
   if (overrides && staff) {
     for (const e of overrides.forSubstitute(staff.id)) {
       if (e.period != null) coverByPeriod.set(e.period, e);
     }
     for (const e of overrides.forAbsent(staff.id)) {
       if (e.period != null) absentByPeriod.set(e.period, e);
-    }
-    if (overrides.studyHalls.length > 0) {
-      const dow = dutyDowFor(today);
-      const onDuty = dow
-        ? await db.dutyRosterEntry.findFirst({
-            where: { dayOfWeek: dow, staffProfileId: staff.id },
-            select: { id: true },
-          })
-        : null;
-      if (onDuty) {
-        for (const e of overrides.studyHalls) {
-          if (e.period != null) dutyHallByPeriod.set(e.period, e);
-        }
-      }
     }
   }
   const intercalaryMarked = intercalaryMarkedRow !== null;
@@ -266,8 +251,8 @@ export default async function TeacherDashboardPage({
                     );
                   }
 
-                  // A substitution / study hall assigned to me today
-                  const assigned = coverByPeriod.get(dbPeriod) ?? dutyHallByPeriod.get(dbPeriod);
+                  // A substitution assigned to me today
+                  const assigned = coverByPeriod.get(dbPeriod);
                   if (!slot && assigned?.groupId) {
                     const isHall = assigned.kind === "STUDY_HALL";
                     return (
@@ -340,6 +325,7 @@ export default async function TeacherDashboardPage({
           </CardContent>
         </Card>
       )}
+
     </div>
   );
 }
