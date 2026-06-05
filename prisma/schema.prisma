@@ -69,6 +69,26 @@ enum ClaimStatus {
   REJECTED
 }
 
+enum SubstitutionRequestType {
+  ABSENCE
+  EXEMPTION
+  ROOM_CHANGE
+}
+
+enum SubstitutionPlanStatus {
+  DRAFT
+  FINAL
+}
+
+enum SubstitutionKind {
+  COVER // a substitute teacher covers the vacant lesson
+  STUDY_HALL // Φ/δι with the on-duty deputy (no substitute found / 2nd of double period)
+  RELEASE // class released (vacant lesson at the day's last period)
+  SWAP // another teacher's last-period lesson with the same class moved up
+  ROOM_CHANGE // requested or cascaded room move
+  SUPPORT_MERGE // support (ΣΤ…) students join their regular class
+}
+
 enum TestType {
   SMALL
   BIG
@@ -154,6 +174,8 @@ model User {
   resolvedReferralStudents      ReferralStudentResolution[] @relation("ReferralStudentResolver")
   resolutionUnlockRequests      ResolutionUnlockRequest[]   @relation("ResolutionUnlockRequester")
   resolutionUnlockDecisions     ResolutionUnlockRequest[]   @relation("ResolutionUnlockDecider")
+  substitutionPlansGenerated    SubstitutionPlan[]          @relation("SubstitutionPlanGenerator")
+  substitutionPlansFinalized    SubstitutionPlan[]          @relation("SubstitutionPlanFinalizer")
   notifications                 Notification[]
   auditLogs            AuditLog[]
   chaperoneAssignments ActivityChaperone[]
@@ -176,6 +198,10 @@ model StaffProfile {
   scheduleName String?
   // Designation: deputy B responsible for special education (set by admin)
   specialEducation Boolean @default(false)
+  // Designation: the teacher who runs the daily substitution plan (set by admin)
+  substitutionCoordinator Boolean @default(false)
+  // Substitution quota: null = unlimited, 0 = never picked
+  maxSubstitutions Int?
 
   homeroomGroups        Group[]            @relation("HomeroomTeacher")
   homeroomHeadGroups    Group[]            @relation("HomeroomHeadteacher")
@@ -189,6 +215,9 @@ model StaffProfile {
   testSchedules     TestSchedule[]
   grades            Grade[]
   dutyDays          DutyRosterEntry[]
+  substitutionRequests     SubstitutionRequest[]   @relation("SubstitutionRequester")
+  substitutionAbsences     SubstitutionPlanEntry[] @relation("SubstitutionAbsent")
+  substitutionAssignments  SubstitutionPlanEntry[] @relation("SubstitutionSubstitute")
 }
 
 model StudentProfile {
@@ -299,6 +328,8 @@ model Group {
   referrals         Referral[]       @relation("ReferralGroup")
   referralStudents  ReferralStudent[] @relation("ReferralStudentGroup")
   testSchedules     TestSchedule[]
+  substitutionRequests    SubstitutionRequest[]   @relation("SubstitutionRequestGroup")
+  substitutionPlanEntries SubstitutionPlanEntry[] @relation("SubstitutionEntryGroup")
 }
 
 // ─── Curriculum ───────────────────────────────────────────────────────────────
@@ -343,6 +374,7 @@ model TimetableSlot {
   room      String?
 
   attendance Attendance[]
+  substitutionPlanEntries SubstitutionPlanEntry[]
 
   @@unique([groupId, dayOfWeek, period])
 }
@@ -376,6 +408,82 @@ model Attendance {
   @@unique([studentId, intercalaryGroupId, intercalaryPeriod, date])
   @@index([date])
   @@index([studentId, date])
+}
+
+// ─── Substitutions (Αναπληρώσεις) ─────────────────────────────────────────────
+
+// A teacher's filed request: absence (day/range/periods), exemption from
+// substitution duty for a date, or a room change.
+model SubstitutionRequest {
+  id            String                  @id @default(cuid())
+  staffId       String
+  staff         StaffProfile            @relation("SubstitutionRequester", fields: [staffId], references: [id], onDelete: Cascade)
+  type          SubstitutionRequestType
+  startDate     DateTime                @db.Date
+  endDate       DateTime?               @db.Date // ABSENCE multi-day range; null = single day
+  periods       Int[]                   @default([]) // ABSENCE specific periods / ROOM_CHANGE period; empty = whole day(s)
+  reason        String? // Ασθένεια, Στρατός, … (ABSENCE) — free text via reasonDetails
+  reasonDetails String? // "Άλλο" specification / extra info
+  // ROOM_CHANGE only
+  groupId       String?
+  group         Group?                  @relation("SubstitutionRequestGroup", fields: [groupId], references: [id])
+  newRoom       String?
+  smsSent       Boolean                 @default(false)
+  createdAt     DateTime                @default(now())
+
+  planEntries SubstitutionPlanEntry[]
+
+  @@index([startDate])
+  @@index([staffId])
+}
+
+// One generated daily plan per date. DRAFT until the coordinator finalizes;
+// only FINAL plans affect schedules and notify substitutes.
+model SubstitutionPlan {
+  id            String                 @id @default(cuid())
+  date          DateTime               @unique @db.Date
+  status        SubstitutionPlanStatus @default(DRAFT)
+  generatedById String
+  generatedBy   User                   @relation("SubstitutionPlanGenerator", fields: [generatedById], references: [id])
+  finalizedById String?
+  finalizedBy   User?                  @relation("SubstitutionPlanFinalizer", fields: [finalizedById], references: [id])
+  finalizedAt   DateTime?
+  createdAt     DateTime               @default(now())
+
+  entries SubstitutionPlanEntry[]
+}
+
+model SubstitutionPlanEntry {
+  id     String           @id @default(cuid())
+  planId String
+  plan   SubstitutionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  kind   SubstitutionKind
+  period Int?
+
+  groupId String?
+  group   Group?  @relation("SubstitutionEntryGroup", fields: [groupId], references: [id])
+
+  absentStaffId String?
+  absentStaff   StaffProfile? @relation("SubstitutionAbsent", fields: [absentStaffId], references: [id])
+
+  substituteStaffId String?
+  substituteStaff   StaffProfile? @relation("SubstitutionSubstitute", fields: [substituteStaffId], references: [id])
+
+  // The covered timetable slot — drives schedule injection + attendance authorization
+  timetableSlotId String?
+  timetableSlot   TimetableSlot? @relation(fields: [timetableSlotId], references: [id], onDelete: SetNull)
+
+  room     String?
+  newRoom  String?
+  note     String? // human-readable: "Αλλαγή από 7η σε 3η", reason, etc.
+  rankInfo String? // selection trace shown to the coordinator
+
+  sourceRequestId String?
+  sourceRequest   SubstitutionRequest? @relation(fields: [sourceRequestId], references: [id], onDelete: SetNull)
+
+  @@index([planId, kind])
+  @@index([substituteStaffId])
+  @@index([absentStaffId])
 }
 
 // ─── Exit Permits ─────────────────────────────────────────────────────────────

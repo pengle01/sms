@@ -137,3 +137,33 @@ const REVOKE_ERRORS: Record<string, string> = {
   errNotGranted: "This user has no granted admin access.",
   errLastSuperAdmin: "This is the last active system administrator — access cannot be revoked.",
 };
+
+/** Toggle the "substitution coordinator" designation. */
+export async function setSubstitutionCoordinator(
+  targetUserId: string,
+  value: boolean
+): Promise<ActionResult> {
+  const auth = await getSuperAdminAuth();
+  if (!auth) return { ok: false, error: "Forbidden" };
+
+  const target = await db.user.findUnique({
+    where: { id: targetUserId },
+    select: { staffProfile: { select: { id: true } } },
+  });
+  if (!target?.staffProfile) return { ok: false, error: "No staff profile linked" };
+
+  await db.staffProfile.update({
+    where: { id: target.staffProfile.id },
+    data: { substitutionCoordinator: value },
+  });
+  await writeAudit({
+    userId: auth.userId,
+    action: "staff.substitutionCoordinator",
+    resource: "StaffProfile",
+    resourceId: target.staffProfile.id,
+    details: { value },
+    ...(await requestMeta()),
+  });
+  revalidateUsers();
+  return { ok: true };
+}

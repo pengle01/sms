@@ -5,6 +5,8 @@ import { db } from "@/server/db";
 import type { Role } from "@/generated/prisma";
 import { getNow, utcMidnight, fmtDisplayDate } from "@/lib/dates";
 import { getSpecialDayForDate } from "@/lib/calendar";
+import { getDayOverrides } from "@/server/substitutions";
+import { dutyDowFor } from "@/lib/dutyRoster";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, ClipboardList, AlertCircle } from "lucide-react";
 import Link from "next/link";
@@ -100,6 +102,36 @@ export default async function TeacherDashboardPage({
 
   const todaySlots = allSlots.filter((s) => s.dayOfWeek === todayDow);
   const markedSlotIds = new Set(markedRaw.map((r) => r.timetableSlotId));
+
+  // Substitution overrides for today (finalized plan only): lessons I cover,
+  // my own lessons that are covered/released, and — when I am the on-duty
+  // deputy — the study-hall groups.
+  const overrides = staff && !isWeekend ? await getDayOverrides(today) : null;
+  const coverByPeriod = new Map<number, NonNullable<typeof overrides>["entries"][number]>();
+  const absentByPeriod = new Map<number, NonNullable<typeof overrides>["entries"][number]>();
+  const dutyHallByPeriod = new Map<number, NonNullable<typeof overrides>["entries"][number]>();
+  if (overrides && staff) {
+    for (const e of overrides.forSubstitute(staff.id)) {
+      if (e.period != null) coverByPeriod.set(e.period, e);
+    }
+    for (const e of overrides.forAbsent(staff.id)) {
+      if (e.period != null) absentByPeriod.set(e.period, e);
+    }
+    if (overrides.studyHalls.length > 0) {
+      const dow = dutyDowFor(today);
+      const onDuty = dow
+        ? await db.dutyRosterEntry.findFirst({
+            where: { dayOfWeek: dow, staffProfileId: staff.id },
+            select: { id: true },
+          })
+        : null;
+      if (onDuty) {
+        for (const e of overrides.studyHalls) {
+          if (e.period != null) dutyHallByPeriod.set(e.period, e);
+        }
+      }
+    }
+  }
   const intercalaryMarked = intercalaryMarkedRow !== null;
   const excursionMarked = excursionMarkedRow !== null;
 
@@ -216,6 +248,55 @@ export default async function TeacherDashboardPage({
                       : period;
                   const slot = slotByPeriod[dbPeriod];
                   const marked = slot ? markedSlotIds.has(slot.id) : false;
+
+                  // My own lesson is covered/released today (I am absent)
+                  const absence = absentByPeriod.get(dbPeriod);
+                  if (slot && absence) {
+                    return (
+                      <div key={period} className="flex items-center gap-4 px-5 py-3 opacity-60">
+                        <span className="w-5 flex-shrink-0 text-center text-sm font-semibold text-slate-300">
+                          {period}
+                        </span>
+                        <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+                          <span className="text-sm text-slate-500 line-through">{slot.course.name}</span>
+                          <span className="text-sm text-slate-400">{slot.group.name}</span>
+                          <span className="text-xs font-medium text-amber-600">{t("coveredToday")}</span>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // A substitution / study hall assigned to me today
+                  const assigned = coverByPeriod.get(dbPeriod) ?? dutyHallByPeriod.get(dbPeriod);
+                  if (!slot && assigned?.groupId) {
+                    const isHall = assigned.kind === "STUDY_HALL";
+                    return (
+                      <Link
+                        key={period}
+                        href={`/${locale}/teacher/attendance/mark?groupId=${assigned.groupId}&period=${assigned.period}`}
+                        className="flex items-center gap-4 px-5 py-3 transition-colors bg-sky-50/40 hover:bg-sky-50"
+                      >
+                        <span className="w-5 flex-shrink-0 text-center text-sm font-bold text-sky-400">
+                          {period}
+                        </span>
+                        <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-medium text-slate-900">
+                            {assigned.timetableSlot?.course.name ?? t("substitution")}
+                          </span>
+                          <span className="text-sm text-slate-400">{assigned.group?.name}</span>
+                          <span className="text-xs font-semibold text-sky-600">
+                            {isHall ? t("studyHall") : t("substitution")}
+                          </span>
+                          {assigned.newRoom && (
+                            <span className="text-xs text-slate-400 font-mono">{t("room", { room: assigned.newRoom })}</span>
+                          )}
+                        </div>
+                        <span className="text-xs font-medium text-emerald-600 flex-shrink-0">
+                          {t("markAttendance")}
+                        </span>
+                      </Link>
+                    );
+                  }
 
                   if (!slot) {
                     return (

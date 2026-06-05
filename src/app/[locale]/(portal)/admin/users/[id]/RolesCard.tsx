@@ -15,8 +15,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ShieldCheck, ShieldOff, HeartHandshake, Loader2 } from "lucide-react";
-import { grantSuperAdmin, revokeSuperAdmin, setSpecialEducation } from "./actions";
+import { ShieldCheck, ShieldOff, HeartHandshake, ArrowLeftRight, Loader2 } from "lucide-react";
+import { grantSuperAdmin, revokeSuperAdmin, setSpecialEducation, setSubstitutionCoordinator } from "./actions";
 
 interface Props {
   userId: string;
@@ -32,6 +32,7 @@ interface Props {
   /** Has a staff profile (required for the special-education designation). */
   hasStaffProfile: boolean;
   specialEducation: boolean;
+  substitutionCoordinator: boolean;
 }
 
 export function RolesCard({
@@ -43,6 +44,7 @@ export function RolesCard({
   isLastSuperAdmin,
   hasStaffProfile,
   specialEducation,
+  substitutionCoordinator,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -171,6 +173,29 @@ export function RolesCard({
     </button>
   );
 
+  // ── Substitution coordinator designation ─────────────────────────────────
+  const coordinatorControl = !hasStaffProfile ? (
+    <span className="text-xs text-slate-400">No staff profile</span>
+  ) : (
+    <button
+      disabled={pending}
+      onClick={() =>
+        run(
+          () => setSubstitutionCoordinator(userId, !substitutionCoordinator),
+          substitutionCoordinator ? "Designation removed" : "Designation set"
+        )
+      }
+      className={
+        substitutionCoordinator
+          ? "inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-sky-600 text-white text-xs font-medium hover:bg-sky-700 disabled:opacity-50"
+          : "inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-slate-200 text-slate-600 text-xs font-medium hover:bg-slate-50 disabled:opacity-50"
+      }
+    >
+      <ArrowLeftRight className="w-3.5 h-3.5" />
+      {substitutionCoordinator ? "Αναπληρώσεις ✓" : "Set as substitution coordinator"}
+    </button>
+  );
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -185,6 +210,11 @@ export function RolesCard({
           "Special education (Βοηθός Διευθυντής)",
           specialEdControl,
           "Deputy B responsible for special education."
+        )}
+        {row(
+          "Substitution coordinator (Αναπληρώσεις)",
+          coordinatorControl,
+          "Runs the daily substitution plan: generates, reviews and finalizes it."
         )}
       </CardContent>
     </Card>

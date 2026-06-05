@@ -4,6 +4,7 @@ import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getNow, utcMidnight } from "@/lib/dates";
+import { getDayOverrides } from "@/server/substitutions";
 import { cn } from "@/lib/utils";
 import { StudentList, type DayRow } from "./StudentList";
 import { getPeriodsPerDay, periodsForDow } from "@/lib/schoolConfig";
@@ -163,21 +164,42 @@ export default async function TeacherLocatePage({
       }
     }
 
+    // Today's finalized substitution plan — override teacher/room per group+period
+    const overrides = await getDayOverrides(today);
+    const overrideByGroupPeriod = new Map<string, NonNullable<typeof overrides>["entries"][number]>();
+    if (overrides) {
+      for (const e of overrides.entries) {
+        if (e.groupId && e.period != null) overrideByGroupPeriod.set(`${e.groupId}:${e.period}`, e);
+      }
+    }
+
     for (const s of students) {
       const periodMap: Record<number, typeof daySlots[0]> = {};
+      const studentGroupIds = [s.groupId, ...(subjectsByStudent[s.id] ?? [])].filter(Boolean) as string[];
       for (const slot of slotsByGroup[s.groupId ?? ""] ?? []) periodMap[slot.period] = slot;
       for (const gId of subjectsByStudent[s.id] ?? []) {
         for (const slot of slotsByGroup[gId] ?? []) periodMap[slot.period] = slot;
       }
       const actByPeriod = actByPeriodByStudent[s.id] ?? {};
-      schedules[s.id] = todayPeriods.map((p) => ({
-        period: p,
-        courseName: periodMap[p]?.course.name ?? null,
-        room: periodMap[p]?.room ?? null,
-        staffName: periodMap[p]?.staff?.scheduleName ?? periodMap[p]?.staffName ?? periodMap[p]?.staff?.user?.name ?? null,
-        isActivity: !!actByPeriod[p],
-        activityName: actByPeriod[p],
-      }));
+      schedules[s.id] = todayPeriods.map((p) => {
+        const ovr = studentGroupIds
+          .map((gid) => overrideByGroupPeriod.get(`${gid}:${p}`))
+          .find(Boolean);
+        const baseStaff =
+          periodMap[p]?.staff?.scheduleName ?? periodMap[p]?.staffName ?? periodMap[p]?.staff?.user?.name ?? null;
+        const ovrStaff = ovr
+          ? ovr.substituteStaff?.scheduleName ??
+            (ovr.kind === "STUDY_HALL" ? "Φ/δι εφημ ΒΔ" : ovr.kind === "RELEASE" ? "Αποχώρηση" : baseStaff)
+          : null;
+        return {
+          period: p,
+          courseName: periodMap[p]?.course.name ?? null,
+          room: ovr?.newRoom ?? periodMap[p]?.room ?? null,
+          staffName: ovr ? ovrStaff : baseStaff,
+          isActivity: !!actByPeriod[p],
+          activityName: actByPeriod[p],
+        };
+      });
     }
   }
 

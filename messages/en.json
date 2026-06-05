@@ -72,7 +72,8 @@
     "portalAdmin": "System Administration",
     "portalTeacher": "Teacher Portal",
     "duty": "On Duty",
-    "permits": "Exit Permits"
+    "permits": "Exit Permits",
+    "substitutions": "Substitutions"
   },
   "duty": {
     "notOnDuty": "You are not on duty today",
@@ -126,7 +127,10 @@
     "freePeriod": "Free period",
     "room": "Room {room}",
     "markAttendance": "Mark →",
-    "excursion": "Excursion"
+    "excursion": "Excursion",
+    "substitution": "Substitution",
+    "studyHall": "Duty study hall",
+    "coveredToday": "Absent — covered"
   },
   "attendance": {
     "title": "Attendance",
@@ -182,7 +186,8 @@
     "savedToast": "Attendance saved",
     "noGroup": "No group selected.",
     "pastDate": "Past date",
-    "backToSchedule": "My Schedule"
+    "backToSchedule": "My Schedule",
+    "substitutionBadge": "Substitution"
   },
   "homegroup": {
     "title": "My Homegroup",
@@ -627,7 +632,10 @@
     "title": "My Schedule",
     "noGroup": "No group",
     "noTimetable": "No timetable available",
-    "room": "Room {room}"
+    "room": "Room {room}",
+    "released": "Cancelled — early release",
+    "roomChanged": "Room change",
+    "substituteLabel": "Substitution"
   },
   "locate": {
     "title": "Locate Student",
@@ -659,5 +667,49 @@
     "markAllRead": "Mark all as read",
     "referralCreated": "New referral",
     "referralResolved": "Referral resolved"
+  },
+  "substitutions": {
+    "title": "Substitutions",
+    "subtitle": "Absence, exemption and room-change requests",
+    "coordinatorDesk": "Daily Plan",
+    "newRequest": "New Request",
+    "myRequests": "My Requests",
+    "noRequests": "You have not filed any requests.",
+    "noPhone": "No phone on your profile — you will not receive a confirmation SMS.",
+    "requestType": "Request for",
+    "typeAbsence": "Absence from school",
+    "typeExemption": "Justified exemption from substitution",
+    "typeRoomChange": "Room change",
+    "duration": "You will be absent for",
+    "durationDay": "1 day",
+    "durationRange": "Multiple days",
+    "durationPeriods": "Specific periods",
+    "date": "Date",
+    "firstDay": "First day",
+    "lastDay": "Last day",
+    "periods": "Periods",
+    "periodsShort": "P:",
+    "reason": "Absence reason",
+    "pickReason": "-- Pick a reason --",
+    "otherReason": "Specify the reason",
+    "exemptionReason": "Justification (optional)",
+    "period": "Period",
+    "group": "Group",
+    "newRoom": "New room",
+    "submit": "Submit Request",
+    "submitted": "Request filed.",
+    "cancel": "Cancel",
+    "cancelled": "Request cancelled.",
+    "errForbidden": "Not allowed.",
+    "errDate": "Pick a date.",
+    "errPast": "The date cannot be in the past.",
+    "errRange": "Invalid date range.",
+    "errReason": "Pick an absence reason.",
+    "errOtherReason": "Specify the reason.",
+    "errPeriods": "Pick at least one period.",
+    "errPeriod": "Invalid period.",
+    "errRoomChange": "Fill in the group and the new room.",
+    "errNotFound": "Request not found.",
+    "errPastCancel": "Past requests cannot be cancelled."
   }
 }

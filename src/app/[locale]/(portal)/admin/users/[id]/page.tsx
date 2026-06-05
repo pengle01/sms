@@ -187,6 +187,7 @@ export default async function UserDetailPage({
         isLastSuperAdmin={hasAdminGrant && effectiveSuperAdmins <= 1}
         hasStaffProfile={!!sp}
         specialEducation={sp?.specialEducation ?? false}
+        substitutionCoordinator={sp?.substitutionCoordinator ?? false}
       />
 
       {!sp && (

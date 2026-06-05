@@ -10,7 +10,7 @@ import {
   LayoutDashboard, ClipboardList, AlertTriangle, BookOpen,
   Calendar, CalendarRange, FileText, Bell, Users, Settings, Shield,
   Search, GraduationCap, Home, Backpack, Plus, BookMarked, ShieldAlert,
-  CircleUser, BellRing, LogOut,
+  CircleUser, BellRing, LogOut, ArrowLeftRight,
 } from "lucide-react";
 
 interface NavItem {
@@ -31,6 +31,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "tests",        href: "tests",               icon: FileText,        roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","TEACHER"] },
   { key: "noticeboard",  href: "noticeboard",       icon: Bell,            roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "activities",   href: "activities",        icon: CalendarRange,   roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
+  { key: "substitutions", href: "substitutions",    icon: ArrowLeftRight,  roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "duty",         href: "duty",              icon: BellRing,        roles: ["HEADTEACHER_A","HEADTEACHER_B"] },
   { key: "profile",      href: "profile",           icon: CircleUser,      roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
 

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
 import { utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
+import { dutyDowFor } from "@/lib/dutyRoster";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
@@ -85,6 +86,32 @@ export default async function TeacherMarkAttendancePage({
     ]);
     students = fetchedStudents;
     slot = fetchedSlot;
+
+    // Not my own slot? A finalized substitution plan may assign it to me for
+    // this date — as the substitute (COVER/SWAP) or, for study halls, as the
+    // day's on-duty deputy.
+    if (!slot) {
+      const dutyDow = dutyDowFor(attendanceDateObj);
+      const onDuty = dutyDow
+        ? await db.dutyRosterEntry.findFirst({
+            where: { dayOfWeek: dutyDow, staffProfileId: staff.id },
+            select: { id: true },
+          })
+        : null;
+      const assignment = await db.substitutionPlanEntry.findFirst({
+        where: {
+          plan: { date: attendanceDateObj, status: "FINAL" },
+          period,
+          groupId,
+          OR: [
+            { kind: { in: ["COVER", "SWAP"] }, substituteStaffId: staff.id },
+            ...(onDuty ? [{ kind: "STUDY_HALL" as const }] : []),
+          ],
+        },
+        include: { timetableSlot: { include: { course: true } } },
+      });
+      if (assignment?.timetableSlot) slot = assignment.timetableSlot;
+    }
 
     const studentIds = students.map((s) => s.id);
 
