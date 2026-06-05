@@ -46,7 +46,7 @@ function todayIso(): string {
 
 function fmtDate(iso: string): string {
   return new Date(iso + "T12:00:00").toLocaleDateString("el-GR", {
-    weekday: "short", day: "2-digit", month: "2-digit", year: "numeric",
+    weekday: "short", day: "2-digit", month: "2-digit", year: "2-digit",
   });
 }
 

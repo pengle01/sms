@@ -11,8 +11,8 @@ type Tab = {
   content: ReactNode;
 };
 
-export function ReferralTabs({ tabs }: { tabs: Tab[] }) {
-  const [active, setActive] = useState(tabs[0]?.key);
+export function ReferralTabs({ tabs, initialKey }: { tabs: Tab[]; initialKey?: string }) {
+  const [active, setActive] = useState(initialKey ?? tabs[0]?.key);
   const activeTab = tabs.find((t) => t.key === active) ?? tabs[0];
 
   return (

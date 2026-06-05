@@ -10,7 +10,7 @@ import {
   LayoutDashboard, ClipboardList, AlertTriangle, BookOpen,
   Calendar, CalendarRange, FileText, Bell, Users, Settings, Shield,
   Search, GraduationCap, Home, Backpack, Plus, BookMarked, ShieldAlert,
-  CircleUser, BellRing, LogOut, ArrowLeftRight,
+  CircleUser, BellRing, LogOut, ArrowLeftRight, BarChart3,
 } from "lucide-react";
 
 interface NavItem {
@@ -38,6 +38,7 @@ const NAV_ITEMS: NavItem[] = [
   // ── Office portal (/office) — student data & attendance ─────────────
   { key: "dashboard",    href: "dashboard",         icon: LayoutDashboard, roles: ["SCHOOL_ADMIN"] },
   { key: "attendance",   href: "attendance",        icon: ClipboardList,   roles: ["SCHOOL_ADMIN"] },
+  { key: "reports",      href: "attendance/reports", icon: BarChart3,      roles: ["SCHOOL_ADMIN"] },
   { key: "students",     href: "students",          icon: GraduationCap,   roles: ["SCHOOL_ADMIN"] },
   { key: "noticeboard",  href: "noticeboard",       icon: Bell,            roles: ["SCHOOL_ADMIN"] },
 

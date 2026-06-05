@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { localDateStr, utcMidnight, monthStart, monthEnd, normalizeIsoDate } from "@/lib/dates";
+import { describe, it, expect, afterEach } from "vitest";
+import { localDateStr, utcMidnight, monthStart, monthEnd, normalizeIsoDate, toAppTimeline, fromAppTimeline } from "@/lib/dates";
 
 describe("localDateStr", () => {
   it("formats a known date as YYYY-MM-DD", () => {
@@ -91,5 +91,33 @@ describe("normalizeIsoDate", () => {
     expect(normalizeIsoDate("not a date")).toBeNull();
     expect(normalizeIsoDate("2026-13-40")).toBeNull();
     expect(normalizeIsoDate("16-03-2026")).toBeNull();
+  });
+});
+
+describe("App timeline shift (NEXT_PUBLIC_TEST_DATE)", () => {
+  const ORIG = process.env.NEXT_PUBLIC_TEST_DATE;
+  afterEach(() => {
+    if (ORIG === undefined) delete process.env.NEXT_PUBLIC_TEST_DATE;
+    else process.env.NEXT_PUBLIC_TEST_DATE = ORIG;
+  });
+
+  it("is the identity without an override", () => {
+    delete process.env.NEXT_PUBLIC_TEST_DATE;
+    const d = new Date("2026-06-05T10:00:00Z");
+    expect(toAppTimeline(d).getTime()).toBe(d.getTime());
+    expect(fromAppTimeline(d).getTime()).toBe(d.getTime());
+  });
+
+  it("shifts a real timestamp onto the faked day", () => {
+    const realToday = new Date().toLocaleDateString("en-CA");
+    process.env.NEXT_PUBLIC_TEST_DATE = "2026-03-16";
+    const noon = new Date(realToday + "T12:00:00.000Z");
+    expect(toAppTimeline(noon).toISOString()).toBe("2026-03-16T12:00:00.000Z");
+  });
+
+  it("fromAppTimeline inverts toAppTimeline", () => {
+    process.env.NEXT_PUBLIC_TEST_DATE = "2026-03-16";
+    const d = new Date("2026-06-05T08:30:00Z");
+    expect(fromAppTimeline(toAppTimeline(d)).getTime()).toBe(d.getTime());
   });
 });

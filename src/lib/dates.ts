@@ -28,6 +28,28 @@ export function localDateStr(date: Date = getNow()): string {
   return date.toLocaleDateString("en-CA"); // "YYYY-MM-DD" in local timezone
 }
 
+// Shifts a REAL timestamp (createdAt etc.) into the app's faked timeline when
+// NEXT_PUBLIC_TEST_DATE is active, so "filed today" buckets under the faked
+// today during testing. Identity in production (no override → zero offset).
+export function toAppTimeline(date: Date): Date {
+  return new Date(date.getTime() + appTimelineOffsetMs());
+}
+
+/** Inverse of toAppTimeline — maps an app-timeline instant back to real time
+ *  (needed when querying real `createdAt` columns by app-timeline windows). */
+export function fromAppTimeline(date: Date): Date {
+  return new Date(date.getTime() - appTimelineOffsetMs());
+}
+
+function appTimelineOffsetMs(): number {
+  const override = normalizeIsoDate(process.env.NEXT_PUBLIC_TEST_DATE);
+  if (!override) return 0;
+  const realKey = new Date().toLocaleDateString("en-CA");
+  return (
+    new Date(override + "T00:00:00.000Z").getTime() - new Date(realKey + "T00:00:00.000Z").getTime()
+  );
+}
+
 // Returns UTC midnight for the given local date string ("YYYY-MM-DD" or a Date).
 export function utcMidnight(dateOrStr: Date | string = getNow()): Date {
   const str = typeof dateOrStr === "string" ? dateOrStr : localDateStr(dateOrStr);

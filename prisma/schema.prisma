@@ -178,6 +178,8 @@ model User {
   substitutionPlansFinalized    SubstitutionPlan[]          @relation("SubstitutionPlanFinalizer")
   notifications                 Notification[]
   sentNotifications             Notification[] @relation("SentNotifications")
+  attendanceExports             AttendanceExport[]
+  waivedAttendance              Attendance[] @relation("AttendanceWaiver")
   auditLogs            AuditLog[]
   chaperoneAssignments ActivityChaperone[]
   teacherClaim         TeacherClaim?
@@ -334,6 +336,7 @@ model Group {
   substitutionRequests    SubstitutionRequest[]   @relation("SubstitutionRequestGroup")
   substitutionPlanEntries SubstitutionPlanEntry[] @relation("SubstitutionEntryGroup")
   toiletBreaks            ToiletBreak[]
+  attendanceExports       AttendanceExport[]
 }
 
 // ─── Curriculum ───────────────────────────────────────────────────────────────
@@ -404,6 +407,12 @@ model Attendance {
   // Intercalary period attendance (when timetableSlotId is null)
   intercalaryGroupId String?
   intercalaryPeriod  Int?
+  // Soft-erased (διαγραφή απουσίας): stays on record but does not count
+  // towards any totals.
+  waived     Boolean   @default(false)
+  waivedAt   DateTime?
+  waivedById String?
+  waivedBy   User?     @relation("AttendanceWaiver", fields: [waivedById], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -778,6 +787,21 @@ model ReferralResolution {
   resolvedById String
   resolvedBy   User     @relation(fields: [resolvedById], references: [id])
   resolvedAt   DateTime @default(now())
+}
+
+// ─── Attendance export log — which day's report the office downloaded ────────
+
+model AttendanceExport {
+  id           String   @id @default(cuid())
+  date         DateTime @db.Date // the report day that was downloaded
+  groupId      String? // null = whole school
+  group        Group?   @relation(fields: [groupId], references: [id])
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  records      Int // how many rows the CSV contained
+  downloadedAt DateTime @default(now())
+
+  @@index([date])
 }
 
 // ─── Toilet breaks (έξοδοι τουαλέτας κατά τη διάρκεια μαθήματος) ─────────────

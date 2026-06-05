@@ -109,6 +109,7 @@ The portal prefix is determined by `getPortalForRole()` in `src/lib/rbac.ts`.
 ### Dates
 - Never use `new Date().setHours(0,0,0,0)` — it gives wrong midnight in UTC+3.
 - Always use `utcMidnight(date?)` from `src/lib/dates.ts` for date-only values.
+- **Display format is always DD/MM/YY** — use `fmtDisplayDate()` / `fmtDisplayDateTime()` from `src/lib/dates.ts`. When a hand-rolled `toLocaleDateString` is unavoidable (e.g. weekday labels), pass `year: "2-digit"`, never `"numeric"`. Exceptions: month-only headings ("Μάρτιος 2026") and the official A4 print documents (exit permit, substitution daily sheet, referral print), which keep DD/MM/YYYY to match the paper forms.
 
 ### Styling
 - Tailwind v4 — no `tailwind.config.js`, config is in CSS.
