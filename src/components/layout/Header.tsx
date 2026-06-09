@@ -20,9 +20,10 @@ interface HeaderProps {
   portal?: string;
   pendingClaimsCount?: number;
   crossPortal?: "admin" | "teacher";
+  ddkCoordinator?: boolean;
 }
 
-export function Header({ userName, userImage, locale, pageTitle, role, portal, pendingClaimsCount, crossPortal }: HeaderProps) {
+export function Header({ userName, userImage, locale, pageTitle, role, portal, pendingClaimsCount, crossPortal, ddkCoordinator }: HeaderProps) {
   const t = useTranslations("auth");
   const tRoles = useTranslations("roles");
   const router = useRouter();
@@ -156,6 +157,7 @@ export function Header({ userName, userImage, locale, pageTitle, role, portal, p
               onNavigate={() => setDrawerOpen(false)}
               pendingClaimsCount={pendingClaimsCount}
               crossPortal={crossPortal}
+              ddkCoordinator={ddkCoordinator}
             />
           </div>
         </>,

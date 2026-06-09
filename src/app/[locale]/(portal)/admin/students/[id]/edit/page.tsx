@@ -5,6 +5,12 @@ import { ChevronLeft } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { updateStudent } from "./actions";
 
+const PARENT_ROLES = [
+  { role: "FATHER", label: "Father" },
+  { role: "MOTHER", label: "Mother" },
+  { role: "GUARDIAN", label: "Guardian" },
+] as const;
+
 export default async function EditStudentPage({
   params,
 }: {
@@ -15,7 +21,13 @@ export default async function EditStudentPage({
   const [student, groups] = await Promise.all([
     db.studentProfile.findUnique({
       where: { id },
-      include: { user: true, group: true },
+      include: {
+        user: true,
+        group: true,
+        parents: {
+          include: { parentProfile: { include: { user: { select: { id: true, name: true, email: true } } } } },
+        },
+      },
     }),
     db.group.findMany({ orderBy: [{ grade: "asc" }, { name: "asc" }] }),
   ]);
@@ -25,9 +37,10 @@ export default async function EditStudentPage({
   const { user, group } = student;
   const action = updateStudent.bind(null, id, locale);
 
-  const dobValue = student.dateOfBirth
-    ? student.dateOfBirth.toISOString().slice(0, 10)
-    : "";
+  const dobValue = student.dateOfBirth ? student.dateOfBirth.toISOString().slice(0, 10) : "";
+
+  // Linked parents by role, for editing the imported parent/guardian fields.
+  const parentByRole = new Map(student.parents.map((p) => [p.parentProfile.role, p.parentProfile]));
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -53,15 +66,12 @@ export default async function EditStudentPage({
                 Identity
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="Registry No (Μητρώο) *" name="studentId" defaultValue={student.studentId} required mono />
                 <Field label="Full name *" name="name" defaultValue={user.name ?? ""} required />
                 <Field label="Email *" name="email" type="email" defaultValue={user.email} required />
                 <div>
                   <label className="block text-xs text-slate-500 mb-1.5">Gender</label>
-                  <select
-                    name="gender"
-                    defaultValue={student.gender ?? ""}
-                    className={selectCls}
-                  >
+                  <select name="gender" defaultValue={student.gender ?? ""} className={selectCls}>
                     <option value="">— not set —</option>
                     <option value="MALE">Male</option>
                     <option value="FEMALE">Female</option>
@@ -100,6 +110,39 @@ export default async function EditStudentPage({
                   </select>
                 </div>
               </div>
+            </section>
+
+            {/* Parents / Guardians (imported) */}
+            <section className="space-y-4">
+              <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide border-b border-slate-100 pb-2">
+                Parents / Guardians
+              </h3>
+              {student.parents.length === 0 ? (
+                <p className="text-sm text-slate-400">
+                  None linked. Add SMS recipients from the student page; parents come from the import.
+                </p>
+              ) : (
+                <div className="space-y-5">
+                  {PARENT_ROLES.map(({ role, label }) => {
+                    const p = parentByRole.get(role);
+                    if (!p) return null;
+                    return (
+                      <div key={role} className="space-y-3">
+                        <p className="text-xs font-semibold text-slate-500">{label}</p>
+                        <input type="hidden" name={`parent_${role}_id`} value={p.id} />
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <Field label="Name" name={`parent_${role}_name`} defaultValue={p.user?.name ?? ""} />
+                          <Field label="Phone" name={`parent_${role}_phone`} defaultValue={p.phone ?? ""} mono />
+                          <Field label="Email" name={`parent_${role}_email`} type="email" defaultValue={p.user?.email ?? ""} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <p className="text-xs text-slate-400">
+                    Changing a phone here also updates that contact in the student&apos;s SMS recipients.
+                  </p>
+                </div>
+              )}
             </section>
 
             {/* Actions */}

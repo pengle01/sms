@@ -20,7 +20,7 @@ export function SelectAllButton({ formId }: { formId: string }) {
       onClick={toggle}
       className="text-xs font-medium text-emerald-700 hover:text-emerald-900 hover:underline"
     >
-      {allSelected ? "Deselect all" : "Select all"}
+      {allSelected ? "Αποεπιλογή όλων" : "Επιλογή όλων"}
     </button>
   );
 }

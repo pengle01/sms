@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createActivity } from "../actions";
-import { localDateStr } from "@/lib/dates";
+import { weeklyOccurrences } from "@/lib/activities";
+import { localDateStr, normalizeIsoDate } from "@/lib/dates";
 import { getPeriodsPerDay, maxPeriodCount } from "@/lib/schoolConfig";
 import { utcMidnight } from "@/lib/dates";
 import { AlertTriangle } from "lucide-react";
@@ -24,6 +25,7 @@ export default async function NewActivityPage({
     startPeriod?: string;
     endPeriod?: string;
     location?: string;
+    repeatUntil?: string;
     grade?: string;
     groupId?: string;
   }>;
@@ -32,7 +34,7 @@ export default async function NewActivityPage({
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login`);
 
-  const { name, date, startPeriod, endPeriod, location, grade, groupId } =
+  const { name, date, startPeriod, endPeriod, location, repeatUntil, grade, groupId } =
     await searchParams;
 
   const todayStr = localDateStr();
@@ -40,6 +42,9 @@ export default async function NewActivityPage({
 
   // Details are "confirmed" once they've been saved to the URL via the GET form
   const detailsConfirmed = !!(name && date);
+
+  // Weekly repeat preview: how many activities will be created.
+  const occurrences = date ? weeklyOccurrences(date, normalizeIsoDate(repeatUntil)) : [];
 
   const allGroups = await db.group.findMany({
     where: { students: { some: {} } },
@@ -143,6 +148,7 @@ export default async function NewActivityPage({
     if (startPeriod) p.set("startPeriod", startPeriod);
     if (endPeriod) p.set("endPeriod", endPeriod);
     if (location) p.set("location", location);
+    if (repeatUntil) p.set("repeatUntil", repeatUntil);
     return p;
   }
 
@@ -171,33 +177,33 @@ export default async function NewActivityPage({
         >
           <ChevronLeft className="w-5 h-5" />
         </Link>
-        <h2 className="text-2xl font-bold text-slate-900">New Activity</h2>
+        <h2 className="text-2xl font-bold text-slate-900">Νέα Δραστηριότητα</h2>
       </div>
 
       {/* ── Step 1: Activity details (GET form) ───────────────────────── */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">
-            Step 1 — Activity Details
+            Βήμα 1 — Στοιχεία Δραστηριότητας
           </CardTitle>
         </CardHeader>
         <CardContent>
           <form method="GET" className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-slate-700">
-                Activity name
+                Όνομα δραστηριότητας
               </label>
               <input
                 name="name"
                 required
                 defaultValue={name}
-                placeholder="e.g. Drama Club Rehearsal"
+                placeholder="π.χ. Πρόβα Θεατρικού Ομίλου"
                 className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-700">Date</label>
+              <label className="text-sm font-medium text-slate-700">Ημερομηνία</label>
               <input
                 type="date"
                 name="date"
@@ -244,7 +250,7 @@ export default async function NewActivityPage({
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-slate-700">
-                  Start period
+                  Από περίοδο
                 </label>
                 <select
                   name="startPeriod"
@@ -253,14 +259,14 @@ export default async function NewActivityPage({
                 >
                   {periods.map((p) => (
                     <option key={p} value={p}>
-                      Period {p}
+                      Περίοδος {p}
                     </option>
                   ))}
                 </select>
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-slate-700">
-                  End period
+                  Έως περίοδο
                 </label>
                 <select
                   name="endPeriod"
@@ -269,7 +275,7 @@ export default async function NewActivityPage({
                 >
                   {periods.map((p) => (
                     <option key={p} value={p}>
-                      Period {p}
+                      Περίοδος {p}
                     </option>
                   ))}
                 </select>
@@ -278,22 +284,39 @@ export default async function NewActivityPage({
 
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-slate-700">
-                Location{" "}
-                <span className="text-slate-400 font-normal">(optional)</span>
+                Τοποθεσία{" "}
+                <span className="text-slate-400 font-normal">(προαιρετικά)</span>
               </label>
               <input
                 name="location"
                 defaultValue={location}
-                placeholder="e.g. Hall A, Gym, Off-site"
+                placeholder="π.χ. Αίθουσα Α, Γυμναστήριο, Εκτός σχολείου"
                 className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700">
+                Εβδομαδιαία επανάληψη έως{" "}
+                <span className="text-slate-400 font-normal">(προαιρετικά)</span>
+              </label>
+              <input
+                type="date"
+                name="repeatUntil"
+                defaultValue={repeatUntil ?? ""}
+                min={date ?? todayStr}
+                className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+              />
+              <p className="text-xs text-slate-400">
+                Δημιουργεί την ίδια δραστηριότητα κάθε εβδομάδα την ίδια ημέρα, μέχρι αυτή την ημερομηνία.
+              </p>
             </div>
 
             <button
               type="submit"
               className="h-9 px-5 rounded-lg bg-slate-700 text-white text-sm font-medium hover:bg-slate-800"
             >
-              Save Details →
+              Αποθήκευση Στοιχείων →
             </button>
           </form>
         </CardContent>
@@ -302,12 +325,12 @@ export default async function NewActivityPage({
       {/* ── Step 2: Select students ──────────────────────────────────── */}
       <Card className={!detailsConfirmed ? "opacity-50 pointer-events-none" : ""}>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Step 2 — Select Students</CardTitle>
+          <CardTitle className="text-base">Βήμα 2 — Επιλογή Μαθητών</CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
           {!detailsConfirmed && (
             <p className="text-sm text-slate-400">
-              Complete Step 1 first to enable student selection.
+              Ολοκληρώστε πρώτα το Βήμα 1 για να επιλέξετε μαθητές.
             </p>
           )}
 
@@ -316,7 +339,7 @@ export default async function NewActivityPage({
               {/* Year */}
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                  Year
+                  Τάξη
                 </p>
                 <div className="flex gap-2">
                   {[1, 2, 3].map((g) => (
@@ -330,7 +353,7 @@ export default async function NewActivityPage({
                           : "bg-white text-slate-600 border-slate-200 hover:border-emerald-400 hover:text-emerald-700"
                       )}
                     >
-                      Year {g}
+                      {g}η
                     </Link>
                   ))}
                 </div>
@@ -340,7 +363,7 @@ export default async function NewActivityPage({
               {gradeNum && (
                 <div className="space-y-2">
                   <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                    Homegroup
+                    Τμήμα
                   </p>
                   <div className="flex gap-2 flex-wrap">
                     {filteredGroups.map((g) => (
@@ -367,7 +390,7 @@ export default async function NewActivityPage({
                   <div className="flex items-center gap-2 px-4 py-3 border-b border-amber-200">
                     <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
                     <p className="text-sm font-semibold text-amber-800">
-                      Tests scheduled during these periods
+                      Διαγωνίσματα προγραμματισμένα σε αυτές τις περιόδους
                     </p>
                   </div>
                   <div className="divide-y divide-amber-100 px-4">
@@ -381,7 +404,7 @@ export default async function NewActivityPage({
                                 ? "bg-slate-800 text-white"
                                 : "bg-slate-100 text-slate-600"
                             }`}>
-                              {w.type === "BIG" ? "Big" : "Small"}
+                              {w.type === "BIG" ? "Μεγάλο" : "Μικρό"}
                             </span>
                           </p>
                           <p className="text-xs text-amber-600 mt-0.5">
@@ -390,13 +413,15 @@ export default async function NewActivityPage({
                           </p>
                         </div>
                         <span className="text-xs text-amber-700 bg-amber-100 rounded-full px-2 py-1 whitespace-nowrap">
-                          {w.affectedCount} student{w.affectedCount !== 1 ? "s" : ""} affected
+                          {w.affectedCount === 1
+                            ? "1 μαθητής επηρεάζεται"
+                            : `${w.affectedCount} μαθητές επηρεάζονται`}
                         </span>
                       </div>
                     ))}
                   </div>
                   <p className="px-4 py-2.5 text-xs text-amber-600 border-t border-amber-200">
-                    You can still create the activity — this is for your information only.
+                    Μπορείτε να δημιουργήσετε τη δραστηριότητα — αυτό είναι μόνο για ενημέρωσή σας.
                   </p>
                 </div>
               )}
@@ -406,7 +431,7 @@ export default async function NewActivityPage({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                      Students in{" "}
+                      Μαθητές —{" "}
                       {allGroups.find((g) => g.id === groupId)?.name}
                     </p>
                     {students.length > 0 && <SelectAllButton formId="create-activity-form" />}
@@ -414,7 +439,7 @@ export default async function NewActivityPage({
                   <div className="border border-slate-200 rounded-lg divide-y divide-slate-100 max-h-64 overflow-y-auto">
                     {students.length === 0 ? (
                       <p className="px-4 py-6 text-center text-sm text-slate-400">
-                        No students in this group
+                        Δεν υπάρχουν μαθητές σε αυτό το τμήμα
                       </p>
                     ) : (
                       students.map((s) => (
@@ -453,19 +478,26 @@ export default async function NewActivityPage({
           <input type="hidden" name="startPeriod" value={startPeriod ?? "1"} />
           <input type="hidden" name="endPeriod" value={endPeriod ?? "1"} />
           <input type="hidden" name="location" value={location ?? ""} />
+          <input type="hidden" name="repeatUntil" value={repeatUntil ?? ""} />
+
+          {occurrences.length > 1 && (
+            <p className="mb-3 text-sm text-emerald-700">
+              Θα δημιουργηθούν {occurrences.length} δραστηριότητες (εβδομαδιαία επανάληψη).
+            </p>
+          )}
 
           <div className="flex gap-3">
             <button
               type="submit"
               className="h-10 px-6 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700"
             >
-              Create Activity
+              {occurrences.length > 1 ? "Δημιουργία Δραστηριοτήτων" : "Δημιουργία Δραστηριότητας"}
             </button>
             <Link
               href={`/${locale}/teacher/activities`}
               className="h-10 px-4 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 inline-flex items-center"
             >
-              Cancel
+              Άκυρο
             </Link>
           </div>
         </form>

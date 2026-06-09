@@ -167,3 +167,33 @@ export async function setSubstitutionCoordinator(
   revalidateUsers();
   return { ok: true };
 }
+
+/** Toggle the "ΔΔΚ coordinator" designation. */
+export async function setDdkCoordinator(
+  targetUserId: string,
+  value: boolean
+): Promise<ActionResult> {
+  const auth = await getSuperAdminAuth();
+  if (!auth) return { ok: false, error: "Forbidden" };
+
+  const target = await db.user.findUnique({
+    where: { id: targetUserId },
+    select: { staffProfile: { select: { id: true } } },
+  });
+  if (!target?.staffProfile) return { ok: false, error: "No staff profile linked" };
+
+  await db.staffProfile.update({
+    where: { id: target.staffProfile.id },
+    data: { ddkCoordinator: value },
+  });
+  await writeAudit({
+    userId: auth.userId,
+    action: "staff.ddkCoordinator",
+    resource: "StaffProfile",
+    resourceId: target.staffProfile.id,
+    details: { value },
+    ...(await requestMeta()),
+  });
+  revalidateUsers();
+  return { ok: true };
+}

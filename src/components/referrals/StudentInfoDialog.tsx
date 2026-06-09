@@ -83,7 +83,14 @@ export function StudentInfoDialog({ studentId, excludeReferralId, studentName }:
                         {data.contacts.map((c) => (
                           <li key={c.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                             <div className="min-w-0">
-                              <p className="text-sm font-medium text-slate-800 truncate">{c.name}</p>
+                              <p className="text-sm font-medium text-slate-800 truncate flex items-center gap-1.5">
+                                {c.name}
+                                {c.isDefault && (
+                                  <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1 py-0.5">
+                                    SMS
+                                  </span>
+                                )}
+                              </p>
                               <p className="text-xs text-slate-400">{ROLE_LABEL[c.role] ?? c.role}</p>
                             </div>
                             <a

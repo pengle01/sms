@@ -184,6 +184,8 @@ model User {
   chaperoneAssignments ActivityChaperone[]
   teacherClaim         TeacherClaim?
   chaperoneRequests    ChaperoneRequest[]
+  startedConversations Conversation[] @relation("ConversationStarter")
+  authoredMessages     Message[]      @relation("MessageAuthor")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -203,6 +205,8 @@ model StaffProfile {
   specialEducation Boolean @default(false)
   // Designation: the teacher who runs the daily substitution plan (set by admin)
   substitutionCoordinator Boolean @default(false)
+  // Designation: the headteacher responsible for ΔΔΚ (set by admin)
+  ddkCoordinator Boolean @default(false)
   // Substitution quota: null = unlimited, 0 = never picked
   maxSubstitutions Int?
 
@@ -222,6 +226,8 @@ model StaffProfile {
   substitutionAbsences     SubstitutionPlanEntry[] @relation("SubstitutionAbsent")
   substitutionAssignments  SubstitutionPlanEntry[] @relation("SubstitutionSubstitute")
   toiletBreaks             ToiletBreak[]
+  ddkAwards                DdkAward[]              @relation("DdkAwarder")
+  conversations            Conversation[]
 }
 
 model StudentProfile {
@@ -252,6 +258,12 @@ model StudentProfile {
   chaperoneRequestStudents ChaperoneRequestStudent[]
   accessCode               StudentAccessCode?
   toiletBreaks             ToiletBreak[]
+  ddkAwards                DdkAward[]
+  conversations            Conversation[]
+  // Flagged when the import's default SMS number is missing or doesn't match a
+  // parent/guardian — the office should review the recipient.
+  smsFlagged               Boolean   @default(false)
+  smsFlagReason            String?
 }
 
 model ParentProfile {
@@ -300,6 +312,8 @@ model SmsContact {
   phone           String
   role            ParentRole
   active          Boolean        @default(true)
+  // The default recipient for this student (from the import's "τηλέφωνο SMS").
+  isDefault       Boolean        @default(false)
   parentProfileId String?
   parentProfile   ParentProfile? @relation(fields: [parentProfileId], references: [id], onDelete: SetNull)
 
@@ -538,6 +552,7 @@ model Activity {
 
   participants ActivityParticipant[]
   chaperones   ActivityChaperone[]
+  ddkAwards    DdkAward[]
 }
 
 model ActivityParticipant {
@@ -559,6 +574,28 @@ model ActivityChaperone {
 
   @@unique([activityId, userId])
   @@index([userId])
+}
+
+// ─── ΔΔΚ (Δημιουργικότητα – Δράση – Κοινωνική Προσφορά) ────────────────────────
+// Points a student earns for extracurricular contribution, per the Ministry's
+// evaluation guide. Usually created by converting a filed Activity; the points
+// reset each school year. Categories live in src/lib/ddk.ts (the printed guide).
+model DdkAward {
+  id           String         @id @default(cuid())
+  studentId    String
+  student      StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  categoryCode String         // catalog code, e.g. "A4a", "Z2f" (see src/lib/ddk.ts)
+  points       Int
+  note         String?        // optional detail (role, distinction level, …)
+  activityId   String?        // source activity when converted from one
+  activity     Activity?      @relation(fields: [activityId], references: [id], onDelete: SetNull)
+  awardedById  String
+  awardedBy    StaffProfile   @relation("DdkAwarder", fields: [awardedById], references: [id])
+  schoolYear   String         // "2025-2026" — points are tallied per school year
+  createdAt    DateTime       @default(now())
+
+  @@index([studentId, schoolYear])
+  @@index([activityId])
 }
 
 // ─── Claims & Requests ────────────────────────────────────────────────────────
@@ -843,6 +880,44 @@ model Notification {
   @@index([userId, read])
   @@index([userId, noticedAt])
   @@index([senderId])
+}
+
+// ─── Messaging (parents/students ↔ staff) ─────────────────────────────────────
+// Two-way threads started by a parent or student to one staff member, about a
+// specific student. Staff reply only. Homegroup staff/admin get an oversight view.
+model Conversation {
+  id        String         @id @default(cuid())
+  studentId String         // the student the thread concerns (for oversight scope)
+  student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  staffId   String         // the staff participant (recipient)
+  staff     StaffProfile   @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  starterId String         // the parent/student user who opened the thread
+  starter   User           @relation("ConversationStarter", fields: [starterId], references: [id], onDelete: Cascade)
+  subject   String?
+
+  staffReadAt  DateTime? // last time the staff participant read it
+  familyReadAt DateTime? // last time the starter (parent/student) read it
+
+  createdAt     DateTime @default(now())
+  lastMessageAt DateTime @default(now())
+
+  messages Message[]
+
+  @@index([staffId, lastMessageAt])
+  @@index([starterId, lastMessageAt])
+  @@index([studentId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  authorId       String
+  author         User         @relation("MessageAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  body           String       @db.Text
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
 }
 
 // ─── Noticeboard ──────────────────────────────────────────────────────────────

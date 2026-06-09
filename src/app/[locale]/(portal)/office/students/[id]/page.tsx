@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronLeft } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { AccessCodeCard } from "@/components/access/AccessCodeCard";
+import { SmsRecipientsCard } from "@/components/students/SmsRecipientsCard";
 
 export default async function OfficeStudentDetailPage({
   params,
@@ -15,7 +16,11 @@ export default async function OfficeStudentDetailPage({
 
   const student = await db.studentProfile.findUnique({
     where: { id },
-    include: { user: { select: { name: true } }, group: { select: { name: true } } },
+    include: {
+      user: { select: { name: true } },
+      group: { select: { name: true } },
+      smsContacts: { orderBy: [{ isDefault: "desc" }, { active: "desc" }, { role: "asc" }] },
+    },
   });
   if (!student) notFound();
 
@@ -41,6 +46,13 @@ export default async function OfficeStudentDetailPage({
       </div>
 
       <AccessCodeCard studentProfileId={id} />
+
+      <SmsRecipientsCard
+        studentId={id}
+        contacts={student.smsContacts}
+        flagged={student.smsFlagged}
+        flagReason={student.smsFlagReason}
+      />
     </div>
   );
 }

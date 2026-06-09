@@ -208,6 +208,23 @@ export default async function TeacherSchedulePage({
     }
   }
 
+  // My own lessons that a finalized plan covers/releases because I'm absent →
+  // key "date:period". These cells are dimmed (someone else handles them).
+  const absentOverrides = new Map<string, true>();
+  if (staff) {
+    const absentEntries = await db.substitutionPlanEntry.findMany({
+      where: {
+        plan: { status: "FINAL", date: { gte: utcMidnight(weekStartStr), lte: utcMidnight(weekEndStr) } },
+        absentStaffId: staff.id,
+      },
+      select: { period: true, plan: { select: { date: true } } },
+    });
+    for (const e of absentEntries) {
+      if (e.period == null) continue;
+      absentOverrides.set(`${e.plan.date.toISOString().slice(0, 10)}:${e.period}`, true);
+    }
+  }
+
   const weekLabel = `${fmtDisplayDate(weekStartStr + "T00:00:00.000Z")} – ${fmtDisplayDate(weekEndStr + "T00:00:00.000Z")}`;
 
   const prevWeekHref = `?week=${weekOffset - 1}`;
@@ -504,6 +521,23 @@ export default async function TeacherSchedulePage({
                             </p>
                           </div>
                         )}
+                      </td>
+                    );
+                  }
+
+                  // My own lesson, but I'm absent and it's covered/released today.
+                  const absentCovered = slot ? absentOverrides.has(`${dateStr}:${dbPeriod}`) : false;
+                  if (slot && absentCovered) {
+                    return (
+                      <td
+                        key={dow}
+                        className={`px-2 py-2 align-top ${isToday && isCurrentWeek ? "bg-emerald-50/30" : ""}`}
+                      >
+                        <div className="rounded-lg px-3 py-2.5 border border-slate-200 bg-slate-50 opacity-70">
+                          <p className="text-xs font-semibold leading-snug text-slate-400 line-through">{slot.course.name}</p>
+                          <p className="mt-0.5 text-xs text-slate-400">{slot.group.name}</p>
+                          <p className="mt-1 text-[11px] font-medium text-amber-600">{t("absentCovered")}</p>
+                        </div>
                       </td>
                     );
                   }

@@ -5,10 +5,12 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, CalendarRange, FlaskConical, User, Phone, FileWarning } from "lucide-react";
+import { ChevronLeft, CalendarRange, FlaskConical, User, Phone, FileWarning, Award } from "lucide-react";
 import { getNow, utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
-import { getPeriodsPerDay, periodsForDow, maxPeriodCount } from "@/lib/schoolConfig";
+import { getPeriodsPerDay, periodsForDow, maxPeriodCount, getSchoolYear } from "@/lib/schoolConfig";
+import { ddkTotal, ddkRating, schoolYearLabel, summarizeBySection, ddkCategoryLabel } from "@/lib/ddk";
+import { fullAttendanceAwardForStudent } from "@/server/ddk";
 import { actionLabel } from "@/lib/referralLabels";
 import { canViewAccessCode } from "@/lib/rbac";
 import { AccessCodeCard } from "@/components/access/AccessCodeCard";
@@ -155,6 +157,22 @@ export default async function StudentSchedulePage({
   }
 
   const canManageCode = canViewAccessCode(role, viewerStaff?.id, student.group);
+
+  // ΔΔΚ contribution points for the current school year.
+  const ddkRanges = await getSchoolYear();
+  const ddkSchoolYear = schoolYearLabel(ddkRanges.yearStart.getUTCFullYear());
+  const ddkStored = await db.ddkAward.findMany({
+    where: { studentId, schoolYear: ddkSchoolYear },
+    orderBy: { createdAt: "asc" },
+  });
+  // The Πλήρης Φοίτηση point is computed from absences, not stored.
+  const ddkAuto = await fullAttendanceAwardForStudent(studentId, ddkRanges);
+  const ddkItems = [
+    ...ddkStored.map((a) => ({ categoryCode: a.categoryCode, points: a.points, note: a.note })),
+    ...(ddkAuto ? [ddkAuto] : []),
+  ];
+  const ddkPoints = ddkTotal(ddkItems);
+  const ddkSections = summarizeBySection(ddkItems);
 
   const backUrl = from === "homegroup"
     ? `/${locale}/teacher/homegroup${groupId ? `?groupId=${groupId}` : ""}`
@@ -321,6 +339,48 @@ export default async function StudentSchedulePage({
             </Card>
           </div>
         </div>
+      )}
+
+      {/* ΔΔΚ — contribution points for the school year */}
+      {ddkItems.length > 0 && (
+        <Card className="border-amber-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2">
+                <Award className="w-4 h-4 text-amber-600" />
+                ΔΔΚ {ddkSchoolYear}
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="text-2xl font-bold text-amber-700 leading-none">{ddkPoints}</span>
+                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                  {ddkRating(ddkPoints)}
+                </Badge>
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {ddkSections.map((s) => (
+              <div key={s.section.key}>
+                <p className="text-xs font-semibold text-slate-500 mb-1">
+                  {s.section.label} · {s.points}
+                </p>
+                <ul className="space-y-1">
+                  {s.awards.map((a, i) => (
+                    <li key={i} className="flex items-center gap-2 text-sm">
+                      <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-amber-100 text-amber-700 text-xs font-bold flex-shrink-0">
+                        {a.points}
+                      </span>
+                      <span className="text-slate-700 truncate">
+                        {ddkCategoryLabel(a.categoryCode)}
+                        {a.note && <span className="text-slate-400"> · {a.note}</span>}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       )}
 
       {/* Today's activities */}

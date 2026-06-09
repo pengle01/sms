@@ -7,7 +7,7 @@ import { getNow, utcMidnight, fmtDisplayDate } from "@/lib/dates";
 import { getSpecialDayForDate } from "@/lib/calendar";
 import { getDayOverrides } from "@/server/substitutions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, ClipboardList, AlertCircle } from "lucide-react";
+import { CheckCircle2, ClipboardList, AlertCircle, CalendarRange } from "lucide-react";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
@@ -70,7 +70,7 @@ export default async function TeacherDashboardPage({
         .then((r) => r?.intercalaryMeetingPeriod ?? 8)
     : null;
 
-  const [allSlots, markedRaw, intercalaryMarkedRow, excursionMarkedRow] = await Promise.all([
+  const [allSlots, markedRaw, intercalaryMarkedRow, excursionMarkedRow, todayActivitiesRaw] = await Promise.all([
     staff
       ? db.timetableSlot.findMany({
           where: { staffId: staff.id },
@@ -97,6 +97,27 @@ export default async function TeacherDashboardPage({
           select: { id: true },
         })
       : Promise.resolve(null),
+    // Today's activities, with each participant's group memberships — so we can
+    // surface only the ones whose students this teacher actually teaches today.
+    staff && !isWeekend
+      ? db.activity.findMany({
+          where: { date: today },
+          include: {
+            participants: {
+              include: {
+                student: {
+                  include: {
+                    user: { select: { name: true } },
+                    group: { select: { id: true, name: true } },
+                    subjectGroups: { select: { groupId: true } },
+                  },
+                },
+              },
+            },
+          },
+          orderBy: { startPeriod: "asc" },
+        })
+      : Promise.resolve([]),
   ]);
 
   const todaySlots = allSlots.filter((s) => s.dayOfWeek === todayDow);
@@ -124,6 +145,25 @@ export default async function TeacherDashboardPage({
   const maxPeriod = Math.max(normalMax, isTodayIntercalary && todayMeetingPeriod !== null ? todayMeetingPeriod : 0);
 
   const slotByPeriod = Object.fromEntries(todaySlots.map((s) => [s.period, s]));
+
+  // Today's activities relevant to me: those with a participant I teach today
+  // (in any group I have a lesson with today). Each shows my affected students.
+  const teacherTodayGroupIds = new Set(todaySlots.map((s) => s.groupId));
+  const relevantActivities = todayActivitiesRaw
+    .map((a) => ({
+      id: a.id,
+      name: a.name,
+      startPeriod: a.startPeriod,
+      endPeriod: a.endPeriod,
+      location: a.location,
+      affected: a.participants.filter((p) => {
+        const ids = [p.student.groupId, ...p.student.subjectGroups.map((sg) => sg.groupId)].filter(
+          Boolean
+        ) as string[];
+        return ids.some((gid) => teacherTodayGroupIds.has(gid));
+      }),
+    }))
+    .filter((r) => r.affected.length > 0);
 
   const dateLabel = fmtDisplayDate(now);
 
@@ -329,6 +369,42 @@ export default async function TeacherDashboardPage({
                 })}
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Today's activities affecting my students */}
+      {relevantActivities.length > 0 && (
+        <Card className="border-emerald-200 bg-emerald-50/40">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2 text-emerald-800">
+              <CalendarRange className="w-4 h-4" />
+              {t("activitiesToday")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0 divide-y divide-emerald-100">
+            {relevantActivities.map((a) => (
+              <Link
+                key={a.id}
+                href={`/${locale}/teacher/activities/${a.id}`}
+                className="block px-5 py-3 hover:bg-emerald-50/60 transition-colors"
+              >
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-medium text-slate-900">{a.name}</span>
+                  <span className="text-xs text-slate-500">
+                    {a.startPeriod === a.endPeriod
+                      ? `Περίοδος ${a.startPeriod}`
+                      : `Περίοδοι ${a.startPeriod}–${a.endPeriod}`}
+                  </span>
+                  {a.location && <span className="text-xs text-slate-400">· {a.location}</span>}
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  {a.affected
+                    .map((p) => `${p.student.user?.name}${p.student.group ? ` (${p.student.group.name})` : ""}`)
+                    .join(", ")}
+                </p>
+              </Link>
+            ))}
           </CardContent>
         </Card>
       )}

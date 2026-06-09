@@ -11,13 +11,15 @@ interface SidebarProps {
   pendingClaimsCount?: number;
   /** Other portal this user may switch to (e.g. teacher with extra admin role). */
   crossPortal?: "admin" | "teacher";
+  /** Shows the ΔΔΚ desk nav item (coordinator designation). */
+  ddkCoordinator?: boolean;
 }
 
 // Desktop-only persistent sidebar
-export function Sidebar({ role, locale, portal, userName, pendingClaimsCount, crossPortal }: SidebarProps) {
+export function Sidebar({ role, locale, portal, userName, pendingClaimsCount, crossPortal, ddkCoordinator }: SidebarProps) {
   return (
     <aside className="hidden print:!hidden lg:flex flex-col w-64 min-h-screen flex-shrink-0">
-      <SidebarContent role={role} locale={locale} portal={portal} userName={userName} pendingClaimsCount={pendingClaimsCount} crossPortal={crossPortal} />
+      <SidebarContent role={role} locale={locale} portal={portal} userName={userName} pendingClaimsCount={pendingClaimsCount} crossPortal={crossPortal} ddkCoordinator={ddkCoordinator} />
     </aside>
   );
 }

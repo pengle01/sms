@@ -4,6 +4,7 @@ import { getSuperAdminAuth } from "@/server/authz";
 import { db } from "@/server/db";
 import * as XLSX from "xlsx";
 import { Gender, ParentRole, Role } from "@/generated/prisma/enums";
+import { normalizePhone, evaluateDefaultSms, SMS_FLAG_REASON_EL } from "@/lib/smsContacts";
 
 export interface ImportResult {
   success: boolean;
@@ -12,6 +13,8 @@ export interface ImportResult {
   groupsCreated: number;
   parentsCreated: number;
   smsContactsCreated: number;
+  flaggedStudents: number;
+  flagged: { studentId: string; name: string; reason: string }[];
   skipped: number;
   errors: string[];
 }
@@ -73,12 +76,12 @@ function parseDob(val: unknown): Date | undefined {
 export async function importStudents(_prev: ImportResult | null, formData: FormData): Promise<ImportResult> {
   const auth = await getSuperAdminAuth();
   if (!auth) {
-    return { success: false, studentsCreated: 0, studentsUpdated: 0, groupsCreated: 0, parentsCreated: 0, smsContactsCreated: 0, skipped: 0, errors: ["Unauthorized"] };
+    return { success: false, studentsCreated: 0, studentsUpdated: 0, groupsCreated: 0, parentsCreated: 0, smsContactsCreated: 0, flaggedStudents: 0, flagged: [], skipped: 0, errors: ["Unauthorized"] };
   }
 
   const file = formData.get("file") as File | null;
   if (!file || file.size === 0) {
-    return { success: false, studentsCreated: 0, studentsUpdated: 0, groupsCreated: 0, parentsCreated: 0, smsContactsCreated: 0, skipped: 0, errors: ["No file provided"] };
+    return { success: false, studentsCreated: 0, studentsUpdated: 0, groupsCreated: 0, parentsCreated: 0, smsContactsCreated: 0, flaggedStudents: 0, flagged: [], skipped: 0, errors: ["No file provided"] };
   }
 
   const buffer = await file.arrayBuffer();
@@ -91,6 +94,8 @@ export async function importStudents(_prev: ImportResult | null, formData: FormD
   let groupsCreated = 0;
   let parentsCreated = 0;
   let smsContactsCreated = 0;
+  let flaggedStudents = 0;
+  const flaggedList: { studentId: string; name: string; reason: string }[] = [];
   let skipped = 0;
   const errors: string[] = [];
 
@@ -277,7 +282,7 @@ export async function importStudents(_prev: ImportResult | null, formData: FormD
         );
       }
 
-      // Extra dedicated SMS number
+      // Dedicated SMS number from the file = the default recipient.
       const smsPhone = str(row, COLS.smsPhone);
       if (smsPhone && !usedPhones.has(smsPhone)) {
         usedPhones.add(smsPhone);
@@ -289,10 +294,53 @@ export async function importStudents(_prev: ImportResult | null, formData: FormD
           smsContactsCreated++;
         }
       }
+
+      // Decide the default recipient and flag the student when the file's SMS
+      // number is empty or matches no parent/guardian.
+      const guardianPhone = guardianName ? str(row, COLS.homePhone) : "";
+      const { flagged, reason } = evaluateDefaultSms(smsPhone, [
+        str(row, COLS.fatherPhone),
+        str(row, COLS.motherPhone),
+        guardianPhone,
+      ]);
+
+      const normTarget = normalizePhone(smsPhone);
+      const contacts = await db.smsContact.findMany({
+        where: { studentId: studentId2 },
+        select: { id: true, phone: true },
+      });
+      const match = normTarget ? contacts.find((c) => normalizePhone(c.phone) === normTarget) : undefined;
+
+      if (match) {
+        // Only the default recipient is active (receives) by default; the other
+        // parents start inactive — the office activates a second for "both".
+        for (const c of contacts) {
+          await db.smsContact.update({
+            where: { id: c.id },
+            data: { isDefault: c.id === match.id, active: c.id === match.id },
+          });
+        }
+      } else {
+        // No usable default (flagged) → keep everyone active so SMS still go out.
+        await db.smsContact.updateMany({
+          where: { studentId: studentId2 },
+          data: { isDefault: false, active: true },
+        });
+      }
+
+      const reasonText = flagged && reason ? SMS_FLAG_REASON_EL[reason] : null;
+      await db.studentProfile.update({
+        where: { id: studentId2 },
+        data: { smsFlagged: flagged, smsFlagReason: reasonText },
+      });
+      if (flagged) {
+        flaggedStudents++;
+        flaggedList.push({ studentId: registryId, name: fullName, reason: reasonText ?? "" });
+      }
     } catch (err) {
       errors.push(`${rowLabel}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
-  return { success: true, studentsCreated, studentsUpdated, groupsCreated, parentsCreated, smsContactsCreated, skipped, errors };
+  return { success: true, studentsCreated, studentsUpdated, groupsCreated, parentsCreated, smsContactsCreated, flaggedStudents, flagged: flaggedList, skipped, errors };
 }

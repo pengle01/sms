@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShieldCheck, AlertTriangle, Users, CalendarX2 } from "lucide-react";
+import { ShieldCheck, AlertTriangle, Users, CalendarX2, MessageSquare } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { getPeriodsPerDay } from "@/lib/schoolConfig";
 import { periodLabel } from "@/lib/periods";
@@ -23,7 +23,7 @@ export default async function ChecksPage({
 
   const t = await getTranslations("checks");
 
-  const [students, slots, groups, periodsPerDay] = await Promise.all([
+  const [students, slots, groups, periodsPerDay, smsFlagged] = await Promise.all([
     db.studentProfile.findMany({
       where: { user: { isActive: true } },
       select: {
@@ -48,6 +48,17 @@ export default async function ChecksPage({
       orderBy: [{ grade: "asc" }, { name: "asc" }],
     }),
     getPeriodsPerDay(),
+    // Students whose default SMS number is missing or unmatched (from import).
+    db.studentProfile.findMany({
+      where: { smsFlagged: true, user: { isActive: true } },
+      select: {
+        id: true,
+        smsFlagReason: true,
+        user: { select: { name: true } },
+        group: { select: { name: true } },
+      },
+      orderBy: { user: { name: "asc" } },
+    }),
   ]);
 
   const report = computeIntegrityReport({
@@ -88,7 +99,7 @@ export default async function ChecksPage({
         <p className="text-slate-500 text-sm mt-1">{t("subtitle")}</p>
       </div>
 
-      {report.totalIssues === 0 ? (
+      {report.totalIssues === 0 && smsFlagged.length === 0 ? (
         <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-emerald-800">
           <ShieldCheck className="w-6 h-6 shrink-0" />
           <p className="font-medium">{t("noIssues")}</p>
@@ -96,8 +107,41 @@ export default async function ChecksPage({
       ) : (
         <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-amber-800">
           <AlertTriangle className="w-6 h-6 shrink-0" />
-          <p className="font-medium">{t("issueCount", { count: report.totalIssues })}</p>
+          <p className="font-medium">{t("issueCount", { count: report.totalIssues + smsFlagged.length })}</p>
         </div>
+      )}
+
+      {/* SMS recipients to review (default number missing / unmatched) */}
+      {smsFlagged.length > 0 && (
+        <Card>
+          <CardHeader className="pb-1">
+            <CardTitle className="text-base flex items-center gap-2">
+              <MessageSquare className="w-4 h-4" />
+              {t("smsFlagged")} ({smsFlagged.length})
+            </CardTitle>
+            <p className="text-xs text-slate-400 mt-1">{t("smsFlaggedHint")}</p>
+          </CardHeader>
+          <CardContent className="p-0">
+            <table className="w-full text-sm">
+              <tbody className="divide-y divide-slate-50">
+                {smsFlagged.map((s) => (
+                  <tr key={s.id} className="hover:bg-slate-50/60">
+                    <td className="px-5 py-3">
+                      <Link
+                        href={`/${locale}/admin/students/${s.id}`}
+                        className="font-semibold text-slate-800 hover:text-emerald-700"
+                      >
+                        {s.user?.name ?? "—"}
+                      </Link>
+                      {s.group && <span className="ml-2 text-xs text-slate-400">{s.group.name}</span>}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-amber-700">{s.smsFlagReason}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
       )}
 
       {/* Redundant memberships — students enrolled in their own homegroup */}

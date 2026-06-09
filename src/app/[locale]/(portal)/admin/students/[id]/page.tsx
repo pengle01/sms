@@ -5,10 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChevronLeft, Pencil, User, Phone, Mail, Calendar, MapPin,
-  CreditCard, Globe, Users, MessageSquare, BookOpen, Clock, Layers,
+  CreditCard, Globe, Users, BookOpen, Clock, Layers,
   CalendarDays, AlertTriangle,
 } from "lucide-react";
 import { fmtDisplayDate } from "@/lib/dates";
+import { SmsRecipientsCard } from "@/components/students/SmsRecipientsCard";
 import { pickQueryString } from "@/lib/listFilters";
 import { AccessCodeCard } from "@/components/access/AccessCodeCard";
 import { getPeriodsPerDay } from "@/lib/schoolConfig";
@@ -52,7 +53,7 @@ export default async function StudentDetailPage({
         },
       },
       smsContacts: {
-        orderBy: [{ active: "desc" }, { role: "asc" }],
+        orderBy: [{ isDefault: "desc" }, { active: "desc" }, { role: "asc" }],
       },
       grades: {
         include: { course: true },
@@ -412,34 +413,13 @@ export default async function StudentDetailPage({
             </CardContent>
           </Card>
 
-          {/* SMS contacts */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-slate-400" />
-                SMS contacts
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {smsContacts.length === 0 ? (
-                <p className="text-sm text-slate-400">None on record</p>
-              ) : (
-                smsContacts.map((c) => (
-                  <div key={c.id} className="flex items-center justify-between gap-2 text-sm">
-                    <div className="min-w-0">
-                      <p className={`font-medium truncate ${c.active ? "text-slate-900" : "text-slate-400 line-through"}`}>
-                        {c.name}
-                      </p>
-                      <p className="text-slate-500 text-xs font-mono">{c.phone}</p>
-                    </div>
-                    <Badge variant="outline" className="text-xs capitalize shrink-0">
-                      {c.role.toLowerCase()}
-                    </Badge>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
+          {/* SMS recipients */}
+          <SmsRecipientsCard
+            studentId={student.id}
+            contacts={smsContacts}
+            flagged={student.smsFlagged}
+            flagReason={student.smsFlagReason}
+          />
 
           {/* Quick info */}
           <Card>

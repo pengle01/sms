@@ -188,6 +188,7 @@ export default async function UserDetailPage({
         hasStaffProfile={!!sp}
         specialEducation={sp?.specialEducation ?? false}
         substitutionCoordinator={sp?.substitutionCoordinator ?? false}
+        ddkCoordinator={sp?.ddkCoordinator ?? false}
       />
 
       {!sp && (

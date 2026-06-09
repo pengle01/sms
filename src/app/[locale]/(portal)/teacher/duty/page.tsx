@@ -155,10 +155,11 @@ export default async function TeacherDutyPage({
                 user: { select: { name: true } },
                 group: { select: { name: true } },
                 // The deputy phones the parents before issuing — show who to call.
+                // Show every recipient so the deputy can reach any parent; the
+                // default is preselected.
                 smsContacts: {
-                  where: { active: true },
-                  select: { id: true, name: true, phone: true, role: true },
-                  orderBy: { name: "asc" },
+                  select: { id: true, name: true, phone: true, role: true, isDefault: true },
+                  orderBy: [{ isDefault: "desc" }, { name: "asc" }],
                 },
               },
             })
@@ -325,6 +326,7 @@ export default async function TeacherDutyPage({
                                   name="smsContactId"
                                   value={c.id}
                                   required
+                                  defaultChecked={c.isDefault}
                                   className="accent-yellow-500"
                                 />
                                 <span className="min-w-0">

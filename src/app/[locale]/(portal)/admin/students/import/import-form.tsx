@@ -60,6 +60,7 @@ export function ImportForm() {
                   <Stat label="Groups created"   value={result.groupsCreated} />
                   <Stat label="Parents created"  value={result.parentsCreated} />
                   <Stat label="SMS contacts"     value={result.smsContactsCreated} />
+                  <Stat label="Flagged (SMS)"    value={result.flaggedStudents} />
                   <Stat label="Rows skipped"     value={result.skipped} />
                 </dl>
               </>
@@ -78,6 +79,29 @@ export function ImportForm() {
                 <ul className="text-xs text-red-700 space-y-1 max-h-48 overflow-y-auto font-mono bg-red-50 rounded-lg p-3">
                   {result.errors.map((e, i) => <li key={i}>{e}</li>)}
                 </ul>
+              </div>
+            )}
+
+            {/* SMS recipients to fix — flagged during import */}
+            {result.flagged.length > 0 && (
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">
+                  {result.flagged.length} student{result.flagged.length > 1 ? "s" : ""} to review (SMS)
+                </p>
+                <ul className="text-xs space-y-1 max-h-56 overflow-y-auto bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  {result.flagged.map((f, i) => (
+                    <li key={i} className="flex items-start justify-between gap-3">
+                      <span className="text-slate-700">
+                        <span className="font-mono text-slate-500">{f.studentId}</span> {f.name}
+                      </span>
+                      <span className="text-amber-700 text-right shrink-0">{f.reason}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs text-slate-400">
+                  Fix these from the student page (set a default SMS recipient or add a number). They&apos;re also
+                  listed under Admin → Checks.
+                </p>
               </div>
             )}
           </CardContent>

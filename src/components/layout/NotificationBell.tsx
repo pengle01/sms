@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, CheckCheck, FileWarning, CheckCircle2, LockOpen } from "lucide-react";
+import { Bell, CheckCheck, FileWarning, CheckCircle2, LockOpen, MessageSquare } from "lucide-react";
 import { trpc } from "@/trpc/client";
 import { cn } from "@/lib/utils";
 
@@ -59,6 +59,7 @@ export function NotificationBell({ locale }: { locale: string }) {
     if (type === "REFERRAL_CREATED") return <FileWarning className="w-4 h-4 text-amber-500 flex-shrink-0" />;
     if (type === "REFERRAL_RESOLVED") return <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />;
     if (type.startsWith("RESOLUTION_UNLOCK")) return <LockOpen className="w-4 h-4 text-amber-500 flex-shrink-0" />;
+    if (type === "MESSAGE") return <MessageSquare className="w-4 h-4 text-emerald-500 flex-shrink-0" />;
     return <Bell className="w-4 h-4 text-slate-400 flex-shrink-0" />;
   };
 

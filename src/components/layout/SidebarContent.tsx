@@ -10,8 +10,9 @@ import {
   LayoutDashboard, ClipboardList, AlertTriangle, BookOpen,
   Calendar, CalendarRange, FileText, Bell, Users, Settings, Shield,
   Search, GraduationCap, Home, Backpack, Plus, BookMarked, ShieldAlert,
-  CircleUser, BellRing, LogOut, ArrowLeftRight, BarChart3,
+  CircleUser, BellRing, LogOut, ArrowLeftRight, BarChart3, Award, MessageSquare,
 } from "lucide-react";
+import { MessagesNavBadge } from "./MessagesNavBadge";
 
 interface NavItem {
   key: string;
@@ -30,6 +31,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "grades",       href: "grades",              icon: BookOpen,        roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","TEACHER"] },
   { key: "tests",        href: "tests",               icon: FileText,        roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","TEACHER"] },
   { key: "noticeboard",  href: "noticeboard",       icon: Bell,            roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
+  { key: "messages",     href: "messages",          icon: MessageSquare,   roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "activities",   href: "activities",        icon: CalendarRange,   roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "substitutions", href: "substitutions",    icon: ArrowLeftRight,  roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "duty",         href: "duty",              icon: BellRing,        roles: ["HEADTEACHER_A","HEADTEACHER_B"] },
@@ -62,10 +64,12 @@ const NAV_ITEMS: NavItem[] = [
   { key: "myAttendance", href: "attendance",        icon: ClipboardList,   roles: ["STUDENT"] },
   { key: "myGrades",     href: "grades",            icon: BookOpen,        roles: ["STUDENT"] },
   { key: "myTests",      href: "tests",             icon: FileText,        roles: ["STUDENT"] },
+  { key: "messages",     href: "messages",          icon: MessageSquare,   roles: ["STUDENT"] },
   { key: "noticeboard",  href: "noticeboard",       icon: Bell,            roles: ["STUDENT"] },
 
   // ── Parent portal ────────────────────────────────────────────────────
   { key: "children",     href: "children",          icon: GraduationCap,   roles: ["PARENT"] },
+  { key: "messages",     href: "messages",          icon: MessageSquare,   roles: ["PARENT"] },
   { key: "noticeboard",  href: "noticeboard",       icon: Bell,            roles: ["PARENT"] },
 
   // ── Chaperone portal ─────────────────────────────────────────────────
@@ -82,15 +86,25 @@ interface SidebarContentProps {
   pendingClaimsCount?: number;
   /** Other portal this user may switch to (e.g. teacher with extra admin role). */
   crossPortal?: "admin" | "teacher";
+  /** Shows the ΔΔΚ desk nav item (coordinator designation, not a role). */
+  ddkCoordinator?: boolean;
 }
 
-export function SidebarContent({ role, locale, portal, userName, onNavigate, pendingClaimsCount, crossPortal }: SidebarContentProps) {
+const DDK_NAV_ITEM: NavItem = { key: "ddk", href: "ddk", icon: Award, roles: [] };
+
+export function SidebarContent({ role, locale, portal, userName, onNavigate, pendingClaimsCount, crossPortal, ddkCoordinator }: SidebarContentProps) {
   const t = useTranslations("nav");
   const tCommon = useTranslations("common");
   const tRoles = useTranslations("roles");
   const schoolName = useSchoolName();
   const pathname = usePathname();
   const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(role));
+  // The ΔΔΚ desk is gated by a designation, not a role — inject it for the
+  // coordinator in the educator portal (placed right after Activities).
+  if (ddkCoordinator && portal === "teacher") {
+    const at = visibleItems.findIndex((i) => i.key === "activities");
+    visibleItems.splice(at >= 0 ? at + 1 : visibleItems.length, 0, DDK_NAV_ITEM);
+  }
 
   return (
     <div className="flex flex-col h-full bg-emerald-950">
@@ -124,6 +138,7 @@ export function SidebarContent({ role, locale, portal, userName, onNavigate, pen
             >
               <Icon className="w-4 h-4 flex-shrink-0" />
               <span className="flex-1">{t(item.key as Parameters<typeof t>[0])}</span>
+              {item.key === "messages" && <MessagesNavBadge />}
               {item.key === "claims" && pendingClaimsCount != null && pendingClaimsCount > 0 && (
                 <span className="ml-auto text-xs font-semibold bg-amber-400 text-amber-900 rounded-full px-1.5 py-0.5 min-w-[1.25rem] text-center">
                   {pendingClaimsCount}

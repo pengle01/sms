@@ -14,6 +14,7 @@ export async function updateStudent(id: string, locale: string, formData: FormDa
     throw new Error("Unauthorized");
   }
 
+  const registryId    = (formData.get("studentId") as string).trim();
   const name          = (formData.get("name") as string).trim();
   const email         = (formData.get("email") as string).trim().toLowerCase();
   const groupId       = (formData.get("groupId") as string) || null;
@@ -27,9 +28,17 @@ export async function updateStudent(id: string, locale: string, formData: FormDa
 
   const dateOfBirth = dobRaw ? new Date(dobRaw) : null;
 
+  // Registry number is the unique import key — guard against collisions.
+  const current = await db.studentProfile.findUnique({ where: { id }, select: { studentId: true } });
+  if (registryId && current && registryId !== current.studentId) {
+    const taken = await db.studentProfile.findUnique({ where: { studentId: registryId }, select: { id: true } });
+    if (taken) throw new Error("Registry number already in use by another student.");
+  }
+
   await db.studentProfile.update({
     where: { id },
     data: {
+      ...(registryId ? { studentId: registryId } : {}),
       gender:         (gender === "MALE" || gender === "FEMALE") ? (gender as Gender) : null,
       dateOfBirth:    dateOfBirth ?? null,
       placeOfBirth:   placeOfBirth,
@@ -47,13 +56,48 @@ export async function updateStudent(id: string, locale: string, formData: FormDa
     },
   });
 
+  // Parents / guardians (imported). Update each linked profile that was edited.
+  for (const role of ["FATHER", "MOTHER", "GUARDIAN"]) {
+    const pid = (formData.get(`parent_${role}_id`) as string) || "";
+    if (!pid) continue;
+    const pName  = ((formData.get(`parent_${role}_name`)  as string) ?? "").trim();
+    const pPhone = ((formData.get(`parent_${role}_phone`) as string) ?? "").trim();
+    const pEmail = ((formData.get(`parent_${role}_email`) as string) ?? "").trim().toLowerCase();
+
+    const parent = await db.parentProfile.findUnique({ where: { id: pid }, select: { userId: true } });
+    if (!parent) continue;
+
+    // Email change: never collide with another user's email.
+    let emailUpdate: { email: string } | undefined;
+    if (pEmail) {
+      const other = await db.user.findUnique({ where: { email: pEmail }, select: { id: true } });
+      if (other && other.id !== parent.userId) {
+        throw new Error(`Email ${pEmail} is already in use by another account.`);
+      }
+      emailUpdate = { email: pEmail };
+    }
+
+    await db.parentProfile.update({
+      where: { id: pid },
+      data: {
+        phone: pPhone || null,
+        user: { update: { ...(pName ? { name: pName } : {}), ...(emailUpdate ?? {}) } },
+      },
+    });
+
+    // Keep the student's SMS recipients in sync with the parent's phone.
+    if (pPhone) {
+      await db.smsContact.updateMany({ where: { studentId: id, parentProfileId: pid }, data: { phone: pPhone } });
+    }
+  }
+
   const meta = await requestMeta();
   await writeAudit({
     userId: auth.userId,
     action: "student.update",
     resource: "StudentProfile",
     resourceId: id,
-    details: { fields: ["name", "email", "group", "gender", "dob", "idCard", "passport", "isActive"] },
+    details: { fields: ["registryId", "name", "email", "group", "gender", "dob", "idCard", "passport", "isActive", "parents"] },
     ...meta,
   });
 

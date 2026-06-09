@@ -15,8 +15,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ShieldCheck, ShieldOff, HeartHandshake, ArrowLeftRight, Loader2 } from "lucide-react";
-import { grantSuperAdmin, revokeSuperAdmin, setSpecialEducation, setSubstitutionCoordinator } from "./actions";
+import { ShieldCheck, ShieldOff, HeartHandshake, ArrowLeftRight, Award, Loader2 } from "lucide-react";
+import { grantSuperAdmin, revokeSuperAdmin, setSpecialEducation, setSubstitutionCoordinator, setDdkCoordinator } from "./actions";
 
 interface Props {
   userId: string;
@@ -33,6 +33,7 @@ interface Props {
   hasStaffProfile: boolean;
   specialEducation: boolean;
   substitutionCoordinator: boolean;
+  ddkCoordinator: boolean;
 }
 
 export function RolesCard({
@@ -45,6 +46,7 @@ export function RolesCard({
   hasStaffProfile,
   specialEducation,
   substitutionCoordinator,
+  ddkCoordinator,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -196,6 +198,29 @@ export function RolesCard({
     </button>
   );
 
+  // ── ΔΔΚ coordinator designation ───────────────────────────────────────────
+  const ddkControl = !hasStaffProfile ? (
+    <span className="text-xs text-slate-400">No staff profile</span>
+  ) : (
+    <button
+      disabled={pending}
+      onClick={() =>
+        run(
+          () => setDdkCoordinator(userId, !ddkCoordinator),
+          ddkCoordinator ? "Designation removed" : "Designation set"
+        )
+      }
+      className={
+        ddkCoordinator
+          ? "inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-amber-500 text-white text-xs font-medium hover:bg-amber-600 disabled:opacity-50"
+          : "inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-slate-200 text-slate-600 text-xs font-medium hover:bg-slate-50 disabled:opacity-50"
+      }
+    >
+      <Award className="w-3.5 h-3.5" />
+      {ddkCoordinator ? "ΔΔΚ ✓" : "Set as ΔΔΚ coordinator"}
+    </button>
+  );
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -215,6 +240,11 @@ export function RolesCard({
           "Substitution coordinator (Αναπληρώσεις)",
           coordinatorControl,
           "Runs the daily substitution plan: generates, reviews and finalizes it."
+        )}
+        {row(
+          "ΔΔΚ coordinator (Δημιουργικότητα-Δράση-Κοινωνική Προσφορά)",
+          ddkControl,
+          "Reviews students' ΔΔΚ points and prints the year-end reports."
         )}
       </CardContent>
     </Card>

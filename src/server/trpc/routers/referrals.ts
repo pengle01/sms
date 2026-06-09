@@ -552,7 +552,10 @@ export const referralsRouter = createTRPCRouter({
       const results: { studentName: string; phone: string; success: boolean; error?: string }[] = [];
 
       for (const rs of referral.students) {
-        const contacts = rs.student.smsContacts;
+        // SMS goes to the student's ACTIVE recipients. The import activates only
+        // the default, so this is "the default" by default; the office can
+        // activate a second parent for "both".
+        const contacts = rs.student.smsContacts; // already filtered to active
         for (const contact of contacts) {
           const result = await sendSms(contact.phone, input.message);
           // Log the SMS
@@ -618,8 +621,8 @@ export const referralsRouter = createTRPCRouter({
           group: { select: { name: true } },
           smsContacts: {
             where: { active: true },
-            select: { id: true, name: true, phone: true, role: true },
-            orderBy: { name: "asc" },
+            select: { id: true, name: true, phone: true, role: true, isDefault: true },
+            orderBy: [{ isDefault: "desc" }, { name: "asc" }],
           },
           referralStudents: {
             where: input.excludeReferralId
