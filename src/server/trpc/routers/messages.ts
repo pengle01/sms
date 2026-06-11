@@ -54,17 +54,15 @@ async function reachableStaffList(db: Db, studentId: string) {
     .sort((a, b) => a.name.localeCompare(b.name, "el"));
 }
 
-// The student profiles a family user (parent or student) represents.
+// The student profiles a family user represents. Only PARENTS may start/hold
+// threads with staff — students cannot message teachers (resolved 2026-06-11),
+// so a student user resolves to no students even though they have a profile.
 async function familyStudentIds(db: Db, userId: string): Promise<string[]> {
-  const [asStudent, asParent] = await Promise.all([
-    db.studentProfile.findUnique({ where: { userId }, select: { id: true } }),
-    db.parentProfile.findUnique({
-      where: { userId },
-      select: { children: { select: { studentProfileId: true } } },
-    }),
-  ]);
+  const asParent = await db.parentProfile.findUnique({
+    where: { userId },
+    select: { children: { select: { studentProfileId: true } } },
+  });
   const ids = new Set<string>();
-  if (asStudent) ids.add(asStudent.id);
   for (const c of asParent?.children ?? []) ids.add(c.studentProfileId);
   return [...ids];
 }
@@ -95,21 +93,6 @@ async function notifyNewMessage(
   } catch (e) {
     console.error("[messages] notification failed", e);
   }
-}
-
-// Groups this staff member oversees (homeroom teacher / headteacher / counselor).
-async function overseenStudentIds(db: Db, staffId: string): Promise<string[]> {
-  const groups = await db.group.findMany({
-    where: {
-      OR: [
-        { homeroomTeacherId: staffId },
-        { homeroomHeadteacherId: staffId },
-        { counselorId: staffId },
-      ],
-    },
-    select: { students: { select: { id: true } } },
-  });
-  return groups.flatMap((g) => g.students.map((s) => s.id));
 }
 
 // ── Router ────────────────────────────────────────────────────────────────────
@@ -290,7 +273,7 @@ export const messagesRouter = createTRPCRouter({
     ).length;
   }),
 
-  // One thread's messages. Participants (and oversight) may read; opening marks
+  // One thread's messages. Only the two participants may read; opening marks
   // it read for the participant viewing.
   thread: protectedProcedure
     .input(z.object({ conversationId: z.string() }))
@@ -301,7 +284,6 @@ export const messagesRouter = createTRPCRouter({
         select: {
           id: true,
           subject: true,
-          studentId: true,
           starterId: true,
           starter: { select: { name: true } },
           student: { select: { user: { select: { name: true } } } },
@@ -316,22 +298,12 @@ export const messagesRouter = createTRPCRouter({
 
       const isStarter = conv.starterId === userId;
       const isStaffParticipant = conv.staff.userId === userId;
-      const staffId = await myStaffId(ctx.db, userId);
-      const isSuperAdmin = ctx.effectiveRoles.includes("SUPER_ADMIN");
-      const overseen = staffId ? await overseenStudentIds(ctx.db, staffId) : [];
-      const isOversight = isSuperAdmin || overseen.includes(conv.studentId);
+      if (!isStarter && !isStaffParticipant) throw new TRPCError({ code: "FORBIDDEN" });
 
-      if (!isStarter && !isStaffParticipant && !isOversight) {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-
-      // Mark read for the participant who is viewing (oversight doesn't count).
-      if (isStarter || isStaffParticipant) {
-        await ctx.db.conversation.update({
-          where: { id: conv.id },
-          data: isStaffParticipant ? { staffReadAt: new Date() } : { familyReadAt: new Date() },
-        });
-      }
+      await ctx.db.conversation.update({
+        where: { id: conv.id },
+        data: isStaffParticipant ? { staffReadAt: new Date() } : { familyReadAt: new Date() },
+      });
 
       return {
         id: conv.id,
@@ -339,8 +311,7 @@ export const messagesRouter = createTRPCRouter({
         student: conv.student.user?.name ?? "—",
         staffName: staffDisplayName(conv.staff),
         starterName: conv.starter.name ?? "—",
-        canReply: isStarter || isStaffParticipant,
-        viewerIsOversight: !isStarter && !isStaffParticipant && isOversight,
+        canReply: true,
         messages: conv.messages.map((m) => ({
           id: m.id,
           body: m.body,
@@ -350,43 +321,4 @@ export const messagesRouter = createTRPCRouter({
         })),
       };
     }),
-
-  // Oversight inbox: threads concerning students this staff member's homegroup
-  // covers (or all, for a super admin) — read-only safeguarding view.
-  oversight: protectedProcedure.query(async ({ ctx }) => {
-    const userId = ctx.session.user.id;
-    const staffId = await myStaffId(ctx.db, userId);
-    const isSuperAdmin = ctx.effectiveRoles.includes("SUPER_ADMIN");
-    if (!staffId && !isSuperAdmin) return [];
-
-    const overseen = staffId ? await overseenStudentIds(ctx.db, staffId) : [];
-    const where = isSuperAdmin
-      ? {}
-      : { studentId: { in: overseen }, ...(staffId ? { NOT: { staffId } } : {}) };
-    if (!isSuperAdmin && overseen.length === 0) return [];
-
-    const convs = await ctx.db.conversation.findMany({
-      where,
-      orderBy: { lastMessageAt: "desc" },
-      take: 100,
-      select: {
-        id: true,
-        subject: true,
-        lastMessageAt: true,
-        starter: { select: { name: true } },
-        student: { select: { user: { select: { name: true } } } },
-        staff: { select: { scheduleName: true, user: { select: { name: true } } } },
-        messages: { orderBy: { createdAt: "desc" }, take: 1, select: { body: true } },
-      },
-    });
-    return convs.map((c) => ({
-      id: c.id,
-      subject: c.subject,
-      lastMessageAt: c.lastMessageAt,
-      preview: c.messages[0]?.body ?? "",
-      student: c.student.user?.name ?? "—",
-      family: c.starter.name ?? "—",
-      staff: staffDisplayName(c.staff),
-    }));
-  }),
 });

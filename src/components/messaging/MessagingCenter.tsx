@@ -5,26 +5,21 @@ import { trpc } from "@/trpc/client";
 import { useTranslations } from "next-intl";
 import { fmtDisplayDateTime } from "@/lib/dates";
 import { cn } from "@/lib/utils";
-import { MessageSquare, Plus, Send, ChevronLeft, Eye, Loader2 } from "lucide-react";
+import { MessageSquare, Plus, Send, ChevronLeft, Loader2 } from "lucide-react";
 
 // Parent/student ↔ staff messaging. mode "family" lets the user start threads;
-// mode "staff" is reply-only with an extra read-only oversight tab.
+// mode "staff" is reply-only.
 export function MessagingCenter({ mode }: { mode: "family" | "staff" }) {
   const t = useTranslations("messages");
   const utils = trpc.useUtils();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
-  const [tab, setTab] = useState<"inbox" | "oversight">("inbox");
   const [replyText, setReplyText] = useState("");
 
   const list = trpc.messages.list.useQuery(undefined, {
     refetchInterval: 20000,
     refetchOnWindowFocus: true,
-  });
-  const oversight = trpc.messages.oversight.useQuery(undefined, {
-    enabled: mode === "staff",
-    refetchInterval: 30000,
   });
   const recipients = trpc.messages.recipients.useQuery(undefined, {
     enabled: mode === "family",
@@ -92,59 +87,13 @@ export function MessagingCenter({ mode }: { mode: "family" | "staff" }) {
             showRightPane && "hidden md:flex"
           )}
         >
-          {mode === "staff" && (
-            <div className="flex border-b border-slate-100 text-sm">
-              {(["inbox", "oversight"] as const).map((k) => (
-                <button
-                  key={k}
-                  onClick={() => setTab(k)}
-                  className={cn(
-                    "flex-1 py-2.5 font-medium transition-colors",
-                    tab === k ? "text-emerald-700 border-b-2 border-emerald-600" : "text-slate-500 hover:text-slate-700"
-                  )}
-                >
-                  {t(k)}
-                </button>
-              ))}
-            </div>
-          )}
-
           <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
-            {tab === "inbox" ? (
-              list.isLoading ? (
-                <Loading />
-              ) : (list.data ?? []).length === 0 ? (
-                <Empty label={t("empty")} />
-              ) : (
-                list.data!.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => openThread(c.id)}
-                    className={cn(
-                      "w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors",
-                      selectedId === c.id && "bg-emerald-50/50"
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      {c.unread && <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />}
-                      <span className={cn("text-sm truncate", c.unread ? "font-semibold text-slate-900" : "text-slate-700")}>
-                        {c.counterpart}
-                      </span>
-                      <span className="ml-auto text-[11px] text-slate-400 flex-shrink-0">
-                        {fmtDisplayDateTime(c.lastMessageAt)}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-400 mt-0.5">{t("about", { name: c.student })}</p>
-                    <p className="text-xs text-slate-500 truncate mt-0.5">{c.preview}</p>
-                  </button>
-                ))
-              )
-            ) : oversight.isLoading ? (
+            {list.isLoading ? (
               <Loading />
-            ) : (oversight.data ?? []).length === 0 ? (
+            ) : (list.data ?? []).length === 0 ? (
               <Empty label={t("empty")} />
             ) : (
-              oversight.data!.map((c) => (
+              list.data!.map((c) => (
                 <button
                   key={c.id}
                   onClick={() => openThread(c.id)}
@@ -154,9 +103,9 @@ export function MessagingCenter({ mode }: { mode: "family" | "staff" }) {
                   )}
                 >
                   <div className="flex items-center gap-2">
-                    <Eye className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                    <span className="text-sm text-slate-700 truncate">
-                      {c.family} → {c.staff}
+                    {c.unread && <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />}
+                    <span className={cn("text-sm truncate", c.unread ? "font-semibold text-slate-900" : "text-slate-700")}>
+                      {c.counterpart}
                     </span>
                     <span className="ml-auto text-[11px] text-slate-400 flex-shrink-0">
                       {fmtDisplayDateTime(c.lastMessageAt)}
@@ -205,11 +154,6 @@ export function MessagingCenter({ mode }: { mode: "family" | "staff" }) {
                     {thread.data.starterName} ↔ {thread.data.staffName}
                   </p>
                 </div>
-                {thread.data.viewerIsOversight && (
-                  <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 flex-shrink-0">
-                    <Eye className="w-3 h-3" /> {t("oversightNote")}
-                  </span>
-                )}
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -231,33 +175,29 @@ export function MessagingCenter({ mode }: { mode: "family" | "staff" }) {
                 ))}
               </div>
 
-              {thread.data.canReply ? (
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (replyText.trim()) reply.mutate({ conversationId: selectedId, body: replyText.trim() });
-                  }}
-                  className="flex items-end gap-2 p-3 border-t border-slate-100"
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (replyText.trim()) reply.mutate({ conversationId: selectedId, body: replyText.trim() });
+                }}
+                className="flex items-end gap-2 p-3 border-t border-slate-100"
+              >
+                <textarea
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  rows={2}
+                  placeholder={t("replyPlaceholder")}
+                  className="flex-1 resize-none px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                <button
+                  type="submit"
+                  disabled={reply.isPending || !replyText.trim()}
+                  className="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
                 >
-                  <textarea
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    rows={2}
-                    placeholder={t("replyPlaceholder")}
-                    className="flex-1 resize-none px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                  <button
-                    type="submit"
-                    disabled={reply.isPending || !replyText.trim()}
-                    className="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
-                  >
-                    {reply.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                    {t("send")}
-                  </button>
-                </form>
-              ) : (
-                <p className="p-3 border-t border-slate-100 text-xs text-slate-400 text-center">{t("oversightNote")}</p>
-              )}
+                  {reply.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  {t("send")}
+                </button>
+              </form>
             </>
           )}
         </div>

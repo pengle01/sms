@@ -39,8 +39,6 @@ export default async function ActivityDetailPage({
 }) {
   const { locale, id } = await params;
   const { edit, ddk, grade, groupId } = await searchParams;
-  const editing = edit === "1"; // editing the activity (fields / participants)
-  const ddkEditing = ddk === "1"; // editing ΔΔΚ awards (removal)
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login`);
 
@@ -62,6 +60,15 @@ export default async function ActivityDetailPage({
   });
 
   if (!activity) notFound();
+
+  // Only the activity's creator may edit it or convert it to ΔΔΚ.
+  const viewer = await db.staffProfile.findUnique({
+    where: { userId: session.user.id },
+    select: { id: true },
+  });
+  const isOwner = !!viewer && viewer.id === activity.filerId;
+  const editing = isOwner && edit === "1"; // editing the activity (fields / participants)
+  const ddkEditing = isOwner && ddk === "1"; // editing ΔΔΚ awards (removal)
 
   const dateLabel = fmtDisplayDate(activity.date);
   const dateInput = activity.date.toISOString().slice(0, 10);
@@ -121,23 +128,24 @@ export default async function ActivityDetailPage({
           </p>
           <p className="text-slate-400 text-xs mt-0.5">Διοργάνωση από {staffDisplayName(activity.filer)}</p>
         </div>
-        {editing ? (
-          <Link
-            href={buildHref({ edit: null, grade: null, groupId: null })}
-            className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 flex-shrink-0"
-          >
-            <Check className="w-4 h-4" />
-            Τέλος
-          </Link>
-        ) : (
-          <Link
-            href={buildHref({ edit: "1" })}
-            className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 flex-shrink-0"
-          >
-            <Pencil className="w-4 h-4" />
-            Επεξεργασία δραστηριότητας
-          </Link>
-        )}
+        {isOwner &&
+          (editing ? (
+            <Link
+              href={buildHref({ edit: null, grade: null, groupId: null })}
+              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 flex-shrink-0"
+            >
+              <Check className="w-4 h-4" />
+              Τέλος
+            </Link>
+          ) : (
+            <Link
+              href={buildHref({ edit: "1" })}
+              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 flex-shrink-0"
+            >
+              <Pencil className="w-4 h-4" />
+              Επεξεργασία δραστηριότητας
+            </Link>
+          ))}
       </div>
 
       {/* Edit details (edit mode only) */}
@@ -413,7 +421,8 @@ export default async function ActivityDetailPage({
         </Card>
       )}
 
-      {/* ΔΔΚ — convert participation into contribution points */}
+      {/* ΔΔΚ — only the activity's creator files/sees it */}
+      {isOwner && (
       <Card className="border-amber-200">
         <CardHeader className="pb-3 flex flex-row items-center justify-between gap-2">
           <CardTitle className="text-base flex items-center gap-2">
@@ -488,6 +497,7 @@ export default async function ActivityDetailPage({
           )}
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }

@@ -21,6 +21,18 @@ async function requireStaff() {
   return staff;
 }
 
+// Only the staff member who created an activity may edit it, change its
+// participants, repeat/delete it, or convert it to ΔΔΚ.
+async function requireActivityOwner(activityId: string) {
+  const staff = await requireStaff();
+  const activity = await db.activity.findUnique({
+    where: { id: activityId },
+    select: { id: true, filerId: true },
+  });
+  if (!activity || activity.filerId !== staff.id) redirect("/");
+  return staff;
+}
+
 export async function createActivity(formData: FormData) {
   const staff = await requireStaff();
   const locale = formData.get("locale") as string;
@@ -58,7 +70,6 @@ export async function createActivity(formData: FormData) {
 
 // Edit an activity's core details (name, date, periods, location).
 export async function updateActivity(formData: FormData) {
-  await requireStaff();
   const locale = formData.get("locale") as string;
   const activityId = formData.get("activityId") as string;
   const name = (formData.get("name") as string).trim();
@@ -67,6 +78,7 @@ export async function updateActivity(formData: FormData) {
   const endPeriod = parseInt(formData.get("endPeriod") as string);
   const location = ((formData.get("location") as string) ?? "").trim() || null;
   if (!activityId || !name || !dateStr || isNaN(startPeriod) || isNaN(endPeriod)) return;
+  await requireActivityOwner(activityId);
 
   await db.activity.update({
     where: { id: activityId },
@@ -85,11 +97,11 @@ export async function updateActivity(formData: FormData) {
 // Turn an existing activity into a weekly series: create same-weekday copies
 // (same details + participants) after its date, up to `repeatUntil`.
 export async function repeatActivity(formData: FormData) {
-  await requireStaff();
   const locale = formData.get("locale") as string;
   const activityId = formData.get("activityId") as string;
   const repeatUntil = normalizeIsoDate(formData.get("repeatUntil") as string);
   if (!activityId || !repeatUntil) return;
+  await requireActivityOwner(activityId);
 
   const activity = await db.activity.findUnique({
     where: { id: activityId },
@@ -127,10 +139,10 @@ export async function repeatActivity(formData: FormData) {
 // Delete an activity and everything tied to it (participants + ΔΔΚ awards;
 // chaperone links cascade in the schema).
 export async function deleteActivity(formData: FormData) {
-  await requireStaff();
   const locale = formData.get("locale") as string;
   const activityId = formData.get("activityId") as string;
   if (!activityId) return;
+  await requireActivityOwner(activityId);
 
   await db.$transaction([
     db.ddkAward.deleteMany({ where: { activityId } }),
@@ -142,10 +154,10 @@ export async function deleteActivity(formData: FormData) {
 }
 
 export async function addParticipants(formData: FormData) {
-  await requireStaff();
   const activityId = formData.get("activityId") as string;
   const studentIds = formData.getAll("studentId") as string[];
   if (!activityId || studentIds.length === 0) return;
+  await requireActivityOwner(activityId);
 
   await db.activityParticipant.createMany({
     data: studentIds.map((studentId) => ({ activityId, studentId })),
@@ -156,10 +168,10 @@ export async function addParticipants(formData: FormData) {
 }
 
 export async function removeParticipant(formData: FormData) {
-  await requireStaff();
   const activityId = formData.get("activityId") as string;
   const studentId = formData.get("studentId") as string;
   if (!activityId || !studentId) return;
+  await requireActivityOwner(activityId);
 
   await db.activityParticipant.deleteMany({
     where: { activityId, studentId },
@@ -174,7 +186,6 @@ export async function removeParticipant(formData: FormData) {
 // is chosen for the batch; points default to the guide's value but can be
 // overridden per student (e.g. theatre roles), so points come in as points_<id>.
 export async function convertActivityToDdk(formData: FormData) {
-  const staff = await requireStaff();
   const activityId = formData.get("activityId") as string;
   const categoryCode = formData.get("categoryCode") as string;
   const note = ((formData.get("note") as string) ?? "").trim() || null;
@@ -183,6 +194,8 @@ export async function convertActivityToDdk(formData: FormData) {
   const category = findDdkCategory(categoryCode);
   // No hand-awarding of auto-only categories (e.g. Πλήρης Φοίτηση).
   if (!activityId || !category || category.autoOnly || studentIds.length === 0) return;
+  // Only the activity's creator may convert it to ΔΔΚ.
+  const staff = await requireActivityOwner(activityId);
 
   // Only award to genuine participants of this activity.
   const participants = await db.activityParticipant.findMany({
@@ -221,8 +234,14 @@ export async function removeDdkAward(formData: FormData) {
   const staff = await requireStaff();
   const id = formData.get("awardId") as string;
   if (!id) return;
-  const award = await db.ddkAward.findUnique({ where: { id }, select: { id: true } });
+  const award = await db.ddkAward.findUnique({
+    where: { id },
+    select: { id: true, awardedById: true, activity: { select: { filerId: true } } },
+  });
   if (!award) return;
+  // Only the activity's creator (= the awarder) may remove the award.
+  const owns = award.activity ? award.activity.filerId === staff.id : award.awardedById === staff.id;
+  if (!owns) redirect("/");
   await db.ddkAward.delete({ where: { id } });
   await writeAudit({
     userId: staff.userId ?? "",

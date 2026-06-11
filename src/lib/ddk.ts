@@ -128,6 +128,45 @@ export function ddkCategoryLabel(code: string): string {
   return CATALOG_BY_CODE.get(code)?.label ?? code;
 }
 
+// Uppercase section headings matching the official printed documents.
+export const DDK_SECTION_HEADING: Record<string, string> = {
+  A: "Α. ΓΕΝΙΚΕΣ ΔΡΑΣΤΗΡΙΟΤΗΤΕΣ ΤΟΥ ΣΧΟΛΕΙΟΥ",
+  B: "Β. ΠΡΟΓΡΑΜΜΑΤΑ ΕΥΡΩΠΑΪΚΑ / ΠΕΡΙΒΑΛΛΟΝΤΙΚΑ / ΑΛΛΑ",
+  C: "Γ. ΣΧΟΛΙΚΕΣ ΕΚΔΗΛΩΣΕΙΣ",
+  D: "Δ. ΔΙΑΓΩΝΙΣΜΟΙ ΕΓΚΕΚΡΙΜΕΝΟΙ ΑΠΟ ΤΟ ΥΠΠ",
+  E: "Ε. ΣΥΝΕΔΡΙΑ / ΗΜΕΡΙΔΕΣ",
+  Z: "Ζ. ΑΘΛΗΤΙΚΕΣ ΔΡΑΣΤΗΡΙΟΤΗΤΕΣ",
+  H: "Η. ΕΘΕΛΟΝΤΙΣΜΟΣ / ΠΡΟΣΦΟΡΑ ΥΠΗΡΕΣΙΩΝ",
+  T: "Θ. ΠΛΗΡΗΣ ΦΟΙΤΗΣΗ",
+};
+
+export interface DdkCategoryParts {
+  sectionKey: string;
+  sectionHeading: string;
+  itemNo: number; // numbered item within the section (from the code, e.g. A4a → 4)
+  itemLabel: string; // the item title (e.g. "Θέατρο")
+  sub: string | null; // the subcategory (e.g. "Πρωταγωνιστικός ρόλος"), if any
+}
+
+// The category labels are stored "Item — Subcategory" (or just "Item"); the item
+// number lives in the code (e.g. "A4a" → 4). Split them for the report hierarchy.
+export function ddkCategoryParts(code: string): DdkCategoryParts {
+  const cat = CATALOG_BY_CODE.get(code);
+  const sectionKey = cat?.section ?? code.charAt(0);
+  const label = cat?.label ?? code;
+  const dash = label.indexOf(" — ");
+  const itemLabel = dash === -1 ? label : label.slice(0, dash);
+  const sub = dash === -1 ? null : label.slice(dash + 3);
+  const m = code.match(/^[A-Z](\d+)/);
+  return {
+    sectionKey,
+    sectionHeading: DDK_SECTION_HEADING[sectionKey] ?? sectionKey,
+    itemNo: m ? parseInt(m[1]!) : 0,
+    itemLabel,
+    sub,
+  };
+}
+
 /** The default points the form pre-fills for a category. */
 export function defaultPoints(spec: DdkPointSpec): number {
   return spec.kind === "range" ? spec.min : spec.value;

@@ -5,7 +5,8 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, CalendarRange, FlaskConical, User, Phone, FileWarning, Award } from "lucide-react";
+import { ChevronLeft, CalendarRange, FlaskConical, User, Phone, FileWarning, Award, DoorOpen, CalendarX, ListFilter } from "lucide-react";
+import { breakMinutes } from "@/lib/toilet";
 import { getNow, utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { getPeriodsPerDay, periodsForDow, maxPeriodCount, getSchoolYear } from "@/lib/schoolConfig";
@@ -20,6 +21,11 @@ const DOW_LABELS = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const DOW_SHORT  = ["", "Mon", "Tue", "Wed", "Thu", "Fri"];
 
 const GENDER_LABEL: Record<string, string> = { MALE: "Άρρεν", FEMALE: "Θήλυ" };
+const ABSENCE_BADGE: Record<string, { label: string; cls: string }> = {
+  ABSENT: { label: "Απουσία", cls: "text-red-700 bg-red-50 border-red-200" },
+  LATE: { label: "Καθυστέρηση", cls: "text-amber-700 bg-amber-50 border-amber-200" },
+  EXCUSED: { label: "Δικαιολογημένη", cls: "text-slate-600 bg-slate-100 border-slate-200" },
+};
 const CONTACT_ROLE_LABEL: Record<string, string> = {
   FATHER: "Πατέρας",
   MOTHER: "Μητέρα",
@@ -106,7 +112,7 @@ export default async function StudentSchedulePage({
           take: 20,
         })
       : Promise.resolve([]),
-    db.staffProfile.findUnique({ where: { userId: session.user.id }, select: { id: true } }),
+    db.staffProfile.findUnique({ where: { userId: session.user.id }, select: { id: true, ddkCoordinator: true } }),
   ]);
 
   // Full dossier (personal info + contacts + referrals) is shown only to the
@@ -119,12 +125,16 @@ export default async function StudentSchedulePage({
       (student.group?.homeroomTeacherId === viewerStaff.id ||
         student.group?.homeroomHeadteacherId === viewerStaff.id));
 
-  const [contacts, referralRecords] = canViewFull
+  // School-year boundary, reused for absences below and the ΔΔΚ card later.
+  const yearRanges = await getSchoolYear();
+
+  const [contacts, referralRecords, toiletBreaks, absenceRecords] = canViewFull
     ? await Promise.all([
+        // ALL phone numbers (active and inactive) — inactive ones are badged.
         db.smsContact.findMany({
-          where: { studentId, active: true },
-          select: { id: true, name: true, phone: true, role: true },
-          orderBy: { name: "asc" },
+          where: { studentId },
+          select: { id: true, name: true, phone: true, role: true, active: true, isDefault: true },
+          orderBy: [{ isDefault: "desc" }, { name: "asc" }],
         }),
         db.referralStudent.findMany({
           where: { studentId, referral: { isDraft: false } },
@@ -134,8 +144,40 @@ export default async function StudentSchedulePage({
           },
           orderBy: { referral: { date: "desc" } },
         }),
+        db.toiletBreak.findMany({
+          where: { studentId },
+          select: {
+            id: true,
+            date: true,
+            period: true,
+            leftAt: true,
+            returnedAt: true,
+            staff: { select: { scheduleName: true } },
+          },
+          orderBy: { leftAt: "desc" },
+          take: 50,
+        }),
+        db.attendance.findMany({
+          where: {
+            studentId,
+            waived: false,
+            status: { in: ["ABSENT", "LATE", "EXCUSED"] },
+            date: { gte: yearRanges.yearStart },
+          },
+          select: {
+            id: true,
+            date: true,
+            status: true,
+            isAutoAbsent: true,
+            exitPermitId: true,
+            intercalaryPeriod: true,
+            timetableSlot: { select: { period: true, course: { select: { nameEl: true, name: true } } } },
+          },
+          orderBy: [{ date: "desc" }],
+          take: 200,
+        }),
       ])
-    : [[], []];
+    : [[], [], [], []];
 
   type SlotEntry = (typeof allSlots)[0] & { isSubjectGroup?: boolean };
   const grid: Record<number, Record<number, SlotEntry>> = {};
@@ -157,9 +199,12 @@ export default async function StudentSchedulePage({
   }
 
   const canManageCode = canViewAccessCode(role, viewerStaff?.id, student.group);
+  // ΔΔΚ is shown only to those who need it: the student's homegroup staff /
+  // management / counselor (canViewFull) and the ΔΔΚ coordinator.
+  const canViewDdk = canViewFull || !!viewerStaff?.ddkCoordinator;
 
   // ΔΔΚ contribution points for the current school year.
-  const ddkRanges = await getSchoolYear();
+  const ddkRanges = yearRanges;
   const ddkSchoolYear = schoolYearLabel(ddkRanges.yearStart.getUTCFullYear());
   const ddkStored = await db.ddkAward.findMany({
     where: { studentId, schoolYear: ddkSchoolYear },
@@ -227,6 +272,15 @@ export default async function StudentSchedulePage({
             Week
           </Link>
         </div>
+        {canViewFull && (
+          <Link
+            href={`/${locale}/teacher/students/${studentId}/records`}
+            className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 flex-shrink-0"
+          >
+            <ListFilter className="w-4 h-4" />
+            Όλα τα δεδομένα
+          </Link>
+        )}
       </div>
 
       {canManageCode && <AccessCodeCard studentProfileId={studentId} />}
@@ -252,8 +306,13 @@ export default async function StudentSchedulePage({
                 />
                 <Field label="Τόπος Γέννησης" value={student.placeOfBirth} />
                 <Field label="Υπηκοότητα" value={student.nationality} />
-                <Field label="Αρ. Ταυτότητας" value={student.idCardNumber} />
-                <Field label="Αρ. Διαβατηρίου" value={student.passportNumber} />
+                {/* Identity documents (ταυτότητα/διαβατήριο/ARC) — super admin only. */}
+                {role === "SUPER_ADMIN" && (
+                  <>
+                    <Field label="Αρ. Ταυτότητας" value={student.idCardNumber} />
+                    <Field label="Αρ. Διαβατηρίου" value={student.passportNumber} />
+                  </>
+                )}
               </dl>
             </CardContent>
           </Card>
@@ -277,7 +336,12 @@ export default async function StudentSchedulePage({
                         className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
                       >
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-slate-800 truncate">{c.name}</p>
+                          <p className="text-sm font-medium text-slate-800 truncate flex items-center gap-1.5">
+                            {c.name}
+                            {c.active && (
+                              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1 py-px rounded">Προτιμώμενο</span>
+                            )}
+                          </p>
                           <p className="text-xs text-slate-400">{CONTACT_ROLE_LABEL[c.role] ?? c.role}</p>
                         </div>
                         <a
@@ -338,11 +402,105 @@ export default async function StudentSchedulePage({
               </CardContent>
             </Card>
           </div>
+
+          {/* Absences + toilet breaks */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* Absences for the school year */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <CalendarX className="w-4 h-4" /> Απουσίες ({absenceRecords.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {absenceRecords.length === 0 ? (
+                  <p className="text-sm text-slate-400">Καμία απουσία.</p>
+                ) : (
+                  <ul className="space-y-1.5 max-h-80 overflow-y-auto">
+                    {absenceRecords.map((a) => {
+                      const badge = ABSENCE_BADGE[a.status] ?? ABSENCE_BADGE.ABSENT!;
+                      const period = a.timetableSlot?.period ?? a.intercalaryPeriod;
+                      const course = a.timetableSlot
+                        ? a.timetableSlot.course.nameEl || a.timetableSlot.course.name
+                        : null;
+                      return (
+                        <li
+                          key={a.id}
+                          className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 px-3 py-1.5"
+                        >
+                          <div className="min-w-0 text-sm">
+                            <span className="font-medium text-slate-700">{fmtDisplayDate(a.date)}</span>
+                            {period != null && <span className="text-slate-400"> · Π{period}</span>}
+                            {course && <span className="text-slate-500"> · {course}</span>}
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            {a.exitPermitId && (
+                              <span className="text-[10px] font-semibold text-yellow-700 bg-yellow-50 border border-yellow-200 px-1 py-px rounded">
+                                Άδεια εξόδου
+                              </span>
+                            )}
+                            <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded border ${badge.cls}`}>
+                              {badge.label}
+                              {a.status === "ABSENT" && a.isAutoAbsent && " (αυτ.)"}
+                            </span>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Toilet breaks */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <DoorOpen className="w-4 h-4" /> Έξοδοι Τουαλέτας ({toiletBreaks.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {toiletBreaks.length === 0 ? (
+                  <p className="text-sm text-slate-400">Καμία καταγεγραμμένη έξοδος.</p>
+                ) : (
+                  <ul className="space-y-1.5 max-h-80 overflow-y-auto">
+                    {toiletBreaks.map((b) => {
+                      const mins = breakMinutes(b.leftAt, b.returnedAt, now);
+                      const open = !b.returnedAt;
+                      return (
+                        <li
+                          key={b.id}
+                          className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 px-3 py-1.5 text-sm"
+                        >
+                          <div className="min-w-0">
+                            <span className="font-medium text-slate-700">{fmtDisplayDate(b.date)}</span>
+                            {b.period != null && <span className="text-slate-400"> · Π{b.period}</span>}
+                            {b.staff?.scheduleName && <span className="text-slate-400"> · {b.staff.scheduleName}</span>}
+                          </div>
+                          <span
+                            className={`text-[11px] font-semibold px-1.5 py-0.5 rounded border flex-shrink-0 ${
+                              open
+                                ? "text-red-700 bg-red-50 border-red-200"
+                                : mins > 10
+                                  ? "text-amber-700 bg-amber-50 border-amber-200"
+                                  : "text-slate-600 bg-slate-100 border-slate-200"
+                            }`}
+                          >
+                            {open ? "Σε εξέλιξη" : `${mins}′`}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       )}
 
       {/* ΔΔΚ — contribution points for the school year */}
-      {ddkItems.length > 0 && (
+      {canViewDdk && ddkItems.length > 0 && (
         <Card className="border-amber-200">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center justify-between gap-2">

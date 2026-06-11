@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Award, Printer } from "lucide-react";
+import { Award, Printer, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getSchoolYear } from "@/lib/schoolConfig";
 import { ddkTotal, ddkRating, schoolYearLabel } from "@/lib/ddk";
@@ -80,6 +80,24 @@ export default async function DdkOverviewPage({
             Δημιουργικότητα · Δράση · Κοινωνική Προσφορά — Σχολική χρονιά {schoolYear}
           </p>
         </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Link
+            href={`/${locale}/teacher/ddk/points`}
+            target="_blank"
+            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50"
+          >
+            <BarChart3 className="w-4 h-4" />
+            Κατάταξη μαθητών
+          </Link>
+          <Link
+            href={`/${locale}/teacher/ddk/report?all=1&doc=cert`}
+            target="_blank"
+            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600"
+          >
+            <Printer className="w-4 h-4" />
+            Πιστοποιητικά σχολείου
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
@@ -138,14 +156,32 @@ export default async function DdkOverviewPage({
             <CardTitle className="text-base">
               {selectedGroup?.name} — {rows.length} μαθητές
             </CardTitle>
-            <Link
-              href={`/${locale}/teacher/ddk/report?groupId=${groupId}`}
-              target="_blank"
-              className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-slate-800 text-white text-sm font-medium hover:bg-slate-700"
-            >
-              <Printer className="w-4 h-4" />
-              Εκτύπωση όλων
-            </Link>
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              <Link
+                href={`/${locale}/teacher/ddk/points?groupId=${groupId}`}
+                target="_blank"
+                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50"
+              >
+                <BarChart3 className="w-4 h-4" />
+                Κατάταξη
+              </Link>
+              <Link
+                href={`/${locale}/teacher/ddk/class?groupId=${groupId}`}
+                target="_blank"
+                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50"
+              >
+                <Printer className="w-4 h-4" />
+                Δραστηριότητες τμήματος
+              </Link>
+              <Link
+                href={`/${locale}/teacher/ddk/report?groupId=${groupId}`}
+                target="_blank"
+                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-slate-800 text-white text-sm font-medium hover:bg-slate-700"
+              >
+                <Printer className="w-4 h-4" />
+                Πιστοποιητικά όλων
+              </Link>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             {rows.length === 0 ? (

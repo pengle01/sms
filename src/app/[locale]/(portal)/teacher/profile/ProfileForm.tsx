@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { updateMyProfile } from "./actions";
+import { DEPARTMENTS } from "@/lib/departments";
 
 export function ProfileForm({
   initial,
@@ -17,8 +18,16 @@ export function ProfileForm({
   const [form, setForm] = useState(initial);
   const [pending, startTransition] = useTransition();
 
-  const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((f) => ({ ...f, [key]: e.target.value }));
+  const set =
+    (key: keyof typeof form) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  // Keep an existing free-text value that isn't in the canonical list selectable.
+  const departmentOptions =
+    form.department && !DEPARTMENTS.includes(form.department)
+      ? [form.department, ...DEPARTMENTS]
+      : DEPARTMENTS;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -58,7 +67,17 @@ export function ProfileForm({
           </div>
           <div>
             <label className={labelClass} htmlFor="pf-department">{t("department")}</label>
-            <input id="pf-department" value={form.department} onChange={set("department")} className={inputClass} />
+            <select
+              id="pf-department"
+              value={form.department}
+              onChange={set("department")}
+              className={`${inputClass} bg-white`}
+            >
+              <option value="">—</option>
+              {departmentOptions.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
           </div>
         </>
       )}
