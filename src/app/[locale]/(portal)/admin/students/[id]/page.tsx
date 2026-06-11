@@ -14,6 +14,7 @@ import { pickQueryString } from "@/lib/listFilters";
 import { AccessCodeCard } from "@/components/access/AccessCodeCard";
 import { getPeriodsPerDay } from "@/lib/schoolConfig";
 import { periodsForDow, maxPeriodCount } from "@/lib/periods";
+import { isPassing } from "@/lib/grades";
 import { cn } from "@/lib/utils";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"] as const;
@@ -381,7 +382,7 @@ export default async function StudentDetailPage({
                         <td className="px-5 py-3 font-medium text-slate-900">{g.course.nameEl}</td>
                         <td className="px-5 py-3 text-slate-500">{g.period}</td>
                         <td className="px-5 py-3 text-right">
-                          <span className={`font-semibold ${Number(g.value) >= 10 ? "text-green-700" : "text-red-600"}`}>
+                          <span className={`font-semibold ${isPassing(Number(g.value)) ? "text-green-700" : "text-red-600"}`}>
                             {Number(g.value).toFixed(1)}
                           </span>
                           <span className="text-slate-400 text-xs"> / 20</span>

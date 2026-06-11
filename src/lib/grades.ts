@@ -16,9 +16,16 @@ export function parseGradePeriod(v: string | undefined | null): GradePeriod {
 
 export const GRADE_MIN = 0;
 export const GRADE_MAX = 20;
+/** Pass mark on the 0–20 scale (the single source of truth). */
+export const GRADE_PASS = 10;
 
 export function isValidGradeValue(n: number): boolean {
   return Number.isFinite(n) && n >= GRADE_MIN && n <= GRADE_MAX;
+}
+
+/** A grade is passing at or above the pass mark. */
+export function isPassing(v: number): boolean {
+  return v >= GRADE_PASS;
 }
 
 /**
@@ -40,7 +47,7 @@ export function parseGradeInput(
 export function gradeColorClass(v: number): string {
   if (v >= 17) return "text-green-700";
   if (v >= 13) return "text-emerald-700";
-  if (v >= 10) return "text-amber-700";
+  if (v >= GRADE_PASS) return "text-amber-700";
   return "text-red-700";
 }
 

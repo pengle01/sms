@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { GraduationCap, BookOpen, ClipboardList, FileText } from "lucide-react";
 import { utcMidnight, monthStart, localDateStr } from "@/lib/dates";
+import { isPassing } from "@/lib/grades";
 import Link from "next/link";
 
 export default async function ParentChildrenPage({
@@ -152,7 +153,7 @@ export default async function ParentChildrenPage({
                     <span className="text-sm font-medium text-slate-900">{g.course.name}</span>
                     <span className="text-xs text-slate-400 ml-2">{g.period}</span>
                   </div>
-                  <span className={`text-lg font-bold ${Number(g.value) >= 10 ? "text-green-700" : "text-red-700"}`}>
+                  <span className={`text-lg font-bold ${isPassing(Number(g.value)) ? "text-green-700" : "text-red-700"}`}>
                     {Number(g.value).toFixed(1)}
                   </span>
                 </div>

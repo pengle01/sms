@@ -3,7 +3,7 @@
 import { useTransition, useState } from "react";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import { parseGradeInput, type GradePeriod } from "@/lib/grades";
+import { parseGradeInput, GRADE_MIN, GRADE_MAX, type GradePeriod } from "@/lib/grades";
 import { saveGrades } from "./actions";
 
 type Student = {
@@ -83,8 +83,8 @@ export function GradeEntryForm({
                 <td className="px-5 py-3">
                   <input
                     type="number"
-                    min={0}
-                    max={20}
+                    min={GRADE_MIN}
+                    max={GRADE_MAX}
                     step={0.5}
                     placeholder="—"
                     value={values[s.id] ?? ""}

@@ -10,13 +10,9 @@ import { getTranslations } from "next-intl/server";
 import { periodLabel } from "@/lib/periods";
 import { matchesSearch, suggestionList } from "@/lib/textSearch";
 import { SuggestInput } from "@/components/SuggestInput";
+import { gradeColorClass } from "@/lib/grades";
 
-function gradeColor(v: number) {
-  if (v >= 17) return "text-green-700 font-bold";
-  if (v >= 13) return "text-emerald-700 font-bold";
-  if (v >= 10) return "text-amber-700 font-bold";
-  return "text-red-700 font-bold";
-}
+const gradeColor = (v: number) => `${gradeColorClass(v)} font-bold`;
 
 export default async function StudentTestsPage({
   params,

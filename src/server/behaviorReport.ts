@@ -4,6 +4,7 @@
 
 import { db } from "@/server/db";
 import { localDateStr } from "@/lib/dates";
+import { GRADE_PASS } from "@/lib/grades";
 import {
   analyzeStudent,
   riskScore,
@@ -11,9 +12,6 @@ import {
   type ToiletRecord,
   type Flag,
 } from "@/lib/behaviorFlags";
-
-/** A test grade below this (out of 20) is reported as a low grade. */
-export const PASS_MARK = 10;
 
 export type GroupRole = "head" | "teacher" | "counselor";
 
@@ -126,7 +124,7 @@ export async function loadGroupBehavior(groupId: string, since: Date | null): Pr
       by: ["studentId"],
       where: {
         studentId: { in: studentIds },
-        value: { lt: PASS_MARK },
+        value: { lt: GRADE_PASS },
         ...(since ? { testSchedule: { date: { gte: since } } } : {}),
       },
       _count: { _all: true },

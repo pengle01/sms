@@ -38,12 +38,10 @@ export const authOptions: NextAuthOptions = {
               email: { label: "Email", type: "email" },
             },
             async authorize(credentials) {
-              console.log("[auth] azure-ad authorize called, email:", credentials?.email);
-              if (!credentials?.email) { console.log("[auth] no email"); return null; }
+              if (!credentials?.email) return null;
               const user = await db.user.findUnique({
                 where: { email: credentials.email.toLowerCase() },
               });
-              console.log("[auth] user found:", user?.email, "active:", user?.isActive, "role:", user?.role);
               if (!user || !user.isActive) return null;
               if (user.role === "PARENT") return null;
               return { id: user.id, email: user.email, name: user.name, role: user.role, image: user.image };

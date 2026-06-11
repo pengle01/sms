@@ -10,6 +10,7 @@ import { fmtDisplayDate, utcMidnight, localDateStr, normalizeIsoDate, getNow } f
 import { getSchoolYear } from "@/lib/schoolConfig";
 import { breakMinutes } from "@/lib/toilet";
 import { actionLabel } from "@/lib/referralLabels";
+import { GRADE_PASS } from "@/lib/grades";
 import { RecordsFilter } from "./RecordsFilter";
 import type { Role } from "@/generated/prisma";
 
@@ -20,9 +21,6 @@ const ABSENCE_BADGE: Record<string, { label: string; cls: string }> = {
 };
 const ABS_STATUSES = ["ABSENT", "LATE", "EXCUSED"] as const;
 type AbsStatus = (typeof ABS_STATUSES)[number];
-
-/** A test grade below this (out of 20) is highlighted as low. */
-const PASS_MARK = 10;
 
 type Cat = "all" | "absences" | "referrals" | "toilet" | "tests";
 const CATS: { key: Cat; label: string }[] = [
@@ -347,7 +345,7 @@ export default async function StudentRecordsPage({
                       ) : (
                         <span
                           className={`text-[11px] font-semibold px-1.5 py-0.5 rounded border flex-shrink-0 ${
-                            value < PASS_MARK
+                            value < GRADE_PASS
                               ? "text-red-700 bg-red-50 border-red-200"
                               : "text-emerald-700 bg-emerald-50 border-emerald-200"
                           }`}

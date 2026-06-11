@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { revalidatePath } from "next/cache";
 import { utcMidnight } from "@/lib/dates";
+import { isValidGradeValue } from "@/lib/grades";
 
 export type SaveGradesResult = { success: true } | { success: false; message: string };
 
@@ -30,7 +31,7 @@ export async function saveTestGrades(
   for (const g of grades) {
     const rawValue = g.value.trim();
     const parsed = rawValue === "" ? null : parseFloat(rawValue);
-    if (parsed !== null && (isNaN(parsed) || parsed < 0 || parsed > 20)) {
+    if (parsed !== null && !isValidGradeValue(parsed)) {
       return { success: false, message: `Invalid grade value: ${rawValue}` };
     }
 

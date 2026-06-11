@@ -4,6 +4,7 @@ import { useTransition, useState } from "react";
 import { toast } from "sonner";
 import { saveTestGrades } from "./actions";
 import { Loader2 } from "lucide-react";
+import { GRADE_MIN, GRADE_MAX, isValidGradeValue } from "@/lib/grades";
 
 type Student = {
   id: string;
@@ -42,7 +43,7 @@ export function GradeForm({
       const raw = (values[s.id] ?? "").trim();
       if (raw === "") continue;
       const v = parseFloat(raw);
-      if (isNaN(v) || v < 0 || v > 20) {
+      if (!isValidGradeValue(v)) {
         toast.error(labels.invalidGrade, { description: `${s.name}: ${raw}` });
         return;
       }
@@ -82,8 +83,8 @@ export function GradeForm({
                 <td className="px-5 py-3">
                   <input
                     type="number"
-                    min={0}
-                    max={20}
+                    min={GRADE_MIN}
+                    max={GRADE_MAX}
                     step={0.5}
                     placeholder="—"
                     value={values[s.id] ?? ""}
