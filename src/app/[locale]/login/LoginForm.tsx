@@ -1,7 +1,9 @@
-"use client";
-
+// Server component on purpose: the login forms are wired to server actions, which
+// Next.js progressively enhances (they POST natively without JS). Keeping this off
+// the client means login works with zero hydration — a tap on "Sign in" submits
+// even before/without the client island booting on a slow phone.
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { getTranslations } from "next-intl/server";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -21,9 +23,9 @@ interface LoginFormProps {
   urlError?: string;
 }
 
-export function LoginForm({ locale, isDev, urlError }: LoginFormProps) {
-  const t = useTranslations("auth");
-  const tActivate = useTranslations("activate");
+export async function LoginForm({ locale, isDev, urlError }: LoginFormProps) {
+  const t = await getTranslations("auth");
+  const tActivate = await getTranslations("activate");
 
   const errorMessage = urlError ? (ERROR_MESSAGES[urlError] ?? `Error: ${urlError}`) : null;
   const otherLocale = locale === "el" ? "en" : "el";

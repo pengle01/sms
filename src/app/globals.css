@@ -215,3 +215,8 @@
    "small" is the existing 16px baseline. */
 html[data-font="medium"] { font-size: 118.75%; } /* 19px */
 html[data-font="large"]  { font-size: 143.75%; } /* 23px */
+
+/* Lock background scroll while the mobile nav drawer is open. The drawer is a
+   pure-CSS checkbox (#mobile-nav-toggle) so it works pre-hydration; this keeps
+   the body from scrolling underneath without any JS. */
+body:has(#mobile-nav-toggle:checked) { overflow: hidden; }

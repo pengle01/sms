@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -21,17 +20,22 @@ interface HeaderProps {
   pendingClaimsCount?: number;
   crossPortal?: "admin" | "teacher";
   ddkCoordinator?: boolean;
+  specialEdAccess?: boolean;
 }
 
-export function Header({ userName, userImage, locale, pageTitle, role, portal, pendingClaimsCount, crossPortal, ddkCoordinator }: HeaderProps) {
+// Stable id linking the hamburger <label> to its checkbox. The mobile drawer is
+// driven by this checkbox + CSS (peer-checked) — NOT React state — so it opens
+// and its links navigate even before the client island has hydrated. On a slow
+// phone a tap on the hamburger used to do nothing until hydration finished; the
+// pure-CSS toggle removes that dependency entirely.
+const MENU_ID = "mobile-nav-toggle";
+
+export function Header({ userName, userImage, locale, pageTitle, role, portal, pendingClaimsCount, crossPortal, ddkCoordinator, specialEdAccess }: HeaderProps) {
   const t = useTranslations("auth");
   const tRoles = useTranslations("roles");
   const router = useRouter();
   const profileRef = useRef<HTMLDivElement>(null);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
 
   // Close profile popover when tapping outside
   useEffect(() => {
@@ -48,11 +52,13 @@ export function Header({ userName, userImage, locale, pageTitle, role, portal, p
     };
   }, []);
 
-  // Lock body scroll when drawer is open
-  useEffect(() => {
-    document.body.style.overflow = drawerOpen ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
-  }, [drawerOpen]);
+  // After hydration, a client-side navigation keeps the checkbox checked (no full
+  // page load to reset it), so explicitly uncheck on nav. Pre-hydration this never
+  // runs — links do a full navigation which resets the checkbox naturally.
+  const closeDrawer = () => {
+    const el = document.getElementById(MENU_ID) as HTMLInputElement | null;
+    if (el) el.checked = false;
+  };
 
   const switchLocale = () => {
     const newLocale = locale === "en" ? "el" : "en";
@@ -61,20 +67,31 @@ export function Header({ userName, userImage, locale, pageTitle, role, portal, p
   };
 
   const initials = userName?.[0]?.toUpperCase() ?? "?";
+  const hasDrawer = !!role && !!portal;
 
   return (
     <>
+      {/* Hidden checkbox drives the mobile drawer via CSS. Must precede the
+          header + drawer in the DOM so peer-checked can reach them. */}
+      {hasDrawer && (
+        <input
+          type="checkbox"
+          id={MENU_ID}
+          className="peer sr-only"
+          aria-label="Open menu"
+        />
+      )}
+
       <header className="print:hidden flex items-center justify-between h-14 px-4 md:px-6 border-b border-slate-200 bg-white flex-shrink-0">
         {/* Left */}
         <div className="flex items-center gap-3">
-          {role && portal && (
-            <button
-              onClick={() => setDrawerOpen((v) => !v)}
-              className="lg:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100 active:bg-slate-200 touch-manipulation"
-              aria-label="Open menu"
+          {hasDrawer && (
+            <label
+              htmlFor={MENU_ID}
+              className="lg:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100 active:bg-slate-200 touch-manipulation cursor-pointer"
             >
-              {drawerOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
+              <Menu className="w-5 h-5" />
+            </label>
           )}
           <h1 className="text-base font-semibold text-slate-900 truncate">{pageTitle}</h1>
         </div>
@@ -130,38 +147,39 @@ export function Header({ userName, userImage, locale, pageTitle, role, portal, p
         </div>
       </header>
 
-      {/* Mobile drawer — portalled to document.body to escape any layout overflow/stacking constraints */}
-      {mounted && role && portal && drawerOpen && createPortal(
-        <>
-          {/* Backdrop */}
-          <div
-            style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.5)" }}
-            onClick={() => setDrawerOpen(false)}
+      {/* Mobile drawer — shown purely via CSS when the checkbox is checked, so it
+          works with no JS. Rendered inline (fixed-positioned + high z-index) so it
+          escapes the layout's overflow without needing a JS portal. */}
+      {hasDrawer && (
+        <div className="hidden peer-checked:block lg:!hidden print:!hidden">
+          {/* Backdrop — tapping it closes the drawer (label toggles the checkbox) */}
+          <label
+            htmlFor={MENU_ID}
+            aria-label="Close menu"
+            className="fixed inset-0 z-[9998] bg-black/50"
           />
           {/* Panel */}
-          <div
-            style={{ position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 9999, width: "min(18rem, 85vw)" }}
-          >
-            <button
-              onClick={() => setDrawerOpen(false)}
-              className="absolute top-3 right-3 z-10 p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white touch-manipulation"
+          <div className="fixed top-0 left-0 bottom-0 z-[9999] w-[min(18rem,85vw)]">
+            <label
+              htmlFor={MENU_ID}
               aria-label="Close menu"
+              className="absolute top-3 right-3 z-10 p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white touch-manipulation cursor-pointer"
             >
               <X className="w-4 h-4" />
-            </button>
+            </label>
             <SidebarContent
-              role={role}
+              role={role!}
               locale={locale}
-              portal={portal}
+              portal={portal!}
               userName={userName}
-              onNavigate={() => setDrawerOpen(false)}
+              onNavigate={closeDrawer}
               pendingClaimsCount={pendingClaimsCount}
               crossPortal={crossPortal}
               ddkCoordinator={ddkCoordinator}
+              specialEdAccess={specialEdAccess}
             />
           </div>
-        </>,
-        document.body
+        </div>
       )}
     </>
   );
