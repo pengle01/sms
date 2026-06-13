@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { UserX } from "lucide-react";
-import type { Role } from "@/generated/prisma";
+import type { Role, Prisma } from "@/generated/prisma";
 import { StaffLinkControls } from "../staff/StaffLinkControls";
 
 const ROLE_META: Record<string, { label: string; color: string }> = {
@@ -37,6 +37,22 @@ const STAFF_ROLES: Role[] = [
   "TEACHER", "SCHOOL_ADMIN", "SUPER_ADMIN",
 ];
 
+// Filter by "added roles" — admin-granted extra roles + designations (which sit
+// on top of the primary role). Each maps to a user-level where clause.
+const DESIGNATION_TABS: { key: string; label: string }[] = [
+  { key: "extraAdmin", label: "+Admin (granted)" },
+  { key: "specialEd",  label: "Special Education" },
+  { key: "ddk",        label: "ΔΔΚ Coordinator" },
+  { key: "subCoord",   label: "Substitutions Coord." },
+];
+
+const DESIGNATION_WHERE: Record<string, Prisma.UserWhereInput> = {
+  extraAdmin: { extraRoles: { has: "SUPER_ADMIN" } },
+  specialEd:  { staffProfile: { specialEducation: true } },
+  ddk:        { staffProfile: { ddkCoordinator: true } },
+  subCoord:   { staffProfile: { substitutionCoordinator: true } },
+};
+
 export default async function UsersPage({
   params,
   searchParams,
@@ -49,20 +65,26 @@ export default async function UsersPage({
   const auth = await getSuperAdminAuth();
   if (!auth) redirect(`/${locale}/login`);
 
-  const activeTab = FILTER_TABS.find((t) => t.key === roleParam)?.key ?? "all";
+  const knownTab =
+    FILTER_TABS.find((t) => t.key === roleParam)?.key ??
+    DESIGNATION_TABS.find((t) => t.key === roleParam)?.key;
+  const activeTab = knownTab ?? "all";
   const showUnlinked = activeTab === "unlinked";
+  const designationWhere = DESIGNATION_WHERE[activeTab];
 
-  const roleFilter = showUnlinked
-    ? undefined
+  // Added-role/designation filters narrow within staff; plain role tabs match the
+  // primary role; "all" lists every staff member.
+  const userWhere: Prisma.UserWhereInput = designationWhere
+    ? { role: { in: STAFF_ROLES }, ...designationWhere }
     : activeTab === "all"
-      ? { in: STAFF_ROLES }
-      : { equals: activeTab as Role };
+      ? { role: { in: STAFF_ROLES } }
+      : { role: { equals: activeTab as Role } };
 
   const [users, unlinkedProfiles, linkableUsers] = await Promise.all([
     showUnlinked
       ? Promise.resolve([])
       : db.user.findMany({
-          where: { role: roleFilter },
+          where: userWhere,
           include: {
             staffProfile: {
               select: {
@@ -98,7 +120,10 @@ export default async function UsersPage({
     }),
   ]);
 
-  const tabLabel = FILTER_TABS.find((t) => t.key === activeTab)?.label ?? "Staff";
+  const tabLabel =
+    FILTER_TABS.find((t) => t.key === activeTab)?.label ??
+    DESIGNATION_TABS.find((t) => t.key === activeTab)?.label ??
+    "Staff";
 
   return (
     <div className="space-y-6">
@@ -141,6 +166,25 @@ export default async function UsersPage({
                 {unlinkedProfiles.length}
               </span>
             )}
+          </Link>
+        ))}
+      </div>
+
+      {/* Added roles & designations */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide mr-1">Added roles</span>
+        {DESIGNATION_TABS.map(({ key, label }) => (
+          <Link
+            key={key}
+            href={`?role=${key}`}
+            className={cn(
+              "h-8 px-3 rounded-lg text-xs font-medium border transition-colors",
+              activeTab === key
+                ? "bg-purple-600 text-white border-purple-600"
+                : "bg-white text-purple-700 border-purple-200 hover:border-purple-400",
+            )}
+          >
+            {label}
           </Link>
         ))}
       </div>
