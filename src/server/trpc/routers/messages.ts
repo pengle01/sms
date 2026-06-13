@@ -4,6 +4,7 @@ import { createTRPCRouter, protectedProcedure } from "../init";
 import type { Context } from "../context";
 import { reachableStaffIds, isUnreadForStaff, isUnreadForFamily } from "@/lib/messaging";
 import { staffDisplayName } from "@/lib/staffName";
+import { logger, errInfo } from "@/server/logger";
 
 type Db = Context["db"];
 
@@ -91,7 +92,7 @@ async function notifyNewMessage(
       },
     });
   } catch (e) {
-    console.error("[messages] notification failed", e);
+    logger.error({ event: "messages.notifyFailed", err: errInfo(e) }, "Message notification failed");
   }
 }
 

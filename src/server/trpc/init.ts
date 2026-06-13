@@ -4,6 +4,7 @@ import { ZodError } from "zod";
 import type { Context } from "./context";
 import { canViewCounselorNotes, isManagement, isStaff } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma";
+import { logger } from "@/server/logger";
 
 const t = initTRPC.context<Context>().create({
   transformer: superjson,
@@ -21,13 +22,44 @@ const t = initTRPC.context<Context>().create({
 export const createTRPCRouter = t.router;
 export const createCallerFactory = t.createCallerFactory;
 
-export const publicProcedure = t.procedure;
+// Applied to every procedure: times the call, logs failures (server faults at
+// error level with a stack, client faults like UNAUTHORIZED/FORBIDDEN/validation
+// at warn), and flags slow calls. Errors are still thrown to the client as usual.
+const loggingMiddleware = t.middleware(async ({ ctx, path, type, next }) => {
+  const start = Date.now();
+  const result = await next();
+  const durationMs = Date.now() - start;
+  const userId = ctx.session?.user?.id;
+
+  if (!result.ok) {
+    const { code, message, stack } = result.error;
+    const serverFault = code === "INTERNAL_SERVER_ERROR" || code === "PARSE_ERROR";
+    logger[serverFault ? "error" : "warn"](
+      {
+        event: "trpc.error",
+        path,
+        type,
+        code,
+        durationMs,
+        userId,
+        ...(serverFault ? { err: { message, stack } } : {}),
+      },
+      `tRPC ${type} ${path} failed: ${code}`,
+    );
+  } else if (durationMs > 1000) {
+    logger.warn({ event: "trpc.slow", path, type, durationMs, userId }, `Slow tRPC ${type} ${path}: ${durationMs}ms`);
+  }
+
+  return result;
+});
+
+export const publicProcedure = t.procedure.use(loggingMiddleware);
 
 // Requires any authenticated user. Re-validates against the DB on every call so
 // that deactivated accounts lose access immediately and role changes take effect
 // without waiting for the JWT to expire (the role in the token is just a login
 // snapshot). The fresh role is written back into ctx for downstream guards.
-export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
+export const protectedProcedure = publicProcedure.use(async ({ ctx, next }) => {
   if (!ctx.session?.user) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }

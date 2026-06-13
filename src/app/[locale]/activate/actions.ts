@@ -7,6 +7,7 @@ import { rateLimit } from "@/server/rateLimit";
 import { canAddGuardian, isWellFormedCode, normalizeCode, randomOtp, roleAvailability } from "@/lib/accessCode";
 import { sendOtpEmail } from "@/lib/email";
 import { writeAudit } from "@/server/audit";
+import { logger, errInfo } from "@/server/logger";
 
 const MIN_PASSWORD_LENGTH = 8;
 const OTP_TTL_MS = 15 * 60 * 1000;
@@ -274,7 +275,7 @@ export async function verifyActivation(input: {
       ]);
     }
   } catch (e) {
-    console.error("[activate] verify failed", e);
+    logger.error({ event: "activate.verifyFailed", err: errInfo(e) }, "Account activation verify failed");
     return { ok: false, error: "errGeneric" };
   }
 

@@ -27,8 +27,19 @@ const securityHeaders = [
   },
 ];
 
+const isDev = process.env.NODE_ENV !== "production";
+
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ["192.168.10.59", "192.168.17.32"],
+  // `pino` uses Node built-ins and must be required natively, not bundled, on the
+  // server (see src/server/logger.ts).
+  serverExternalPackages: ["pino"],
+  // DEV ONLY — allowedDevOrigins is consumed exclusively by `next dev` and has no
+  // effect on `next build`/`next start`. We additionally gate it on NODE_ENV so a
+  // production build never carries the LAN hosts at all.
+  // "coding.local" is the machine's stable mDNS name — reachable from a phone on
+  // any LAN without knowing the IP. Bookmark http://coding.local:3000 once. The
+  // raw IPs are kept as a fallback for devices that can't resolve .local.
+  ...(isDev ? { allowedDevOrigins: ["coding.local", "192.168.10.59", "192.168.17.32"] } : {}),
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

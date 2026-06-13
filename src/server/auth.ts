@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { db } from "@/server/db";
 import { rateLimit, resetRateLimit } from "@/server/rateLimit";
 import type { Role } from "@/generated/prisma";
+import { logger } from "@/server/logger";
 
 const IS_DEV = process.env.NODE_ENV === "development";
 
@@ -44,6 +45,7 @@ export const authOptions: NextAuthOptions = {
               });
               if (!user || !user.isActive) return null;
               if (user.role === "PARENT") return null;
+              logger.info({ event: "auth.login", method: "dev-bypass", userId: user.id, role: user.role }, "Dev login");
               return { id: user.id, email: user.email, name: user.name, role: user.role, image: user.image };
             },
           }),
@@ -70,21 +72,33 @@ export const authOptions: NextAuthOptions = {
 
         const email = credentials.email.toLowerCase();
         // Throttle password attempts per account to slow brute-forcing.
-        if (!rateLimit(`login:${email}`, 10, 15 * 60 * 1000)) return null;
+        if (!rateLimit(`login:${email}`, 10, 15 * 60 * 1000)) {
+          // No email logged — PII; the rate-limit key already correlates attempts.
+          logger.warn({ event: "auth.rateLimited", method: "credentials" }, "Login rate-limited");
+          return null;
+        }
 
         const user = await db.user.findUnique({ where: { email } });
 
-        if (!user || !user.passwordHash || !user.isActive) return null;
+        if (!user || !user.passwordHash || !user.isActive) {
+          logger.warn({ event: "auth.loginFailed", method: "credentials", reason: "unknown_or_inactive" }, "Login failed");
+          return null;
+        }
         // Staff authenticate via Entra SSO; students, parents and chaperones use
         // email + password (set up through the access-code activation flow).
         if (!IS_DEV && user.role !== "PARENT" && user.role !== "CHAPERONE" && user.role !== "STUDENT") {
+          logger.warn({ event: "auth.loginFailed", method: "credentials", reason: "role_not_allowed", userId: user.id }, "Login failed");
           return null;
         }
 
         const valid = await bcrypt.compare(credentials.password, user.passwordHash);
-        if (!valid) return null;
+        if (!valid) {
+          logger.warn({ event: "auth.loginFailed", method: "credentials", reason: "bad_password", userId: user.id }, "Login failed");
+          return null;
+        }
 
         resetRateLimit(`login:${email}`);
+        logger.info({ event: "auth.login", method: "credentials", userId: user.id, role: user.role }, "Login succeeded");
         return { id: user.id, email: user.email, name: user.name, role: user.role, image: user.image };
       },
     }),

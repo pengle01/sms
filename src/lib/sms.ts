@@ -10,6 +10,7 @@
  * settings are not set.
  */
 import { db } from "@/server/db";
+import { logger, errInfo } from "@/server/logger";
 
 export interface SmsResult {
   success: boolean;
@@ -34,7 +35,7 @@ async function getConfig(): Promise<{ apiUrl: string; apiKey: string; senderId: 
 export async function sendSms(to: string, message: string): Promise<SmsResult> {
   const config = await getConfig();
   if (!config) {
-    console.warn("[SMS] Not configured — set sms_api_url and sms_api_key in Admin > Settings.");
+    logger.warn({ event: "sms.notConfigured" }, "SMS gateway not configured (set sms_api_url and sms_api_key in Admin > Settings)");
     return { success: false, error: "SMS not configured" };
   }
 
@@ -56,9 +57,13 @@ export async function sendSms(to: string, message: string): Promise<SmsResult> {
     });
 
     const body = await res.text();
-    if (!res.ok) return { success: false, gatewayResponse: body, error: `HTTP ${res.status}` };
+    if (!res.ok) {
+      logger.error({ event: "sms.sendFailed", status: res.status }, `SMS gateway returned HTTP ${res.status}`);
+      return { success: false, gatewayResponse: body, error: `HTTP ${res.status}` };
+    }
     return { success: true, gatewayResponse: body };
   } catch (err) {
+    logger.error({ event: "sms.sendError", err: errInfo(err) }, "SMS send failed");
     return { success: false, error: err instanceof Error ? err.message : String(err) };
   }
 }

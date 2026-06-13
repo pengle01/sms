@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { db } from "@/server/db";
 import type { Prisma } from "@/generated/prisma";
+import { logger, errInfo } from "@/server/logger";
 
 type AuditEntry = {
   userId: string;
@@ -27,7 +28,10 @@ export async function writeAudit(entry: AuditEntry): Promise<void> {
       },
     });
   } catch (e) {
-    console.error("[audit] failed to write audit log", e);
+    logger.error(
+      { event: "audit.writeFailed", action: entry.action, resource: entry.resource, userId: entry.userId, err: errInfo(e) },
+      "Failed to write audit log",
+    );
   }
 }
 

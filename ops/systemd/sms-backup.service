@@ -1,0 +1,14 @@
+[Unit]
+Description=SMS database + log backup
+Wants=network-online.target
+After=network-online.target postgresql.service
+
+[Service]
+Type=oneshot
+# Adjust User and paths if the project lives elsewhere.
+User=pengle01
+WorkingDirectory=/home/pengle01/projects/sms
+ExecStart=/usr/bin/env bash /home/pengle01/projects/sms/ops/backup/backup.sh
+# Optional overrides (otherwise the script defaults apply):
+# Environment=BACKUP_DIR=/home/pengle01/backups/sms
+# Environment=BACKUP_RETENTION_DAYS=14

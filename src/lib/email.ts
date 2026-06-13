@@ -13,6 +13,7 @@
  * unconfigured transport returns success:false so callers can surface an error.
  */
 import { db } from "@/server/db";
+import { logger, errInfo } from "@/server/logger";
 
 const IS_DEV = process.env.NODE_ENV !== "production";
 
@@ -49,8 +50,11 @@ export async function sendEmail(to: string, subject: string, text: string): Prom
   const config = await getConfig();
 
   if (!config) {
-    console.warn(
-      `[email] Not configured — would send to ${to}\n  Subject: ${subject}\n  ${text}`
+    // In dev the body (incl. the OTP) is intentionally surfaced so the activation
+    // flow can be completed without a real SMTP server.
+    logger.warn(
+      { event: "email.notConfigured", to, subject, ...(IS_DEV ? { body: text } : {}) },
+      "Email transport not configured",
     );
     // Allow the flow to proceed locally; block in production.
     return IS_DEV ? { success: true } : { success: false, error: "Email not configured" };
@@ -67,7 +71,7 @@ export async function sendEmail(to: string, subject: string, text: string): Prom
     await transporter.sendMail({ from: config.from, to, subject, text });
     return { success: true };
   } catch (err) {
-    console.error("[email] send failed", err);
+    logger.error({ event: "email.sendFailed", to, subject, err: errInfo(err) }, "Email send failed");
     return { success: false, error: err instanceof Error ? err.message : String(err) };
   }
 }

@@ -41,3 +41,9 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# Runtime logs & backups (ops/README.md)
+/logs/
+/backups/
+*.dump
+ops/backup/offsite.sh

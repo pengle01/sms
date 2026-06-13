@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the SMS backup daily
+
+[Timer]
+# Daily at 03:00 local time; Persistent catches up if the machine was off.
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

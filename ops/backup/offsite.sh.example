@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+#
+# Offsite copy hook (OPTIONAL). Copy this file to `offsite.sh` in the same
+# directory, make it executable (chmod +x), and fill in a real destination.
+# backup.sh calls it after each successful local backup.
+#
+#   $1  BACKUP_DIR         the local backup root (contains db/ and logs/)
+#   $2  DB_DUMP_PATH       the dump just created
+#   $3  LOG_ARCHIVE_PATH   the logs archive just created (may be empty)
+#
+# Local-only backups protect against mistakes but NOT against losing this
+# machine. Point this at another disk / NAS / cloud bucket for real safety.
+# The real offsite.sh is gitignored so credentials never get committed.
+
+set -euo pipefail
+
+BACKUP_DIR="$1"
+DB_DUMP_PATH="$2"
+LOG_ARCHIVE_PATH="${3:-}"
+
+# --- Example: rclone to a configured remote (cloud: S3, B2, Drive, …) --------
+#   rclone copy "$DB_DUMP_PATH" remote:sms-backups/db/
+#   [ -n "$LOG_ARCHIVE_PATH" ] && rclone copy "$LOG_ARCHIVE_PATH" remote:sms-backups/logs/
+
+# --- Example: rsync to another host over SSH ---------------------------------
+#   rsync -az --delete "$BACKUP_DIR/" backupuser@nas.local:/srv/sms-backups/
+
+# --- Example: copy to a mounted external/second disk -------------------------
+#   cp -a "$DB_DUMP_PATH" /mnt/backup-disk/sms/db/
+#   [ -n "$LOG_ARCHIVE_PATH" ] && cp -a "$LOG_ARCHIVE_PATH" /mnt/backup-disk/sms/logs/
+
+echo "[offsite] no destination configured — edit ops/backup/offsite.sh" >&2
+exit 0

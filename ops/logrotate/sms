@@ -1,0 +1,18 @@
+# logrotate config for the SMS application log.
+# Install:  sudo cp ops/logrotate/sms /etc/logrotate.d/sms
+# Test:     sudo logrotate --debug /etc/logrotate.d/sms
+#
+# copytruncate is used because the Node process holds the log file open — it
+# truncates in place so pino keeps writing to the same descriptor (no restart
+# or reopen-signal needed). Adjust the path if the project lives elsewhere.
+
+/home/pengle01/projects/sms/logs/app.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    su pengle01 pengle01
+}
