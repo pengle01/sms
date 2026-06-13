@@ -13,13 +13,15 @@ interface SidebarProps {
   crossPortal?: "admin" | "teacher";
   /** Shows the ΔΔΚ desk nav item (coordinator designation). */
   ddkCoordinator?: boolean;
+  /** Shows the special-ed desk nav item (full-access viewers). */
+  specialEdAccess?: boolean;
 }
 
 // Desktop-only persistent sidebar
-export function Sidebar({ role, locale, portal, userName, pendingClaimsCount, crossPortal, ddkCoordinator }: SidebarProps) {
+export function Sidebar({ role, locale, portal, userName, pendingClaimsCount, crossPortal, ddkCoordinator, specialEdAccess }: SidebarProps) {
   return (
     <aside className="hidden print:!hidden lg:flex flex-col w-64 min-h-screen flex-shrink-0">
-      <SidebarContent role={role} locale={locale} portal={portal} userName={userName} pendingClaimsCount={pendingClaimsCount} crossPortal={crossPortal} ddkCoordinator={ddkCoordinator} />
+      <SidebarContent role={role} locale={locale} portal={portal} userName={userName} pendingClaimsCount={pendingClaimsCount} crossPortal={crossPortal} ddkCoordinator={ddkCoordinator} specialEdAccess={specialEdAccess} />
     </aside>
   );
 }

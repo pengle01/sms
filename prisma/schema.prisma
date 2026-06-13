@@ -264,6 +264,7 @@ model StudentProfile {
   toiletBreaks             ToiletBreak[]
   ddkAwards                DdkAward[]
   conversations            Conversation[]
+  specialEd                SpecialEdRecord?
   // Flagged when the import's default SMS number is missing or doesn't match a
   // parent/guardian — the office should review the recipient.
   smsFlagged               Boolean   @default(false)
@@ -289,6 +290,46 @@ model ParentStudent {
   studentProfile   StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
 
   @@unique([parentProfileId, studentProfileId])
+}
+
+// ─── Special Education ────────────────────────────────────────────────────────
+// Sensitive. The record's presence marks a student as special-ed. Disability
+// (problem) codes and accommodations are extensible lookups (seeded from the
+// ministry ΚΩΔΙΚΟΙ list). Support (ΣΤΗΡ) is NOT stored — it is derived from the
+// student's ΣΤ_/ΑΣΤ_ support-group enrolment in the timetable.
+
+model SpecialEdProblemCode {
+  id     String  @id @default(cuid())
+  code   String  @unique // e.g. "ΔΞ"
+  label  String          // e.g. "Δυσλεξία"
+  active Boolean @default(true)
+
+  records SpecialEdRecord[] @relation("RecordProblems")
+}
+
+model SpecialEdAccommodation {
+  id     String  @id @default(cuid())
+  code   String  @unique // "1".."18"
+  label  String
+  active Boolean @default(true)
+
+  records SpecialEdRecord[] @relation("RecordAccommodations")
+}
+
+model SpecialEdRecord {
+  id              String         @id @default(cuid())
+  studentId       String         @unique
+  student         StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  fileNo          String? // ΑΡ. ΦΑΚ.
+  remarks         String? // ΠΑΡΑΤΗΡΗΣΕΙΣ — full-access viewers only
+  frenchExempt    Boolean        @default(false) // Απαλλαγή Γαλλικών
+  otherExemptions String? // Άλλες Απαλλαγές — full-access viewers only
+
+  problems       SpecialEdProblemCode[]   @relation("RecordProblems")
+  accommodations SpecialEdAccommodation[] @relation("RecordAccommodations")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // ─── Subject Group Enrollments ────────────────────────────────────────────────

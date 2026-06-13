@@ -11,6 +11,7 @@ import { preferencesRouter } from "./preferences";
 import { accessCodesRouter } from "./accessCodes";
 import { toiletRouter } from "./toilet";
 import { messagesRouter } from "./messages";
+import { specialEdRouter } from "./specialEd";
 
 export const appRouter = createTRPCRouter({
   attendance: attendanceRouter,
@@ -26,6 +27,7 @@ export const appRouter = createTRPCRouter({
   accessCodes: accessCodesRouter,
   toilet: toiletRouter,
   messages: messagesRouter,
+  specialEd: specialEdRouter,
 });
 
 export type AppRouter = typeof appRouter;

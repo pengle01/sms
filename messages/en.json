@@ -69,6 +69,7 @@
     "newRequest": "New Request",
     "activities": "Activities",
     "ddk": "ΔΔΚ",
+    "specialEd": "Special Education",
     "homegroup": "My Homegroup",
     "calendar": "Calendar",
     "portalAdmin": "System Administration",
@@ -889,5 +890,20 @@
     "flagToiletSameLesson": "Leaves the same lesson: {course} ×{count}",
     "windowTerm": "Term",
     "windowYear": "School year"
+  },
+  "specialEd": {
+    "title": "Special Education",
+    "codesHint": "Confidential. Click to reveal this student's codes.",
+    "reveal": "Reveal codes",
+    "problemCodes": "Problem codes",
+    "accommodations": "Accommodations",
+    "support": "Support",
+    "noSupport": "No support recorded in the timetable.",
+    "supportAtomic": "Individual",
+    "supportGroup": "Group",
+    "remarks": "Remarks",
+    "frenchExempt": "Exempt from French",
+    "otherExemptions": "Other exemptions",
+    "periodN": "P{n}"
   }
 }

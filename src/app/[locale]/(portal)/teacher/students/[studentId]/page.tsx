@@ -14,7 +14,10 @@ import { ddkTotal, ddkRating, schoolYearLabel, summarizeBySection, ddkCategoryLa
 import { fullAttendanceAwardForStudent } from "@/server/ddk";
 import { actionLabel } from "@/lib/referralLabels";
 import { canViewAccessCode } from "@/lib/rbac";
+import { canViewSpecialEdFull } from "@/lib/specialEd";
+import { getSpecialEdRecord, getStudentSupport, teachesStudent } from "@/server/specialEd";
 import { AccessCodeCard } from "@/components/access/AccessCodeCard";
+import { SpecialEdCard } from "@/components/special-ed/SpecialEdCard";
 import type { Role } from "@/generated/prisma";
 
 const DOW_LABELS = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
@@ -112,7 +115,7 @@ export default async function StudentSchedulePage({
           take: 20,
         })
       : Promise.resolve([]),
-    db.staffProfile.findUnique({ where: { userId: session.user.id }, select: { id: true, ddkCoordinator: true } }),
+    db.staffProfile.findUnique({ where: { userId: session.user.id }, select: { id: true, ddkCoordinator: true, specialEducation: true } }),
   ]);
 
   // Full dossier (personal info + contacts + referrals) is shown only to the
@@ -203,6 +206,27 @@ export default async function StudentSchedulePage({
   // management / counselor (canViewFull) and the ΔΔΚ coordinator.
   const canViewDdk = canViewFull || !!viewerStaff?.ddkCoordinator;
 
+  // Special education (sensitive). Full record → counselor / special-ed deputy /
+  // headmaster / super-admin; codes-only intentional reveal → any teacher who
+  // teaches the student; nothing for everyone else. Only render if a record exists.
+  const specialEdFullAccess = canViewSpecialEdFull([role], !!viewerStaff?.specialEducation);
+  const specialEdExists = await db.specialEdRecord.findUnique({ where: { studentId }, select: { id: true } });
+  let specialEdMode: "full" | "codes" | null = null;
+  let specialEdData:
+    | (NonNullable<Awaited<ReturnType<typeof getSpecialEdRecord>>> & { support: Awaited<ReturnType<typeof getStudentSupport>> })
+    | undefined;
+  if (specialEdExists) {
+    if (specialEdFullAccess) {
+      const [rec, support] = await Promise.all([getSpecialEdRecord(studentId), getStudentSupport(studentId)]);
+      if (rec) {
+        specialEdMode = "full";
+        specialEdData = { ...rec, support };
+      }
+    } else if (viewerStaff && (await teachesStudent(viewerStaff.id, studentId))) {
+      specialEdMode = "codes";
+    }
+  }
+
   // ΔΔΚ contribution points for the current school year.
   const ddkRanges = yearRanges;
   const ddkSchoolYear = schoolYearLabel(ddkRanges.yearStart.getUTCFullYear());
@@ -284,6 +308,10 @@ export default async function StudentSchedulePage({
       </div>
 
       {canManageCode && <AccessCodeCard studentProfileId={studentId} />}
+
+      {specialEdMode && (
+        <SpecialEdCard studentId={studentId} mode={specialEdMode} data={specialEdData} locale={locale} />
+      )}
 
       {/* Full dossier — personal info, contacts, referrals (authorised viewers only) */}
       {canViewFull && (

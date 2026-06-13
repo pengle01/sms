@@ -69,6 +69,7 @@
     "newRequest": "Νέο Αίτημα",
     "activities": "Δραστηριότητες",
     "ddk": "ΔΔΚ",
+    "specialEd": "Ειδική Αγωγή",
     "homegroup": "Τμήμα Μου",
     "calendar": "Ημερολόγιο",
     "portalAdmin": "Διαχείριση Συστήματος",
@@ -889,5 +890,20 @@
     "flagToiletSameLesson": "Έξοδος στο ίδιο μάθημα: {course} ×{count}",
     "windowTerm": "Τετράμηνο",
     "windowYear": "Σχολική χρονιά"
+  },
+  "specialEd": {
+    "title": "Ειδική Αγωγή",
+    "codesHint": "Εμπιστευτικά στοιχεία. Πατήστε για προβολή των κωδικών του/της μαθητή/τριας.",
+    "reveal": "Προβολή κωδικών",
+    "problemCodes": "Κωδικοί προβλημάτων",
+    "accommodations": "Διευκολύνσεις",
+    "support": "Στήριξη",
+    "noSupport": "Καμία καταχωρημένη στήριξη στο ωρολόγιο πρόγραμμα.",
+    "supportAtomic": "Ατομική",
+    "supportGroup": "Ομαδική",
+    "remarks": "Παρατηρήσεις",
+    "frenchExempt": "Απαλλαγή Γαλλικών",
+    "otherExemptions": "Άλλες απαλλαγές",
+    "periodN": "{n}η"
   }
 }

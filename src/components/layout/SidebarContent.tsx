@@ -87,11 +87,14 @@ interface SidebarContentProps {
   crossPortal?: "admin" | "teacher";
   /** Shows the ΔΔΚ desk nav item (coordinator designation, not a role). */
   ddkCoordinator?: boolean;
+  /** Shows the special-ed desk nav item (full-access viewers). */
+  specialEdAccess?: boolean;
 }
 
 const DDK_NAV_ITEM: NavItem = { key: "ddk", href: "ddk", icon: Award, roles: [] };
+const SPECIAL_ED_NAV_ITEM: NavItem = { key: "specialEd", href: "special-ed", icon: ShieldAlert, roles: [] };
 
-export function SidebarContent({ role, locale, portal, userName, onNavigate, pendingClaimsCount, crossPortal, ddkCoordinator }: SidebarContentProps) {
+export function SidebarContent({ role, locale, portal, userName, onNavigate, pendingClaimsCount, crossPortal, ddkCoordinator, specialEdAccess }: SidebarContentProps) {
   const t = useTranslations("nav");
   const tCommon = useTranslations("common");
   const tRoles = useTranslations("roles");
@@ -103,6 +106,12 @@ export function SidebarContent({ role, locale, portal, userName, onNavigate, pen
   if (ddkCoordinator && portal === "teacher") {
     const at = visibleItems.findIndex((i) => i.key === "activities");
     visibleItems.splice(at >= 0 ? at + 1 : visibleItems.length, 0, DDK_NAV_ITEM);
+  }
+  // The special-ed desk is gated by access (designation/counselor/management),
+  // not a plain role — inject it for full-access viewers in the educator portal.
+  if (specialEdAccess && portal === "teacher") {
+    const at = visibleItems.findIndex((i) => i.key === "referrals");
+    visibleItems.splice(at >= 0 ? at + 1 : visibleItems.length, 0, SPECIAL_ED_NAV_ITEM);
   }
 
   return (
