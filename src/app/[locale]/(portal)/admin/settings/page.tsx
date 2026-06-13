@@ -6,6 +6,7 @@ import { staffDisplayName } from "@/lib/staffName";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY, getMaxTestsPerWeek, DEFAULT_MAX_TESTS_PER_WEEK, getSchoolYear, getTermDatesConfig, getSchoolName, getGradesUnlocked } from "@/lib/schoolConfig";
 import { getSmsConfig } from "@/lib/sms";
+import { getEmailConfig } from "@/lib/email";
 
 export default async function AdminSettingsPage({
   params,
@@ -19,14 +20,16 @@ export default async function AdminSettingsPage({
   const { PeriodsForm } = await import("./PeriodsForm");
   const { MaxTestsForm } = await import("./MaxTestsForm");
   const { SmsSettingsForm } = await import("./SmsSettingsForm");
+  const { EmailSettingsForm } = await import("./EmailSettingsForm");
   const { TermDatesForm } = await import("./TermDatesForm");
   const { SchoolNameForm } = await import("./SchoolNameForm");
   const { DutyRosterForm } = await import("./DutyRosterForm");
   const { GradesUnlockForm } = await import("./GradesUnlockForm");
-  const [periodsPerDay, maxTestsPerWeek, smsConfig, termConfig, schoolYear, schoolName, gradesUnlocked, dutyEntries, dutyDeputies] = await Promise.all([
+  const [periodsPerDay, maxTestsPerWeek, smsConfig, emailConfig, termConfig, schoolYear, schoolName, gradesUnlocked, dutyEntries, dutyDeputies] = await Promise.all([
     getPeriodsPerDay(),
     getMaxTestsPerWeek(),
     getSmsConfig(),
+    getEmailConfig(),
     getTermDatesConfig(),
     getSchoolYear(),
     getSchoolName(),
@@ -64,6 +67,17 @@ export default async function AdminSettingsPage({
     staffProfileId: d.id,
     name: staffDisplayName(d, d.id),
   }));
+
+  // Email: prefill Resend defaults (temporary, until M365 SMTP is enabled) + the
+  // school name as the formal "From name".
+  const emailInitial = {
+    host: emailConfig.host || "smtp.resend.com",
+    port: emailConfig.port || "587",
+    user: emailConfig.user || "resend",
+    pass: emailConfig.pass,
+    from: emailConfig.from,
+    fromName: emailConfig.fromName || (schoolName ?? ""),
+  };
 
   return (
     <div className="space-y-6">
@@ -132,6 +146,15 @@ export default async function AdminSettingsPage({
         </CardHeader>
         <CardContent>
           <SmsSettingsForm initial={smsConfig} />
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-xl">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Email (SMTP)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <EmailSettingsForm initial={emailInitial} />
         </CardContent>
       </Card>
     </div>

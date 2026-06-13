@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, adminProcedure } from "../init";
 import { writeAudit } from "@/server/audit";
+import { sendTestEmail } from "@/lib/email";
 
 function reqMeta(req?: Request) {
   const fwd = req?.headers.get("x-forwarded-for");
@@ -55,5 +56,32 @@ export const settingsRouter = createTRPCRouter({
         ...reqMeta(ctx.req),
       });
       return res;
+    }),
+
+  // Send a test email with the supplied (possibly unsaved) SMTP config so the
+  // admin can verify settings before persisting. Never logs the password.
+  sendTestEmail: adminProcedure
+    .input(
+      z.object({
+        host: z.string(),
+        port: z.coerce.number().int().positive(),
+        user: z.string(),
+        pass: z.string(),
+        from: z.string(),
+        fromName: z.string(),
+        to: z.string().email(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { to, ...cfg } = input;
+      const result = await sendTestEmail(cfg, to);
+      await writeAudit({
+        userId: ctx.session.user.id,
+        action: "settings.testEmail",
+        resource: "GlobalSetting",
+        details: { to, success: result.success },
+        ...reqMeta(ctx.req),
+      });
+      return result;
     }),
 });
