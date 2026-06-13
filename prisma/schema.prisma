@@ -145,7 +145,11 @@ model VerificationToken {
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
+  // `name` stays the composed full name ("first last") used for display/search
+  // across the app; firstName/lastName hold the split parts edited in the profile.
   name         String?
+  firstName    String?
+  lastName     String?
   nameEl       String?
   passwordHash String?  // Parents only — staff use Entra ID
   image        String?

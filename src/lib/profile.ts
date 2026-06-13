@@ -11,20 +11,51 @@ export function isValidPmp(v: string): boolean {
   return /^[0-9A-Za-zΑ-Ωα-ω]{1,20}$/.test(v);
 }
 
+// Compose a display full name from its parts ("first last"), collapsing whitespace.
+export function composeFullName(firstName: string, lastName: string): string {
+  return [firstName, lastName]
+    .map((s) => s.trim().replace(/\s+/g, " "))
+    .filter(Boolean)
+    .join(" ");
+}
+
+// Best-effort split of an existing single-field name into first + surname, used
+// only to seed the edit form for accounts created before the split. The first
+// whitespace-separated token is the first name; the remainder is the surname.
+export function splitFullName(full: string | null | undefined): { firstName: string; lastName: string } {
+  const v = (full ?? "").trim().replace(/\s+/g, " ");
+  if (!v) return { firstName: "", lastName: "" };
+  const idx = v.indexOf(" ");
+  if (idx === -1) return { firstName: v, lastName: "" };
+  return { firstName: v.slice(0, idx), lastName: v.slice(idx + 1) };
+}
+
 export interface ProfileInput {
-  name: string;
+  firstName: string;
+  lastName: string;
   phone: string;
   department: string;
   pmp: string;
 }
 
 export type ProfileValidation =
-  | { ok: true; name: string; phone: string | null; department: string | null; pmp: string | null }
-  | { ok: false; error: "errName" | "errPmp" };
+  | {
+      ok: true;
+      firstName: string;
+      lastName: string;
+      name: string;
+      phone: string | null;
+      department: string | null;
+      pmp: string | null;
+    }
+  | { ok: false; error: "errFirstName" | "errLastName" | "errPmp" };
 
 export function validateProfileInput(input: ProfileInput): ProfileValidation {
-  const name = input.name.trim().replace(/\s+/g, " ");
-  if (name.length < 2) return { ok: false, error: "errName" };
+  const firstName = input.firstName.trim().replace(/\s+/g, " ");
+  if (firstName.length < 2) return { ok: false, error: "errFirstName" };
+
+  const lastName = input.lastName.trim().replace(/\s+/g, " ");
+  if (lastName.length < 2) return { ok: false, error: "errLastName" };
 
   const pmp = normalizePmp(input.pmp);
   if (pmp !== null && !isValidPmp(pmp)) return { ok: false, error: "errPmp" };
@@ -32,5 +63,5 @@ export function validateProfileInput(input: ProfileInput): ProfileValidation {
   const phone = input.phone.trim() || null;
   const department = input.department.trim() || null;
 
-  return { ok: true, name, phone, department, pmp };
+  return { ok: true, firstName, lastName, name: composeFullName(firstName, lastName), phone, department, pmp };
 }

@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { normalizePmp, isValidPmp, validateProfileInput } from "@/lib/profile";
+import {
+  normalizePmp,
+  isValidPmp,
+  validateProfileInput,
+  composeFullName,
+  splitFullName,
+} from "@/lib/profile";
 
 describe("normalizePmp", () => {
   it("trims and strips inner whitespace", () => {
@@ -27,18 +33,49 @@ describe("isValidPmp", () => {
   });
 });
 
+describe("composeFullName", () => {
+  it("joins first + surname and collapses whitespace", () => {
+    expect(composeFullName("  Μαρία ", " Παπαδοπούλου ")).toBe("Μαρία Παπαδοπούλου");
+  });
+
+  it("omits an empty part without a stray space", () => {
+    expect(composeFullName("Μαρία", "")).toBe("Μαρία");
+    expect(composeFullName("", "Παπαδοπούλου")).toBe("Παπαδοπούλου");
+  });
+});
+
+describe("splitFullName", () => {
+  it("splits on the first space: first token vs the rest", () => {
+    expect(splitFullName("Μαρία Παπαδοπούλου")).toEqual({ firstName: "Μαρία", lastName: "Παπαδοπούλου" });
+    expect(splitFullName("Μαρία Ελένη Παπαδοπούλου")).toEqual({
+      firstName: "Μαρία",
+      lastName: "Ελένη Παπαδοπούλου",
+    });
+  });
+
+  it("handles a single token and empty/nullish input", () => {
+    expect(splitFullName("Μαρία")).toEqual({ firstName: "Μαρία", lastName: "" });
+    expect(splitFullName("")).toEqual({ firstName: "", lastName: "" });
+    expect(splitFullName(null)).toEqual({ firstName: "", lastName: "" });
+    expect(splitFullName(undefined)).toEqual({ firstName: "", lastName: "" });
+  });
+});
+
 describe("validateProfileInput", () => {
-  const base = { name: "Μαρία Παπαδοπούλου", phone: "", department: "", pmp: "" };
+  const base = { firstName: "Μαρία", lastName: "Παπαδοπούλου", phone: "", department: "", pmp: "" };
 
   it("normalises and accepts a complete input", () => {
     const v = validateProfileInput({
-      name: "  Μαρία   Παπαδοπούλου ",
+      firstName: "  Μαρία ",
+      lastName: " Παπαδοπούλου ",
       phone: " 99123456 ",
       department: " Μαθηματικά ",
       pmp: " 12345 ",
     });
     expect(v).toEqual({
       ok: true,
+      firstName: "Μαρία",
+      lastName: "Παπαδοπούλου",
       name: "Μαρία Παπαδοπούλου",
       phone: "99123456",
       department: "Μαθηματικά",
@@ -50,6 +87,8 @@ describe("validateProfileInput", () => {
     const v = validateProfileInput(base);
     expect(v).toEqual({
       ok: true,
+      firstName: "Μαρία",
+      lastName: "Παπαδοπούλου",
       name: "Μαρία Παπαδοπούλου",
       phone: null,
       department: null,
@@ -57,8 +96,12 @@ describe("validateProfileInput", () => {
     });
   });
 
-  it("rejects a too-short name", () => {
-    expect(validateProfileInput({ ...base, name: " X " })).toEqual({ ok: false, error: "errName" });
+  it("rejects a too-short first name", () => {
+    expect(validateProfileInput({ ...base, firstName: " X " })).toEqual({ ok: false, error: "errFirstName" });
+  });
+
+  it("rejects a missing surname", () => {
+    expect(validateProfileInput({ ...base, lastName: " " })).toEqual({ ok: false, error: "errLastName" });
   });
 
   it("rejects a malformed ΠΜΠ", () => {

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, CircleUser } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { isEducator } from "@/lib/rbac";
+import { splitFullName } from "@/lib/profile";
 import type { Role } from "@/generated/prisma";
 import { ProfileForm } from "./ProfileForm";
 
@@ -27,6 +28,8 @@ export default async function ProfilePage({
     where: { id: session.user.id },
     select: {
       name: true,
+      firstName: true,
+      lastName: true,
       email: true,
       staffProfile: { select: { phone: true, department: true, pmp: true } },
     },
@@ -34,6 +37,12 @@ export default async function ProfilePage({
   if (!user) redirect(`/${locale}/login`);
 
   const staff = user.staffProfile;
+
+  // Seed the name fields from the stored parts, falling back to a best-effort
+  // split of the legacy single `name` for accounts created before the split.
+  const fallback = splitFullName(user.name);
+  const firstName = user.firstName ?? fallback.firstName;
+  const lastName = user.lastName ?? fallback.lastName;
 
   return (
     <div className="space-y-5">
@@ -67,12 +76,15 @@ export default async function ProfilePage({
 
           <ProfileForm
             initial={{
-              name: user.name ?? "",
+              firstName,
+              lastName,
               phone: staff?.phone ?? "",
               department: staff?.department ?? "",
               pmp: staff?.pmp ?? "",
             }}
             hasStaffProfile={!!staff}
+            // Force the form open when a required ΠΜΠ is still missing.
+            mustEdit={!!required && !!staff && !staff.pmp}
           />
 
           {!staff && <p className="text-xs text-slate-400">{t("noStaffProfile")}</p>}

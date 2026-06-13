@@ -30,7 +30,9 @@ export async function updateMyProfile(input: ProfileInput): Promise<UpdateProfil
   await db.$transaction(async (tx) => {
     await tx.user.update({
       where: { id: session.user.id },
-      data: { name: v.name },
+      // `name` stays the composed full name so every existing display/search site
+      // keeps working; firstName/lastName hold the split parts.
+      data: { firstName: v.firstName, lastName: v.lastName, name: v.name },
     });
     if (staff) {
       await tx.staffProfile.update({
