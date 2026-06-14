@@ -4,10 +4,11 @@ import { authOptions } from "@/server/auth";
 import { db } from "@/server/db";
 import type { Role } from "@/generated/prisma";
 import { getNow, utcMidnight, fmtDisplayDate } from "@/lib/dates";
-import { getSpecialDayForDate } from "@/lib/calendar";
+import { getSpecialDayForDate, getOnDutyDeputies } from "@/lib/calendar";
 import { getDayOverrides } from "@/server/substitutions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, ClipboardList, AlertCircle, CalendarRange } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { CheckCircle2, AlertCircle, CalendarRange, Megaphone, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
@@ -167,6 +168,19 @@ export default async function TeacherDashboardPage({
 
   const dateLabel = fmtDisplayDate(now);
 
+  // On-duty deputies for today + active announcements (pushed by management;
+  // composed under Ειδοποιήσεις, shown read-only here).
+  const [onDuty, announcements] = await Promise.all([
+    isWeekend ? Promise.resolve([]) : getOnDutyDeputies(today),
+    db.announcement.findMany({
+      where: { pinnedUntil: { gte: today } },
+      orderBy: { createdAt: "desc" },
+      include: {
+        author: { select: { name: true, staffProfile: { select: { scheduleName: true } } } },
+      },
+    }),
+  ]);
+
   return (
     <div className="space-y-6">
       <div>
@@ -175,6 +189,29 @@ export default async function TeacherDashboardPage({
         </h2>
         <p className="text-slate-500 mt-1">{dateLabel}</p>
       </div>
+
+      {/* Today's announcements — pushed by management under Ειδοποιήσεις */}
+      {announcements.length > 0 && (
+        <Card className="border-amber-200 bg-amber-50/40">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2 text-amber-900">
+              <Megaphone className="w-4 h-4" />
+              {t("announcements")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {announcements.map((a) => (
+              <div key={a.id} className="rounded-lg border border-amber-100 bg-white/70 px-3 py-2">
+                {a.title && <p className="text-sm font-semibold text-slate-900">{a.title}</p>}
+                <p className="text-sm text-slate-700 whitespace-pre-wrap">{a.body}</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  {a.author?.staffProfile?.scheduleName ?? a.author?.name} · {fmtDisplayDate(a.createdAt)}
+                </p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {allSlots.length === 0 ? (
         <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
@@ -405,6 +442,31 @@ export default async function TeacherDashboardPage({
                 </p>
               </Link>
             ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Εφημερεύοντες Βοηθοί on duty today */}
+      {!isWeekend && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-slate-500" />
+              {t("onDutyToday")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {onDuty.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {onDuty.map((d) => (
+                  <Badge key={d.id} variant="secondary" className="text-sm">
+                    {d.staffProfile.scheduleName ?? d.staffProfile.user?.name ?? "—"}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400">{t("noDutyToday")}</p>
+            )}
           </CardContent>
         </Card>
       )}

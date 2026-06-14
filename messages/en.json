@@ -151,7 +151,17 @@
     "coveredToday": "Absent — covered",
     "studyHallsTitle": "Substitutions",
     "studyHallsHint": "Groups from today's substitution plan without a substitute — headteachers take their attendance.",
-    "claimCta": "Cover a group →"
+    "claimCta": "Cover a group →",
+    "announcements": "Announcements",
+    "newAnnouncement": "New announcement",
+    "noAnnouncements": "No announcements",
+    "announcementTitle": "Title (optional)",
+    "announcementPlaceholder": "Write an announcement…",
+    "showUntil": "Show until",
+    "post": "Post",
+    "deleteAnnouncement": "Delete announcement",
+    "onDutyToday": "On duty today",
+    "noDutyToday": "No deputies assigned"
   },
   "attendance": {
     "title": "Attendance",
@@ -770,6 +780,7 @@
     "composeTitle": "New Notification to Teachers",
     "composeSubtitle": "Compose a message — recipients see it in their notifications.",
     "newMessage": "New Notification",
+    "tabMessages": "Notifications",
     "backToBoard": "Notifications",
     "fieldTitle": "Title *",
     "fieldMessage": "Message *",

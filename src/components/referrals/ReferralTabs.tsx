@@ -11,9 +11,54 @@ type Tab = {
   content: ReactNode;
 };
 
-export function ReferralTabs({ tabs, initialKey }: { tabs: Tab[]; initialKey?: string }) {
+export function ReferralTabs({
+  tabs,
+  initialKey,
+  variant = "pill",
+}: {
+  tabs: Tab[];
+  initialKey?: string;
+  /** "pill" = segmented control (default); "underline" = top-level page tabs. */
+  variant?: "pill" | "underline";
+}) {
   const [active, setActive] = useState(initialKey ?? tabs[0]?.key);
   const activeTab = tabs.find((t) => t.key === active) ?? tabs[0];
+
+  if (variant === "underline") {
+    return (
+      <div className="space-y-4">
+        <div className="flex gap-6 border-b border-slate-200">
+          {tabs.map((t) => {
+            const isActive = t.key === activeTab?.key;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setActive(t.key)}
+                className={`-mb-px flex items-center gap-2 border-b-2 pb-3 text-sm font-semibold transition-colors touch-manipulation ${
+                  isActive
+                    ? "border-emerald-600 text-slate-900"
+                    : "border-transparent text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                {t.label}
+                {t.count !== undefined && t.count > 0 && (
+                  <span
+                    className={`inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-xs font-semibold ${
+                      t.highlight ? "bg-red-500 text-white" : "bg-slate-100 text-slate-600"
+                    }`}
+                  >
+                    {t.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        <div>{activeTab?.content}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

@@ -190,6 +190,7 @@ model User {
   chaperoneRequests    ChaperoneRequest[]
   startedConversations Conversation[] @relation("ConversationStarter")
   authoredMessages     Message[]      @relation("MessageAuthor")
+  announcements        Announcement[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1002,6 +1003,22 @@ model NoticeAcknowledgment {
   readAt   DateTime @default(now())
 
   @@unique([noticeId, userId])
+}
+
+// ─── Daily Announcements ──────────────────────────────────────────────────────
+// Short notices pushed by management (headteachers/headmaster) and surfaced on
+// the teacher dashboard. An announcement shows while pinnedUntil >= today, so a
+// post defaults to "today only" but can be kept up for several days.
+model Announcement {
+  id          String   @id @default(cuid())
+  title       String?
+  body        String   @db.Text
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+  pinnedUntil DateTime @db.Date
+  createdAt   DateTime @default(now())
+
+  @@index([pinnedUntil])
 }
 
 // ─── File Storage ─────────────────────────────────────────────────────────────

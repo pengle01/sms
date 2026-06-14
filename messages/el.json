@@ -151,7 +151,17 @@
     "coveredToday": "Απουσία — καλύπτεται",
     "studyHallsTitle": "Αναπληρώσεις",
     "studyHallsHint": "Τμήματα από το σημερινό πλάνο αναπληρώσεων χωρίς αναπληρωτή — οι Βοηθοί Διευθυντές καταχωρούν τις απουσίες.",
-    "claimCta": "Κάλυψη τμήματος →"
+    "claimCta": "Κάλυψη τμήματος →",
+    "announcements": "Ανακοινώσεις",
+    "newAnnouncement": "Νέα Ανακοίνωση",
+    "noAnnouncements": "Καμία ανακοίνωση",
+    "announcementTitle": "Τίτλος (προαιρετικά)",
+    "announcementPlaceholder": "Γράψτε μια ανακοίνωση…",
+    "showUntil": "Εμφάνιση έως",
+    "post": "Δημοσίευση",
+    "deleteAnnouncement": "Διαγραφή ανακοίνωσης",
+    "onDutyToday": "Εφημερεύοντες σήμερα",
+    "noDutyToday": "Δεν έχουν οριστεί εφημερεύοντες"
   },
   "attendance": {
     "title": "Απουσίες",
@@ -770,6 +780,7 @@
     "composeTitle": "Νέα Ειδοποίηση προς Εκπαιδευτικούς",
     "composeSubtitle": "Συντάξτε ένα μήνυμα — οι παραλήπτες το βλέπουν στις ειδοποιήσεις τους.",
     "newMessage": "Νέα Ειδοποίηση",
+    "tabMessages": "Ειδοποιήσεις",
     "backToBoard": "Ειδοποιήσεις",
     "fieldTitle": "Τίτλος *",
     "fieldMessage": "Μήνυμα *",
