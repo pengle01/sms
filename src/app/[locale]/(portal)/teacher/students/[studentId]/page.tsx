@@ -363,18 +363,18 @@ export default async function StudentSchedulePage({
                         key={c.id}
                         className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
                       >
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-slate-800 truncate flex items-center gap-1.5">
-                            {c.name}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-slate-800 flex items-center gap-1.5 min-w-0">
+                            <span className="truncate">{c.name}</span>
                             {c.active && (
-                              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1 py-px rounded">Προτιμώμενο</span>
+                              <span className="flex-shrink-0 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1 py-px rounded">Τηλέφωνο sms</span>
                             )}
                           </p>
                           <p className="text-xs text-slate-400">{CONTACT_ROLE_LABEL[c.role] ?? c.role}</p>
                         </div>
                         <a
                           href={`tel:${c.phone}`}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-medium hover:bg-emerald-100 whitespace-nowrap"
+                          className="flex-shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-medium hover:bg-emerald-100 whitespace-nowrap"
                         >
                           <Phone className="w-3.5 h-3.5" />
                           {c.phone}

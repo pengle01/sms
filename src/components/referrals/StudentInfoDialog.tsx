@@ -82,11 +82,11 @@ export function StudentInfoDialog({ studentId, excludeReferralId, studentName }:
                       <ul className="space-y-1.5">
                         {data.contacts.map((c) => (
                           <li key={c.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium text-slate-800 truncate flex items-center gap-1.5">
-                                {c.name}
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-slate-800 flex items-center gap-1.5 min-w-0">
+                                <span className="truncate">{c.name}</span>
                                 {c.isDefault && (
-                                  <span className="text-[10px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1 py-0.5">
+                                  <span className="flex-shrink-0 text-[10px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1 py-0.5">
                                     SMS
                                   </span>
                                 )}
@@ -95,7 +95,7 @@ export function StudentInfoDialog({ studentId, excludeReferralId, studentName }:
                             </div>
                             <a
                               href={`tel:${c.phone}`}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-medium hover:bg-emerald-100 whitespace-nowrap"
+                              className="flex-shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-medium hover:bg-emerald-100 whitespace-nowrap"
                             >
                               <Phone className="w-3.5 h-3.5" />
                               {c.phone}
