@@ -4,10 +4,11 @@ import { getActiveAuth } from "@/server/authz";
 import { db } from "@/server/db";
 import { isManagement } from "@/lib/rbac";
 import { getTranslations } from "next-intl/server";
-import { utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
+import { utcMidnight, localDateStr, fmtDisplayDate, fmtDisplayDateTime } from "@/lib/dates";
 import { NotificationsBoard } from "@/components/notifications/NotificationsBoard";
 import { ReferralTabs } from "@/components/referrals/ReferralTabs";
-import { PenSquare, Megaphone, X } from "lucide-react";
+import { groupSentNotifications } from "@/lib/staffNotifications";
+import { PenSquare, Megaphone, X, CheckCheck, Send } from "lucide-react";
 import { postAnnouncement, deleteAnnouncement } from "./announcement-actions";
 
 export default async function TeacherNotificationsPage({
@@ -23,17 +24,27 @@ export default async function TeacherNotificationsPage({
 
   const canManage = auth.roles.some((r) => isManagement(r));
 
-  // Active announcements (still pinned) — managed here, shown on dashboards.
+  // Active announcements (still pinned) + the management user's own sent
+  // staff-notification history — both management-only.
   const today = utcMidnight();
-  const announcements = canManage
-    ? await db.announcement.findMany({
-        where: { pinnedUntil: { gte: today } },
-        orderBy: { createdAt: "desc" },
-        include: {
-          author: { select: { name: true, staffProfile: { select: { scheduleName: true } } } },
-        },
-      })
-    : [];
+  const [announcements, sentRows] = canManage
+    ? await Promise.all([
+        db.announcement.findMany({
+          where: { pinnedUntil: { gte: today } },
+          orderBy: { createdAt: "desc" },
+          include: {
+            author: { select: { name: true, staffProfile: { select: { scheduleName: true } } } },
+          },
+        }),
+        db.notification.findMany({
+          where: { senderId: auth.userId, type: "STAFF_MESSAGE" },
+          select: { title: true, body: true, createdAt: true, read: true, noticedAt: true },
+          orderBy: { createdAt: "desc" },
+          take: 400,
+        }),
+      ])
+    : [[], []];
+  const sentHistory = groupSentNotifications(sentRows);
 
   const todayIso = localDateStr();
   const field =
@@ -109,6 +120,33 @@ export default async function TeacherNotificationsPage({
     </div>
   );
 
+  const sentTab =
+    sentHistory.length === 0 ? (
+      <p className="text-sm text-slate-400">{t("noSent")}</p>
+    ) : (
+      <div className="divide-y divide-slate-100">
+        {sentHistory.map((b, i) => (
+          <div key={i} className="flex items-center gap-3 py-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-slate-900 truncate">{b.title}</p>
+              <p className="text-xs text-slate-400">{fmtDisplayDateTime(b.sentAt)}</p>
+            </div>
+            <span
+              className={
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold flex-shrink-0 " +
+                (b.seen === b.total
+                  ? "bg-green-50 text-green-700 border border-green-200"
+                  : "bg-slate-50 text-slate-500 border border-slate-200")
+              }
+            >
+              <CheckCheck className="w-3.5 h-3.5" />
+              {t("readOf", { seen: b.seen, total: b.total })}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
@@ -129,7 +167,25 @@ export default async function TeacherNotificationsPage({
         <ReferralTabs
           variant="underline"
           tabs={[
-            { key: "messages", label: t("tabMessages"), content: <NotificationsBoard locale={locale} /> },
+            {
+              key: "messages",
+              label: t("tabMessages"),
+              content: (
+                <div className="space-y-4">
+                  <NotificationsBoard locale={locale} />
+                  {/* Sent staff-notification history lives under Notifications (received vs sent),
+                      collapsed by default so it doesn't crowd the inbox. */}
+                  <details className="group border-t border-slate-100 pt-4">
+                    <summary className="flex w-fit cursor-pointer list-none items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-900 [&::-webkit-details-marker]:hidden">
+                      <Send className="w-4 h-4 text-slate-400" />
+                      {t("sentHistory")}
+                      <span className="font-normal text-slate-400">({sentHistory.length})</span>
+                    </summary>
+                    <div className="mt-3">{sentTab}</div>
+                  </details>
+                </div>
+              ),
+            },
             { key: "announcements", label: td("announcements"), content: announcementsTab },
           ]}
         />
