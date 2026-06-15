@@ -11,7 +11,7 @@ import {
   Calendar, CalendarRange, FileText, Bell, Users, Settings, Shield,
   Search, GraduationCap, Home, Backpack, Plus, BookMarked, ShieldAlert,
   CircleUser, BellRing, LogOut, ArrowLeftRight, BarChart3, Award, MessageSquare,
-  ScrollText,
+  ScrollText, Send,
 } from "lucide-react";
 import { MessagesNavBadge } from "./MessagesNavBadge";
 
@@ -36,6 +36,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "activities",   href: "activities",        icon: CalendarRange,   roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "substitutions", href: "substitutions",    icon: ArrowLeftRight,  roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "duty",         href: "duty",              icon: BellRing,        roles: ["HEADTEACHER_A","HEADTEACHER_B"] },
+  { key: "sms",          href: "sms",               icon: Send,            roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B"] },
   { key: "profile",      href: "profile",           icon: CircleUser,      roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
 
   // ── Office portal (/office) — student data & attendance ─────────────
