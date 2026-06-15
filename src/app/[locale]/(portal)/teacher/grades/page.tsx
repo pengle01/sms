@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, ChevronRight } from "lucide-react";
 import { getTranslations } from "next-intl/server";
+import { parseSupportGroup } from "@/lib/specialEd";
 
 export default async function TeacherGradesPage({
   params,
@@ -51,6 +52,8 @@ export default async function TeacherGradesPage({
     { groupId: string; courseId: string; groupName: string; grade: number; courseName: string }
   >();
   for (const s of slots) {
+    // Support lessons (ΣΤ_… group / ΑΣΤ_… atomic) are not graded — skip them.
+    if (parseSupportGroup(s.group.name)) continue;
     const key = `${s.groupId}:${s.courseId}`;
     if (!lessonMap.has(key)) {
       lessonMap.set(key, {

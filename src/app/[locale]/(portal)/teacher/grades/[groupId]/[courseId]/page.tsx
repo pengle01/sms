@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { GRADE_PERIODS, parseGradePeriod } from "@/lib/grades";
 import { getGradesUnlocked } from "@/lib/schoolConfig";
 import { isManagement } from "@/lib/rbac";
+import { parseSupportGroup } from "@/lib/specialEd";
 import { Lock } from "lucide-react";
 import type { Role } from "@/generated/prisma";
 import { GradeEntryForm } from "./GradeEntryForm";
@@ -47,6 +48,9 @@ export default async function LessonGradesPage({
     getGradesUnlocked(),
   ]);
   if (!group || !course) notFound();
+  // Support lessons (ΣΤ_… / ΑΣΤ_…) are not graded — block direct/bookmarked
+  // access to their grade-entry form, mirroring the filtered lesson list.
+  if (parseSupportGroup(group.name)) redirect(`/${locale}/teacher/grades`);
   const locked = !gradesUnlocked[period];
 
   const t = await getTranslations("grades");
