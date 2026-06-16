@@ -111,7 +111,10 @@ export default async function TeacherReferralsPage({
           where: {
             isDraft: false,
             students: { some: { groupId: { in: headGroupIds }, status: "PENDING" } },
-            NOT: { filerId: staff.id },
+            // NOTE: do NOT exclude referrals this headteacher filed — a headteacher
+            // can file against a student in their own homegroup, and that referral
+            // must still surface here so they can resolve it (the "my filed" tab
+            // has no resolve action). It may appear in both tabs; that's expected.
             ...searchAnd,
           },
           include: referralInclude,
@@ -126,12 +129,9 @@ export default async function TeacherReferralsPage({
           where: {
             isDraft: false,
             students: { some: { groupId: { in: headGroupIds }, status: "RESOLVED" } },
-            NOT: {
-              OR: [
-                { filerId: staff.id },
-                { students: { some: { groupId: { in: headGroupIds }, status: "PENDING" } } },
-              ],
-            },
+            // Resolved-only: exclude referrals still pending in my group. Self-filed
+            // referrals are intentionally NOT excluded (see groupReferrals above).
+            NOT: { students: { some: { groupId: { in: headGroupIds }, status: "PENDING" } } },
             ...searchAnd,
           },
           include: referralInclude,
