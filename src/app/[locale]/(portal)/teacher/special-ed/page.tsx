@@ -8,7 +8,6 @@ import { ShieldAlert, Upload, Download, Search, Pencil, UserPlus, BookOpen } fro
 import { canViewSpecialEdFull } from "@/lib/specialEd";
 import { listSpecialEdStudents, listSpecialEdForTeacher, specialEdLegend, type TeacherSpecialEdStudent } from "@/server/specialEd";
 import { studentNameOrIdWhere } from "@/lib/studentSearch";
-import { writeAudit } from "@/server/audit";
 
 // The special-ed coordinator's desk: the cohort roster + a search to add a
 // student, plus the Excel import. Full-access only (deputy/counselor/headmaster).
@@ -36,14 +35,10 @@ export default async function SpecialEdDeskPage({
   // the audited dossier reveal). Full-access roles fall through to the desk. ──
   if (!full) {
     if (!staff) redirect(`/${locale}/teacher/dashboard`);
+    // No audit here: a server render fires on prefetch too, so auditing this
+    // read would spam/falsify the trail. The dossier codes-reveal stays audited.
     const myStudents = await listSpecialEdForTeacher(staff.id);
     const legend = specialEdLegend(myStudents);
-    await writeAudit({
-      userId: auth.userId,
-      action: "specialEd.viewMyStudents",
-      resource: "SpecialEdRecord",
-      details: { count: myStudents.length },
-    });
     return <TeacherSpecialEdView students={myStudents} legend={legend} />;
   }
 

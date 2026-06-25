@@ -20,6 +20,7 @@ import { periodLabel } from "@/lib/periods";
  */
 export function AttendanceLockGuard({ locale }: { locale: string }) {
   const t = useTranslations("attendanceLock");
+  const tCal = useTranslations("calendar");
   const pathname = usePathname();
   const onMarkRoute = pathname.includes("/teacher/attendance/mark");
 
@@ -64,11 +65,13 @@ export function AttendanceLockGuard({ locale }: { locale: string }) {
                       {periodLabel(l.period, locale)}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <span className="text-sm font-medium text-slate-900">{l.courseName}</span>
+                      <span className="text-sm font-medium text-slate-900">
+                        {l.kind ? tCal(l.kind) : l.courseName}
+                      </span>
                       <span className="text-xs text-slate-400 ml-2">{l.groupName}</span>
                     </div>
                     <Link
-                      href={`/${locale}/teacher/attendance/mark?groupId=${l.groupId}&period=${l.period}&date=${l.dateIso}`}
+                      href={`/${locale}/teacher/attendance/mark?groupId=${l.groupId}&period=${l.period}&date=${l.dateIso}${l.kind === "intercalary" ? "&intercalary=1" : l.kind === "excursion" ? "&excursion=1" : ""}`}
                       className="inline-flex items-center h-8 px-3 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700"
                     >
                       {t("mark")}
