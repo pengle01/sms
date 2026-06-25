@@ -47,3 +47,8 @@ next-env.d.ts
 /backups/
 *.dump
 ops/backup/offsite.sh
+
+# UAT material & fake test data (local only — not committed)
+/docs/uat-test-plan.md
+/docs/uat-by-role-wave.md
+/test-data/
