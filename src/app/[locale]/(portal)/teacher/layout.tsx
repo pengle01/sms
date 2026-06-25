@@ -1,12 +1,8 @@
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import { getActiveAuth } from "@/server/authz";
 import { isEducator } from "@/lib/rbac";
 import { canViewSpecialEdFull } from "@/lib/specialEd";
 import { teachesAnySpecialEd } from "@/server/specialEd";
-import { getAttendanceLockConfig } from "@/lib/schoolConfig";
-import { getPendingAttendance, type PendingLesson } from "@/server/attendanceLock";
-import { AttendanceLockScreen } from "@/components/attendance/AttendanceLockScreen";
 import { db } from "@/server/db";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
@@ -44,18 +40,11 @@ export default async function TeacherPortalLayout({
   const specialEdFull = canViewSpecialEdFull(auth.roles, !!staff?.specialEducation);
   const specialEdAccess = specialEdFull || (staff ? await teachesAnySpecialEd(staff.id) : false);
 
-  // Attendance-completion lock: block the portal (except the marking route, so
-  // the lock's links work) until the teacher has recorded all past lessons.
-  let lockPending: PendingLesson[] = [];
-  if (staff?.id) {
-    const lock = await getAttendanceLockConfig();
-    if (lock.enabled) {
-      const pathname = (await headers()).get("x-pathname") ?? "";
-      if (!pathname.includes("/teacher/attendance/mark")) {
-        lockPending = await getPendingAttendance(staff.id, lock.window);
-      }
-    }
-  }
+  // NOTE: the attendance-completion lock is enforced in template.tsx (not here).
+  // A shared layout is NOT re-rendered on client-side navigation between its
+  // child pages, so a lock gate here would go stale and never let the marking
+  // route through. A template re-renders on every navigation, which is what the
+  // route-exempting gate needs.
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
@@ -72,11 +61,7 @@ export default async function TeacherPortalLayout({
           specialEdAccess={specialEdAccess}
         />
         <main className="flex-1 overflow-y-auto p-4 md:p-6 print:p-0 print:overflow-visible">
-          {lockPending.length > 0 ? (
-            <AttendanceLockScreen pending={lockPending} locale={locale} />
-          ) : (
-            children
-          )}
+          {children}
         </main>
       </div>
     </div>
