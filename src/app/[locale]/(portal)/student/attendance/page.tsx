@@ -4,8 +4,9 @@ import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ClipboardList, Search } from "lucide-react";
+import { ClipboardList, Search, LogOut } from "lucide-react";
 import { monthStart, monthEnd, localDateStr, fmtDisplayDate } from "@/lib/dates";
+import { staffDisplayName } from "@/lib/staffName";
 import { termOf } from "@/lib/schoolYear";
 import { getSchoolYear } from "@/lib/schoolConfig";
 import { getTranslations } from "next-intl/server";
@@ -53,6 +54,14 @@ export default async function StudentAttendancePage({
     },
     include: { timetableSlot: { include: { course: true } } },
     orderBy: [{ date: "desc" }, { timetableSlot: { period: "asc" } }],
+  });
+
+  // Exit permits (Άδεια Εξόδου) covering this month — the student sees a record
+  // of every early departure the on-duty deputy issued for them.
+  const permits = await db.exitPermit.findMany({
+    where: { studentId: student.id, date: { gte: start, lt: end } },
+    include: { issuer: { select: { scheduleName: true, user: { select: { name: true } } } } },
+    orderBy: [{ date: "desc" }, { fromPeriod: "asc" }],
   });
 
   // Search + status filter (course names matched accent-insensitively)
@@ -208,6 +217,40 @@ export default async function StudentAttendancePage({
           <option value="late">{t("statusLate")}</option>
         </AutoSubmitSelect>
       </form>
+
+      {/* Exit permits this month */}
+      {permits.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <LogOut className="w-4 h-4 text-yellow-500" />
+              {t("permitsTitle")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="divide-y divide-slate-50">
+              {permits.map((p) => (
+                <div key={p.id} className="flex items-start gap-3 px-5 py-3.5">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-900">
+                      {fmtDisplayDate(p.date)} · {t("permitFromPeriod", { n: p.fromPeriod })}
+                    </p>
+                    <p className="text-sm text-slate-600">{p.reason}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {t("permitIssuedBy", { name: staffDisplayName(p.issuer) })}
+                    </p>
+                  </div>
+                  {!p.active && (
+                    <Badge variant="outline" className="text-xs bg-slate-50 text-slate-500 border-slate-200">
+                      {t("permitCancelled")}
+                    </Badge>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Detail log */}
       <Card>

@@ -711,7 +711,11 @@
     "wholeYear": "Whole year",
     "noAbsences": "No absences this month",
     "noResults": "No records found",
-    "searchCourse": "Search course…"
+    "searchCourse": "Search course…",
+    "permitsTitle": "Exit Permits",
+    "permitFromPeriod": "from period {n}",
+    "permitIssuedBy": "Issued by {name}",
+    "permitCancelled": "Cancelled"
   },
   "mySchedule": {
     "title": "My Schedule",

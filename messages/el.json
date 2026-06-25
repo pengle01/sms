@@ -711,7 +711,11 @@
     "wholeYear": "Σύνολο Έτους",
     "noAbsences": "Καμία απουσία αυτόν τον μήνα",
     "noResults": "Δεν βρέθηκαν εγγραφές",
-    "searchCourse": "Αναζήτηση μαθήματος…"
+    "searchCourse": "Αναζήτηση μαθήματος…",
+    "permitsTitle": "Άδειες Εξόδου",
+    "permitFromPeriod": "από {n}η περίοδο",
+    "permitIssuedBy": "Εκδόθηκε από {name}",
+    "permitCancelled": "Ακυρώθηκε"
   },
   "mySchedule": {
     "title": "Το Πρόγραμμά Μου",
