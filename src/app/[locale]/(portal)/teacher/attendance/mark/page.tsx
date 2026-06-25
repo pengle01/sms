@@ -4,7 +4,6 @@ import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
 import { utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { isDutyEligible } from "@/lib/dutyRoster";
-import { canViewSpecialEdFull } from "@/lib/specialEd";
 import type { Role } from "@/generated/prisma";
 import { ArrowLeft, Plus } from "lucide-react";
 import Link from "next/link";
@@ -35,12 +34,6 @@ export default async function TeacherMarkAttendancePage({
   let existingRecords: Record<string, { status: "PRESENT" | "ABSENT" | "LATE"; minutesDelayed: number }> = {};
   let studentLocations: Record<string, { type: "activity" | "support"; name: string }> = {};
   let exitPermits: Record<string, { reason: string; fromPeriod: number }> = {};
-  // On-screen students with a special-ed record (own lesson / full-access only).
-  let specialEdStudentIds: string[] = [];
-  // Whether the loaded slot is the teacher's OWN (vs a substitution assignment) —
-  // own-lesson teachers definitionally teach these students, so the codes reveal
-  // is authorized for them.
-  let isOwnSlot = false;
   let prevPeriodsRecords: Record<string, Record<number, { status: string; minutesDelayed: number; isAutoAbsent: boolean; exitPermit?: boolean }>> = {};
   let prevActivityPeriods: Record<string, number[]> = {};
   const prevPeriods = period > 1 ? Array.from({ length: period - 1 }, (_, i) => i + 1) : [];
@@ -94,7 +87,6 @@ export default async function TeacherMarkAttendancePage({
     ]);
     students = fetchedStudents;
     slot = fetchedSlot;
-    isOwnSlot = !!fetchedSlot;
 
     // Not my own slot? A finalized substitution plan may assign it to me for
     // this date — as the substitute (COVER/SWAP) or, for study halls, as a
@@ -340,19 +332,6 @@ export default async function TeacherMarkAttendancePage({
     }
   }
 
-  // Special-education indicators: surface the codes-reveal at the point of
-  // teaching. Only for the teacher's OWN lesson (they teach these students →
-  // the audited reveal authorizes) or full-access roles. The reveal itself is
-  // re-checked + audited server-side (specialEd.revealCodes).
-  const specialEdFull = canViewSpecialEdFull([session.user.role as Role], !!staff.specialEducation);
-  if (students.length > 0 && (isOwnSlot || specialEdFull)) {
-    const records = await db.specialEdRecord.findMany({
-      where: { studentId: { in: students.map((s) => s.id) } },
-      select: { studentId: true },
-    });
-    specialEdStudentIds = records.map((r) => r.studentId);
-  }
-
   const t = await getTranslations("attendance");
 
   return (
@@ -398,7 +377,6 @@ export default async function TeacherMarkAttendancePage({
           prevActivityPeriods={prevActivityPeriods}
           intercalaryGroupId={isIntercalary || isExcursion ? groupId : undefined}
           isExcursion={isExcursion}
-          specialEdStudentIds={specialEdStudentIds}
         />
       )}
 

@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/server/db";
 import { getActiveAuth } from "@/server/authz";
 import { canViewSpecialEdFull } from "@/lib/specialEd";
+import { teacherUserIdsForStudent } from "@/server/specialEd";
 import { writeAudit, requestMeta } from "@/server/audit";
 
 // Full special-ed access (deputy / counselor / headmaster / super-admin). Every
@@ -34,7 +35,10 @@ export async function updateSpecialEdRecord(input: {
 }): Promise<UpdateResult> {
   const auth = await requireFullAccess();
 
-  const student = await db.studentProfile.findUnique({ where: { id: input.studentId }, select: { id: true } });
+  const student = await db.studentProfile.findUnique({
+    where: { id: input.studentId },
+    select: { id: true, user: { select: { name: true } } },
+  });
   if (!student) return { ok: false, error: "Ο μαθητής δεν βρέθηκε." };
 
   const fileNo = input.fileNo.trim() || null;
@@ -72,6 +76,41 @@ export async function updateSpecialEdRecord(input: {
     resourceId: input.studentId,
     ...meta,
   });
+
+  // Notify the teachers who teach this student (the audience of the special-ed
+  // tab — no new disclosure) that the record changed. Best-effort: a failure
+  // here must not fail the save.
+  try {
+    const recipientIds = (await teacherUserIdsForStudent(input.studentId)).filter(
+      (id) => id !== auth.userId,
+    );
+    if (recipientIds.length > 0) {
+      const editor = await db.user.findUnique({
+        where: { id: auth.userId },
+        select: { name: true, staffProfile: { select: { scheduleName: true } } },
+      });
+      const signature = editor?.staffProfile?.scheduleName ?? editor?.name ?? "";
+      const name = student.user?.name ?? "";
+      const body =
+        (name
+          ? `Ενημερώθηκαν τα στοιχεία ειδικής αγωγής του/της ${name}.`
+          : "Ενημερώθηκαν στοιχεία ειδικής αγωγής μαθητή/τριας.") +
+        (signature ? `\n— ${signature}` : "");
+      await db.notification.createMany({
+        data: recipientIds.map((uid) => ({
+          userId: uid,
+          senderId: auth.userId,
+          type: "SPECIAL_ED_UPDATE",
+          title: "Ενημέρωση στοιχείων ειδικής αγωγής",
+          body,
+          linkUrl: "/teacher/special-ed",
+          read: false,
+        })),
+      });
+    }
+  } catch {
+    // notification is best-effort; the record was already saved
+  }
 
   revalidatePath("/[locale]/(portal)/teacher/special-ed", "page");
   return { ok: true };

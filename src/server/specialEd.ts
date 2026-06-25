@@ -184,6 +184,32 @@ export async function teachesAnySpecialEd(staffId: string): Promise<boolean> {
   return !!one;
 }
 
+/**
+ * Active staff (by userId) who teach a student — i.e. have a timetable slot in
+ * the student's homeroom or any subject group. This is exactly the audience of
+ * the teacher special-ed tab, so it's who we notify when the record changes.
+ */
+export async function teacherUserIdsForStudent(studentId: string): Promise<string[]> {
+  const student = await db.studentProfile.findUnique({
+    where: { id: studentId },
+    select: { groupId: true, subjectGroups: { select: { groupId: true } } },
+  });
+  if (!student) return [];
+  const groupIds = [student.groupId, ...student.subjectGroups.map((g) => g.groupId)].filter(
+    (g): g is string => !!g,
+  );
+  if (groupIds.length === 0) return [];
+  const slots = await db.timetableSlot.findMany({
+    where: { groupId: { in: groupIds }, staffId: { not: null } },
+    select: { staff: { select: { userId: true, user: { select: { isActive: true } } } } },
+  });
+  const ids = new Set<string>();
+  for (const s of slots) {
+    if (s.staff?.userId && s.staff.user?.isActive) ids.add(s.staff.userId);
+  }
+  return [...ids];
+}
+
 export type TeacherSpecialEdStudent = {
   studentId: string;
   registryNo: string;

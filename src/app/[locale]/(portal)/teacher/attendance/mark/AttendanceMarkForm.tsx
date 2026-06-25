@@ -11,7 +11,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { CheckCircle, XCircle, Clock, Loader2, MapPin, CalendarRange, LogOut, DoorOpen } from "lucide-react";
-import { SpecialEdInline } from "@/components/special-ed/SpecialEdInline";
 
 type Student = { id: string; user: { name: string | null }; studentId: string };
 type Slot = { id: string; room: string | null; course: { name: string } } | null;
@@ -37,8 +36,6 @@ interface Props {
   prevActivityPeriods?: Record<string, number[]>;
   intercalaryGroupId?: string;
   isExcursion?: boolean;
-  /** On-screen students with a special-ed record — show the codes-reveal control. */
-  specialEdStudentIds?: string[];
 }
 
 const fmtTime = (iso: string) =>
@@ -122,9 +119,7 @@ export function AttendanceMarkForm({
   prevActivityPeriods = {},
   intercalaryGroupId,
   isExcursion,
-  specialEdStudentIds = [],
 }: Props) {
-  const specialEdSet = new Set(specialEdStudentIds);
   const router = useRouter();
   const t = useTranslations("attendance");
   const locale = useLocale();
@@ -322,7 +317,6 @@ export function AttendanceMarkForm({
                         ) : (
                           <p className="text-xs text-slate-400 font-mono mt-0.5">{student.studentId}</p>
                         )}
-                        {specialEdSet.has(student.id) && <SpecialEdInline studentId={student.id} />}
                         <PeriodHistory
                           periods={prevPeriods}
                           studentRecords={prevPeriodsRecords[student.id]}
