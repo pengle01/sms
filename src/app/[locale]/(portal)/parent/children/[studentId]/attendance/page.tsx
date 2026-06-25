@@ -4,8 +4,9 @@ import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, LogOut } from "lucide-react";
 import { monthStart, monthEnd, localDateStr, fmtDisplayDate } from "@/lib/dates";
+import { staffDisplayName } from "@/lib/staffName";
 
 export default async function ParentChildAttendancePage({
   params,
@@ -52,6 +53,14 @@ export default async function ParentChildAttendancePage({
     },
     include: { timetableSlot: { include: { course: true } } },
     orderBy: [{ date: "desc" }, { timetableSlot: { period: "asc" } }],
+  });
+
+  // Exit permits covering this month — the deputy issues these after phoning the
+  // guardian, so the parent gets a record of every early departure.
+  const permits = await db.exitPermit.findMany({
+    where: { studentId, date: { gte: start, lt: end } },
+    include: { issuer: { select: { scheduleName: true, user: { select: { name: true } } } } },
+    orderBy: [{ date: "desc" }, { fromPeriod: "asc" }],
   });
 
   const allRecords = await db.attendance.findMany({
@@ -104,6 +113,39 @@ export default async function ParentChildAttendancePage({
           </CardContent>
         </Card>
       </div>
+
+      {permits.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <LogOut className="w-4 h-4 text-yellow-500" />
+              Exit Permits
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="divide-y divide-slate-50">
+              {permits.map((p) => (
+                <div key={p.id} className="flex items-start gap-3 px-5 py-3.5">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-900">
+                      {fmtDisplayDate(p.date)} · from period {p.fromPeriod}
+                    </p>
+                    <p className="text-sm text-slate-600">{p.reason}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Issued by {staffDisplayName(p.issuer)}
+                    </p>
+                  </div>
+                  {!p.active && (
+                    <Badge variant="outline" className="text-xs bg-slate-50 text-slate-500 border-slate-200">
+                      Cancelled
+                    </Badge>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader className="pb-3">

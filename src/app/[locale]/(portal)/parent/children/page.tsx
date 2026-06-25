@@ -4,7 +4,7 @@ import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { GraduationCap, BookOpen, ClipboardList, FileText } from "lucide-react";
+import { GraduationCap, BookOpen, ClipboardList, FileText, LogOut } from "lucide-react";
 import { utcMidnight, monthStart, localDateStr } from "@/lib/dates";
 import { isPassing } from "@/lib/grades";
 import Link from "next/link";
@@ -49,7 +49,7 @@ export default async function ParentChildrenPage({
   const [curYear, curMonth] = localDateStr().split("-").map(Number) as [number, number];
   const thisMonthStart = monthStart(curYear, curMonth);
 
-  const [absencesThisMonth, recentGrades] = await Promise.all([
+  const [absencesThisMonth, recentGrades, permitsToday] = await Promise.all([
     db.attendance.groupBy({
       by: ["studentId"],
       where: {
@@ -65,11 +65,16 @@ export default async function ParentChildrenPage({
       orderBy: { updatedAt: "desc" },
       take: 10,
     }),
+    db.exitPermit.findMany({
+      where: { studentId: { in: childIds }, date: utcMidnight(), active: true },
+      select: { studentId: true },
+    }),
   ]);
 
   const absencesByStudent = Object.fromEntries(
     absencesThisMonth.map((a) => [a.studentId, a._count])
   );
+  const permitTodayStudents = new Set(permitsToday.map((p) => p.studentId));
 
   return (
     <div className="space-y-5">
@@ -105,11 +110,17 @@ export default async function ParentChildrenPage({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 text-sm">
+                <div className="flex items-center gap-3 text-sm flex-wrap">
                   <div className="flex items-center gap-1.5 text-slate-600">
                     <ClipboardList className="w-4 h-4 text-red-400" />
                     <span>{absences} absence{absences !== 1 ? "s" : ""} this month</span>
                   </div>
+                  {permitTodayStudents.has(s.id) && (
+                    <div className="flex items-center gap-1.5 rounded-full bg-yellow-50 border border-yellow-200 px-2.5 py-1 text-xs font-medium text-yellow-700">
+                      <LogOut className="w-3.5 h-3.5" />
+                      Exit permit today
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-2">
