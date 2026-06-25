@@ -164,13 +164,14 @@ export function AttendanceMarkForm({
       )
   );
 
+  const utils = trpc.useUtils();
   const { mutate: markAttendance, isPending: isPendingRegular } = trpc.attendance.markAttendance.useMutation({
-    onSuccess: () => { toast.success(t("savedToast")); router.back(); },
+    onSuccess: () => { toast.success(t("savedToast")); utils.attendance.lockStatus.invalidate(); router.back(); },
     onError: (e) => toast.error(e.message),
   });
 
   const { mutate: markIntercalary, isPending: isPendingIntercalary } = trpc.attendance.markIntercalaryAttendance.useMutation({
-    onSuccess: () => { toast.success(t("savedToast")); router.back(); },
+    onSuccess: () => { toast.success(t("savedToast")); utils.attendance.lockStatus.invalidate(); router.back(); },
     onError: (e) => toast.error(e.message),
   });
 

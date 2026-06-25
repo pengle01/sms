@@ -6,6 +6,7 @@ import { teachesAnySpecialEd } from "@/server/specialEd";
 import { db } from "@/server/db";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
+import { AttendanceLockGuard } from "@/components/attendance/AttendanceLockGuard";
 
 export default async function TeacherPortalLayout({
   children,
@@ -40,11 +41,10 @@ export default async function TeacherPortalLayout({
   const specialEdFull = canViewSpecialEdFull(auth.roles, !!staff?.specialEducation);
   const specialEdAccess = specialEdFull || (staff ? await teachesAnySpecialEd(staff.id) : false);
 
-  // NOTE: the attendance-completion lock is enforced in template.tsx (not here).
-  // A shared layout is NOT re-rendered on client-side navigation between its
-  // child pages, so a lock gate here would go stale and never let the marking
-  // route through. A template re-renders on every navigation, which is what the
-  // route-exempting gate needs.
+  // NOTE: the attendance-completion lock is enforced by the client-side
+  // <AttendanceLockGuard/> below — neither a layout nor a template re-renders on
+  // navigation between sibling teacher pages, so a server gate here can't react
+  // to route changes. The guard uses usePathname() + a tRPC query instead.
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
@@ -64,6 +64,7 @@ export default async function TeacherPortalLayout({
           {children}
         </main>
       </div>
+      <AttendanceLockGuard locale={locale} />
     </div>
   );
 }

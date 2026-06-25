@@ -4,8 +4,24 @@ import { TRPCError } from "@trpc/server";
 import { permitByStudent } from "@/lib/exitPermit";
 import { utcMidnight } from "@/lib/dates";
 import { writeAudit } from "@/server/audit";
+import { getAttendanceLockConfig } from "@/lib/schoolConfig";
+import { getPendingAttendance, type PendingLesson } from "@/server/attendanceLock";
 
 export const attendanceRouter = createTRPCRouter({
+  // Attendance-completion lock status for the current teacher. Drives the
+  // client guard that blocks the portal until past lessons are recorded.
+  lockStatus: staffProcedure.query(async ({ ctx }) => {
+    const config = await getAttendanceLockConfig();
+    if (!config.enabled) return { locked: false, pending: [] as PendingLesson[] };
+    const staff = await ctx.db.staffProfile.findUnique({
+      where: { userId: ctx.session.user.id },
+      select: { id: true },
+    });
+    if (!staff) return { locked: false, pending: [] as PendingLesson[] };
+    const pending = await getPendingAttendance(staff.id, config.window);
+    return { locked: pending.length > 0, pending };
+  }),
+
   // Mark attendance for a timetable slot on a given date
   markAttendance: staffProcedure
     .input(
