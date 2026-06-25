@@ -11,7 +11,7 @@ import {
   Calendar, CalendarRange, FileText, Bell, Users, Settings, Shield,
   Search, GraduationCap, Home, Backpack, Plus, BookMarked, ShieldAlert,
   CircleUser, BellRing, LogOut, ArrowLeftRight, BarChart3, Award, MessageSquare,
-  ScrollText, Send,
+  ScrollText, Send, Database,
 } from "lucide-react";
 import { MessagesNavBadge } from "./MessagesNavBadge";
 
@@ -61,6 +61,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "calendar",     href: "calendar",          icon: CalendarRange,   roles: ["SUPER_ADMIN"] },
   { key: "audit",        href: "audit",             icon: ScrollText,      roles: ["SUPER_ADMIN"] },
   { key: "settings",     href: "settings",          icon: Settings,        roles: ["SUPER_ADMIN"] },
+  { key: "database",     href: "database",          icon: Database,        roles: ["SUPER_ADMIN"] },
 
   // ── Student portal ───────────────────────────────────────────────────
   { key: "mySchedule",   href: "schedule",          icon: Calendar,        roles: ["STUDENT"] },
