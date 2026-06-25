@@ -947,6 +947,7 @@
     "title": "Special Education",
     "codesHint": "Confidential. Click to reveal this student's codes.",
     "reveal": "Reveal codes",
+    "rosterReveal": "Special ed — show codes",
     "problemCodes": "Problem codes",
     "accommodations": "Accommodations",
     "support": "Support",
