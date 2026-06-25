@@ -691,6 +691,12 @@
     "typeBig": "Big · 45 min",
     "typeSmall": "Small · 20 min"
   },
+  "attendanceLock": {
+    "title": "Pending attendance",
+    "intro": "You must record attendance for the {n} lesson(s) below before you can continue to the rest of the portal.",
+    "mark": "Record",
+    "more": "and {n} more"
+  },
   "myAttendance": {
     "title": "My Attendance",
     "noGroup": "No group",

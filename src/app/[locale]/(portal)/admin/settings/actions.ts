@@ -6,8 +6,41 @@ import { getSuperAdminAuth } from "@/server/authz";
 import { writeAudit, requestMeta } from "@/server/audit";
 import { DUTY_ELIGIBLE_ROLES } from "@/lib/dutyRoster";
 import { GRADES_UNLOCKED_KEY, GRADE_PERIODS, type GradesUnlocked } from "@/lib/grades";
+import { ATTENDANCE_LOCK_KEY, ATTENDANCE_LOCK_WINDOWS, type AttendanceLockConfig } from "@/lib/attendanceLock";
 
 export type SaveRosterResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Enable/disable the attendance-completion lock and its look-back window.
+ * When on, a teacher with unmarked past lessons is blocked from the rest of
+ * the teacher portal until they record them.
+ */
+export async function saveAttendanceLock(config: AttendanceLockConfig): Promise<SaveRosterResult> {
+  const auth = await getSuperAdminAuth();
+  if (!auth) return { ok: false, error: "Forbidden" };
+
+  const value: AttendanceLockConfig = {
+    enabled: config.enabled === true,
+    window: ATTENDANCE_LOCK_WINDOWS.includes(config.window) ? config.window : "week",
+  };
+
+  await db.globalSetting.upsert({
+    where: { key: ATTENDANCE_LOCK_KEY },
+    create: { key: ATTENDANCE_LOCK_KEY, value: JSON.stringify(value) },
+    update: { value: JSON.stringify(value) },
+  });
+
+  await writeAudit({
+    userId: auth.userId,
+    action: "settings.attendanceLock",
+    resource: "GlobalSetting",
+    resourceId: ATTENDANCE_LOCK_KEY,
+    details: value,
+    ...(await requestMeta()),
+  });
+  revalidatePath("/[locale]/(portal)/admin/settings", "page");
+  return { ok: true };
+}
 
 /**
  * Unlock/lock grade entry per term (Α΄/Β΄ τετράμηνο). Terms stay frozen for

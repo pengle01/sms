@@ -1,6 +1,7 @@
 import { db } from "@/server/db";
 import { DEFAULT_PERIODS_PER_DAY, type PeriodsPerDay } from "@/lib/periods";
 import { GRADES_UNLOCKED_KEY, parseGradesUnlocked, type GradesUnlocked } from "@/lib/grades";
+import { ATTENDANCE_LOCK_KEY, parseAttendanceLock, type AttendanceLockConfig } from "@/lib/attendanceLock";
 import { getNow } from "@/lib/dates";
 import {
   activeTermFor,
@@ -34,6 +35,12 @@ export async function getPeriodsPerDay(): Promise<PeriodsPerDay> {
 export async function getGradesUnlocked(): Promise<GradesUnlocked> {
   const setting = await db.globalSetting.findUnique({ where: { key: GRADES_UNLOCKED_KEY } });
   return parseGradesUnlocked(setting?.value);
+}
+
+/** Attendance-completion lock config (enabled + look-back window). */
+export async function getAttendanceLockConfig(): Promise<AttendanceLockConfig> {
+  const setting = await db.globalSetting.findUnique({ where: { key: ATTENDANCE_LOCK_KEY } });
+  return parseAttendanceLock(setting?.value);
 }
 
 export const DEFAULT_MAX_TESTS_PER_WEEK = 4;

@@ -4,7 +4,7 @@ import { db } from "@/server/db";
 import { DUTY_ELIGIBLE_ROLES } from "@/lib/dutyRoster";
 import { staffDisplayName } from "@/lib/staffName";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY, getMaxTestsPerWeek, DEFAULT_MAX_TESTS_PER_WEEK, getSchoolYear, getTermDatesConfig, getSchoolName, getGradesUnlocked } from "@/lib/schoolConfig";
+import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY, getMaxTestsPerWeek, DEFAULT_MAX_TESTS_PER_WEEK, getSchoolYear, getTermDatesConfig, getSchoolName, getGradesUnlocked, getAttendanceLockConfig } from "@/lib/schoolConfig";
 import { getSmsConfig } from "@/lib/sms";
 import { getEmailConfig } from "@/lib/email";
 
@@ -25,7 +25,8 @@ export default async function AdminSettingsPage({
   const { SchoolNameForm } = await import("./SchoolNameForm");
   const { DutyRosterForm } = await import("./DutyRosterForm");
   const { GradesUnlockForm } = await import("./GradesUnlockForm");
-  const [periodsPerDay, maxTestsPerWeek, smsConfig, emailConfig, termConfig, schoolYear, schoolName, gradesUnlocked, dutyEntries, dutyDeputies] = await Promise.all([
+  const { AttendanceLockForm } = await import("./AttendanceLockForm");
+  const [periodsPerDay, maxTestsPerWeek, smsConfig, emailConfig, termConfig, schoolYear, schoolName, gradesUnlocked, attendanceLock, dutyEntries, dutyDeputies] = await Promise.all([
     getPeriodsPerDay(),
     getMaxTestsPerWeek(),
     getSmsConfig(),
@@ -34,6 +35,7 @@ export default async function AdminSettingsPage({
     getSchoolYear(),
     getSchoolName(),
     getGradesUnlocked(),
+    getAttendanceLockConfig(),
     db.dutyRosterEntry.findMany({ select: { dayOfWeek: true, staffProfileId: true } }),
     db.staffProfile.findMany({
       where: { user: { is: { role: { in: DUTY_ELIGIBLE_ROLES }, isActive: true } } },
@@ -119,6 +121,15 @@ export default async function AdminSettingsPage({
         </CardHeader>
         <CardContent>
           <GradesUnlockForm initial={gradesUnlocked} />
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Attendance Lock</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AttendanceLockForm initial={attendanceLock} />
         </CardContent>
       </Card>
 
