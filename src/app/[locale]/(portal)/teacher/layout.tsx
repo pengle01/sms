@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getActiveAuth } from "@/server/authz";
 import { isEducator } from "@/lib/rbac";
 import { canViewSpecialEdFull } from "@/lib/specialEd";
+import { teachesAnySpecialEd } from "@/server/specialEd";
 import { db } from "@/server/db";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
@@ -27,13 +28,17 @@ export default async function TeacherPortalLayout({
   // Display name follows the timetable's coding (e.g. "ΗΥ-ΜΑΣΙΑ Μ. ΒΔ").
   const staff = await db.staffProfile.findUnique({
     where: { userId: auth.userId },
-    select: { scheduleName: true, ddkCoordinator: true, specialEducation: true },
+    select: { id: true, scheduleName: true, ddkCoordinator: true, specialEducation: true },
   });
   const displayName = staff?.scheduleName ?? session.user?.name ?? undefined;
   // The ΔΔΚ coordinator (a headteacher designation) gets the ΔΔΚ desk in the nav.
   const ddkCoordinator = !!staff?.ddkCoordinator || auth.roles.includes("SUPER_ADMIN");
-  // Special-ed desk: counselor / special-ed deputy / headmaster / super-admin.
-  const specialEdAccess = canViewSpecialEdFull(auth.roles, !!staff?.specialEducation);
+  // Special-ed tab: full-access (counselor / special-ed deputy / headmaster /
+  // super-admin → coordinator desk) OR any teacher who teaches a student with a
+  // record (→ read-only view of their own students). The page renders the right
+  // variant; this flag only controls nav visibility.
+  const specialEdFull = canViewSpecialEdFull(auth.roles, !!staff?.specialEducation);
+  const specialEdAccess = specialEdFull || (staff ? await teachesAnySpecialEd(staff.id) : false);
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">

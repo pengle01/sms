@@ -158,3 +158,107 @@ export async function getSpecialEdCodes(studentId: string) {
   record.accommodations.sort((a, b) => Number(a.code) - Number(b.code));
   return { problems: record.problems, accommodations: record.accommodations };
 }
+
+/** The groups a teacher teaches (from their claimed timetable slots). */
+async function teacherGroupIds(staffId: string): Promise<string[]> {
+  const slots = await db.timetableSlot.findMany({
+    where: { staffId },
+    select: { groupId: true },
+  });
+  return [...new Set(slots.map((s) => s.groupId).filter((g): g is string => !!g))];
+}
+
+/** Does the teacher teach at least one student who has a special-ed record? (nav gate) */
+export async function teachesAnySpecialEd(staffId: string): Promise<boolean> {
+  const groupIds = await teacherGroupIds(staffId);
+  if (groupIds.length === 0) return false;
+  const one = await db.specialEdRecord.findFirst({
+    where: {
+      student: {
+        user: { isActive: true },
+        OR: [{ groupId: { in: groupIds } }, { subjectGroups: { some: { groupId: { in: groupIds } } } }],
+      },
+    },
+    select: { id: true },
+  });
+  return !!one;
+}
+
+export type TeacherSpecialEdStudent = {
+  studentId: string;
+  registryNo: string;
+  name: string;
+  group: string | null;
+  remarks: string | null;
+  frenchExempt: boolean;
+  otherExemptions: string | null;
+  problems: { code: string; label: string }[];
+  accommodations: { code: string; label: string }[];
+};
+
+/**
+ * Full special-ed info for every active student the teacher teaches who has a
+ * record. Scoped strictly to the teacher's own groups (homeroom + subject) — the
+ * same teaches-this-student boundary as the audited dossier reveal.
+ */
+export async function listSpecialEdForTeacher(staffId: string): Promise<TeacherSpecialEdStudent[]> {
+  const groupIds = await teacherGroupIds(staffId);
+  if (groupIds.length === 0) return [];
+  const records = await db.specialEdRecord.findMany({
+    where: {
+      student: {
+        user: { isActive: true },
+        OR: [{ groupId: { in: groupIds } }, { subjectGroups: { some: { groupId: { in: groupIds } } } }],
+      },
+    },
+    select: {
+      remarks: true,
+      frenchExempt: true,
+      otherExemptions: true,
+      problems: { select: { code: true, label: true }, orderBy: { code: "asc" } },
+      accommodations: { select: { code: true, label: true } },
+      student: {
+        select: {
+          id: true,
+          studentId: true,
+          user: { select: { name: true } },
+          group: { select: { name: true } },
+        },
+      },
+    },
+  });
+  return records
+    .map((r) => {
+      // Accommodation codes are numeric strings — sort numerically for display.
+      const accommodations = [...r.accommodations].sort((a, b) => Number(a.code) - Number(b.code));
+      return {
+        studentId: r.student.id,
+        registryNo: r.student.studentId,
+        name: r.student.user?.name ?? "—",
+        group: r.student.group?.name ?? null,
+        remarks: r.remarks,
+        frenchExempt: r.frenchExempt,
+        otherExemptions: r.otherExemptions,
+        problems: r.problems,
+        accommodations,
+      };
+    })
+    .sort((a, b) => (a.group ?? "").localeCompare(b.group ?? "") || a.name.localeCompare(b.name));
+}
+
+/** Distinct code→label legend built from a teacher's roster (no extra query). */
+export function specialEdLegend(students: TeacherSpecialEdStudent[]): {
+  problems: { code: string; label: string }[];
+  accommodations: { code: string; label: string }[];
+} {
+  const p = new Map<string, string>();
+  const a = new Map<string, string>();
+  for (const s of students) {
+    for (const c of s.problems) p.set(c.code, c.label);
+    for (const c of s.accommodations) a.set(c.code, c.label);
+  }
+  return {
+    problems: [...p].map(([code, label]) => ({ code, label })).sort((x, y) => x.code.localeCompare(y.code)),
+    accommodations: [...a].map(([code, label]) => ({ code, label })).sort((x, y) => Number(x.code) - Number(y.code)),
+  };
+}

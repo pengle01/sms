@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseSupportGroup, canViewSpecialEdFull } from "@/lib/specialEd";
+import { specialEdLegend } from "@/server/specialEd";
 import type { Role } from "@/generated/prisma";
 
 describe("parseSupportGroup", () => {
@@ -42,5 +43,33 @@ describe("canViewSpecialEdFull", () => {
 
   it("honours an extra SUPER_ADMIN grant in the roles array", () => {
     expect(canViewSpecialEdFull(["TEACHER", "SUPER_ADMIN"], false)).toBe(true);
+  });
+});
+
+describe("specialEdLegend", () => {
+  const mk = (problems: { code: string; label: string }[], accommodations: { code: string; label: string }[]) => ({
+    studentId: "s", registryNo: "1", name: "x", group: null,
+    remarks: null, frenchExempt: false, otherExemptions: null,
+    problems, accommodations,
+  });
+
+  it("collects distinct codes across students with their labels", () => {
+    const legend = specialEdLegend([
+      mk([{ code: "ΔΞ", label: "Δυσλεξία" }], [{ code: "3", label: "Γραφέας" }]),
+      mk([{ code: "ΔΞ", label: "Δυσλεξία" }, { code: "ΔΑΦ", label: "Αυτισμός" }], [{ code: "1", label: "Χρόνος" }]),
+    ]);
+    expect(legend.problems).toEqual([
+      { code: "ΔΑΦ", label: "Αυτισμός" },
+      { code: "ΔΞ", label: "Δυσλεξία" },
+    ]);
+    // accommodations sort numerically, not lexically (so "1" before "3")
+    expect(legend.accommodations).toEqual([
+      { code: "1", label: "Χρόνος" },
+      { code: "3", label: "Γραφέας" },
+    ]);
+  });
+
+  it("returns empty legends for an empty roster", () => {
+    expect(specialEdLegend([])).toEqual({ problems: [], accommodations: [] });
   });
 });

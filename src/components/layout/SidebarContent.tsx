@@ -110,8 +110,9 @@ export function SidebarContent({ role, locale, portal, userName, onNavigate, pen
     const at = visibleItems.findIndex((i) => i.key === "activities");
     visibleItems.splice(at >= 0 ? at + 1 : visibleItems.length, 0, DDK_NAV_ITEM);
   }
-  // The special-ed desk is gated by access (designation/counselor/management),
-  // not a plain role — inject it for full-access viewers in the educator portal.
+  // The special-ed tab is gated by access (full-access desk for designation/
+  // counselor/management, or a read-only own-students view for any teacher who
+  // teaches a special-ed student) — not a plain role.
   if (specialEdAccess && portal === "teacher") {
     const at = visibleItems.findIndex((i) => i.key === "referrals");
     visibleItems.splice(at >= 0 ? at + 1 : visibleItems.length, 0, SPECIAL_ED_NAV_ITEM);
