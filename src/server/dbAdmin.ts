@@ -26,6 +26,10 @@ function run(cmd: string, args: string[], input?: Buffer): Promise<CmdResult> {
     proc.stderr.on("data", (d: Buffer) => { err += d.toString(); });
     proc.on("error", reject);
     proc.on("close", (code) => resolve({ code: code ?? -1, stdout: Buffer.concat(out), stderr: err }));
+    // If the child exits early (e.g. psql under ON_ERROR_STOP), writing to its
+    // stdin raises EPIPE — swallow it so it doesn't become an unhandled error;
+    // the non-zero exit code is reported via "close" instead.
+    proc.stdin.on("error", () => {});
     if (input) proc.stdin.write(input);
     proc.stdin.end();
   });
@@ -36,9 +40,13 @@ export function runPgDump(): Promise<CmdResult> {
   return run("pg_dump", [dbUrl(), "--clean", "--if-exists", "--no-owner", "--no-privileges"]);
 }
 
-/** Apply an uploaded .sql dump. ON_ERROR_STOP so a broken file fails loudly. */
+/**
+ * Apply an uploaded .sql dump. `--single-transaction` makes the whole restore
+ * atomic (a failure rolls back instead of leaving a half-restored DB) and
+ * `ON_ERROR_STOP` aborts on the first error.
+ */
 export function runPsqlRestore(sql: Buffer): Promise<CmdResult> {
-  return run("psql", [dbUrl(), "-v", "ON_ERROR_STOP=1"], sql);
+  return run("psql", [dbUrl(), "--single-transaction", "-v", "ON_ERROR_STOP=1"], sql);
 }
 
 /**
