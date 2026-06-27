@@ -246,6 +246,7 @@ model StudentProfile {
   dateOfBirth    DateTime? @db.Date
   placeOfBirth   String?
   nationality    String?
+  address        String?
   idCardNumber   String?
   passportNumber String?
 

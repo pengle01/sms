@@ -22,6 +22,7 @@ export async function updateStudent(id: string, locale: string, formData: FormDa
   const dobRaw        = (formData.get("dateOfBirth") as string) || null;
   const placeOfBirth  = (formData.get("placeOfBirth") as string).trim() || null;
   const nationality   = (formData.get("nationality") as string).trim() || null;
+  const address       = (formData.get("address") as string).trim() || null;
   const idCardNumber  = (formData.get("idCardNumber") as string).trim() || null;
   const passportNumber= (formData.get("passportNumber") as string).trim() || null;
   const isActive      = formData.get("isActive") === "true";
@@ -43,6 +44,7 @@ export async function updateStudent(id: string, locale: string, formData: FormDa
       dateOfBirth:    dateOfBirth ?? null,
       placeOfBirth:   placeOfBirth,
       nationality:    nationality,
+      address:        address,
       idCardNumber:   idCardNumber,
       passportNumber: passportNumber,
       ...(groupId ? { group: { connect: { id: groupId } } } : { group: { disconnect: true } }),
@@ -97,7 +99,7 @@ export async function updateStudent(id: string, locale: string, formData: FormDa
     action: "student.update",
     resource: "StudentProfile",
     resourceId: id,
-    details: { fields: ["registryId", "name", "email", "group", "gender", "dob", "idCard", "passport", "isActive", "parents"] },
+    details: { fields: ["registryId", "name", "email", "group", "gender", "dob", "address", "idCard", "passport", "isActive", "parents"] },
     ...meta,
   });
 

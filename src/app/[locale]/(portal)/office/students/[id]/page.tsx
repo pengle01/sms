@@ -2,7 +2,7 @@ import { db } from "@/server/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, MapPin } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { AccessCodeCard } from "@/components/access/AccessCodeCard";
 import { SmsRecipientsCard } from "@/components/students/SmsRecipientsCard";
@@ -40,6 +40,12 @@ export default async function OfficeStudentDetailPage({
           <div>
             <h2 className="text-2xl font-bold text-slate-900">{student.user?.name ?? "—"}</h2>
             <p className="text-slate-500 text-sm mt-0.5 font-mono">{student.studentId}</p>
+            {student.address && (
+              <p className="text-slate-600 text-sm mt-1.5 flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                {student.address}
+              </p>
+            )}
           </div>
           {student.group && <Badge variant="outline" className="text-sm">{student.group.name}</Badge>}
         </div>

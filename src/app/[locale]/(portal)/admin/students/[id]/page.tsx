@@ -275,6 +275,7 @@ export default async function StudentDetailPage({
                 <Field label="Date of birth"   value={student.dateOfBirth ? fmtDisplayDate(student.dateOfBirth) : null} />
                 <Field label="Place of birth"  value={student.placeOfBirth} />
                 <Field label="Nationality"     value={student.nationality} />
+                <Field label="Address"         value={student.address} />
                 <Field label="ID card"         value={student.idCardNumber} mono />
                 <Field label="Passport"        value={student.passportNumber} mono />
                 <Field label="Group"           value={group?.name ?? null} />

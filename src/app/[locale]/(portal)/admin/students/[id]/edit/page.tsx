@@ -80,6 +80,7 @@ export default async function EditStudentPage({
                 <Field label="Date of birth" name="dateOfBirth" type="date" defaultValue={dobValue} />
                 <Field label="Place of birth" name="placeOfBirth" defaultValue={student.placeOfBirth ?? ""} />
                 <Field label="Nationality"    name="nationality"  defaultValue={student.nationality   ?? ""} />
+                <Field label="Address"        name="address"      defaultValue={student.address       ?? ""} />
                 <Field label="ID card number" name="idCardNumber" defaultValue={student.idCardNumber  ?? ""} mono />
                 <Field label="Passport number" name="passportNumber" defaultValue={student.passportNumber ?? ""} mono />
               </div>
