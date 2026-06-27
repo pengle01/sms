@@ -19,13 +19,14 @@ export async function updateMyProfile(input: ProfileInput): Promise<UpdateProfil
     return { ok: false, error: "errForbidden" };
   }
 
-  const v = validateProfileInput(input);
-  if (!v.ok) return { ok: false, error: v.error };
-
+  // Staff accounts must complete every field (phone/department/ΠΜΠ included).
   const staff = await db.staffProfile.findUnique({
     where: { userId: session.user.id },
     select: { id: true },
   });
+
+  const v = validateProfileInput(input, staff != null);
+  if (!v.ok) return { ok: false, error: v.error };
 
   await db.$transaction(async (tx) => {
     await tx.user.update({

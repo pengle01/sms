@@ -48,9 +48,17 @@ export type ProfileValidation =
       department: string | null;
       pmp: string | null;
     }
-  | { ok: false; error: "errFirstName" | "errLastName" | "errPmp" };
+  | {
+      ok: false;
+      error: "errFirstName" | "errLastName" | "errPmp" | "errPhone" | "errDepartment" | "errPmpRequired";
+    };
 
-export function validateProfileInput(input: ProfileInput): ProfileValidation {
+/**
+ * Validate the staff self-service profile. When `requireStaffFields` is true
+ * (the user has a StaffProfile, e.g. first-login completion) phone, department
+ * and ΠΜΠ are all mandatory alongside the always-required first/last name.
+ */
+export function validateProfileInput(input: ProfileInput, requireStaffFields = false): ProfileValidation {
   const firstName = input.firstName.trim().replace(/\s+/g, " ");
   if (firstName.length < 2) return { ok: false, error: "errFirstName" };
 
@@ -62,6 +70,12 @@ export function validateProfileInput(input: ProfileInput): ProfileValidation {
 
   const phone = input.phone.trim() || null;
   const department = input.department.trim() || null;
+
+  if (requireStaffFields) {
+    if (phone === null) return { ok: false, error: "errPhone" };
+    if (department === null) return { ok: false, error: "errDepartment" };
+    if (pmp === null) return { ok: false, error: "errPmpRequired" };
+  }
 
   return { ok: true, firstName, lastName, name: composeFullName(firstName, lastName), phone, department, pmp };
 }

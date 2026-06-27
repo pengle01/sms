@@ -5,13 +5,16 @@ import { headers } from "next/headers";
 import bcrypt from "bcryptjs";
 import { db } from "@/server/db";
 import { rateLimit } from "@/server/rateLimit";
+import { composeFullName } from "@/lib/profile";
 import type { Role } from "@/generated/prisma";
 
 const CLAIMABLE_ROLES: Role[] = ["TEACHER", "SCHOOL_ADMIN", "CHAPERONE"];
 const MIN_PASSWORD_LENGTH = 8;
 
 export async function registerAction(formData: FormData) {
-  const name = ((formData.get("name") as string) ?? "").trim();
+  const firstName = ((formData.get("firstName") as string) ?? "").trim();
+  const lastName = ((formData.get("lastName") as string) ?? "").trim();
+  const name = composeFullName(firstName, lastName);
   const email = ((formData.get("email") as string) ?? "").toLowerCase().trim();
   const password = (formData.get("password") as string) ?? "";
   const confirm = (formData.get("confirmPassword") as string) ?? "";
@@ -28,7 +31,7 @@ export async function registerAction(formData: FormData) {
     redirect(`${base}?error=errorGeneric`);
   }
 
-  if (!name || !email || !password) redirect(`${base}?error=errorGeneric`);
+  if (!firstName || !lastName || !email || !password) redirect(`${base}?error=errorGeneric`);
   if (password.length < MIN_PASSWORD_LENGTH) redirect(`${base}?error=errorPasswordWeak`);
   if (password !== confirm) redirect(`${base}?error=errorPasswordMismatch`);
   if (!CLAIMABLE_ROLES.includes(role)) redirect(`${base}?error=errorInvalidRole`);
@@ -54,7 +57,7 @@ export async function registerAction(formData: FormData) {
   if (role === "TEACHER") {
     await db.$transaction(async (tx) => {
       const user = await tx.user.create({
-        data: { name, email, passwordHash, role, isActive: false },
+        data: { firstName, lastName, name, email, passwordHash, role, isActive: false },
       });
       await tx.teacherClaim.create({
         data: { userId: user.id, staffName },
@@ -62,7 +65,7 @@ export async function registerAction(formData: FormData) {
     });
   } else {
     await db.user.create({
-      data: { name, email, passwordHash, role, isActive: false },
+      data: { firstName, lastName, name, email, passwordHash, role, isActive: false },
     });
   }
 

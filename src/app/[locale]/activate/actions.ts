@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { db } from "@/server/db";
 import { rateLimit } from "@/server/rateLimit";
 import { canAddGuardian, isWellFormedCode, normalizeCode, randomOtp, roleAvailability } from "@/lib/accessCode";
+import { composeFullName } from "@/lib/profile";
 import { sendOtpEmail } from "@/lib/email";
 import { writeAudit } from "@/server/audit";
 import { logger, errInfo } from "@/server/logger";
@@ -52,7 +53,8 @@ export async function checkAccessCode(input: { code: string }): Promise<CheckCod
 export async function startActivation(input: {
   code: string;
   role: Role;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
   confirm: string;
@@ -63,9 +65,16 @@ export async function startActivation(input: {
 
   const code = normalizeCode(input.code);
   const email = input.email.toLowerCase().trim();
-  const name = input.name.trim();
+  const firstName = input.firstName.trim().replace(/\s+/g, " ");
+  const lastName = input.lastName.trim().replace(/\s+/g, " ");
+  const name = composeFullName(firstName, lastName);
 
   if (input.role !== "student" && input.role !== "guardian") return { ok: false, error: "errRoleInvalid" };
+  // A guardian creates/updates their own account, so their name is required.
+  // A student's name comes from the official roster and is never set here.
+  if (input.role === "guardian" && (firstName.length < 2 || lastName.length < 2)) {
+    return { ok: false, error: "errName" };
+  }
   if (!EMAIL_RE.test(email)) return { ok: false, error: "errEmailRequired" };
   if (input.password.length < MIN_PASSWORD_LENGTH) return { ok: false, error: "errPasswordWeak" };
   if (input.password !== input.confirm) return { ok: false, error: "errPasswordMismatch" };
@@ -128,6 +137,8 @@ export async function startActivation(input: {
       purpose: input.role === "student" ? "ACTIVATE_STUDENT" : "ACTIVATE_GUARDIAN",
       studentProfileId: access.studentProfileId,
       name: name || null,
+      firstName: firstName || null,
+      lastName: lastName || null,
       passwordHash,
       expiresAt: new Date(Date.now() + OTP_TTL_MS),
     },
@@ -226,12 +237,16 @@ export async function verifyActivation(input: {
         return { ok: false, error: "errGuardianCap" };
       }
 
+      const nameData = row.name
+        ? { name: row.name, firstName: row.firstName, lastName: row.lastName }
+        : {};
+
       let parentProfileId: string;
       if (existing) {
         actorUserId = existing.id;
         await db.user.update({
           where: { id: existing.id },
-          data: { passwordHash: row.passwordHash, isActive: true, ...(row.name ? { name: row.name } : {}) },
+          data: { passwordHash: row.passwordHash, isActive: true, ...nameData },
         });
         parentProfileId =
           existing.parentProfile?.id ??
@@ -243,7 +258,17 @@ export async function verifyActivation(input: {
         const profile = await db.parentProfile.create({
           data: {
             role: "GUARDIAN",
-            user: { create: { email: row.email, name: row.name, role: "PARENT", passwordHash: row.passwordHash, isActive: true } },
+            user: {
+              create: {
+                email: row.email,
+                name: row.name,
+                firstName: row.firstName,
+                lastName: row.lastName,
+                role: "PARENT",
+                passwordHash: row.passwordHash,
+                isActive: true,
+              },
+            },
           },
           select: { id: true, userId: true },
         });

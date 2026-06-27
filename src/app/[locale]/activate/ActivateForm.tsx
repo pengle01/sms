@@ -16,7 +16,8 @@ export function ActivateForm({ locale, labels }: { locale: string; labels: Label
   const [role, setRole] = useState<"student" | "guardian" | "">("");
   const [avail, setAvail] = useState<Availability>({ student: true, guardian: true });
   const [code, setCode] = useState("");
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -44,7 +45,7 @@ export function ActivateForm({ locale, labels }: { locale: string; labels: Label
     setError("");
     if (!role) return setError(t("errRoleInvalid"));
     startTransition(async () => {
-      const res = await startActivation({ code, role, name, email, password, confirm });
+      const res = await startActivation({ code, role, firstName, lastName, email, password, confirm });
       if (res.ok) {
         setOtpId(res.otpId);
         setStep("otp");
@@ -192,10 +193,19 @@ export function ActivateForm({ locale, labels }: { locale: string; labels: Label
         </div>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">{t("name")}</label>
-        <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
-      </div>
+      {/* A student's name comes from the official roster; only guardians enter it. */}
+      {role === "guardian" && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">{t("firstName")}</label>
+            <input value={firstName} onChange={(e) => setFirstName(e.target.value)} className={inputClass} autoComplete="given-name" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">{t("lastName")}</label>
+            <input value={lastName} onChange={(e) => setLastName(e.target.value)} className={inputClass} autoComplete="family-name" />
+          </div>
+        </div>
+      )}
 
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-1">{t("email")}</label>

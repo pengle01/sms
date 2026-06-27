@@ -58,12 +58,21 @@ export function RegisterForm({ locale, error, success, staffNames }: RegisterFor
       <form action={registerAction} className="space-y-4">
         <input type="hidden" name="locale" value={locale} />
 
-        <div className="space-y-1.5">
-          <Label htmlFor="name" className="text-lime-200 text-sm">{t("name")}</Label>
-          <Input
-            id="name" name="name" type="text" required autoComplete="name"
-            className="bg-white/10 border-white/20 text-white placeholder:text-lime-300/40 focus-visible:ring-emerald-400"
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="firstName" className="text-lime-200 text-sm">{t("firstName")}</Label>
+            <Input
+              id="firstName" name="firstName" type="text" required autoComplete="given-name"
+              className="bg-white/10 border-white/20 text-white placeholder:text-lime-300/40 focus-visible:ring-emerald-400"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="lastName" className="text-lime-200 text-sm">{t("lastName")}</Label>
+            <Input
+              id="lastName" name="lastName" type="text" required autoComplete="family-name"
+              className="bg-white/10 border-white/20 text-white placeholder:text-lime-300/40 focus-visible:ring-emerald-400"
+            />
+          </div>
         </div>
 
         <div className="space-y-1.5">

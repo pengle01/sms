@@ -42,12 +42,18 @@ export default async function TeacherDashboardPage({
     include: {
       homeroomGroups: { select: { id: true, name: true } },
       homeroomHeadGroups: { select: { id: true, name: true } },
-      user: { select: { name: true, nameEl: true } },
+      user: { select: { name: true, nameEl: true, firstName: true, lastName: true } },
     },
   });
   if (!staff && (session.user.role as Role) === "TEACHER") redirect(`/${locale}/teacher/setup`);
-  // ΠΜΠ is required staff information — ask for it on sign-in until provided.
-  if (staff && !staff.pmp) redirect(`/${locale}/teacher/profile?required=1`);
+  // Staff must complete their profile on first sign-in — keep the completion
+  // form forced until name, phone, department AND ΠΜΠ are all filled.
+  if (
+    staff &&
+    (!staff.pmp || !staff.phone || !staff.department || !staff.user?.firstName || !staff.user?.lastName)
+  ) {
+    redirect(`/${locale}/teacher/profile?required=1`);
+  }
 
   const homeroomGroup = staff
     ? ([...(staff.homeroomGroups ?? []), ...(staff.homeroomHeadGroups ?? [])].find(Boolean) ?? null)

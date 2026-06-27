@@ -107,4 +107,32 @@ describe("validateProfileInput", () => {
   it("rejects a malformed ΠΜΠ", () => {
     expect(validateProfileInput({ ...base, pmp: "12#45" })).toEqual({ ok: false, error: "errPmp" });
   });
+
+  it("keeps phone/department/ΠΜΠ optional when not requiring staff fields", () => {
+    expect(validateProfileInput(base)).toMatchObject({ ok: true, phone: null, department: null, pmp: null });
+  });
+
+  describe("with requireStaffFields = true", () => {
+    const full = { firstName: "Μαρία", lastName: "Παπαδοπούλου", phone: "99123456", department: "Μαθηματικά", pmp: "12345" };
+
+    it("accepts a fully completed profile", () => {
+      expect(validateProfileInput(full, true)).toMatchObject({ ok: true, phone: "99123456", department: "Μαθηματικά", pmp: "12345" });
+    });
+
+    it("rejects an empty phone", () => {
+      expect(validateProfileInput({ ...full, phone: "  " }, true)).toEqual({ ok: false, error: "errPhone" });
+    });
+
+    it("rejects an empty department", () => {
+      expect(validateProfileInput({ ...full, department: "" }, true)).toEqual({ ok: false, error: "errDepartment" });
+    });
+
+    it("rejects a missing ΠΜΠ", () => {
+      expect(validateProfileInput({ ...full, pmp: "  " }, true)).toEqual({ ok: false, error: "errPmpRequired" });
+    });
+
+    it("still rejects a malformed ΠΜΠ before the required check", () => {
+      expect(validateProfileInput({ ...full, pmp: "12#45" }, true)).toEqual({ ok: false, error: "errPmp" });
+    });
+  });
 });

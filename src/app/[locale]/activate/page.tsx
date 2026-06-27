@@ -8,9 +8,9 @@ import { ActivateForm } from "./ActivateForm";
 
 const LABEL_KEYS = [
   "title", "subtitle", "codeLabel", "codePlaceholder", "continue", "chooseRole",
-  "roleStudent", "roleGuardian", "name", "email", "password", "confirmPassword",
+  "roleStudent", "roleGuardian", "firstName", "lastName", "email", "password", "confirmPassword",
   "sendCode", "otpSent", "otpLabel", "verify", "back", "done", "doneHint", "goToLogin",
-  "errGeneric", "errCodeInvalid", "errRoleInvalid", "errEmailRequired", "errPasswordWeak",
+  "errGeneric", "errCodeInvalid", "errRoleInvalid", "errName", "errEmailRequired", "errPasswordWeak",
   "errPasswordMismatch", "errEmailTaken", "errStudentClaimed", "errOtpInvalid", "errOtpExpired",
   "errEmailSend", "errGuardianCap",
   "roleTakenStudent", "roleTakenGuardian", "changeCode",

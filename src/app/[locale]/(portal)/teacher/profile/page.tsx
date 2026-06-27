@@ -44,6 +44,10 @@ export default async function ProfilePage({
   const firstName = user.firstName ?? fallback.firstName;
   const lastName = user.lastName ?? fallback.lastName;
 
+  // Staff must complete every field on first sign-in (name/phone/department/ΠΜΠ).
+  const incomplete =
+    !!staff && (!staff.pmp || !staff.phone || !staff.department || !user.firstName || !user.lastName);
+
   return (
     <div className="space-y-5">
       <div>
@@ -51,10 +55,10 @@ export default async function ProfilePage({
         <p className="text-slate-500 text-sm mt-1">{t("subtitle")}</p>
       </div>
 
-      {required && staff && !staff.pmp && (
+      {required && incomplete && (
         <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-amber-800">
           <AlertTriangle className="w-5 h-5 shrink-0" />
-          <p className="text-sm font-medium">{t("pmpRequired")}</p>
+          <p className="text-sm font-medium">{t("profileRequired")}</p>
         </div>
       )}
 
@@ -83,8 +87,8 @@ export default async function ProfilePage({
               pmp: staff?.pmp ?? "",
             }}
             hasStaffProfile={!!staff}
-            // Force the form open when a required ΠΜΠ is still missing.
-            mustEdit={!!required && !!staff && !staff.pmp}
+            // Force the form open until every required field is filled.
+            mustEdit={!!required && incomplete}
           />
 
           {!staff && <p className="text-xs text-slate-400">{t("noStaffProfile")}</p>}

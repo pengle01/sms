@@ -1148,7 +1148,9 @@ model EmailOtp {
   codeHash         String
   purpose          String   // "ACTIVATE_STUDENT" | "ACTIVATE_GUARDIAN"
   studentProfileId String
-  name             String?
+  name             String?  // composed full name (back-compat / display)
+  firstName        String?  // split parts captured at guardian sign-up
+  lastName         String?
   passwordHash     String
   expiresAt        DateTime
   attempts         Int      @default(0)

@@ -116,11 +116,12 @@ export function ProfileForm({
               onChange={set("pmp")}
               className={inputClass}
               placeholder={t("pmpHint")}
+              required
             />
           </div>
           <div>
             <label className={labelClass} htmlFor="pf-phone">{t("phone")}</label>
-            <input id="pf-phone" value={form.phone} onChange={set("phone")} className={inputClass} type="tel" />
+            <input id="pf-phone" value={form.phone} onChange={set("phone")} className={inputClass} type="tel" required />
           </div>
           <div>
             <label className={labelClass} htmlFor="pf-department">{t("department")}</label>
@@ -129,6 +130,7 @@ export function ProfileForm({
               value={form.department}
               onChange={set("department")}
               className={`${inputClass} bg-white`}
+              required
             >
               <option value="">—</option>
               {departmentOptions.map((d) => (
