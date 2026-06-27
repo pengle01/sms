@@ -58,7 +58,6 @@ export function ImportForm() {
                   <Stat label="Students created" value={result.studentsCreated} />
                   <Stat label="Students updated" value={result.studentsUpdated} />
                   <Stat label="Groups created"   value={result.groupsCreated} />
-                  <Stat label="Parents created"  value={result.parentsCreated} />
                   <Stat label="SMS contacts"     value={result.smsContactsCreated} />
                   <Stat label="Flagged (SMS)"    value={result.flaggedStudents} />
                   <Stat label="Rows skipped"     value={result.skipped} />

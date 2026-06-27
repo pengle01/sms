@@ -11,7 +11,6 @@ export interface ImportResult {
   studentsCreated: number;
   studentsUpdated: number;
   groupsCreated: number;
-  parentsCreated: number;
   smsContactsCreated: number;
   flaggedStudents: number;
   flagged: { studentId: string; name: string; reason: string }[];
@@ -76,12 +75,12 @@ function parseDob(val: unknown): Date | undefined {
 export async function importStudents(_prev: ImportResult | null, formData: FormData): Promise<ImportResult> {
   const auth = await getSuperAdminAuth();
   if (!auth) {
-    return { success: false, studentsCreated: 0, studentsUpdated: 0, groupsCreated: 0, parentsCreated: 0, smsContactsCreated: 0, flaggedStudents: 0, flagged: [], skipped: 0, errors: ["Unauthorized"] };
+    return { success: false, studentsCreated: 0, studentsUpdated: 0, groupsCreated: 0, smsContactsCreated: 0, flaggedStudents: 0, flagged: [], skipped: 0, errors: ["Unauthorized"] };
   }
 
   const file = formData.get("file") as File | null;
   if (!file || file.size === 0) {
-    return { success: false, studentsCreated: 0, studentsUpdated: 0, groupsCreated: 0, parentsCreated: 0, smsContactsCreated: 0, flaggedStudents: 0, flagged: [], skipped: 0, errors: ["No file provided"] };
+    return { success: false, studentsCreated: 0, studentsUpdated: 0, groupsCreated: 0, smsContactsCreated: 0, flaggedStudents: 0, flagged: [], skipped: 0, errors: ["No file provided"] };
   }
 
   const buffer = await file.arrayBuffer();
@@ -92,7 +91,6 @@ export async function importStudents(_prev: ImportResult | null, formData: FormD
   let studentsCreated = 0;
   let studentsUpdated = 0;
   let groupsCreated = 0;
-  let parentsCreated = 0;
   let smsContactsCreated = 0;
   let flaggedStudents = 0;
   const flaggedList: { studentId: string; name: string; reason: string }[] = [];
@@ -188,97 +186,45 @@ export async function importStudents(_prev: ImportResult | null, formData: FormD
       if (!student) continue;
       const studentId2 = student.id;
 
-      // ── Parents + SMS contacts ──────────────────────────────────────────
+      // ── Parent SMS contacts ─────────────────────────────────────────────
+      // Parents are NOT given login accounts at import. A parent account
+      // (ParentProfile + User + the student link) is created ONLY when the
+      // parent activates with the access code given to them (see
+      // activate/actions.ts). Here we just record their phone as an SMS contact
+      // (name + role) so messaging works before they have claimed an account.
       const usedPhones = new Set<string>();
 
-      async function upsertParent(
+      async function addParentContact(
         pLastName: string, pFirstName: string,
-        pEmail: string,    pPhone: string,
-        role: ParentRole,
+        pPhone: string,    role: ParentRole,
       ) {
         const pName = [pLastName, pFirstName].filter(Boolean).join(" ");
-        if (!pName) return;
-
-        const phone = pPhone || undefined;
-
-        // Resolve email: if the provided address is already taken by a non-parent
-        // user (e.g. the same address appears in the student column), fall back to
-        // a per-student placeholder so we never collide on User.email.
-        let email = (pEmail || "").toLowerCase();
-        if (email) {
-          const takenBy = await db.user.findUnique({
-            where: { email },
-            select: { id: true, parentProfile: { select: { id: true } } },
+        const phone = pPhone.trim();
+        if (!pName || !phone || usedPhones.has(phone)) return;
+        usedPhones.add(phone);
+        const exists = await db.smsContact.findFirst({ where: { studentId: studentId2, phone } });
+        if (!exists) {
+          await db.smsContact.create({
+            data: { studentId: studentId2, name: pName, phone, role, active: true },
           });
-          if (takenBy && !takenBy.parentProfile) {
-            // Email belongs to a non-parent user — use placeholder instead
-            email = "";
-          }
-        }
-        if (!email) email = `p.${registryId}.${role.toLowerCase()}@pending.sms`;
-
-        // Find existing parent profile via User.email
-        const existingUser = await db.user.findUnique({
-          where: { email },
-          select: { id: true, parentProfile: { select: { id: true } } },
-        });
-
-        let parentProfile: { id: string };
-
-        if (existingUser?.parentProfile) {
-          parentProfile = existingUser.parentProfile;
-        } else {
-          parentProfile = await db.parentProfile.create({
-            data: {
-              role,
-              phone,
-              user: { create: { email, name: pName, role: Role.PARENT, isActive: true } },
-            },
-            select: { id: true },
-          });
-          parentsCreated++;
-        }
-
-        await db.parentStudent.upsert({
-          where: {
-            parentProfileId_studentProfileId: {
-              parentProfileId:  parentProfile.id,
-              studentProfileId: studentId2,
-            },
-          },
-          create: { parentProfileId: parentProfile.id, studentProfileId: studentId2 },
-          update: {},
-        });
-
-        if (phone && !usedPhones.has(phone)) {
-          usedPhones.add(phone);
-          const exists = await db.smsContact.findFirst({ where: { studentId: studentId2, phone } });
-          if (!exists) {
-            await db.smsContact.create({
-              data: { studentId: studentId2, name: pName, phone, role, active: true, parentProfileId: parentProfile.id },
-            });
-            smsContactsCreated++;
-          }
+          smsContactsCreated++;
         }
       }
 
-      await upsertParent(
+      await addParentContact(
         str(row, COLS.fatherLastName), str(row, COLS.fatherFirstName),
-        str(row, COLS.fatherEmail),    str(row, COLS.fatherPhone),
-        ParentRole.FATHER,
+        str(row, COLS.fatherPhone), ParentRole.FATHER,
       );
-      await upsertParent(
+      await addParentContact(
         str(row, COLS.motherLastName), str(row, COLS.motherFirstName),
-        str(row, COLS.motherEmail),    str(row, COLS.motherPhone),
-        ParentRole.MOTHER,
+        str(row, COLS.motherPhone), ParentRole.MOTHER,
       );
 
       const guardianName = [str(row, COLS.guardianLastName), str(row, COLS.guardianFirstName)].filter(Boolean).join(" ");
       if (guardianName) {
-        await upsertParent(
+        await addParentContact(
           str(row, COLS.guardianLastName), str(row, COLS.guardianFirstName),
-          "",                              str(row, COLS.homePhone),
-          ParentRole.GUARDIAN,
+          str(row, COLS.homePhone), ParentRole.GUARDIAN,
         );
       }
 
@@ -342,5 +288,5 @@ export async function importStudents(_prev: ImportResult | null, formData: FormD
     }
   }
 
-  return { success: true, studentsCreated, studentsUpdated, groupsCreated, parentsCreated, smsContactsCreated, flaggedStudents, flagged: flaggedList, skipped, errors };
+  return { success: true, studentsCreated, studentsUpdated, groupsCreated, smsContactsCreated, flaggedStudents, flagged: flaggedList, skipped, errors };
 }
