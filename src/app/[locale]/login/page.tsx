@@ -44,7 +44,6 @@ export default async function LoginPage({
 
         <LoginForm
           locale={locale}
-          isDev={process.env.NODE_ENV === "development"}
           urlError={error}
         />
       </div>

@@ -11,19 +11,16 @@ import { AlertCircle } from "lucide-react";
 import { staffLoginAction, parentLoginAction } from "./actions";
 
 const ERROR_MESSAGES: Record<string, string> = {
-  MissingEmail: "Please enter your email address.",
   MissingCredentials: "Please enter your email and password.",
-  Unauthorized: "User not found or account not active.",
   InvalidCredentials: "Invalid email or password.",
 };
 
 interface LoginFormProps {
   locale: string;
-  isDev: boolean;
   urlError?: string;
 }
 
-export async function LoginForm({ locale, isDev, urlError }: LoginFormProps) {
+export async function LoginForm({ locale, urlError }: LoginFormProps) {
   const t = await getTranslations("auth");
   const tActivate = await getTranslations("activate");
 
@@ -55,48 +52,60 @@ export async function LoginForm({ locale, isDev, urlError }: LoginFormProps) {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {/* Staff / Students */}
+        {/* Staff / Students — email + password (same in dev and prod) + SSO */}
         <div className="rounded-2xl bg-white/10 border border-white/20 backdrop-blur-sm p-8 space-y-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-emerald-300 mb-1">
-              {isDev ? "Dev mode" : "Microsoft SSO"}
+              Email &amp; Password
             </p>
             <h2 className="text-xl font-bold text-white">{t("staffLogin")}</h2>
-            <p className="text-sm text-lime-300/70 mt-1">
-              {isDev ? "Enter any staff email — no password required" : t("staffLoginDesc")}
-            </p>
+            <p className="text-sm text-lime-300/70 mt-1">{t("parentLoginDesc")}</p>
           </div>
 
-          {isDev ? (
-            <form action={staffLoginAction} className="space-y-4">
-              <input type="hidden" name="locale" value={locale} />
-              <div className="space-y-1.5">
-                <Label htmlFor="staff-email" className="text-lime-200 text-sm">{t("email")}</Label>
-                <Input
-                  id="staff-email"
-                  name="email"
-                  type="email"
-                  placeholder="teacher@school.cy"
-                  required
-                  className="bg-white/10 border-white/20 text-white placeholder:text-lime-300/40 focus-visible:ring-emerald-400"
-                />
-              </div>
-              <Button
-                type="submit"
-                className="w-full h-11 bg-emerald-500 hover:bg-emerald-400 text-white font-semibold"
-              >
-                Sign in
-              </Button>
-            </form>
-          ) : (
-            <a
-              href={`/api/auth/signin/azure-ad?callbackUrl=/${locale}/admin`}
-              className="flex items-center justify-center w-full h-11 rounded-md bg-[#2F3E9E] hover:bg-[#3b4fc0] text-white font-semibold text-sm transition-colors"
+          <form action={staffLoginAction} className="space-y-4">
+            <input type="hidden" name="locale" value={locale} />
+            <div className="space-y-1.5">
+              <Label htmlFor="staff-email" className="text-lime-200 text-sm">{t("email")}</Label>
+              <Input
+                id="staff-email"
+                name="email"
+                type="email"
+                placeholder="teacher@school.cy"
+                required
+                autoComplete="email"
+                className="bg-white/10 border-white/20 text-white placeholder:text-lime-300/40 focus-visible:ring-emerald-400"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="staff-password" className="text-lime-200 text-sm">{t("password")}</Label>
+              <Input
+                id="staff-password"
+                name="password"
+                type="password"
+                required
+                autoComplete="current-password"
+                className="bg-white/10 border-white/20 text-white placeholder:text-lime-300/40 focus-visible:ring-emerald-400"
+              />
+            </div>
+            <Button
+              type="submit"
+              className="w-full h-11 bg-emerald-500 hover:bg-emerald-400 text-white font-semibold"
             >
-              <MicrosoftIcon className="mr-2 h-5 w-5" />
-              {t("signInWithMicrosoft")}
-            </a>
-          )}
+              {t("login")}
+            </Button>
+          </form>
+
+          {/* Microsoft SSO — alternative sign-in (used in production once Azure is configured) */}
+          <div className="flex items-center gap-3 text-lime-300/40 text-xs">
+            <span className="h-px flex-1 bg-white/15" /> {locale === "el" ? "ή" : "or"} <span className="h-px flex-1 bg-white/15" />
+          </div>
+          <a
+            href={`/api/auth/signin/azure-ad?callbackUrl=/${locale}/admin`}
+            className="flex items-center justify-center w-full h-11 rounded-md bg-[#2F3E9E] hover:bg-[#3b4fc0] text-white font-semibold text-sm transition-colors"
+          >
+            <MicrosoftIcon className="mr-2 h-5 w-5" />
+            {t("signInWithMicrosoft")}
+          </a>
         </div>
 
         {/* Parents */}

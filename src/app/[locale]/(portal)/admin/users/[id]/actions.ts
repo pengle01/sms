@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import bcrypt from "bcryptjs";
 import { db } from "@/server/db";
 import { getSuperAdminAuth } from "@/server/authz";
 import { writeAudit, requestMeta } from "@/server/audit";
@@ -8,9 +9,42 @@ import { validateAdminGrant, validateAdminRevoke } from "@/lib/roleAssignment";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
+const MIN_PASSWORD_LENGTH = 8;
+
 function revalidateUsers() {
   revalidatePath("/[locale]/(portal)/admin/users", "page");
   revalidatePath("/[locale]/(portal)/admin/users/[id]", "page");
+}
+
+/**
+ * Set (or reset) a user's password so they can sign in with email + password.
+ * Useful for staff whose accounts were created without one (import / claim) —
+ * e.g. to test the dev password sign-in.
+ */
+export async function setUserPassword(targetUserId: string, password: string): Promise<ActionResult> {
+  const auth = await getSuperAdminAuth();
+  if (!auth) return { ok: false, error: "Forbidden" };
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return { ok: false, error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` };
+  }
+
+  const target = await db.user.findUnique({ where: { id: targetUserId }, select: { id: true } });
+  if (!target) return { ok: false, error: "User not found" };
+
+  await db.user.update({
+    where: { id: targetUserId },
+    data: { passwordHash: await bcrypt.hash(password, 12) },
+  });
+  // Never log the password; only that one was set, for whom, by whom.
+  await writeAudit({
+    userId: auth.userId,
+    action: "user.setPassword",
+    resource: "User",
+    resourceId: targetUserId,
+    ...(await requestMeta()),
+  });
+  revalidateUsers();
+  return { ok: true };
 }
 
 /** Count of ACTIVE users who are super admins by primary or extra role. */

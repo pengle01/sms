@@ -5,6 +5,9 @@ export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     const { logger } = await import("@/server/logger");
     logger.info({ event: "server.start" }, "SMS server started");
+    // Optional one-time admin password seed (ADMIN_BOOTSTRAP_EMAIL/PASSWORD).
+    const { bootstrapAdminPassword } = await import("@/server/adminBootstrap");
+    await bootstrapAdminPassword();
   }
 }
 

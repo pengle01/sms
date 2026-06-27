@@ -28,36 +28,14 @@ export const authOptions: NextAuthOptions = {
     error: "/el/login",
   },
   providers: [
-    // DEV ONLY: log in as any existing staff/student user by email, no password needed.
-    // Replaced by AzureADProvider in production.
-    ...(IS_DEV
-      ? [
-          CredentialsProvider({
-            id: "azure-ad",
-            name: "Microsoft (Dev bypass)",
-            credentials: {
-              email: { label: "Email", type: "email" },
-            },
-            async authorize(credentials) {
-              if (!credentials?.email) return null;
-              const user = await db.user.findUnique({
-                where: { email: credentials.email.toLowerCase() },
-              });
-              if (!user || !user.isActive) return null;
-              if (user.role === "PARENT") return null;
-              logger.info({ event: "auth.login", method: "dev-bypass", userId: user.id, role: user.role }, "Dev login");
-              return { id: user.id, email: user.email, name: user.name, role: user.role, image: user.image };
-            },
-          }),
-        ]
-      : [
-          // Uncomment and configure when Azure credentials are ready:
-          // AzureADProvider({
-          //   clientId: process.env.AZURE_AD_CLIENT_ID!,
-          //   clientSecret: process.env.AZURE_AD_CLIENT_SECRET!,
-          //   tenantId: process.env.AZURE_AD_TENANT_ID!,
-          // }),
-        ]),
+    // Microsoft Entra ID (Azure AD) SSO — the "Sign in with Microsoft" button on
+    // the login page points here. Enable once Azure credentials are configured.
+    // Everyone signs in with a password until then (no email-only bypass).
+    // AzureADProvider({
+    //   clientId: process.env.AZURE_AD_CLIENT_ID!,
+    //   clientSecret: process.env.AZURE_AD_CLIENT_SECRET!,
+    //   tenantId: process.env.AZURE_AD_TENANT_ID!,
+    // }),
 
     // Parents (and all roles in dev fallback) authenticate with email + password
     CredentialsProvider({

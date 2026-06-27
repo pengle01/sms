@@ -4,9 +4,10 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronLeft, CircleUser, Home, Calendar } from "lucide-react";
+import { ChevronLeft, CircleUser, Home, Calendar, KeyRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RolesCard } from "./RolesCard";
+import { SetPasswordForm } from "./SetPasswordForm";
 
 const ROLE_META: Record<string, { label: string; color: string }> = {
   SUPER_ADMIN:       { label: "Super Admin",  color: "bg-purple-100 text-purple-700 border-purple-200" },
@@ -190,6 +191,21 @@ export default async function UserDetailPage({
         substitutionCoordinator={sp?.substitutionCoordinator ?? false}
         ddkCoordinator={sp?.ddkCoordinator ?? false}
       />
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <KeyRound className="w-4 h-4" />
+            Password sign-in
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-slate-500 mb-4">
+            Set a password so this user can sign in with email &amp; password.
+          </p>
+          <SetPasswordForm userId={user.id} />
+        </CardContent>
+      </Card>
 
       {!sp && (
         <p className="text-sm text-slate-400">

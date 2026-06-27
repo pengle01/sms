@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import type { Role } from "@/generated/prisma";
 import { getPortalForRole } from "@/lib/rbac";
+import { rateLimit, resetRateLimit } from "@/server/rateLimit";
 
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
 // Must match the cookie name getToken() looks for in the middleware.
@@ -30,18 +31,31 @@ async function createSession(userId: string, email: string, name: string | null,
   });
 }
 
+// Staff / student sign-in with email + password (same in dev and prod). Parents
+// use parentLoginAction; Microsoft SSO is the alternative on the same card.
 export async function staffLoginAction(formData: FormData) {
   const email = ((formData.get("email") as string) ?? "").toLowerCase().trim();
+  const password = (formData.get("password") as string) ?? "";
   const locale = (formData.get("locale") as string) || "el";
 
-  if (!email) redirect(`/${locale}/login?error=MissingEmail`);
+  if (!email || !password) redirect(`/${locale}/login?error=MissingCredentials`);
+
+  // Throttle password attempts per account to slow brute-forcing.
+  if (!rateLimit(`login:${email}`, 10, 15 * 60 * 1000)) {
+    redirect(`/${locale}/login?error=InvalidCredentials`);
+  }
 
   const user = await db.user.findUnique({ where: { email } });
 
-  if (!user || !user.isActive || user.role === "PARENT") {
-    redirect(`/${locale}/login?error=Unauthorized`);
+  // Generic error for every failure — never reveal whether an email exists.
+  if (!user || !user.isActive || user.role === "PARENT" || !user.passwordHash) {
+    redirect(`/${locale}/login?error=InvalidCredentials`);
+  }
+  if (!(await bcrypt.compare(password, user.passwordHash))) {
+    redirect(`/${locale}/login?error=InvalidCredentials`);
   }
 
+  resetRateLimit(`login:${email}`);
   await createSession(user.id, user.email, user.name, user.role, user.image);
   const portal = getPortalForRole(user.role as Role);
   redirect(`/${locale}/${portal}`);
