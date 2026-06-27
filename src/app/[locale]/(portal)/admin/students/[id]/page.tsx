@@ -4,15 +4,16 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  ChevronLeft, Pencil, User, Phone, Mail, Calendar, MapPin,
+  ChevronLeft, Pencil, User, Phone, Calendar, MapPin,
   CreditCard, Globe, Users, BookOpen, Clock, Layers,
   CalendarDays, AlertTriangle,
 } from "lucide-react";
 import { fmtDisplayDate } from "@/lib/dates";
 import { SmsRecipientsCard } from "@/components/students/SmsRecipientsCard";
+import { AccountsCard, type StudentAccount } from "@/components/students/AccountsCard";
 import { pickQueryString } from "@/lib/listFilters";
 import { AccessCodeCard } from "@/components/access/AccessCodeCard";
-import { getPeriodsPerDay } from "@/lib/schoolConfig";
+import { getPeriodsPerDay, getMaxGuardiansPerStudent } from "@/lib/schoolConfig";
 import { periodsForDow, maxPeriodCount } from "@/lib/periods";
 import { isPassing } from "@/lib/grades";
 import { cn } from "@/lib/utils";
@@ -56,6 +57,7 @@ export default async function StudentDetailPage({
       smsContacts: {
         orderBy: [{ isDefault: "desc" }, { active: "desc" }, { role: "asc" }],
       },
+      accessCode: { select: { guardianClaims: true } },
       grades: {
         include: { course: true },
         orderBy: { updatedAt: "desc" },
@@ -72,6 +74,38 @@ export default async function StudentDetailPage({
   if (!student) notFound();
 
   const { user, group, subjectGroups, parents, smsContacts, grades, attendance } = student;
+
+  // All login accounts linked to this student — the student's own + each guardian.
+  const maxGuardians = await getMaxGuardiansPerStudent();
+  const accounts: StudentAccount[] = [
+    {
+      userId: user.id,
+      name: user.name,
+      email: user.email,
+      isActive: user.isActive,
+      hasPassword: !!user.passwordHash,
+      kind: "student",
+    },
+    ...parents.map(({ parentProfile }) => ({
+      userId: parentProfile.user.id,
+      name: parentProfile.user.name,
+      email: parentProfile.user.email,
+      isActive: parentProfile.user.isActive,
+      hasPassword: !!parentProfile.user.passwordHash,
+      kind: "guardian" as const,
+      role: parentProfile.role,
+      parentProfileId: parentProfile.id,
+    })),
+  ];
+  const guardianClaims = student.accessCode?.guardianClaims ?? parents.length;
+
+  // Parents/guardians as recorded by the import (SMS contacts). They become
+  // login accounts only when they activate their access code, so show the
+  // contacts here rather than an empty "no parents" — the actual login accounts
+  // are listed in the Accounts card below.
+  const parentContacts = smsContacts.filter(
+    (c) => c.role === "FATHER" || c.role === "MOTHER" || c.role === "GUARDIAN",
+  );
 
   // Weekly timetable = union of homegroup + subject-group slots. Cells with
   // more than one slot are scheduling conflicts and are flagged.
@@ -284,57 +318,60 @@ export default async function StudentDetailPage({
             </CardContent>
           </Card>
 
-          {/* Parents */}
+          {/* Parents / Guardians — contacts from the import */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Users className="w-4 h-4 text-slate-400" />
-                Parents / Guardian
+                Parents / Guardians
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              {parents.length === 0 ? (
+              {parentContacts.length === 0 ? (
                 <p className="px-5 py-8 text-sm text-slate-400 text-center">No parents on record</p>
               ) : (
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-100">
-                      <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Name</th>
-                      <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Role</th>
-                      <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Phone</th>
-                      <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Email</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {parents.map(({ parentProfile }) => (
-                      <tr key={parentProfile.id}>
-                        <td className="px-5 py-3 font-medium text-slate-900">{parentProfile.user?.name ?? "—"}</td>
-                        <td className="px-5 py-3">
-                          <Badge variant="outline" className="text-xs capitalize">
-                            {parentProfile.role.toLowerCase()}
-                          </Badge>
-                        </td>
-                        <td className="px-5 py-3 text-slate-600">
-                          {parentProfile.phone
-                            ? <a href={`tel:${parentProfile.phone}`} className="flex items-center gap-1 hover:text-emerald-600">
-                                <Phone className="w-3 h-3" />{parentProfile.phone}
-                              </a>
-                            : <span className="text-slate-400">—</span>}
-                        </td>
-                        <td className="px-5 py-3 text-slate-500 truncate max-w-[200px]">
-                          {parentProfile.user.email.endsWith("@pending.sms")
-                            ? <span className="text-slate-300 italic text-xs">pending</span>
-                            : <a href={`mailto:${parentProfile.user.email}`} className="flex items-center gap-1 hover:text-emerald-600">
-                                <Mail className="w-3 h-3" />{parentProfile.user.email}
-                              </a>}
-                        </td>
+                <>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-100">
+                        <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Name</th>
+                        <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Role</th>
+                        <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Phone</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {parentContacts.map((c) => (
+                        <tr key={c.id}>
+                          <td className="px-5 py-3 font-medium text-slate-900">{c.name}</td>
+                          <td className="px-5 py-3">
+                            <Badge variant="outline" className="text-xs capitalize">{c.role.toLowerCase()}</Badge>
+                          </td>
+                          <td className="px-5 py-3 text-slate-600">
+                            {c.phone
+                              ? <a href={`tel:${c.phone}`} className="flex items-center gap-1 hover:text-emerald-600">
+                                  <Phone className="w-3 h-3" />{c.phone}
+                                </a>
+                              : <span className="text-slate-400">—</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <p className="px-5 py-3 text-xs text-slate-400 border-t border-slate-50">
+                    Recorded from the import. A parent gets a login account only when they activate their access code (see Accounts below).
+                  </p>
+                </>
               )}
             </CardContent>
           </Card>
+
+          {/* Accounts — login accounts linked to this student (own + guardians) */}
+          <AccountsCard
+            studentProfileId={student.id}
+            accounts={accounts}
+            guardianClaims={guardianClaims}
+            maxGuardians={maxGuardians}
+          />
 
           {/* Subject groups */}
           <Card>
