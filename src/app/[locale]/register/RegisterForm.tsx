@@ -127,7 +127,7 @@ export function RegisterForm({ locale, error, success, staffNames }: RegisterFor
             ) : (
               <>
                 <input type="hidden" name="staffName" value={staffName} />
-                <Select value={staffName} onValueChange={setStaffName}>
+                <Select value={staffName} onValueChange={(v) => setStaffName(v ?? "")}>
                   <SelectTrigger className="w-full h-10 bg-white/10 border-white/20 text-white data-placeholder:text-lime-300/40 focus-visible:ring-emerald-400">
                     <SelectValue placeholder={t("staffNamePlaceholder")} />
                   </SelectTrigger>
