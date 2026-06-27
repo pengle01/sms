@@ -4,7 +4,7 @@ import { db } from "@/server/db";
 import { DUTY_ELIGIBLE_ROLES } from "@/lib/dutyRoster";
 import { staffDisplayName } from "@/lib/staffName";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY, getMaxTestsPerWeek, DEFAULT_MAX_TESTS_PER_WEEK, getSchoolYear, getTermDatesConfig, getSchoolName, getGradesUnlocked, getAttendanceLockConfig } from "@/lib/schoolConfig";
+import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY, getMaxTestsPerWeek, DEFAULT_MAX_TESTS_PER_WEEK, getMaxGuardiansPerStudent, DEFAULT_MAX_GUARDIANS_PER_STUDENT, getSchoolYear, getTermDatesConfig, getSchoolName, getGradesUnlocked, getAttendanceLockConfig } from "@/lib/schoolConfig";
 import { getSmsConfig } from "@/lib/sms";
 import { getEmailConfig } from "@/lib/email";
 
@@ -19,6 +19,7 @@ export default async function AdminSettingsPage({
 
   const { PeriodsForm } = await import("./PeriodsForm");
   const { MaxTestsForm } = await import("./MaxTestsForm");
+  const { MaxGuardiansForm } = await import("./MaxGuardiansForm");
   const { SmsSettingsForm } = await import("./SmsSettingsForm");
   const { EmailSettingsForm } = await import("./EmailSettingsForm");
   const { TermDatesForm } = await import("./TermDatesForm");
@@ -26,9 +27,10 @@ export default async function AdminSettingsPage({
   const { DutyRosterForm } = await import("./DutyRosterForm");
   const { GradesUnlockForm } = await import("./GradesUnlockForm");
   const { AttendanceLockForm } = await import("./AttendanceLockForm");
-  const [periodsPerDay, maxTestsPerWeek, smsConfig, emailConfig, termConfig, schoolYear, schoolName, gradesUnlocked, attendanceLock, dutyEntries, dutyDeputies] = await Promise.all([
+  const [periodsPerDay, maxTestsPerWeek, maxGuardians, smsConfig, emailConfig, termConfig, schoolYear, schoolName, gradesUnlocked, attendanceLock, dutyEntries, dutyDeputies] = await Promise.all([
     getPeriodsPerDay(),
     getMaxTestsPerWeek(),
+    getMaxGuardiansPerStudent(),
     getSmsConfig(),
     getEmailConfig(),
     getTermDatesConfig(),
@@ -45,6 +47,7 @@ export default async function AdminSettingsPage({
   ]);
   const initial = { ...DEFAULT_PERIODS_PER_DAY, ...periodsPerDay };
   const maxTestsInitial = maxTestsPerWeek ?? DEFAULT_MAX_TESTS_PER_WEEK;
+  const maxGuardiansInitial = maxGuardians ?? DEFAULT_MAX_GUARDIANS_PER_STUDENT;
 
   // Form shows the stored config; resolved defaults fill the term boundaries.
   const iso = (d: Date) => d.toISOString().slice(0, 10);
@@ -148,6 +151,15 @@ export default async function AdminSettingsPage({
         </CardHeader>
         <CardContent>
           <MaxTestsForm initial={maxTestsInitial} />
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Guardian Accounts</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <MaxGuardiansForm initial={maxGuardiansInitial} />
         </CardContent>
       </Card>
 

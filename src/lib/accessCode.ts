@@ -9,30 +9,40 @@ export const ACCESS_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 export const ACCESS_CODE_LENGTH = 8;
 export const OTP_LENGTH = 6;
 
-// At most this many guardian accounts may redeem a student's code.
+// Default cap on guardian accounts per student. The live cap is admin-configurable
+// (GlobalSetting "maxGuardiansPerStudent", read via getMaxGuardiansPerStudent) and
+// passed into the helpers below; this constant is the fallback default.
 export const MAX_GUARDIAN_CLAIMS = 2;
 
 /**
  * Whether a guardian may (re)claim a student's access code. A guardian whose
  * account is already linked to the student is always allowed back in (e.g. to
  * reset their password via re-activation) — only *new* links count toward the
- * cap.
+ * cap. `max` is the configured guardians-per-student limit.
  */
-export function canAddGuardian(guardianClaims: number, alreadyLinked: boolean): boolean {
-  return alreadyLinked || guardianClaims < MAX_GUARDIAN_CLAIMS;
+export function canAddGuardian(
+  guardianClaims: number,
+  alreadyLinked: boolean,
+  max: number = MAX_GUARDIAN_CLAIMS,
+): boolean {
+  return alreadyLinked || guardianClaims < max;
 }
 
 /**
  * Which activation roles a code still offers — drives the role picker so only
  * available roles can be selected (student is one-shot; guardians are capped).
+ * `max` is the configured guardians-per-student limit.
  */
-export function roleAvailability(access: {
-  studentClaimedAt: Date | string | null;
-  guardianClaims: number;
-}): { student: boolean; guardian: boolean } {
+export function roleAvailability(
+  access: {
+    studentClaimedAt: Date | string | null;
+    guardianClaims: number;
+  },
+  max: number = MAX_GUARDIAN_CLAIMS,
+): { student: boolean; guardian: boolean } {
   return {
     student: !access.studentClaimedAt,
-    guardian: access.guardianClaims < MAX_GUARDIAN_CLAIMS,
+    guardian: access.guardianClaims < max,
   };
 }
 

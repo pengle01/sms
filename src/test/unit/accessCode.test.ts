@@ -70,8 +70,15 @@ describe("canAddGuardian", () => {
     expect(canAddGuardian(MAX_GUARDIAN_CLAIMS + 5, true)).toBe(true);
   });
 
-  it("caps at exactly two guardians", () => {
+  it("caps at exactly two guardians by default", () => {
     expect(MAX_GUARDIAN_CLAIMS).toBe(2);
+  });
+
+  it("honours a configured cap passed in", () => {
+    expect(canAddGuardian(2, false, 3)).toBe(true); // raised cap admits a 3rd guardian
+    expect(canAddGuardian(3, false, 3)).toBe(false);
+    expect(canAddGuardian(1, false, 1)).toBe(false); // lowered cap blocks a 2nd
+    expect(canAddGuardian(1, true, 1)).toBe(true); // already-linked re-activation still exempt
   });
 });
 
@@ -102,6 +109,13 @@ describe("roleAvailability", () => {
       student: false,
       guardian: false,
     });
+  });
+
+  it("respects a configured cap", () => {
+    // With a cap of 3, two existing guardians still leave the role open.
+    expect(roleAvailability({ studentClaimedAt: null, guardianClaims: 2 }, 3)).toMatchObject({ guardian: true });
+    // With a cap of 1, a single existing guardian closes it.
+    expect(roleAvailability({ studentClaimedAt: null, guardianClaims: 1 }, 1)).toMatchObject({ guardian: false });
   });
 });
 

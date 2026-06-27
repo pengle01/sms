@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { MAX_GUARDIAN_CLAIMS } from "@/lib/accessCode";
 import { DEFAULT_PERIODS_PER_DAY, type PeriodsPerDay } from "@/lib/periods";
 import { GRADES_UNLOCKED_KEY, parseGradesUnlocked, type GradesUnlocked } from "@/lib/grades";
 import { ATTENDANCE_LOCK_KEY, parseAttendanceLock, type AttendanceLockConfig } from "@/lib/attendanceLock";
@@ -50,6 +51,18 @@ export async function getMaxTestsPerWeek(): Promise<number> {
   if (!setting) return DEFAULT_MAX_TESTS_PER_WEEK;
   const n = parseInt(setting.value);
   return isNaN(n) ? DEFAULT_MAX_TESTS_PER_WEEK : n;
+}
+
+// ── Guardian accounts per student ────────────────────────────────────────────
+
+export const DEFAULT_MAX_GUARDIANS_PER_STUDENT = MAX_GUARDIAN_CLAIMS;
+
+/** Admin-configured cap on how many guardian accounts may redeem a student's code. */
+export async function getMaxGuardiansPerStudent(): Promise<number> {
+  const setting = await db.globalSetting.findUnique({ where: { key: "maxGuardiansPerStudent" } });
+  if (!setting) return DEFAULT_MAX_GUARDIANS_PER_STUDENT;
+  const n = parseInt(setting.value);
+  return Number.isInteger(n) && n >= 1 ? n : DEFAULT_MAX_GUARDIANS_PER_STUDENT;
 }
 
 // ── School name ─────────────────────────────────────────────────────────────

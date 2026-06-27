@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { db } from "@/server/db";
 import { rateLimit } from "@/server/rateLimit";
 import { canAddGuardian, isWellFormedCode, normalizeCode, randomOtp, roleAvailability } from "@/lib/accessCode";
+import { getMaxGuardiansPerStudent } from "@/lib/schoolConfig";
 import { composeFullName } from "@/lib/profile";
 import { sendOtpEmail } from "@/lib/email";
 import { writeAudit } from "@/server/audit";
@@ -46,7 +47,7 @@ export async function checkAccessCode(input: { code: string }): Promise<CheckCod
   });
   if (!access) return { ok: false, error: "errCodeInvalid" };
 
-  const avail = roleAvailability(access);
+  const avail = roleAvailability(access, await getMaxGuardiansPerStudent());
   return { ok: true, student: avail.student, guardian: avail.guardian };
 }
 
@@ -121,7 +122,7 @@ export async function startActivation(input: {
   if (input.role === "guardian") {
     // Cap new guardian links; an already-linked guardian may re-activate.
     const alreadyLinked = (existingUser?.parentProfile?.children.length ?? 0) > 0;
-    if (!canAddGuardian(access.guardianClaims, alreadyLinked)) {
+    if (!canAddGuardian(access.guardianClaims, alreadyLinked, await getMaxGuardiansPerStudent())) {
       return { ok: false, error: "errGuardianCap" };
     }
   }
@@ -232,7 +233,7 @@ export async function verifyActivation(input: {
       // OTP was sent). Re-activation of an already-linked guardian is exempt
       // and never burns a slot.
       const alreadyLinked = (existing?.parentProfile?.children.length ?? 0) > 0;
-      if (!canAddGuardian(access.guardianClaims, alreadyLinked)) {
+      if (!canAddGuardian(access.guardianClaims, alreadyLinked, await getMaxGuardiansPerStudent())) {
         await db.emailOtp.delete({ where: { id: row.id } }).catch(() => {});
         return { ok: false, error: "errGuardianCap" };
       }
