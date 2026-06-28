@@ -19,6 +19,7 @@ export function isEffectiveSuperAdmin(primary: Role, extra: Role[]): boolean {
 
 export type GrantError = "errSelf" | "errAlreadyAdmin" | "errInactive";
 export type RevokeError = "errSelf" | "errPrimaryAdmin" | "errNotGranted" | "errLastSuperAdmin";
+export type DeleteError = "errSelf" | "errLastSuperAdmin";
 
 /** May the actor grant an extra SUPER_ADMIN role to the target? */
 export function validateAdminGrant(p: {
@@ -52,5 +53,25 @@ export function validateAdminRevoke(p: {
   if (p.targetPrimary === "SUPER_ADMIN") return { ok: false, error: "errPrimaryAdmin" };
   if (!p.targetExtra.includes("SUPER_ADMIN")) return { ok: false, error: "errNotGranted" };
   if (p.effectiveSuperAdmins <= 1) return { ok: false, error: "errLastSuperAdmin" };
+  return { ok: true };
+}
+
+/**
+ * May the actor permanently delete the target user?
+ * Never delete yourself, and never delete the last active SUPER_ADMIN (by
+ * primary or extra role) — the system must always keep one administrator.
+ * `effectiveSuperAdmins` counts ACTIVE super admins (primary or extra).
+ */
+export function validateUserDelete(p: {
+  actorId: string;
+  targetId: string;
+  targetPrimary: Role;
+  targetExtra: Role[];
+  effectiveSuperAdmins: number;
+}): { ok: true } | { ok: false; error: DeleteError } {
+  if (p.actorId === p.targetId) return { ok: false, error: "errSelf" };
+  if (isEffectiveSuperAdmin(p.targetPrimary, p.targetExtra) && p.effectiveSuperAdmins <= 1) {
+    return { ok: false, error: "errLastSuperAdmin" };
+  }
   return { ok: true };
 }

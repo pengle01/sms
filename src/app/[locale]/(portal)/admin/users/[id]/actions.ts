@@ -5,9 +5,19 @@ import bcrypt from "bcryptjs";
 import { db } from "@/server/db";
 import { getSuperAdminAuth } from "@/server/authz";
 import { writeAudit, requestMeta } from "@/server/audit";
-import { validateAdminGrant, validateAdminRevoke } from "@/lib/roleAssignment";
+import { validateAdminGrant, validateAdminRevoke, validateUserDelete } from "@/lib/roleAssignment";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
+
+/** A Prisma FK-constraint violation (the row has restricted dependent records). */
+function isForeignKeyError(e: unknown): boolean {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    "code" in e &&
+    ((e as { code?: string }).code === "P2003" || (e as { code?: string }).code === "P2014")
+  );
+}
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -153,6 +163,87 @@ export async function setSpecialEducation(
     resource: "StaffProfile",
     resourceId: target.staffProfile.id,
     details: { value },
+    ...(await requestMeta()),
+  });
+  revalidateUsers();
+  return { ok: true };
+}
+
+const DELETE_ERRORS: Record<string, string> = {
+  errSelf: "You cannot delete your own account.",
+  errLastSuperAdmin: "This is the last active system administrator — it cannot be deleted.",
+};
+
+/**
+ * Permanently delete a user's login. Cascades sign-in rows (Account / Session),
+ * notifications and the TeacherClaim. A linked StaffProfile is **kept but
+ * detached** (userId → null) so its attendance / referral / substitution /
+ * message history is preserved — the profile is NOT deleted (several of its
+ * relations would cascade and silently lose that history). Its timetable name
+ * and homeroom/headteacher/counselor assignments are released so the role can
+ * be re-claimed and referrals stop routing to it. A user that still owns its
+ * own restricted activity (audit log, resolved referrals, substitution plans,
+ * attendance exports, or a student/parent record with grades/attendance) is
+ * refused atomically — nothing is partially deleted.
+ */
+export async function deleteUser(targetUserId: string): Promise<ActionResult> {
+  const auth = await getSuperAdminAuth();
+  if (!auth) return { ok: false, error: "Forbidden" };
+
+  const target = await db.user.findUnique({
+    where: { id: targetUserId },
+    select: { id: true, name: true, email: true, role: true, extraRoles: true },
+  });
+  if (!target) return { ok: false, error: "User not found" };
+
+  const check = validateUserDelete({
+    actorId: auth.userId,
+    targetId: targetUserId,
+    targetPrimary: target.role,
+    targetExtra: target.extraRoles,
+    effectiveSuperAdmins: await countEffectiveSuperAdmins(),
+  });
+  if (!check.ok) return { ok: false, error: DELETE_ERRORS[check.error] };
+
+  try {
+    // Release the role and detach (do NOT delete) the staff profile so history
+    // is preserved, then delete the login. Releasing = unlink timetable slots
+    // and clear homeroom/headteacher/counselor assignments so the name can be
+    // re-claimed and referrals stop routing here. Atomic: if the *user* still
+    // owns restricted activity (audit log, resolved referrals, substitution
+    // plans, attendance exports) the relation rolls it all back and the delete
+    // is refused below — nothing is partially applied.
+    await db.$transaction(async (tx) => {
+      const profile = await tx.staffProfile.findUnique({
+        where: { userId: targetUserId },
+        select: { id: true },
+      });
+      if (profile) {
+        await tx.timetableSlot.updateMany({ where: { staffId: profile.id }, data: { staffId: null } });
+        await tx.group.updateMany({ where: { homeroomTeacherId: profile.id }, data: { homeroomTeacherId: null } });
+        await tx.group.updateMany({ where: { homeroomHeadteacherId: profile.id }, data: { homeroomHeadteacherId: null } });
+        await tx.group.updateMany({ where: { counselorId: profile.id }, data: { counselorId: null } });
+        await tx.staffProfile.update({ where: { id: profile.id }, data: { userId: null } });
+      }
+      await tx.user.delete({ where: { id: targetUserId } });
+    });
+  } catch (e) {
+    if (isForeignKeyError(e)) {
+      return {
+        ok: false,
+        error:
+          "This account has its own system activity (audit log, resolved referrals or substitution plans) and cannot be deleted. Revoke its access instead.",
+      };
+    }
+    throw e;
+  }
+
+  await writeAudit({
+    userId: auth.userId,
+    action: "user.delete",
+    resource: "User",
+    resourceId: targetUserId,
+    details: { name: target.name, email: target.email, role: target.role },
     ...(await requestMeta()),
   });
   revalidateUsers();

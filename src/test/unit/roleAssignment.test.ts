@@ -4,6 +4,7 @@ import {
   isEffectiveSuperAdmin,
   validateAdminGrant,
   validateAdminRevoke,
+  validateUserDelete,
 } from "@/lib/roleAssignment";
 
 describe("effectiveRoles", () => {
@@ -104,5 +105,58 @@ describe("validateAdminRevoke", () => {
       ok: false,
       error: "errLastSuperAdmin",
     });
+  });
+});
+
+describe("validateUserDelete", () => {
+  const base = {
+    actorId: "admin1",
+    targetId: "user2",
+    targetPrimary: "TEACHER" as const,
+    targetExtra: [] as ("SUPER_ADMIN")[],
+    effectiveSuperAdmins: 2,
+  };
+
+  it("allows deleting an ordinary user", () => {
+    expect(validateUserDelete(base)).toEqual({ ok: true });
+  });
+
+  it("allows deleting an ordinary user even if only one admin exists", () => {
+    expect(validateUserDelete({ ...base, effectiveSuperAdmins: 1 })).toEqual({ ok: true });
+  });
+
+  it("blocks deleting your own account", () => {
+    expect(validateUserDelete({ ...base, targetId: "admin1" })).toEqual({
+      ok: false,
+      error: "errSelf",
+    });
+  });
+
+  it("allows deleting a super admin while others remain (primary or extra)", () => {
+    expect(validateUserDelete({ ...base, targetPrimary: "SUPER_ADMIN" })).toEqual({ ok: true });
+    expect(validateUserDelete({ ...base, targetExtra: ["SUPER_ADMIN"] })).toEqual({ ok: true });
+  });
+
+  it("refuses to delete the last super admin (primary)", () => {
+    expect(
+      validateUserDelete({ ...base, targetPrimary: "SUPER_ADMIN", effectiveSuperAdmins: 1 })
+    ).toEqual({ ok: false, error: "errLastSuperAdmin" });
+  });
+
+  it("refuses to delete the last super admin (extra grant)", () => {
+    expect(
+      validateUserDelete({ ...base, targetExtra: ["SUPER_ADMIN"], effectiveSuperAdmins: 1 })
+    ).toEqual({ ok: false, error: "errLastSuperAdmin" });
+  });
+
+  it("checks self before last-admin", () => {
+    expect(
+      validateUserDelete({
+        ...base,
+        targetId: "admin1",
+        targetPrimary: "SUPER_ADMIN",
+        effectiveSuperAdmins: 1,
+      })
+    ).toEqual({ ok: false, error: "errSelf" });
   });
 });

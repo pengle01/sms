@@ -8,6 +8,7 @@ import { ChevronLeft, CircleUser, Home, Calendar, KeyRound } from "lucide-react"
 import { cn } from "@/lib/utils";
 import { RolesCard } from "./RolesCard";
 import { SetPasswordForm } from "./SetPasswordForm";
+import { DeleteUserCard } from "./DeleteUserCard";
 
 const ROLE_META: Record<string, { label: string; color: string }> = {
   SUPER_ADMIN:       { label: "Super Admin",  color: "bg-purple-100 text-purple-700 border-purple-200" },
@@ -212,6 +213,16 @@ export default async function UserDetailPage({
           No staff profile linked to this account — link one from the Staff list to see schedule data.
         </p>
       )}
+
+      <DeleteUserCard
+        userId={user.id}
+        userName={user.name ?? user.email ?? "this user"}
+        locale={locale}
+        isSelf={auth.userId === user.id}
+        isLastAdmin={
+          (user.role === "SUPER_ADMIN" || hasAdminGrant) && effectiveSuperAdmins <= 1
+        }
+      />
     </div>
   );
 }
