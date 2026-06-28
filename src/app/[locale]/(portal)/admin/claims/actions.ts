@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { canManageClaims } from "@/lib/rbac";
+import { canManageClaims, SELF_REGISTER_EDUCATOR_ROLES } from "@/lib/rbac";
 import { getActiveAuth } from "@/server/authz";
 import { writeAudit, requestMeta } from "@/server/audit";
 import { db } from "@/server/db";
@@ -25,7 +25,7 @@ export async function approveRegistrationAction(userId: string, role: Role) {
   const admin = await requireAdmin();
   if (!VALID_ROLES.includes(role)) return;
 
-  if (role === "TEACHER") {
+  if (SELF_REGISTER_EDUCATOR_ROLES.includes(role)) {
     await db.$transaction(async (tx) => {
       const user = await tx.user.update({
         where: { id: userId, isActive: false },

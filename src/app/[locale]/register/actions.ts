@@ -6,9 +6,12 @@ import bcrypt from "bcryptjs";
 import { db } from "@/server/db";
 import { rateLimit } from "@/server/rateLimit";
 import { composeFullName } from "@/lib/profile";
+import { SELF_REGISTER_EDUCATOR_ROLES } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma";
 
-const CLAIMABLE_ROLES: Role[] = ["TEACHER", "SCHOOL_ADMIN", "CHAPERONE"];
+// Educators (teacher / deputy heads / headmaster) claim a timetable name;
+// office & chaperone just register for approval without a claim.
+const CLAIMABLE_ROLES: Role[] = [...SELF_REGISTER_EDUCATOR_ROLES, "SCHOOL_ADMIN", "CHAPERONE"];
 const MIN_PASSWORD_LENGTH = 8;
 
 export async function registerAction(formData: FormData) {
@@ -36,7 +39,8 @@ export async function registerAction(formData: FormData) {
   if (password !== confirm) redirect(`${base}?error=errorPasswordMismatch`);
   if (!CLAIMABLE_ROLES.includes(role)) redirect(`${base}?error=errorInvalidRole`);
 
-  if (role === "TEACHER") {
+  const claimsTimetableName = SELF_REGISTER_EDUCATOR_ROLES.includes(role);
+  if (claimsTimetableName) {
     if (!staffName) redirect(`${base}?error=errorStaffNameRequired`);
     // Verify the name exists in the timetable and hasn't been claimed
     const slot = await db.timetableSlot.findFirst({
@@ -54,7 +58,7 @@ export async function registerAction(formData: FormData) {
 
   const passwordHash = await bcrypt.hash(password, 12);
 
-  if (role === "TEACHER") {
+  if (claimsTimetableName) {
     await db.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: { firstName, lastName, name, email, passwordHash, role, isActive: false },

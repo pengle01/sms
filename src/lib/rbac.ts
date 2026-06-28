@@ -29,6 +29,16 @@ export const MANAGEMENT_ROLES: Role[] = [
   "HEADTEACHER_B",
 ];
 
+// Educator roles a person can self-register for at sign-up by claiming their
+// timetable name (admin approves → StaffProfile created). STUDENT_COUNSELOR is
+// admin-assigned only, so it is intentionally excluded here.
+export const SELF_REGISTER_EDUCATOR_ROLES: Role[] = [
+  "TEACHER",
+  "HEADTEACHER_B",
+  "HEADTEACHER_A",
+  "HEADMASTER",
+];
+
 // Office administration — /office portal
 export const OFFICE_ROLES: Role[] = ["SCHOOL_ADMIN"];
 

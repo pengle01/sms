@@ -56,6 +56,7 @@ interface Toast {
 const ROLE_LABELS: Record<string, string> = {
   TEACHER: "Teacher", SCHOOL_ADMIN: "School Admin", CHAPERONE: "Chaperone",
   STUDENT_COUNSELOR: "Student Counselor", HEADTEACHER_A: "Headteacher A", HEADTEACHER_B: "Headteacher B",
+  HEADMASTER: "Headmaster",
 };
 
 const UNDO_MS = 5000;

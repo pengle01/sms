@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { registerAction } from "./actions";
+import { SELF_REGISTER_EDUCATOR_ROLES } from "@/lib/rbac";
 import { useTranslations } from "next-intl";
 
 interface RegisterFormProps {
@@ -16,6 +17,28 @@ interface RegisterFormProps {
   success?: boolean;
   staffNames: string[];
 }
+
+// Roles offered at sign-up, with their message key. Educators (the first four)
+// claim a timetable name; office & chaperone do not.
+const REGISTER_ROLES = [
+  "TEACHER",
+  "HEADTEACHER_B",
+  "HEADTEACHER_A",
+  "HEADMASTER",
+  "SCHOOL_ADMIN",
+  "CHAPERONE",
+] as const;
+const ROLE_LABEL_KEY = {
+  TEACHER: "roleTeacher",
+  HEADTEACHER_B: "roleHeadteacherB",
+  HEADTEACHER_A: "roleHeadteacherA",
+  HEADMASTER: "roleHeadmaster",
+  SCHOOL_ADMIN: "roleSchoolAdmin",
+  CHAPERONE: "roleChaperone",
+} as const;
+// Same set the server uses to decide who claims a timetable name — keep in sync
+// by importing it rather than re-listing (rbac.ts is client-safe: type-only import).
+const CLAIM_ROLES: string[] = SELF_REGISTER_EDUCATOR_ROLES;
 
 export function RegisterForm({ locale, error, success, staffNames }: RegisterFormProps) {
   const t = useTranslations("register");
@@ -103,8 +126,8 @@ export function RegisterForm({ locale, error, success, staffNames }: RegisterFor
         <div className="space-y-2">
           <p className="text-sm text-lime-200">{t("role")}</p>
           <div className="grid grid-cols-1 gap-2">
-            {(["TEACHER", "SCHOOL_ADMIN", "CHAPERONE"] as const).map((r) => {
-              const labelKey = r === "TEACHER" ? "roleTeacher" : r === "SCHOOL_ADMIN" ? "roleSchoolAdmin" : "roleChaperone";
+            {REGISTER_ROLES.map((r) => {
+              const labelKey = ROLE_LABEL_KEY[r];
               return (
                 <label key={r} className="flex items-center gap-3 rounded-lg border border-white/20 px-4 py-3 cursor-pointer hover:bg-white/10 has-[:checked]:border-lime-400 has-[:checked]:bg-lime-400/10 transition-colors">
                   <input
@@ -119,7 +142,7 @@ export function RegisterForm({ locale, error, success, staffNames }: RegisterFor
           </div>
         </div>
 
-        {selectedRole === "TEACHER" && (
+        {CLAIM_ROLES.includes(selectedRole) && (
           <div className="space-y-1.5">
             <Label htmlFor="staffName" className="text-lime-200 text-sm">{t("staffName")}</Label>
             {staffNames.length === 0 ? (
