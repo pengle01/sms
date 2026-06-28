@@ -4,8 +4,11 @@ import { TRPCError } from "@trpc/server";
 import { permitByStudent } from "@/lib/exitPermit";
 import { utcMidnight } from "@/lib/dates";
 import { writeAudit } from "@/server/audit";
-import { getAttendanceLockConfig } from "@/lib/schoolConfig";
+import { getAttendanceLockConfig, getSchoolYear } from "@/lib/schoolConfig";
+import { isWithinSchoolYear } from "@/lib/schoolYear";
 import { getPendingAttendance, type PendingLesson } from "@/server/attendanceLock";
+
+const OUT_OF_YEAR_MSG = "Η ημερομηνία είναι εκτός των ορίων του σχολικού έτους.";
 
 export const attendanceRouter = createTRPCRouter({
   // Attendance-completion lock status for the current teacher. Drives the
@@ -42,6 +45,14 @@ export const attendanceRouter = createTRPCRouter({
         where: { userId: ctx.session.user.id },
       });
       if (!staff) throw new TRPCError({ code: "NOT_FOUND" });
+
+      // Reject any record dated outside the school year / active term.
+      const ranges = await getSchoolYear();
+      for (const r of input.records) {
+        if (!isWithinSchoolYear(utcMidnight(r.date), ranges)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: OUT_OF_YEAR_MSG });
+        }
+      }
 
       // Fetch the delay threshold global setting
       const thresholdSetting = await ctx.db.globalSetting.findUnique({
@@ -169,6 +180,12 @@ export const attendanceRouter = createTRPCRouter({
         where: { userId: ctx.session.user.id },
       });
       if (!staff) throw new TRPCError({ code: "NOT_FOUND" });
+
+      // Reject dates outside the school year / active term.
+      const ranges = await getSchoolYear();
+      if (!isWithinSchoolYear(utcMidnight(input.date), ranges)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: OUT_OF_YEAR_MSG });
+      }
 
       const thresholdSetting = await ctx.db.globalSetting.findUnique({
         where: { key: "delay_threshold_minutes" },

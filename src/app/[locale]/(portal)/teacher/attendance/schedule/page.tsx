@@ -5,6 +5,8 @@ import type { Role } from "@/generated/prisma";
 import { db } from "@/server/db";
 import { getNow, utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { getSpecialDaysInRange, buildDayTypeMap, buildDayMeetingPeriodMap, isHolidayType } from "@/lib/calendar";
+import { getSchoolYear } from "@/lib/schoolConfig";
+import { isWithinSchoolYear } from "@/lib/schoolYear";
 import Link from "next/link";
 import { CheckCircle2, ClipboardList, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { getTranslations } from "next-intl/server";
@@ -97,6 +99,7 @@ export default async function TeacherSchedulePage({
 
   const weekDates = [1, 2, 3, 4, 5].map((d) => utcMidnight(dowToDateStr[d]!));
   const specialDays = await getSpecialDaysInRange(weekDates[0]!, weekDates[4]!);
+  const yearRanges = await getSchoolYear();
   const dayTypeMap = buildDayTypeMap(specialDays, weekDates);
   const dayMeetingPeriodMap = buildDayMeetingPeriodMap(specialDays, weekDates);
 
@@ -361,7 +364,8 @@ export default async function TeacherSchedulePage({
                   const isHoliday = isHolidayType(specialType);
                   const isDayIntercalary = specialType === "INTERCALARY";
                   const isDayExcursion = specialType === "EXCURSION";
-                  const canMark = past && !isFutureWeek && !isHoliday;
+                  const inYear = isWithinSchoolYear(utcMidnight(dateStr), yearRanges);
+                  const canMark = past && !isFutureWeek && !isHoliday && inYear;
 
                   // On intercalary days the meeting period is inserted, shifting slots below it down by 1
                   const meetingPeriod = dayMeetingPeriodMap.get(dateStr);

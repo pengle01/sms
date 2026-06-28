@@ -55,6 +55,15 @@ export function termOf(date: Date, ranges: SchoolYearRanges): "TERM1" | "TERM2" 
   return null;
 }
 
+/**
+ * True when a (UTC-midnight) date falls inside a term of the school year —
+ * i.e. not before the year, not after it, and not in the gap between the two
+ * terms. Use this to reject attendance/records dated outside the school year.
+ */
+export function isWithinSchoolYear(date: Date, ranges: SchoolYearRanges): boolean {
+  return termOf(date, ranges) !== null;
+}
+
 // ── Admin-configured dates (GlobalSetting "termDates") ──────────────────────
 
 export interface TermDatesConfig {

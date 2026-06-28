@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   activeTermFor,
   configuredHolidayFor,
+  isWithinSchoolYear,
   parseConfigDate,
   resolveSchoolYear,
   schoolYearRanges,
@@ -61,6 +62,41 @@ describe("termOf", () => {
     expect(termOf(utc(2026, 1, 16), gapped)).toBe("TERM1");
     expect(termOf(utc(2026, 1, 20), gapped)).toBeNull(); // between terms
     expect(termOf(utc(2026, 2, 2), gapped)).toBe("TERM2");
+  });
+});
+
+describe("isWithinSchoolYear (attendance bounds guard)", () => {
+  // The configured school year used in the test plan.
+  const ranges = resolveSchoolYear(utc(2026, 3, 1), {
+    term1Start: "2025-09-05",
+    term1End: "2026-01-16",
+    term2Start: "2026-01-19",
+    term2End: "2026-05-31",
+  });
+
+  it("accepts dates inside either term", () => {
+    expect(isWithinSchoolYear(utc(2025, 12, 1), ranges)).toBe(true); // Α΄
+    expect(isWithinSchoolYear(utc(2026, 3, 18), ranges)).toBe(true); // Β΄
+  });
+
+  it("accepts the first and last day of the year (inclusive)", () => {
+    expect(isWithinSchoolYear(utc(2025, 9, 5), ranges)).toBe(true); // year start
+    expect(isWithinSchoolYear(utc(2026, 5, 31), ranges)).toBe(true); // year end (inclusive)
+  });
+
+  it("rejects dates before the year starts", () => {
+    expect(isWithinSchoolYear(utc(2025, 9, 4), ranges)).toBe(false);
+    expect(isWithinSchoolYear(utc(2025, 6, 1), ranges)).toBe(false);
+  });
+
+  it("rejects dates after the year ends", () => {
+    expect(isWithinSchoolYear(utc(2026, 6, 1), ranges)).toBe(false);
+    expect(isWithinSchoolYear(utc(2027, 1, 1), ranges)).toBe(false);
+  });
+
+  it("rejects dates in the gap between the two terms", () => {
+    expect(isWithinSchoolYear(utc(2026, 1, 17), ranges)).toBe(false);
+    expect(isWithinSchoolYear(utc(2026, 1, 18), ranges)).toBe(false);
   });
 });
 
