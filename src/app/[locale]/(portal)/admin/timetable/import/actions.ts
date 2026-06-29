@@ -1,14 +1,18 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { getSuperAdminAuth } from "@/server/authz";
 import { db } from "@/server/db";
 import { Prisma } from "@/generated/prisma";
+import { slotLinkAssignments } from "@/lib/timetableLink";
+import { parseCourseCell } from "@/lib/timetableParse";
 import * as XLSX from "xlsx";
 
 export interface ScheduleImportResult {
   success: boolean;
   slotsCreated: number;
   slotsUpdated: number;
+  slotsLinked: number;
   coursesCreated: number;
   groupsCreated: number;
   errors: string[];
@@ -38,25 +42,18 @@ function toCourseCode(name: string): string {
   return name.trim().toLowerCase().slice(0, 100);
 }
 
-// Parse "room / Course name (grade)" → { room, courseName }
-function parseCourseCell(cell: string): { room: string; courseName: string } | null {
-  const m = cell.match(/^(.+?)\s*\/\s*(.+?)\s*\(.*\)\s*$/);
-  if (!m) return null;
-  return { room: m[1]!.trim(), courseName: m[2]!.trim() };
-}
-
 export async function importSchedule(
   _prev: ScheduleImportResult | null,
   formData: FormData,
 ): Promise<ScheduleImportResult> {
   const auth = await getSuperAdminAuth();
   if (!auth) {
-    return { success: false, slotsCreated: 0, slotsUpdated: 0, coursesCreated: 0, groupsCreated: 0, errors: ["Unauthorized"] };
+    return { success: false, slotsCreated: 0, slotsUpdated: 0, slotsLinked: 0, coursesCreated: 0, groupsCreated: 0, errors: ["Unauthorized"] };
   }
 
   const file = formData.get("file") as File | null;
   if (!file || file.size === 0) {
-    return { success: false, slotsCreated: 0, slotsUpdated: 0, coursesCreated: 0, groupsCreated: 0, errors: ["No file provided"] };
+    return { success: false, slotsCreated: 0, slotsUpdated: 0, slotsLinked: 0, coursesCreated: 0, groupsCreated: 0, errors: ["No file provided"] };
   }
 
   const buffer   = await file.arrayBuffer();
@@ -164,5 +161,41 @@ export async function importSchedule(
     }
   }
 
-  return { success: true, slotsCreated, slotsUpdated, coursesCreated, groupsCreated, errors };
+  // Re-link freshly imported slots to teachers who were already approved.
+  // Registration-approval links slots by staffName, but a lesson ADDED to an
+  // existing teacher arrives with staffId=null and would otherwise stay invisible
+  // in that teacher's portal (which filters by staffId). Mirror the approval link
+  // here so new lessons propagate. Claimed slots are left untouched.
+  let slotsLinked = 0;
+  const [unclaimed, profiles] = await Promise.all([
+    db.timetableSlot.findMany({
+      where: { staffId: null, staffName: { not: null } },
+      select: { id: true, staffName: true, staffId: true },
+    }),
+    db.staffProfile.findMany({
+      where: { scheduleName: { not: null } },
+      select: { id: true, scheduleName: true },
+    }),
+  ]);
+  const links = slotLinkAssignments(unclaimed, profiles);
+  const byProfile = new Map<string, string[]>();
+  for (const { slotId, profileId } of links) {
+    const list = byProfile.get(profileId) ?? [];
+    list.push(slotId);
+    byProfile.set(profileId, list);
+  }
+  for (const [profileId, slotIds] of byProfile) {
+    const res = await db.timetableSlot.updateMany({
+      where: { id: { in: slotIds } },
+      data: { staffId: profileId },
+    });
+    slotsLinked += res.count;
+  }
+
+  // The timetable display and every teacher's schedule are derived from these
+  // slots — refresh their caches so the import shows immediately.
+  revalidatePath("/[locale]/(portal)/admin/timetable", "page");
+  revalidatePath("/[locale]/(portal)/teacher/attendance/schedule", "page");
+
+  return { success: true, slotsCreated, slotsUpdated, slotsLinked, coursesCreated, groupsCreated, errors };
 }
