@@ -366,9 +366,10 @@ export function AttendanceMarkForm({
                                 })
                               }
                               title={t("wcStartHint")}
-                              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-300 hover:text-amber-600 hover:border-amber-300 transition-colors"
+                              className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 text-xs font-semibold text-slate-500 hover:text-amber-700 hover:border-amber-300 hover:bg-amber-50 transition-colors"
                             >
                               <DoorOpen className="w-4 h-4" />
+                              WC
                             </button>
                           </div>
                         );
