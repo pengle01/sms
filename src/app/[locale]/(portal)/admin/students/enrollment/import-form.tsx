@@ -52,9 +52,10 @@ export function EnrollmentImportForm() {
           {result.success && (
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
               <p className="text-sm font-semibold text-emerald-800 mb-3">Import complete</p>
-              <dl className="grid grid-cols-2 gap-3">
+              <dl className="grid grid-cols-3 gap-3">
                 <Stat label="Students processed" value={result.studentsEnrolled} />
-                <Stat label="Links created"       value={result.linksCreated} />
+                <Stat label="Links added"         value={result.linksCreated} />
+                <Stat label="Links removed"       value={result.linksRemoved} />
               </dl>
             </div>
           )}
