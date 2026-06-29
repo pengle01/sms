@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseSupportGroup, canViewSpecialEdFull } from "@/lib/specialEd";
+import { parseSupportGroup, canViewSpecialEdFull, specialEdCodesSeeded, stripGreekAccents } from "@/lib/specialEd";
 import { specialEdLegend } from "@/server/specialEd";
 import type { Role } from "@/generated/prisma";
 
@@ -18,6 +18,36 @@ describe("parseSupportGroup", () => {
     expect(parseSupportGroup("ΕΓ2")).toBeNull();
     expect(parseSupportGroup("ΗΥ1")).toBeNull();
     expect(parseSupportGroup("")).toBeNull();
+  });
+});
+
+describe("stripGreekAccents (accent-insensitive header matching)", () => {
+  it("strips tonos so accented headers match plain-vowel patterns", () => {
+    expect(stripGreekAccents("Διευκόλυνση 1")).toBe("Διευκολυνση 1");
+    // The import column resolver matches against the stripped header.
+    expect(/διευκολ/i.test(stripGreekAccents("Διευκόλυνση 1"))).toBe(true);
+    // Regression guard: the raw accented header did NOT match before.
+    expect(/διευκολ/i.test("Διευκόλυνση 1")).toBe(false);
+  });
+
+  it("handles the other ministry headers and leaves plain text unchanged", () => {
+    expect(/παρατηρ/i.test(stripGreekAccents("Παρατηρήσεις"))).toBe(true);
+    expect(/αλλες\s*απαλλ/i.test(stripGreekAccents("Άλλες Απαλλαγές"))).toBe(true);
+    expect(/γαλλικ/i.test(stripGreekAccents("Απαλλαγή Γαλλικών"))).toBe(true);
+    expect(stripGreekAccents("Αρ.Μητρ")).toBe("Αρ.Μητρ");
+  });
+});
+
+describe("specialEdCodesSeeded (import guard)", () => {
+  it("is false only when BOTH lookup tables are empty (unseeded install)", () => {
+    expect(specialEdCodesSeeded(0, 0)).toBe(false);
+  });
+
+  it("is true when either lookup table has codes", () => {
+    expect(specialEdCodesSeeded(23, 18)).toBe(true);
+    expect(specialEdCodesSeeded(23, 0)).toBe(true);
+    expect(specialEdCodesSeeded(0, 18)).toBe(true);
+    expect(specialEdCodesSeeded(1, 0)).toBe(true);
   });
 });
 

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/server/db";
 import { getActiveAuth } from "@/server/authz";
-import { canViewSpecialEdFull } from "@/lib/specialEd";
+import { canViewSpecialEdFull, specialEdCodesSeeded, stripGreekAccents } from "@/lib/specialEd";
 import { teacherUserIdsForStudent } from "@/server/specialEd";
 import { writeAudit, requestMeta } from "@/server/audit";
 
@@ -44,29 +44,54 @@ export async function updateSpecialEdRecord(input: {
   const fileNo = input.fileNo.trim() || null;
   const remarks = input.remarks.trim() || null;
   const otherExemptions = input.otherExemptions.trim() || null;
-  const problems = input.problemCodes.map((code) => ({ code }));
-  const accommodations = input.accommodationCodes.map((code) => ({ code }));
 
-  await db.specialEdRecord.upsert({
-    where: { studentId: input.studentId },
-    create: {
-      studentId: input.studentId,
-      fileNo,
-      remarks,
-      frenchExempt: input.frenchExempt,
-      otherExemptions,
-      problems: { connect: problems },
-      accommodations: { connect: accommodations },
-    },
-    update: {
-      fileNo,
-      remarks,
-      frenchExempt: input.frenchExempt,
-      otherExemptions,
-      problems: { set: problems },
-      accommodations: { set: accommodations },
-    },
-  });
+  // Connect only codes that actually exist in the catalog. A code not in the
+  // lookup (e.g. an unseeded install, or a code removed after the form loaded)
+  // would make Prisma's nested connect throw P2025 and silently fail the save —
+  // so filter to known codes and report any we had to drop.
+  const [knownProblems, knownAccoms] = await Promise.all([
+    db.specialEdProblemCode.findMany({ where: { code: { in: input.problemCodes } }, select: { code: true } }),
+    db.specialEdAccommodation.findMany({ where: { code: { in: input.accommodationCodes } }, select: { code: true } }),
+  ]);
+  const problemSet = new Set(knownProblems.map((p) => p.code));
+  const accomSet = new Set(knownAccoms.map((a) => a.code));
+  const unknown = [
+    ...input.problemCodes.filter((c) => !problemSet.has(c)),
+    ...input.accommodationCodes.filter((c) => !accomSet.has(c)),
+  ];
+  if (unknown.length > 0) {
+    return {
+      ok: false,
+      error: `Άγνωστοι κωδικοί: ${unknown.join(", ")}. Ελέγξτε ότι έχουν αρχικοποιηθεί οι κωδικοί ειδικής αγωγής.`,
+    };
+  }
+  const problems = [...problemSet].map((code) => ({ code }));
+  const accommodations = [...accomSet].map((code) => ({ code }));
+
+  try {
+    await db.specialEdRecord.upsert({
+      where: { studentId: input.studentId },
+      create: {
+        studentId: input.studentId,
+        fileNo,
+        remarks,
+        frenchExempt: input.frenchExempt,
+        otherExemptions,
+        problems: { connect: problems },
+        accommodations: { connect: accommodations },
+      },
+      update: {
+        fileNo,
+        remarks,
+        frenchExempt: input.frenchExempt,
+        otherExemptions,
+        problems: { set: problems },
+        accommodations: { set: accommodations },
+      },
+    });
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Η αποθήκευση απέτυχε." };
+  }
 
   const meta = await requestMeta();
   await writeAudit({
@@ -156,16 +181,17 @@ export async function importSpecialEd(_prev: ImportResult | null, formData: Form
   const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets[sheetName]!, { defval: "" });
   if (rows.length === 0) return { ok: false, error: "Το φύλλο δεν περιέχει γραμμές." };
 
-  // Resolve columns by header pattern.
+  // Resolve columns by header pattern. Match accent-insensitively — ministry
+  // headers carry a tonos ("Διευκόλυνση") that a plain-vowel pattern would miss.
   const headers = Object.keys(rows[0]!);
-  const find = (re: RegExp) => headers.filter((h) => re.test(h));
+  const find = (re: RegExp) => headers.filter((h) => re.test(stripGreekAccents(h)));
   const regCol = find(/μητρ/i)[0];
   if (!regCol) return { ok: false, error: "Δεν βρέθηκε στήλη «Αρ. Μητρ.»." };
   const problemCols = find(/κωδικ.*προβλ/i);
   const accomCols = find(/διευκολ/i);
   const remarksCol = find(/παρατηρ/i)[0];
   const frenchCol = find(/γαλλικ/i)[0];
-  const otherExemptCol = find(/άλλες\s*απαλλ|αλλες\s*απαλλ/i)[0];
+  const otherExemptCol = find(/αλλες\s*απαλλ/i)[0];
 
   // Known codes (so we only connect valid ones; collect the rest for reporting).
   const [knownProblems, knownAccoms] = await Promise.all([
@@ -174,6 +200,16 @@ export async function importSpecialEd(_prev: ImportResult | null, formData: Form
   ]);
   const problemSet = new Set(knownProblems.map((p) => p.code));
   const accomSet = new Set(knownAccoms.map((a) => a.code));
+
+  // Unseeded install: the lookup tables are empty, so every code would be
+  // dropped as "unknown" and we'd import code-less records. Refuse loudly.
+  if (!specialEdCodesSeeded(problemSet.size, accomSet.size)) {
+    return {
+      ok: false,
+      error:
+        "Οι κωδικοί ειδικής αγωγής (Προβλημάτων & Διευκολύνσεων) δεν έχουν αρχικοποιηθεί. Επικοινωνήστε με τον διαχειριστή πριν την εισαγωγή.",
+    };
+  }
 
   let created = 0;
   let updated = 0;

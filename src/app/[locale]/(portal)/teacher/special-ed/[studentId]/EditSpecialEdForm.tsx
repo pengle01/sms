@@ -50,20 +50,25 @@ export function EditSpecialEdForm({
 
   function save() {
     startTransition(async () => {
-      const res = await updateSpecialEdRecord({
-        studentId,
-        problemCodes: [...problems],
-        accommodationCodes: [...accoms],
-        fileNo,
-        remarks,
-        frenchExempt,
-        otherExemptions,
-      });
-      if (res.ok) {
-        toast.success("Αποθηκεύτηκε");
-        router.push(`/${locale}/teacher/special-ed`);
-        router.refresh();
-      } else toast.error(res.error);
+      try {
+        const res = await updateSpecialEdRecord({
+          studentId,
+          problemCodes: [...problems],
+          accommodationCodes: [...accoms],
+          fileNo,
+          remarks,
+          frenchExempt,
+          otherExemptions,
+        });
+        if (res.ok) {
+          toast.success("Αποθηκεύτηκε");
+          router.push(`/${locale}/teacher/special-ed`);
+          router.refresh();
+        } else toast.error(res.error);
+      } catch {
+        // A thrown server error (e.g. lost session) would otherwise fail silently.
+        toast.error("Η αποθήκευση απέτυχε. Δοκιμάστε ξανά ή ανανεώστε τη σελίδα.");
+      }
     });
   }
 

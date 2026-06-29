@@ -54,6 +54,27 @@ export const SPECIAL_ED_ACCOMMODATIONS: CodeEntry[] = [
   { code: "18", label: "Απαλλαγή από ακρόαση/κατανόηση κειμένου." },
 ];
 
+/**
+ * Strip Greek diacritics (tonos / dialytika) so spreadsheet-header matching is
+ * accent-insensitive — e.g. "Διευκόλυνση" → "Διευκολυνση", so a plain-vowel
+ * pattern like /διευκολ/ matches the accented header. NFD splits each accented
+ * letter into base + combining mark; we drop the combining marks (U+0300–036F).
+ */
+export function stripGreekAccents(s: string): string {
+  return (s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+/**
+ * The import/edit features only attach codes that already exist in the lookup
+ * tables (SpecialEdProblemCode / SpecialEdAccommodation). When BOTH tables are
+ * empty the install was never seeded (scripts/seed-special-ed-codes.mjs) — every
+ * code in the file would be silently dropped as "unknown", producing code-less
+ * records. Callers should refuse the import in that case rather than import them.
+ */
+export function specialEdCodesSeeded(problemCount: number, accommodationCount: number): boolean {
+  return problemCount > 0 || accommodationCount > 0;
+}
+
 export type SupportKind = "ATOMIC" | "GROUP";
 
 /**
