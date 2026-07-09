@@ -80,12 +80,12 @@ export default async function MarkAttendancePage({
           className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          Attendance
+          Απουσίες
         </Link>
       </div>
 
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">Mark Attendance</h2>
+        <h2 className="text-2xl font-bold text-slate-900">Καταχώρηση Απουσιών</h2>
         <p className="text-slate-500 text-sm mt-1">
           {fmtDisplayDate(getNow())}
         </p>

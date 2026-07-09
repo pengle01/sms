@@ -54,11 +54,11 @@ export default async function AttendancePage({
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Attendance</h2>
+          <h2 className="text-2xl font-bold text-slate-900">Απουσίες</h2>
           <p className="text-slate-500 text-sm mt-1">
-            {isToday ? "Today" : fmtDisplayDate(selectedDate)}
+            {isToday ? "Σήμερα" : fmtDisplayDate(selectedDate)}
             {" · "}
-            {absences.length} absences / late entries
+            {absences.length} απουσίες / καθυστερήσεις
           </p>
         </div>
         <Link
@@ -66,7 +66,7 @@ export default async function AttendancePage({
           className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
         >
           <ClipboardList className="w-4 h-4" />
-          Mark Attendance
+          Καταχώρηση Απουσιών
         </Link>
       </div>
 
@@ -83,31 +83,31 @@ export default async function AttendancePage({
           defaultValue={groupId ?? ""}
           className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
         >
-          <option value="">All groups</option>
+          <option value="">Όλα τα τμήματα</option>
           {groups.map((g) => (
             <option key={g.id} value={g.id}>{g.name}</option>
           ))}
         </select>
         <button type="submit" className="h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700">
-          Apply
+          Εφαρμογή
         </button>
       </form>
 
       {/* Absence table */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Absence &amp; Late Log</CardTitle>
+          <CardTitle className="text-base">Καταγραφή Απουσιών &amp; Καθυστερήσεων</CardTitle>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
           <table className="w-full text-sm min-w-[700px]">
             <thead>
               <tr className="border-b border-slate-100">
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Student</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Group</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Period</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Course</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Delay</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Μαθητής</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Τμήμα</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Ώρα</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Μάθημα</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Κατάσταση</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Καθυστέρηση</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">SMS</th>
               </tr>
             </thead>
@@ -129,15 +129,15 @@ export default async function AttendancePage({
                           : "bg-amber-50 text-amber-700 border-amber-200"
                       }
                     >
-                      {a.isAutoAbsent ? "Auto-Absent" : a.status}
+                      {a.isAutoAbsent ? "Αυτόματη Απουσία" : a.status === "ABSENT" ? "Απουσία" : "Καθυστέρηση"}
                     </Badge>
                   </td>
                   <td className="px-5 py-3.5 text-slate-500">
-                    {a.minutesDelayed > 0 ? `${a.minutesDelayed} min` : "—"}
+                    {a.minutesDelayed > 0 ? `${a.minutesDelayed} λεπτά` : "—"}
                   </td>
                   <td className="px-5 py-3.5">
                     {a.smsSent ? (
-                      <span className="text-xs text-green-600 font-medium">Sent</span>
+                      <span className="text-xs text-green-600 font-medium">Στάλθηκε</span>
                     ) : (
                       <span className="text-xs text-slate-400">—</span>
                     )}
@@ -148,7 +148,7 @@ export default async function AttendancePage({
                 <tr>
                   <td colSpan={7} className="px-5 py-16 text-center text-slate-400">
                     <ClipboardList className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                    No absences recorded for this date
+                    Δεν καταγράφηκαν απουσίες για αυτή την ημερομηνία
                   </td>
                 </tr>
               )}

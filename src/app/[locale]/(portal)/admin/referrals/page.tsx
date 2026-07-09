@@ -119,11 +119,11 @@ export default async function ReferralsPage({
         <Card className="border-amber-200">
           <CardHeader className="pb-2">
             <CardTitle className="text-base text-amber-800">
-              Pending unlock requests ({unlockRequests.length})
+              Εκκρεμή αιτήματα ξεκλειδώματος ({unlockRequests.length})
             </CardTitle>
             <p className="text-xs text-slate-400">
-              A headteacher asked to unlock a completed resolution. Approving deletes the decision and the referral
-              moves back to pending for a fresh resolution; denying keeps the original.
+              Βοηθός διευθυντής ζήτησε το ξεκλείδωμα μιας ολοκληρωμένης απόφασης. Με την έγκριση η απόφαση διαγράφεται και η
+              παραπομπή επιστρέφει σε εκκρεμότητα για νέα απόφαση· με την απόρριψη διατηρείται η αρχική.
             </p>
           </CardHeader>
           <CardContent className="divide-y divide-slate-100 space-y-0">
@@ -138,15 +138,15 @@ export default async function ReferralsPage({
                         {rs.group?.name && <span className="ml-2 text-xs font-normal text-slate-400">{rs.group.name}</span>}
                       </p>
                       <p className="text-xs text-slate-500 mt-0.5">
-                        Requested by {ur.requestedBy.name ?? "—"} · {fmtDisplayDateTime(ur.createdAt)}
+                        Αίτημα από {ur.requestedBy.name ?? "—"} · {fmtDisplayDateTime(ur.createdAt)}
                       </p>
                       <p className="text-xs text-amber-700 mt-1">
-                        <span className="font-semibold">Reason:</span> {ur.reason}
+                        <span className="font-semibold">Αιτιολογία:</span> {ur.reason}
                       </p>
                       {rs.resolution && (
                         <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-xs max-w-md">
                           <p className="font-semibold text-slate-500 uppercase tracking-wide text-[10px] mb-1">
-                            Current decision (deleted on approval)
+                            Τρέχουσα απόφαση (διαγράφεται με την έγκριση)
                           </p>
                           <p className="text-slate-800 font-medium">{resolutionSummary(rs.resolution)}</p>
                           {rs.resolution.actionDetails && <p className="text-slate-500 mt-0.5">{rs.resolution.actionDetails}</p>}
@@ -164,7 +164,7 @@ export default async function ReferralsPage({
                           type="submit"
                           className="h-8 px-3 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700"
                         >
-                          Approve unlock
+                          Έγκριση ξεκλειδώματος
                         </button>
                       </form>
                       <form action={decideResolutionUnlock.bind(null, ur.id, false)}>
@@ -172,7 +172,7 @@ export default async function ReferralsPage({
                           type="submit"
                           className="h-8 px-3 rounded-lg border border-red-200 text-red-600 text-xs font-semibold hover:bg-red-50"
                         >
-                          Deny
+                          Απόρριψη
                         </button>
                       </form>
                     </div>
@@ -192,10 +192,10 @@ export default async function ReferralsPage({
           defaultValue={searchTab}
           className="h-9 px-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
         >
-          <option value="number">Referral no.</option>
-          <option value="student">Student name</option>
-          <option value="studentId">Student ID</option>
-          <option value="filer">Filing teacher</option>
+          <option value="number">Αρ. παραπομπής</option>
+          <option value="student">Όνομα μαθητή</option>
+          <option value="studentId">Αρ. μητρώου μαθητή</option>
+          <option value="filer">Εκπαιδευτικός υποβολής</option>
         </select>
         <input
           name="q"
@@ -239,7 +239,7 @@ export default async function ReferralsPage({
         <CardHeader className="pb-3">
           <CardTitle className="text-base">
             {groupFilter
-              ? t("groupLog", { name: groups.find((g) => g.id === groupFilter)?.name ?? "Group" })
+              ? t("groupLog", { name: groups.find((g) => g.id === groupFilter)?.name ?? "Τμήμα" })
               : t("allReferrals")}
           </CardTitle>
         </CardHeader>

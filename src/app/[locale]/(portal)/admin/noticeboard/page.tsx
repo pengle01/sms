@@ -37,8 +37,8 @@ export default async function NoticeboardPage({
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Noticeboard</h2>
-          <p className="text-slate-500 text-sm mt-1">{notices.length} notices</p>
+          <h2 className="text-2xl font-bold text-slate-900">Πίνακας Ανακοινώσεων</h2>
+          <p className="text-slate-500 text-sm mt-1">{notices.length} {notices.length === 1 ? "ανακοίνωση" : "ανακοινώσεις"}</p>
         </div>
         {canPost && <NewNoticeDialog locale={locale} />}
       </div>
@@ -46,7 +46,7 @@ export default async function NoticeboardPage({
       {notices.length === 0 && (
         <div className="flex flex-col items-center justify-center py-24 text-slate-400">
           <Bell className="w-12 h-12 mb-3 opacity-30" />
-          <p>No notices posted yet</p>
+          <p>Δεν έχουν αναρτηθεί ανακοινώσεις</p>
         </div>
       )}
 
@@ -70,12 +70,12 @@ export default async function NoticeboardPage({
                       <h3 className="font-semibold text-slate-900">{notice.title}</h3>
                       {notice.urgent && (
                         <Badge className="bg-red-100 text-red-700 border-red-200 text-xs" variant="outline">
-                          Urgent
+                          Επείγον
                         </Badge>
                       )}
                       {notice.staffOnly && (
                         <Badge className="bg-slate-100 text-slate-600 border-slate-200 text-xs" variant="outline">
-                          Staff only
+                          Μόνο προσωπικό
                         </Badge>
                       )}
                       {notice.tags.map((tag) => (

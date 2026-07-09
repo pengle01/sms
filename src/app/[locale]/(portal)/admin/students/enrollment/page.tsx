@@ -25,22 +25,23 @@ export default async function EnrollmentImportPage({
           className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 mb-3"
         >
           <ChevronLeft className="w-4 h-4" />
-          Back to students
+          Πίσω στους μαθητές
         </Link>
-        <h2 className="text-2xl font-bold text-slate-900">Import student enrollment</h2>
+        <h2 className="text-2xl font-bold text-slate-900">Εισαγωγή κατανομής μαθητών</h2>
         <p className="text-slate-500 text-sm mt-1">
-          Assigns each student to their subject groups. Re-importing syncs each
-          student to their row — groups in the file are added, ones no longer
-          listed are removed. Only groups the file mentions are ever removed:
-          assignments made by hand to groups outside the file are kept. (A row
-          with an unrecognised group code is added-only, never cleared, so a
-          typo can't drop enrollments.)
+          Αναθέτει κάθε μαθητή στις ομάδες μαθημάτων του. Η επανεισαγωγή
+          συγχρονίζει κάθε μαθητή με τη γραμμή του — οι ομάδες του αρχείου
+          προστίθενται και όσες δεν αναφέρονται πλέον αφαιρούνται. Αφαιρούνται
+          μόνο ομάδες που αναφέρονται στο αρχείο: οι αναθέσεις που έγιναν
+          χειροκίνητα σε ομάδες εκτός αρχείου διατηρούνται. (Γραμμή με μη
+          αναγνωρισμένο κωδικό ομάδας μόνο προσθέτει, ποτέ δεν αφαιρεί, ώστε ένα
+          τυπογραφικό λάθος να μη διαγράψει κατανομές.)
         </p>
       </div>
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Upload file</CardTitle>
+          <CardTitle className="text-base">Μεταφόρτωση αρχείου</CardTitle>
         </CardHeader>
         <CardContent>
           <EnrollmentImportForm />
@@ -49,19 +50,19 @@ export default async function EnrollmentImportPage({
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base text-slate-700">Expected format</CardTitle>
+          <CardTitle className="text-base text-slate-700">Αναμενόμενη μορφή</CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-slate-600 space-y-2">
-          <p>The file must follow the standard ministry enrollment export layout:</p>
+          <p>Το αρχείο πρέπει να ακολουθεί την τυπική διάταξη εξαγωγής κατανομής του υπουργείου:</p>
           <ul className="list-disc list-inside space-y-1 text-slate-500">
-            <li>Row 1: headers (skipped)</li>
-            <li>Column A: student name</li>
-            <li>Column B: registry number (ΑΡ.ΜΗΤ.) — used to match the student</li>
-            <li>Column E: homeroom class (Νέο Τμήμα)</li>
-            <li>Columns F onwards: subject group codes</li>
+            <li>Γραμμή 1: επικεφαλίδες (παραλείπεται)</li>
+            <li>Στήλη A: όνομα μαθητή</li>
+            <li>Στήλη B: αριθμός μητρώου (ΑΡ.ΜΗΤ.) — χρησιμοποιείται για την αντιστοίχιση του μαθητή</li>
+            <li>Στήλη E: τμήμα (Νέο Τμήμα)</li>
+            <li>Στήλες F και εξής: κωδικοί ομάδων μαθημάτων</li>
           </ul>
           <p className="text-slate-400 text-xs pt-1">
-            Students not found by registry number are reported as warnings and skipped.
+            Οι μαθητές που δεν βρίσκονται με βάση τον αριθμό μητρώου αναφέρονται ως προειδοποιήσεις και παραλείπονται.
           </p>
         </CardContent>
       </Card>

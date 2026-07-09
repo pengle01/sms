@@ -20,8 +20,8 @@ export function ImportForm() {
           onClick={() => inputRef.current?.click()}
         >
           <FileSpreadsheet className="w-10 h-10 mx-auto mb-3 text-slate-400" />
-          <p className="text-sm font-medium text-slate-700">Click to choose Excel file</p>
-          <p className="text-xs text-slate-400 mt-1">.xlsx — student registry export</p>
+          <p className="text-sm font-medium text-slate-700">Κάντε κλικ για επιλογή αρχείου Excel</p>
+          <p className="text-xs text-slate-400 mt-1">.xlsx — εξαγωγή μητρώου μαθητών</p>
           <input
             ref={inputRef}
             type="file"
@@ -38,9 +38,9 @@ export function ImportForm() {
           className="w-full h-10 rounded-lg bg-emerald-600 text-white text-sm font-medium flex items-center justify-center gap-2 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
         >
           {pending ? (
-            <><Loader2 className="w-4 h-4 animate-spin" /> Importing…</>
+            <><Loader2 className="w-4 h-4 animate-spin" /> Γίνεται εισαγωγή…</>
           ) : (
-            <><Upload className="w-4 h-4" /> Import</>
+            <><Upload className="w-4 h-4" /> Εισαγωγή</>
           )}
         </button>
       </form>
@@ -52,28 +52,28 @@ export function ImportForm() {
               <>
                 <div className="flex items-center gap-2 text-green-700 font-medium">
                   <CheckCircle2 className="w-5 h-5" />
-                  Import complete
+                  Η εισαγωγή ολοκληρώθηκε
                 </div>
                 <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                  <Stat label="Students created" value={result.studentsCreated} />
-                  <Stat label="Students updated" value={result.studentsUpdated} />
-                  <Stat label="Groups created"   value={result.groupsCreated} />
-                  <Stat label="SMS contacts"     value={result.smsContactsCreated} />
-                  <Stat label="Flagged (SMS)"    value={result.flaggedStudents} />
-                  <Stat label="Rows skipped"     value={result.skipped} />
+                  <Stat label="Μαθητές που δημιουργήθηκαν" value={result.studentsCreated} />
+                  <Stat label="Μαθητές που ενημερώθηκαν"   value={result.studentsUpdated} />
+                  <Stat label="Τμήματα που δημιουργήθηκαν" value={result.groupsCreated} />
+                  <Stat label="Επαφές SMS"                 value={result.smsContactsCreated} />
+                  <Stat label="Επισημασμένοι (SMS)"        value={result.flaggedStudents} />
+                  <Stat label="Γραμμές που παραλείφθηκαν"  value={result.skipped} />
                 </dl>
               </>
             ) : (
               <div className="flex items-center gap-2 text-red-700 font-medium">
                 <AlertCircle className="w-5 h-5" />
-                Import failed
+                Η εισαγωγή απέτυχε
               </div>
             )}
 
             {result.errors.length > 0 && (
               <div className="space-y-1">
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                  {result.errors.length} error{result.errors.length > 1 ? "s" : ""}
+                  {result.errors.length} {result.errors.length > 1 ? "σφάλματα" : "σφάλμα"}
                 </p>
                 <ul className="text-xs text-red-700 space-y-1 max-h-48 overflow-y-auto font-mono bg-red-50 rounded-lg p-3">
                   {result.errors.map((e, i) => <li key={i}>{e}</li>)}
@@ -85,7 +85,7 @@ export function ImportForm() {
             {result.flagged.length > 0 && (
               <div className="space-y-1">
                 <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">
-                  {result.flagged.length} student{result.flagged.length > 1 ? "s" : ""} to review (SMS)
+                  {result.flagged.length} {result.flagged.length > 1 ? "μαθητές" : "μαθητής"} προς έλεγχο (SMS)
                 </p>
                 <ul className="text-xs space-y-1 max-h-56 overflow-y-auto bg-amber-50 border border-amber-200 rounded-lg p-3">
                   {result.flagged.map((f, i) => (
@@ -98,8 +98,8 @@ export function ImportForm() {
                   ))}
                 </ul>
                 <p className="text-xs text-slate-400">
-                  Fix these from the student page (set a default SMS recipient or add a number). They&apos;re also
-                  listed under Admin → Checks.
+                  Διορθώστε τα από τη σελίδα του μαθητή (ορίστε προεπιλεγμένο παραλήπτη SMS ή προσθέστε αριθμό).
+                  Εμφανίζονται επίσης στο Διαχείριση → Έλεγχοι.
                 </p>
               </div>
             )}

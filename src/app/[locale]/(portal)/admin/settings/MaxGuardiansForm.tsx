@@ -37,8 +37,8 @@ export function MaxGuardiansForm({ initial }: Props) {
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <p className="text-sm font-medium text-slate-700">Max guardian accounts per student</p>
-        <p className="text-xs text-slate-400">How many parent/guardian accounts may activate a student&apos;s access code. The student&apos;s own account is separate and always allowed.</p>
+        <p className="text-sm font-medium text-slate-700">Μέγιστοι λογαριασμοί κηδεμόνων ανά μαθητή</p>
+        <p className="text-xs text-slate-400">Πόσοι λογαριασμοί γονέων/κηδεμόνων μπορούν να ενεργοποιήσουν τον κωδικό πρόσβασης ενός μαθητή. Ο λογαριασμός του ίδιου του μαθητή είναι ξεχωριστός και επιτρέπεται πάντα.</p>
       </div>
 
       <div className="flex items-center gap-4">
@@ -64,7 +64,7 @@ export function MaxGuardiansForm({ initial }: Props) {
           </button>
         </div>
 
-        <span className="text-sm text-slate-400">guardians / student</span>
+        <span className="text-sm text-slate-400">κηδεμόνες / μαθητή</span>
       </div>
 
       <EditControls

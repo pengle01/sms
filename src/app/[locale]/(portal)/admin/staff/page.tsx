@@ -8,13 +8,13 @@ import { StaffLinkControls } from "./StaffLinkControls";
 import { staffDisplayName } from "@/lib/staffName";
 
 const ROLE_LABEL: Record<string, string> = {
-  TEACHER:           "Teacher",
-  HEADTEACHER_B:     "Deputy B",
-  HEADTEACHER_A:     "Deputy A",
-  HEADMASTER:        "Headmaster",
-  STUDENT_COUNSELOR: "Counselor",
-  SCHOOL_ADMIN:      "Office Admin",
-  SUPER_ADMIN:       "Super Admin",
+  TEACHER:           "Εκπαιδευτικός",
+  HEADTEACHER_B:     "Βοηθός Διευθυντής",
+  HEADTEACHER_A:     "Βοηθός Διευθυντής Α",
+  HEADMASTER:        "Διευθυντής",
+  STUDENT_COUNSELOR: "Σύμβουλος Σπουδών",
+  SCHOOL_ADMIN:      "Διοικητικός",
+  SUPER_ADMIN:       "Υπερδιαχειριστής",
 };
 
 const ROLE_COLOR: Record<string, string> = {
@@ -63,11 +63,11 @@ export default async function StaffProfilesPage({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">Teacher Profiles</h2>
+        <h2 className="text-2xl font-bold text-slate-900">Προφίλ Εκπαιδευτικών</h2>
         <p className="text-slate-500 text-sm mt-1">
-          {staffProfiles.length} profiles · {linked.length} linked
+          {staffProfiles.length} προφίλ · {linked.length} συνδεδεμένα
           {unlinked.length > 0 && (
-            <span className="text-amber-600 font-medium"> · {unlinked.length} unlinked</span>
+            <span className="text-amber-600 font-medium"> · {unlinked.length} μη συνδεδεμένα</span>
           )}
         </p>
       </div>
@@ -78,17 +78,17 @@ export default async function StaffProfilesPage({
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2 text-amber-800">
               <UserX className="w-4 h-4" />
-              Unlinked Profiles — no user account attached
+              Μη συνδεδεμένα προφίλ — χωρίς συνδεδεμένο λογαριασμό χρήστη
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-amber-100">
-                  <th className="text-left px-5 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">Schedule Name</th>
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">Slots</th>
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">Homegroups</th>
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">Link to user</th>
+                  <th className="text-left px-5 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">Όνομα Προγράμματος</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">Ώρες</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">Τμήματα</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">Σύνδεση με χρήστη</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-amber-50">
@@ -132,19 +132,19 @@ export default async function StaffProfilesPage({
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2 text-slate-700">
             <Users className="w-4 h-4" />
-            Linked Profiles ({linked.length})
+            Συνδεδεμένα προφίλ ({linked.length})
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100">
-                <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Name</th>
-                <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Role</th>
+                <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Όνομα</th>
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Ρόλος</th>
                 <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Email</th>
-                <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Slots</th>
-                <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Homegroups</th>
-                <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Linked user</th>
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Ώρες</th>
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Τμήματα</th>
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Συνδεδεμένος χρήστης</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">

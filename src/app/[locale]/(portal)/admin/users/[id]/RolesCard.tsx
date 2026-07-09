@@ -58,7 +58,7 @@ export function RolesCard({
         toast.success(success);
         router.refresh();
       } else {
-        toast.error(res.error ?? "Something went wrong");
+        toast.error(res.error ?? "Κάτι πήγε στραβά");
       }
     });
   }
@@ -78,15 +78,15 @@ export function RolesCard({
   let adminHint: string | undefined;
 
   if (isPrimaryAdmin) {
-    adminControl = <span className="text-xs font-medium text-purple-600">Primary Super Admin</span>;
-    adminHint = "This account's main role is Super Admin.";
+    adminControl = <span className="text-xs font-medium text-purple-600">Κύριος Υπερδιαχειριστής</span>;
+    adminHint = "Ο κύριος ρόλος αυτού του λογαριασμού είναι Υπερδιαχειριστής.";
   } else if (isSelf) {
     adminControl = <span className="text-xs text-slate-400">—</span>;
-    adminHint = "You cannot change your own access.";
+    adminHint = "Δεν μπορείτε να αλλάξετε τη δική σας πρόσβαση.";
   } else if (hasAdminGrant) {
-    adminHint = "Has full system administration access on top of their normal role.";
+    adminHint = "Έχει πλήρη πρόσβαση διαχείρισης συστήματος επιπλέον του κανονικού του ρόλου.";
     adminControl = isLastSuperAdmin ? (
-      <span className="text-xs text-amber-600">Last administrator — cannot revoke</span>
+      <span className="text-xs text-amber-600">Τελευταίος διαχειριστής — δεν είναι δυνατή η ανάκληση</span>
     ) : (
       <AlertDialog>
         <AlertDialogTrigger
@@ -96,29 +96,29 @@ export function RolesCard({
               className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-red-200 text-red-600 text-xs font-medium hover:bg-red-50 disabled:opacity-50"
             >
               {pending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldOff className="w-3.5 h-3.5" />}
-              Revoke admin access
+              Ανάκληση πρόσβασης διαχειριστή
             </button>
           }
         />
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Revoke administrator access?</AlertDialogTitle>
+            <AlertDialogTitle>Ανάκληση πρόσβασης διαχειριστή;</AlertDialogTitle>
             <AlertDialogDescription>
-              {userName} will immediately lose access to the admin portal and all
-              administration functions. Their normal role and features are not affected.
+              Ο/Η {userName} θα χάσει αμέσως την πρόσβαση στην πύλη διαχείρισης και σε όλες τις
+              λειτουργίες διαχείρισης. Ο κανονικός ρόλος και οι λειτουργίες του δεν επηρεάζονται.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => run(() => revokeSuperAdmin(userId), "Admin access revoked")}>
-              Revoke
+            <AlertDialogCancel>Άκυρο</AlertDialogCancel>
+            <AlertDialogAction onClick={() => run(() => revokeSuperAdmin(userId), "Η πρόσβαση διαχειριστή ανακλήθηκε")}>
+              Ανάκληση
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     );
   } else {
-    adminHint = "Grants full system administration on top of their normal role.";
+    adminHint = "Παραχωρεί πλήρη διαχείριση συστήματος επιπλέον του κανονικού του ρόλου.";
     adminControl = (
       <AlertDialog>
         <AlertDialogTrigger
@@ -128,23 +128,24 @@ export function RolesCard({
               className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-purple-600 text-white text-xs font-medium hover:bg-purple-700 disabled:opacity-50"
             >
               {pending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
-              Grant admin access
+              Παραχώρηση πρόσβασης διαχειριστή
             </button>
           }
         />
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Grant administrator access?</AlertDialogTitle>
+            <AlertDialogTitle>Παραχώρηση πρόσβασης διαχειριστή;</AlertDialogTitle>
             <AlertDialogDescription>
-              {userName} will gain FULL system administration access — all student data,
-              settings, user management and audit logs — while keeping their current role
-              and portal. The change takes effect immediately and is recorded in the audit log.
+              Ο/Η {userName} θα αποκτήσει ΠΛΗΡΗ πρόσβαση διαχείρισης συστήματος — όλα τα δεδομένα
+              μαθητών, τις ρυθμίσεις, τη διαχείριση χρηστών και τα αρχεία καταγραφής — διατηρώντας
+              τον τρέχοντα ρόλο και την πύλη του. Η αλλαγή ισχύει αμέσως και καταγράφεται στο
+              αρχείο καταγραφής.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => run(() => grantSuperAdmin(userId), "Admin access granted")}>
-              Grant access
+            <AlertDialogCancel>Άκυρο</AlertDialogCancel>
+            <AlertDialogAction onClick={() => run(() => grantSuperAdmin(userId), "Παραχωρήθηκε πρόσβαση διαχειριστή")}>
+              Παραχώρηση πρόσβασης
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -154,14 +155,14 @@ export function RolesCard({
 
   // ── Special education designation ───────────────────────────────────────
   const specialEdControl = !hasStaffProfile ? (
-    <span className="text-xs text-slate-400">No staff profile</span>
+    <span className="text-xs text-slate-400">Χωρίς προφίλ προσωπικού</span>
   ) : (
     <button
       disabled={pending}
       onClick={() =>
         run(
           () => setSpecialEducation(userId, !specialEducation),
-          specialEducation ? "Designation removed" : "Designation set"
+          specialEducation ? "Η ιδιότητα αφαιρέθηκε" : "Η ιδιότητα ορίστηκε"
         )
       }
       className={
@@ -171,20 +172,20 @@ export function RolesCard({
       }
     >
       <HeartHandshake className="w-3.5 h-3.5" />
-      {specialEducation ? "Ειδική Εκπαίδευση ✓" : "Set as special education"}
+      {specialEducation ? "Ειδική Εκπαίδευση ✓" : "Ορισμός ως υπεύθυνος Ειδικής Αγωγής"}
     </button>
   );
 
   // ── Substitution coordinator designation ─────────────────────────────────
   const coordinatorControl = !hasStaffProfile ? (
-    <span className="text-xs text-slate-400">No staff profile</span>
+    <span className="text-xs text-slate-400">Χωρίς προφίλ προσωπικού</span>
   ) : (
     <button
       disabled={pending}
       onClick={() =>
         run(
           () => setSubstitutionCoordinator(userId, !substitutionCoordinator),
-          substitutionCoordinator ? "Designation removed" : "Designation set"
+          substitutionCoordinator ? "Η ιδιότητα αφαιρέθηκε" : "Η ιδιότητα ορίστηκε"
         )
       }
       className={
@@ -194,20 +195,20 @@ export function RolesCard({
       }
     >
       <ArrowLeftRight className="w-3.5 h-3.5" />
-      {substitutionCoordinator ? "Αναπληρώσεις ✓" : "Set as substitution coordinator"}
+      {substitutionCoordinator ? "Αναπληρώσεις ✓" : "Ορισμός ως συντονιστής αναπληρώσεων"}
     </button>
   );
 
   // ── ΔΔΚ coordinator designation ───────────────────────────────────────────
   const ddkControl = !hasStaffProfile ? (
-    <span className="text-xs text-slate-400">No staff profile</span>
+    <span className="text-xs text-slate-400">Χωρίς προφίλ προσωπικού</span>
   ) : (
     <button
       disabled={pending}
       onClick={() =>
         run(
           () => setDdkCoordinator(userId, !ddkCoordinator),
-          ddkCoordinator ? "Designation removed" : "Designation set"
+          ddkCoordinator ? "Η ιδιότητα αφαιρέθηκε" : "Η ιδιότητα ορίστηκε"
         )
       }
       className={
@@ -217,7 +218,7 @@ export function RolesCard({
       }
     >
       <Award className="w-3.5 h-3.5" />
-      {ddkCoordinator ? "ΔΔΚ ✓" : "Set as ΔΔΚ coordinator"}
+      {ddkCoordinator ? "ΔΔΚ ✓" : "Ορισμός ως συντονιστής ΔΔΚ"}
     </button>
   );
 
@@ -226,25 +227,25 @@ export function RolesCard({
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2">
           <ShieldCheck className="w-4 h-4" />
-          Roles & Designations
+          Ρόλοι & Ιδιότητες
         </CardTitle>
       </CardHeader>
       <CardContent className="divide-y divide-slate-50">
-        {row("System administrator", adminControl, adminHint)}
+        {row("Διαχειριστής συστήματος", adminControl, adminHint)}
         {row(
-          "Special education (Βοηθός Διευθυντής)",
+          "Ειδική Αγωγή (Βοηθός Διευθυντής)",
           specialEdControl,
-          "Deputy B responsible for special education."
+          "Βοηθός Διευθυντής υπεύθυνος για την Ειδική Αγωγή."
         )}
         {row(
-          "Substitution coordinator (Αναπληρώσεις)",
+          "Συντονιστής Αναπληρώσεων",
           coordinatorControl,
-          "Runs the daily substitution plan: generates, reviews and finalizes it."
+          "Διαχειρίζεται το ημερήσιο πλάνο αναπληρώσεων: το δημιουργεί, το ελέγχει και το οριστικοποιεί."
         )}
         {row(
-          "ΔΔΚ coordinator (Δημιουργικότητα-Δράση-Κοινωνική Προσφορά)",
+          "Συντονιστής ΔΔΚ (Δημιουργικότητα-Δράση-Κοινωνική Προσφορά)",
           ddkControl,
-          "Reviews students' ΔΔΚ points and prints the year-end reports."
+          "Ελέγχει τους πόντους ΔΔΚ των μαθητών και εκτυπώνει τις αναφορές τέλους χρονιάς."
         )}
       </CardContent>
     </Card>

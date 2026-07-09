@@ -57,7 +57,7 @@ export default async function GroupDetailPage({
     },
   });
 
-  const DAY_NAMES = ["", "Mon", "Tue", "Wed", "Thu", "Fri"];
+  const DAY_NAMES = ["", "Δευ", "Τρι", "Τετ", "Πεμ", "Παρ"];
 
   const byDay = group.timetableSlots.reduce<Record<number, typeof group.timetableSlots>>((acc, slot) => {
     (acc[slot.dayOfWeek] ??= []).push(slot);
@@ -72,7 +72,7 @@ export default async function GroupDetailPage({
           className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700"
         >
           <ArrowLeft className="w-4 h-4" />
-          Groups
+          Τμήματα
         </Link>
       </div>
 
@@ -80,9 +80,9 @@ export default async function GroupDetailPage({
         <div>
           <h2 className="text-2xl font-bold text-slate-900">{group.name}</h2>
           <p className="text-slate-500 text-sm mt-1">
-            Grade {group.grade}
-            {group.students.length > 0 && ` · ${group.students.length} homeroom`}
-            {group.studentGroups.length > 0 && ` · ${group.studentGroups.length} enrolled`}
+            Τάξη {group.grade === 1 ? "Α΄" : group.grade === 2 ? "Β΄" : group.grade === 3 ? "Γ΄" : group.grade}
+            {group.students.length > 0 && ` · ${group.students.length} μαθητές τμήματος`}
+            {group.studentGroups.length > 0 && ` · ${group.studentGroups.length} εγγεγραμμένοι`}
             {group.homeroomTeacher && ` · ${staffDisplayName(group.homeroomTeacher)}`}
             {group.homeroomHeadteacher && ` · ${staffDisplayName(group.homeroomHeadteacher)} (B')`}
           </p>
@@ -90,14 +90,14 @@ export default async function GroupDetailPage({
         <div className="flex items-center gap-3 flex-wrap">
           <div className="text-center px-4 py-2 bg-red-50 rounded-xl">
             <p className="text-xl font-bold text-red-600">{todayAbsences}</p>
-            <p className="text-xs text-slate-500">Absent today</p>
+            <p className="text-xs text-slate-500">Απόντες σήμερα</p>
           </div>
           <Link
             href={`/${locale}/admin/attendance?groupId=${id}`}
             className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-slate-200 text-sm text-slate-700 hover:bg-slate-50"
           >
             <ClipboardList className="w-4 h-4" />
-            View Attendance
+            Προβολή Απουσιών
           </Link>
         </div>
       </div>
@@ -109,15 +109,15 @@ export default async function GroupDetailPage({
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Users className="w-4 h-4" />
-              Homeroom students ({group.students.length})
+              Μαθητές τμήματος ({group.students.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Name</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Όνομα</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Κατάσταση</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -129,14 +129,14 @@ export default async function GroupDetailPage({
                         variant="outline"
                         className={`text-xs ${s.user.isActive ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}
                       >
-                        {s.user.isActive ? "Active" : "Inactive"}
+                        {s.user.isActive ? "Ενεργός" : "Ανενεργός"}
                       </Badge>
                     </td>
                   </tr>
                 ))}
                 {group.students.length === 0 && (
                   <tr>
-                    <td colSpan={2} className="px-5 py-10 text-center text-slate-400">No homeroom students</td>
+                    <td colSpan={2} className="px-5 py-10 text-center text-slate-400">Χωρίς μαθητές τμήματος</td>
                   </tr>
                 )}
               </tbody>
@@ -151,15 +151,15 @@ export default async function GroupDetailPage({
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <GraduationCap className="w-4 h-4" />
-              Enrolled students ({group.studentGroups.length})
+              Εγγεγραμμένοι μαθητές ({group.studentGroups.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Name</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Όνομα</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Κατάσταση</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -171,7 +171,7 @@ export default async function GroupDetailPage({
                         variant="outline"
                         className={`text-xs ${s.user.isActive ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}
                       >
-                        {s.user.isActive ? "Active" : "Inactive"}
+                        {s.user.isActive ? "Ενεργός" : "Ανενεργός"}
                       </Badge>
                     </td>
                   </tr>
@@ -185,7 +185,7 @@ export default async function GroupDetailPage({
         {/* Timetable */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Weekly Timetable</CardTitle>
+            <CardTitle className="text-base">Εβδομαδιαίο Πρόγραμμα</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {[1, 2, 3, 4, 5].map((day) => {
@@ -203,7 +203,7 @@ export default async function GroupDetailPage({
                         <span className="font-medium text-slate-900 flex-1">{slot.course.name}</span>
                         <span className="text-slate-500 text-xs">{slotTeacherName(slot)}</span>
                         {slot.room && (
-                          <span className="text-slate-400 text-xs">Rm {slot.room}</span>
+                          <span className="text-slate-400 text-xs">Αίθ. {slot.room}</span>
                         )}
                       </div>
                     ))}
@@ -212,7 +212,7 @@ export default async function GroupDetailPage({
               );
             })}
             {group.timetableSlots.length === 0 && (
-              <p className="text-slate-400 text-sm py-4 text-center">No timetable assigned</p>
+              <p className="text-slate-400 text-sm py-4 text-center">Δεν έχει ανατεθεί πρόγραμμα</p>
             )}
           </CardContent>
         </Card>

@@ -87,13 +87,13 @@ export default async function AdminSettingsPage({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">Settings</h2>
-        <p className="text-slate-500 text-sm mt-1">School-wide configuration</p>
+        <h2 className="text-2xl font-bold text-slate-900">Ρυθμίσεις</h2>
+        <p className="text-slate-500 text-sm mt-1">Ρυθμίσεις σχολείου</p>
       </div>
 
       <Card className="max-w-sm">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">School Identity</CardTitle>
+          <CardTitle className="text-base">Στοιχεία Σχολείου</CardTitle>
         </CardHeader>
         <CardContent>
           <SchoolNameForm initial={schoolName ?? ""} />
@@ -102,7 +102,7 @@ export default async function AdminSettingsPage({
 
       <Card className="max-w-xl">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">School Year & Terms</CardTitle>
+          <CardTitle className="text-base">Σχολική Χρονιά & Τετράμηνα</CardTitle>
         </CardHeader>
         <CardContent>
           <TermDatesForm initial={termInitial} />
@@ -111,7 +111,7 @@ export default async function AdminSettingsPage({
 
       <Card className="max-w-xl">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Εφημερεύοντες Βοηθοί (On-Duty Deputies)</CardTitle>
+          <CardTitle className="text-base">Εφημερεύοντες Βοηθοί</CardTitle>
         </CardHeader>
         <CardContent>
           <DutyRosterForm initial={dutyInitial} deputies={deputyOptions} />
@@ -120,7 +120,7 @@ export default async function AdminSettingsPage({
 
       <Card className="max-w-sm">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Grade Entry (Βαθμολογία)</CardTitle>
+          <CardTitle className="text-base">Βαθμολογία</CardTitle>
         </CardHeader>
         <CardContent>
           <GradesUnlockForm initial={gradesUnlocked} />
@@ -129,7 +129,7 @@ export default async function AdminSettingsPage({
 
       <Card className="max-w-sm">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Attendance Lock</CardTitle>
+          <CardTitle className="text-base">Κλείδωμα Απουσιών</CardTitle>
         </CardHeader>
         <CardContent>
           <AttendanceLockForm initial={attendanceLock} />
@@ -138,7 +138,7 @@ export default async function AdminSettingsPage({
 
       <Card className="max-w-sm">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Periods per Day</CardTitle>
+          <CardTitle className="text-base">Ώρες ανά Ημέρα</CardTitle>
         </CardHeader>
         <CardContent>
           <PeriodsForm initial={initial} />
@@ -147,7 +147,7 @@ export default async function AdminSettingsPage({
 
       <Card className="max-w-sm">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Test Limits</CardTitle>
+          <CardTitle className="text-base">Όρια Διαγωνισμάτων</CardTitle>
         </CardHeader>
         <CardContent>
           <MaxTestsForm initial={maxTestsInitial} />
@@ -156,7 +156,7 @@ export default async function AdminSettingsPage({
 
       <Card className="max-w-sm">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Guardian Accounts</CardTitle>
+          <CardTitle className="text-base">Λογαριασμοί Κηδεμόνων</CardTitle>
         </CardHeader>
         <CardContent>
           <MaxGuardiansForm initial={maxGuardiansInitial} />
@@ -165,7 +165,7 @@ export default async function AdminSettingsPage({
 
       <Card className="max-w-sm">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">SMS Gateway (WebSMS / Cytacom)</CardTitle>
+          <CardTitle className="text-base">Πύλη SMS (WebSMS / Cytacom)</CardTitle>
         </CardHeader>
         <CardContent>
           <SmsSettingsForm initial={smsConfig} />

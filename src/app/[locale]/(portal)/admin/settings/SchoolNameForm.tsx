@@ -28,19 +28,19 @@ export function SchoolNameForm({ initial }: Props) {
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-slate-700">School name</label>
+        <label className="text-sm font-medium text-slate-700">Όνομα σχολείου</label>
         <input
           type="text"
           value={value}
           disabled={!editing}
           maxLength={80}
           onChange={(e) => { setValue(e.target.value); setSaved(false); }}
-          placeholder="e.g. Λύκειο Αγίου Γεωργίου"
+          placeholder="π.χ. Λύκειο Αγίου Γεωργίου"
           className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-50 disabled:text-slate-500"
         />
         <p className="text-xs text-slate-400">
-          Shown at the top-left of every page. Leave empty to show the default
-          app name.
+          Εμφανίζεται πάνω αριστερά σε κάθε σελίδα. Αφήστε το κενό για να
+          εμφανίζεται το προεπιλεγμένο όνομα της εφαρμογής.
         </p>
       </div>
 

@@ -10,26 +10,26 @@ import type { Role, Prisma } from "@/generated/prisma";
 import { StaffLinkControls } from "../staff/StaffLinkControls";
 
 const ROLE_META: Record<string, { label: string; color: string }> = {
-  SUPER_ADMIN:       { label: "Super Admin",  color: "bg-purple-100 text-purple-700 border-purple-200" },
-  HEADMASTER:        { label: "Headmaster",   color: "bg-slate-800 text-white border-slate-800" },
-  HEADTEACHER_A:     { label: "Deputy A",     color: "bg-blue-100 text-blue-700 border-blue-200" },
-  HEADTEACHER_B:     { label: "Deputy B",     color: "bg-indigo-100 text-indigo-700 border-indigo-200" },
-  STUDENT_COUNSELOR: { label: "Counselor",    color: "bg-teal-100 text-teal-700 border-teal-200" },
-  TEACHER:           { label: "Teacher",      color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
-  SCHOOL_ADMIN:      { label: "Office Admin", color: "bg-amber-100 text-amber-700 border-amber-200" },
-  CHAPERONE:         { label: "Chaperone",    color: "bg-orange-100 text-orange-700 border-orange-200" },
+  SUPER_ADMIN:       { label: "Υπερδιαχειριστής",     color: "bg-purple-100 text-purple-700 border-purple-200" },
+  HEADMASTER:        { label: "Διευθυντής",           color: "bg-slate-800 text-white border-slate-800" },
+  HEADTEACHER_A:     { label: "Βοηθός Διευθυντής Α",  color: "bg-blue-100 text-blue-700 border-blue-200" },
+  HEADTEACHER_B:     { label: "Βοηθός Διευθυντής",    color: "bg-indigo-100 text-indigo-700 border-indigo-200" },
+  STUDENT_COUNSELOR: { label: "Σύμβουλος Σπουδών",    color: "bg-teal-100 text-teal-700 border-teal-200" },
+  TEACHER:           { label: "Εκπαιδευτικός",        color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+  SCHOOL_ADMIN:      { label: "Διοικητικός",          color: "bg-amber-100 text-amber-700 border-amber-200" },
+  CHAPERONE:         { label: "Συνοδός",              color: "bg-orange-100 text-orange-700 border-orange-200" },
 };
 
 const FILTER_TABS: { key: string; label: string }[] = [
-  { key: "all",              label: "All Staff" },
-  { key: "HEADMASTER",       label: "Headmaster" },
-  { key: "HEADTEACHER_A",    label: "Deputy A" },
-  { key: "HEADTEACHER_B",    label: "Deputy B" },
-  { key: "STUDENT_COUNSELOR",label: "Counselors" },
-  { key: "TEACHER",          label: "Teachers" },
-  { key: "SCHOOL_ADMIN",     label: "Office Admin" },
-  { key: "SUPER_ADMIN",      label: "Super Admin" },
-  { key: "unlinked",         label: "Unlinked Profiles" },
+  { key: "all",              label: "Όλο το Προσωπικό" },
+  { key: "HEADMASTER",       label: "Διευθυντής" },
+  { key: "HEADTEACHER_A",    label: "Βοηθοί Διευθυντές Α" },
+  { key: "HEADTEACHER_B",    label: "Βοηθοί Διευθυντές" },
+  { key: "STUDENT_COUNSELOR",label: "Σύμβουλοι Σπουδών" },
+  { key: "TEACHER",          label: "Εκπαιδευτικοί" },
+  { key: "SCHOOL_ADMIN",     label: "Διοικητικοί" },
+  { key: "SUPER_ADMIN",      label: "Υπερδιαχειριστές" },
+  { key: "unlinked",         label: "Μη Συνδεδεμένα Προφίλ" },
 ];
 
 const STAFF_ROLES: Role[] = [
@@ -40,10 +40,10 @@ const STAFF_ROLES: Role[] = [
 // Filter by "added roles" — admin-granted extra roles + designations (which sit
 // on top of the primary role). Each maps to a user-level where clause.
 const DESIGNATION_TABS: { key: string; label: string }[] = [
-  { key: "extraAdmin", label: "+Admin (granted)" },
-  { key: "specialEd",  label: "Special Education" },
-  { key: "ddk",        label: "ΔΔΚ Coordinator" },
-  { key: "subCoord",   label: "Substitutions Coord." },
+  { key: "extraAdmin", label: "+Διαχειριστής (παραχωρημένο)" },
+  { key: "specialEd",  label: "Ειδική Αγωγή" },
+  { key: "ddk",        label: "Συντονιστής ΔΔΚ" },
+  { key: "subCoord",   label: "Συντ. Αναπληρώσεων" },
 ];
 
 const DESIGNATION_WHERE: Record<string, Prisma.UserWhereInput> = {
@@ -123,19 +123,19 @@ export default async function UsersPage({
   const tabLabel =
     FILTER_TABS.find((t) => t.key === activeTab)?.label ??
     DESIGNATION_TABS.find((t) => t.key === activeTab)?.label ??
-    "Staff";
+    "Προσωπικό";
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">Staff</h2>
+        <h2 className="text-2xl font-bold text-slate-900">Προσωπικό</h2>
         <p className="text-slate-500 text-sm mt-1">
           {showUnlinked
-            ? `${unlinkedProfiles.length} unlinked profile${unlinkedProfiles.length !== 1 ? "s" : ""}`
+            ? `${unlinkedProfiles.length} ${unlinkedProfiles.length !== 1 ? "μη συνδεδεμένα προφίλ" : "μη συνδεδεμένο προφίλ"}`
             : `${users.length} ${tabLabel.toLowerCase()}`}
           {!showUnlinked && unlinkedProfiles.length > 0 && (
             <Link href="?role=unlinked" className="ml-2 text-amber-600 font-medium hover:underline">
-              · {unlinkedProfiles.length} unlinked profile{unlinkedProfiles.length !== 1 ? "s" : ""}
+              · {unlinkedProfiles.length} {unlinkedProfiles.length !== 1 ? "μη συνδεδεμένα προφίλ" : "μη συνδεδεμένο προφίλ"}
             </Link>
           )}
         </p>
@@ -172,7 +172,7 @@ export default async function UsersPage({
 
       {/* Added roles & designations */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide mr-1">Added roles</span>
+        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide mr-1">Πρόσθετοι ρόλοι</span>
         {DESIGNATION_TABS.map(({ key, label }) => (
           <Link
             key={key}
@@ -195,20 +195,20 @@ export default async function UsersPage({
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2 text-amber-800">
               <UserX className="w-4 h-4" />
-              Unlinked Profiles — schedule records with no user account attached
+              Μη συνδεδεμένα προφίλ — εγγραφές προγράμματος χωρίς συνδεδεμένο λογαριασμό χρήστη
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             {unlinkedProfiles.length === 0 ? (
-              <p className="px-5 py-8 text-center text-sm text-slate-400">All profiles are linked.</p>
+              <p className="px-5 py-8 text-center text-sm text-slate-400">Όλα τα προφίλ είναι συνδεδεμένα.</p>
             ) : (
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-amber-100">
-                    <th className="text-left px-5 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">Profile ID</th>
-                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">Slots</th>
-                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">Homegroups</th>
-                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">Link to user</th>
+                    <th className="text-left px-5 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">ID Προφίλ</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">Ώρες</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">Τμήματα</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">Σύνδεση με χρήστη</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-amber-50">
@@ -255,19 +255,19 @@ export default async function UsersPage({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Name</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Role</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Όνομα</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Ρόλος</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Email</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Phone</th>
-                  <th className="text-center px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Slots</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Homegroups</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Profile</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Τηλέφωνο</th>
+                  <th className="text-center px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Ώρες</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Τμήματα</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Προφίλ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {users.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-5 py-10 text-center text-slate-400">No users found.</td>
+                    <td colSpan={7} className="px-5 py-10 text-center text-slate-400">Δεν βρέθηκαν χρήστες.</td>
                   </tr>
                 ) : (
                   users.map((u) => {
@@ -293,7 +293,7 @@ export default async function UsersPage({
                             <p className="text-xs text-slate-400 mt-0.5">{u.nameEl}</p>
                           )}
                           {!u.isActive && (
-                            <span className="text-[11px] text-slate-400">Inactive</span>
+                            <span className="text-[11px] text-slate-400">Ανενεργός</span>
                           )}
                         </td>
                         <td className="px-4 py-3">
@@ -305,7 +305,7 @@ export default async function UsersPage({
                             )}
                             {u.extraRoles.includes("SUPER_ADMIN") && (
                               <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
-                                +Admin
+                                +Διαχειριστής
                               </Badge>
                             )}
                             {sp?.specialEducation && (
@@ -340,7 +340,7 @@ export default async function UsersPage({
                               availableUsers={linkableUsers}
                             />
                           ) : (
-                            <span className="text-xs text-slate-400">No profile</span>
+                            <span className="text-xs text-slate-400">Χωρίς προφίλ</span>
                           )}
                         </td>
                       </tr>

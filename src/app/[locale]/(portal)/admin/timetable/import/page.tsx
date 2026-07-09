@@ -25,18 +25,18 @@ export default async function TimetableImportPage({
           className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 mb-3"
         >
           <ChevronLeft className="w-4 h-4" />
-          Back to timetable
+          Πίσω στο πρόγραμμα
         </Link>
-        <h2 className="text-2xl font-bold text-slate-900">Import schedule</h2>
+        <h2 className="text-2xl font-bold text-slate-900">Εισαγωγή προγράμματος</h2>
         <p className="text-slate-500 text-sm mt-1">
-          Upload the teacher timetable Excel exported from the ministry system.
-          Slots are upserted — re-importing is safe.
+          Μεταφορτώστε το Excel ωρολογίου προγράμματος καθηγητών που εξάγεται από το σύστημα του υπουργείου.
+          Οι ώρες ενημερώνονται στη θέση τους — η επανεισαγωγή είναι ασφαλής.
         </p>
       </div>
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Upload file</CardTitle>
+          <CardTitle className="text-base">Μεταφόρτωση αρχείου</CardTitle>
         </CardHeader>
         <CardContent>
           <ScheduleImportForm />
@@ -45,16 +45,16 @@ export default async function TimetableImportPage({
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base text-slate-700">Expected format</CardTitle>
+          <CardTitle className="text-base text-slate-700">Αναμενόμενη μορφή</CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-slate-600 space-y-2">
-          <p>The file must follow the standard ministry schedule export layout:</p>
+          <p>Το αρχείο πρέπει να ακολουθεί την τυπική διάταξη εξαγωγής προγράμματος του υπουργείου:</p>
           <ul className="list-disc list-inside space-y-1 text-slate-500">
-            <li>Row 1–2: headers (skipped)</li>
-            <li>Column A: teacher name (every other row)</li>
-            <li>Columns D–AQ (indices 3–42): 5 days × 8 periods</li>
-            <li>Teacher row cell: group code (e.g. <code className="font-mono bg-slate-100 px-1 rounded">ΜΟ2α</code>)</li>
-            <li>Detail row cell: <code className="font-mono bg-slate-100 px-1 rounded">Room / Course name (grade)</code></li>
+            <li>Γραμμές 1–2: επικεφαλίδες (παραλείπονται)</li>
+            <li>Στήλη A: όνομα καθηγητή (ανά δεύτερη γραμμή)</li>
+            <li>Στήλες D–AQ (δείκτες 3–42): 5 ημέρες × 8 ώρες</li>
+            <li>Κελί γραμμής καθηγητή: κωδικός τμήματος (π.χ. <code className="font-mono bg-slate-100 px-1 rounded">ΜΟ2α</code>)</li>
+            <li>Κελί γραμμής λεπτομερειών: <code className="font-mono bg-slate-100 px-1 rounded">Αίθουσα / Όνομα μαθήματος (τάξη)</code></li>
           </ul>
         </CardContent>
       </Card>

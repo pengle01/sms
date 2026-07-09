@@ -33,13 +33,13 @@ function revalidateUsers() {
  */
 export async function setUserPassword(targetUserId: string, password: string): Promise<ActionResult> {
   const auth = await getSuperAdminAuth();
-  if (!auth) return { ok: false, error: "Forbidden" };
+  if (!auth) return { ok: false, error: "Δεν επιτρέπεται" };
   if (password.length < MIN_PASSWORD_LENGTH) {
-    return { ok: false, error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` };
+    return { ok: false, error: `Ο κωδικός πρόσβασης πρέπει να έχει τουλάχιστον ${MIN_PASSWORD_LENGTH} χαρακτήρες.` };
   }
 
   const target = await db.user.findUnique({ where: { id: targetUserId }, select: { id: true } });
-  if (!target) return { ok: false, error: "User not found" };
+  if (!target) return { ok: false, error: "Ο χρήστης δεν βρέθηκε" };
 
   await db.user.update({
     where: { id: targetUserId },
@@ -70,13 +70,13 @@ async function countEffectiveSuperAdmins(): Promise<number> {
 /** Grant SUPER_ADMIN as an EXTRA role — the user's primary role stays as is. */
 export async function grantSuperAdmin(targetUserId: string): Promise<ActionResult> {
   const auth = await getSuperAdminAuth();
-  if (!auth) return { ok: false, error: "Forbidden" };
+  if (!auth) return { ok: false, error: "Δεν επιτρέπεται" };
 
   const target = await db.user.findUnique({
     where: { id: targetUserId },
     select: { role: true, extraRoles: true, isActive: true },
   });
-  if (!target) return { ok: false, error: "User not found" };
+  if (!target) return { ok: false, error: "Ο χρήστης δεν βρέθηκε" };
 
   const check = validateAdminGrant({
     actorId: auth.userId,
@@ -106,13 +106,13 @@ export async function grantSuperAdmin(targetUserId: string): Promise<ActionResul
 /** Revoke an extra SUPER_ADMIN role. Primary roles are never changed here. */
 export async function revokeSuperAdmin(targetUserId: string): Promise<ActionResult> {
   const auth = await getSuperAdminAuth();
-  if (!auth) return { ok: false, error: "Forbidden" };
+  if (!auth) return { ok: false, error: "Δεν επιτρέπεται" };
 
   const target = await db.user.findUnique({
     where: { id: targetUserId },
     select: { role: true, extraRoles: true },
   });
-  if (!target) return { ok: false, error: "User not found" };
+  if (!target) return { ok: false, error: "Ο χρήστης δεν βρέθηκε" };
 
   const check = validateAdminRevoke({
     actorId: auth.userId,
@@ -145,13 +145,13 @@ export async function setSpecialEducation(
   value: boolean
 ): Promise<ActionResult> {
   const auth = await getSuperAdminAuth();
-  if (!auth) return { ok: false, error: "Forbidden" };
+  if (!auth) return { ok: false, error: "Δεν επιτρέπεται" };
 
   const target = await db.user.findUnique({
     where: { id: targetUserId },
     select: { staffProfile: { select: { id: true } } },
   });
-  if (!target?.staffProfile) return { ok: false, error: "No staff profile linked" };
+  if (!target?.staffProfile) return { ok: false, error: "Δεν υπάρχει συνδεδεμένο προφίλ προσωπικού" };
 
   await db.staffProfile.update({
     where: { id: target.staffProfile.id },
@@ -170,8 +170,8 @@ export async function setSpecialEducation(
 }
 
 const DELETE_ERRORS: Record<string, string> = {
-  errSelf: "You cannot delete your own account.",
-  errLastSuperAdmin: "This is the last active system administrator — it cannot be deleted.",
+  errSelf: "Δεν μπορείτε να διαγράψετε τον δικό σας λογαριασμό.",
+  errLastSuperAdmin: "Αυτός είναι ο τελευταίος ενεργός διαχειριστής συστήματος — δεν μπορεί να διαγραφεί.",
 };
 
 /**
@@ -188,13 +188,13 @@ const DELETE_ERRORS: Record<string, string> = {
  */
 export async function deleteUser(targetUserId: string): Promise<ActionResult> {
   const auth = await getSuperAdminAuth();
-  if (!auth) return { ok: false, error: "Forbidden" };
+  if (!auth) return { ok: false, error: "Δεν επιτρέπεται" };
 
   const target = await db.user.findUnique({
     where: { id: targetUserId },
     select: { id: true, name: true, email: true, role: true, extraRoles: true },
   });
-  if (!target) return { ok: false, error: "User not found" };
+  if (!target) return { ok: false, error: "Ο χρήστης δεν βρέθηκε" };
 
   const check = validateUserDelete({
     actorId: auth.userId,
@@ -232,7 +232,7 @@ export async function deleteUser(targetUserId: string): Promise<ActionResult> {
       return {
         ok: false,
         error:
-          "This account has its own system activity (audit log, resolved referrals or substitution plans) and cannot be deleted. Revoke its access instead.",
+          "Αυτός ο λογαριασμός έχει δική του δραστηριότητα στο σύστημα (αρχείο καταγραφής, διεκπεραιωμένες παραπομπές ή πλάνα αναπληρώσεων) και δεν μπορεί να διαγραφεί. Ανακαλέστε την πρόσβασή του αντί για διαγραφή.",
       };
     }
     throw e;
@@ -251,16 +251,16 @@ export async function deleteUser(targetUserId: string): Promise<ActionResult> {
 }
 
 const GRANT_ERRORS: Record<string, string> = {
-  errSelf: "You cannot change your own access.",
-  errAlreadyAdmin: "This user is already a system administrator.",
-  errInactive: "Inactive accounts cannot be granted admin access.",
+  errSelf: "Δεν μπορείτε να αλλάξετε τη δική σας πρόσβαση.",
+  errAlreadyAdmin: "Αυτός ο χρήστης είναι ήδη διαχειριστής συστήματος.",
+  errInactive: "Δεν είναι δυνατή η παραχώρηση πρόσβασης διαχειριστή σε ανενεργούς λογαριασμούς.",
 };
 
 const REVOKE_ERRORS: Record<string, string> = {
-  errSelf: "You cannot change your own access.",
-  errPrimaryAdmin: "This user's primary role is Super Admin — it cannot be revoked here.",
-  errNotGranted: "This user has no granted admin access.",
-  errLastSuperAdmin: "This is the last active system administrator — access cannot be revoked.",
+  errSelf: "Δεν μπορείτε να αλλάξετε τη δική σας πρόσβαση.",
+  errPrimaryAdmin: "Ο κύριος ρόλος αυτού του χρήστη είναι Υπερδιαχειριστής — δεν μπορεί να ανακληθεί εδώ.",
+  errNotGranted: "Αυτός ο χρήστης δεν έχει παραχωρημένη πρόσβαση διαχειριστή.",
+  errLastSuperAdmin: "Αυτός είναι ο τελευταίος ενεργός διαχειριστής συστήματος — η πρόσβαση δεν μπορεί να ανακληθεί.",
 };
 
 /** Toggle the "substitution coordinator" designation. */
@@ -269,13 +269,13 @@ export async function setSubstitutionCoordinator(
   value: boolean
 ): Promise<ActionResult> {
   const auth = await getSuperAdminAuth();
-  if (!auth) return { ok: false, error: "Forbidden" };
+  if (!auth) return { ok: false, error: "Δεν επιτρέπεται" };
 
   const target = await db.user.findUnique({
     where: { id: targetUserId },
     select: { staffProfile: { select: { id: true } } },
   });
-  if (!target?.staffProfile) return { ok: false, error: "No staff profile linked" };
+  if (!target?.staffProfile) return { ok: false, error: "Δεν υπάρχει συνδεδεμένο προφίλ προσωπικού" };
 
   await db.staffProfile.update({
     where: { id: target.staffProfile.id },
@@ -299,13 +299,13 @@ export async function setDdkCoordinator(
   value: boolean
 ): Promise<ActionResult> {
   const auth = await getSuperAdminAuth();
-  if (!auth) return { ok: false, error: "Forbidden" };
+  if (!auth) return { ok: false, error: "Δεν επιτρέπεται" };
 
   const target = await db.user.findUnique({
     where: { id: targetUserId },
     select: { staffProfile: { select: { id: true } } },
   });
-  if (!target?.staffProfile) return { ok: false, error: "No staff profile linked" };
+  if (!target?.staffProfile) return { ok: false, error: "Δεν υπάρχει συνδεδεμένο προφίλ προσωπικού" };
 
   await db.staffProfile.update({
     where: { id: target.staffProfile.id },

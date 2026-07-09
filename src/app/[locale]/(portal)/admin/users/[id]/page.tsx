@@ -11,14 +11,14 @@ import { SetPasswordForm } from "./SetPasswordForm";
 import { DeleteUserCard } from "./DeleteUserCard";
 
 const ROLE_META: Record<string, { label: string; color: string }> = {
-  SUPER_ADMIN:       { label: "Super Admin",  color: "bg-purple-100 text-purple-700 border-purple-200" },
-  HEADMASTER:        { label: "Headmaster",   color: "bg-slate-800 text-white border-slate-800" },
-  HEADTEACHER_A:     { label: "Deputy A",     color: "bg-blue-100 text-blue-700 border-blue-200" },
-  HEADTEACHER_B:     { label: "Deputy B",     color: "bg-indigo-100 text-indigo-700 border-indigo-200" },
-  STUDENT_COUNSELOR: { label: "Counselor",    color: "bg-teal-100 text-teal-700 border-teal-200" },
-  TEACHER:           { label: "Teacher",      color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
-  SCHOOL_ADMIN:      { label: "Office Admin", color: "bg-amber-100 text-amber-700 border-amber-200" },
-  CHAPERONE:         { label: "Chaperone",    color: "bg-orange-100 text-orange-700 border-orange-200" },
+  SUPER_ADMIN:       { label: "Υπερδιαχειριστής",     color: "bg-purple-100 text-purple-700 border-purple-200" },
+  HEADMASTER:        { label: "Διευθυντής",           color: "bg-slate-800 text-white border-slate-800" },
+  HEADTEACHER_A:     { label: "Βοηθός Διευθυντής Α",  color: "bg-blue-100 text-blue-700 border-blue-200" },
+  HEADTEACHER_B:     { label: "Βοηθός Διευθυντής",    color: "bg-indigo-100 text-indigo-700 border-indigo-200" },
+  STUDENT_COUNSELOR: { label: "Σύμβουλος Σπουδών",    color: "bg-teal-100 text-teal-700 border-teal-200" },
+  TEACHER:           { label: "Εκπαιδευτικός",        color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+  SCHOOL_ADMIN:      { label: "Διοικητικός",          color: "bg-amber-100 text-amber-700 border-amber-200" },
+  CHAPERONE:         { label: "Συνοδός",              color: "bg-orange-100 text-orange-700 border-orange-200" },
 };
 
 export default async function UserDetailPage({
@@ -93,7 +93,7 @@ export default async function UserDetailPage({
           className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 mb-3"
         >
           <ChevronLeft className="w-4 h-4" />
-          Staff
+          Προσωπικό
         </Link>
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
@@ -113,7 +113,7 @@ export default async function UserDetailPage({
             )}
             {hasAdminGrant && (
               <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-sm">
-                + System Admin
+                + Διαχειριστής Συστήματος
               </Badge>
             )}
             {sp?.specialEducation && (
@@ -123,7 +123,7 @@ export default async function UserDetailPage({
             )}
             {!user.isActive && (
               <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-sm">
-                Inactive
+                Ανενεργός
               </Badge>
             )}
           </div>
@@ -136,15 +136,15 @@ export default async function UserDetailPage({
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <CircleUser className="w-4 h-4" />
-              Personal Information
+              Προσωπικά Στοιχεία
             </CardTitle>
           </CardHeader>
           <CardContent className="divide-y divide-slate-50">
             {infoRow("Email", user.email)}
-            {infoRow("Phone", sp?.phone)}
-            {infoRow("Department", sp?.department)}
+            {infoRow("Τηλέφωνο", sp?.phone)}
+            {infoRow("Ειδικότητα", sp?.department)}
             {infoRow("ΠΜΠ", sp?.pmp ? <span className="font-mono">{sp.pmp}</span> : null)}
-            {infoRow("Schedule name", scheduleName ? <span className="font-mono">{scheduleName}</span> : null)}
+            {infoRow("Όνομα προγράμματος", scheduleName ? <span className="font-mono">{scheduleName}</span> : null)}
           </CardContent>
         </Card>
 
@@ -153,15 +153,15 @@ export default async function UserDetailPage({
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <Home className="w-4 h-4" />
-              Assignments
+              Αναθέσεις
             </CardTitle>
           </CardHeader>
           <CardContent className="divide-y divide-slate-50">
-            {infoRow("Homegroup teacher", sp ? groupChips(sp.homeroomGroups) : null)}
-            {infoRow("Homegroup headteacher", sp ? groupChips(sp.homeroomHeadGroups) : null)}
-            {infoRow("Counselor of", sp ? groupChips(sp.homeroomCounselorGroups) : null)}
+            {infoRow("Υπεύθυνος καθηγητής τμήματος", sp ? groupChips(sp.homeroomGroups) : null)}
+            {infoRow("Βοηθός Διευθυντής τμήματος", sp ? groupChips(sp.homeroomHeadGroups) : null)}
+            {infoRow("Σύμβουλος Σπουδών σε", sp ? groupChips(sp.homeroomCounselorGroups) : null)}
             {infoRow(
-              "Timetable slots",
+              "Ώρες προγράμματος",
               sp ? (
                 scheduleName ? (
                   <Link
@@ -197,12 +197,12 @@ export default async function UserDetailPage({
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <KeyRound className="w-4 h-4" />
-            Password sign-in
+            Σύνδεση με κωδικό πρόσβασης
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-slate-500 mb-4">
-            Set a password so this user can sign in with email &amp; password.
+            Ορίστε κωδικό πρόσβασης ώστε ο χρήστης να μπορεί να συνδέεται με email και κωδικό.
           </p>
           <SetPasswordForm userId={user.id} />
         </CardContent>
@@ -210,13 +210,13 @@ export default async function UserDetailPage({
 
       {!sp && (
         <p className="text-sm text-slate-400">
-          No staff profile linked to this account — link one from the Staff list to see schedule data.
+          Δεν υπάρχει συνδεδεμένο προφίλ προσωπικού σε αυτόν τον λογαριασμό — συνδέστε ένα από τη λίστα Προσωπικού για να δείτε τα στοιχεία προγράμματος.
         </p>
       )}
 
       <DeleteUserCard
         userId={user.id}
-        userName={user.name ?? user.email ?? "this user"}
+        userName={user.name ?? user.email ?? "αυτού του χρήστη"}
         locale={locale}
         isSelf={auth.userId === user.id}
         isLastAdmin={

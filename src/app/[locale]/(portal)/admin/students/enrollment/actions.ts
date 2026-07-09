@@ -21,12 +21,12 @@ export async function importEnrollment(
 ): Promise<EnrollmentImportResult> {
   const auth = await getSuperAdminAuth();
   if (!auth) {
-    return { success: false, studentsEnrolled: 0, linksCreated: 0, linksRemoved: 0, errors: ["Unauthorized"] };
+    return { success: false, studentsEnrolled: 0, linksCreated: 0, linksRemoved: 0, errors: ["Χωρίς εξουσιοδότηση"] };
   }
 
   const file = formData.get("file") as File | null;
   if (!file || file.size === 0) {
-    return { success: false, studentsEnrolled: 0, linksCreated: 0, linksRemoved: 0, errors: ["No file provided"] };
+    return { success: false, studentsEnrolled: 0, linksCreated: 0, linksRemoved: 0, errors: ["Δεν επιλέχθηκε αρχείο"] };
   }
 
   const buffer   = await file.arrayBuffer();
@@ -103,7 +103,7 @@ export async function importEnrollment(
   for (const r of parsed) {
     const profileId = profileByRegistry.get(r.registryId);
     if (!profileId) {
-      errors.push(`Row ${r.line} (${r.name} / ${r.registryId}): student not found`);
+      errors.push(`Γραμμή ${r.line} (${r.name} / ${r.registryId}): ο μαθητής δεν βρέθηκε`);
       continue;
     }
 
@@ -112,7 +112,7 @@ export async function importEnrollment(
     for (const code of r.codes) {
       const groupId = groupCache.get(code);
       if (!groupId) {
-        errors.push(`Row ${r.line} (${r.name}): group "${code}" not found — import the schedule first`);
+        errors.push(`Γραμμή ${r.line} (${r.name}): το τμήμα «${code}» δεν βρέθηκε — εισάγετε πρώτα το ωρολόγιο πρόγραμμα`);
         rowComplete = false; // incomplete target → sync will only add, never remove
         continue;
       }
@@ -150,7 +150,7 @@ export async function importEnrollment(
       linksRemoved += del.count;
     }
   } catch (err) {
-    errors.push("Import failed while writing: " + (err instanceof Error ? err.message : String(err)));
+    errors.push("Η εισαγωγή απέτυχε κατά την εγγραφή: " + (err instanceof Error ? err.message : String(err)));
     if (linksCreated > 0 || linksRemoved > 0) revalidatePath("/", "layout");
     return { success: false, studentsEnrolled, linksCreated, linksRemoved, errors };
   }

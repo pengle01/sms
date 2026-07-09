@@ -40,12 +40,12 @@ export function SmsSettingsForm({ initial }: Props) {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${configured ? "bg-green-500" : "bg-slate-300"}`} />
-        <span className="text-xs text-slate-500">{configured ? "Configured" : "Not configured"}</span>
+        <span className="text-xs text-slate-500">{configured ? "Ρυθμισμένο" : "Μη ρυθμισμένο"}</span>
       </div>
 
       <div className="space-y-3">
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-slate-700">API Endpoint URL</label>
+          <label className="text-sm font-medium text-slate-700">URL τελικού σημείου API</label>
           <input
             type="url"
             value={apiUrl}
@@ -54,18 +54,18 @@ export function SmsSettingsForm({ initial }: Props) {
             placeholder="https://api.websms.com.cy/api/send"
             className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-50 disabled:text-slate-500"
           />
-          <p className="text-xs text-slate-400">Obtain from websms.com.cy — SMS via API</p>
+          <p className="text-xs text-slate-400">Το λαμβάνετε από το websms.com.cy — SMS via API</p>
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-slate-700">API Key</label>
+          <label className="text-sm font-medium text-slate-700">Κλειδί API</label>
           <div className="relative">
             <input
               type={showKey ? "text" : "password"}
               value={apiKey}
               disabled={!editing}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder="Your WebSMS API key"
+              placeholder="Το κλειδί API WebSMS σας"
               className="w-full h-9 px-3 pr-9 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-50 disabled:text-slate-500"
             />
             <button
@@ -80,7 +80,7 @@ export function SmsSettingsForm({ initial }: Props) {
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-slate-700">Sender ID</label>
+          <label className="text-sm font-medium text-slate-700">Αναγνωριστικό αποστολέα</label>
           <input
             type="text"
             value={senderId}
@@ -90,7 +90,7 @@ export function SmsSettingsForm({ initial }: Props) {
             maxLength={11}
             className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-50 disabled:text-slate-500"
           />
-          <p className="text-xs text-slate-400">Name shown on recipient's phone (max 11 chars)</p>
+          <p className="text-xs text-slate-400">Το όνομα που εμφανίζεται στο τηλέφωνο του παραλήπτη (έως 11 χαρακτήρες)</p>
         </div>
       </div>
 

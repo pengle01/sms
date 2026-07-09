@@ -37,8 +37,9 @@ export function GradesUnlockForm({ initial }: { initial: GradesUnlocked }) {
   return (
     <div className="space-y-4">
       <p className="text-xs text-slate-400">
-        Grade entry stays frozen until the term is unlocked here. Teachers can
-        neither enter nor edit grades for a locked term.
+        Η καταχώρηση βαθμών παραμένει κλειδωμένη μέχρι το τετράμηνο να
+        ξεκλειδωθεί εδώ. Οι εκπαιδευτικοί δεν μπορούν ούτε να καταχωρήσουν ούτε
+        να επεξεργαστούν βαθμούς κλειδωμένου τετραμήνου.
       </p>
 
       <div className="divide-y divide-slate-100">
@@ -55,17 +56,17 @@ export function GradesUnlockForm({ initial }: { initial: GradesUnlocked }) {
                     onChange={(e) => setValues((v) => ({ ...v, [period]: e.target.checked }))}
                     className="accent-emerald-600 w-4 h-4"
                   />
-                  <span className="text-slate-600">Unlocked</span>
+                  <span className="text-slate-600">Ξεκλείδωτο</span>
                 </label>
               ) : unlocked ? (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs px-2.5 py-1">
                   <LockOpen className="w-3 h-3" />
-                  Unlocked
+                  Ξεκλείδωτο
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 border border-slate-200 text-slate-500 text-xs px-2.5 py-1">
                   <Lock className="w-3 h-3" />
-                  Locked
+                  Κλειδωμένο
                 </span>
               )}
             </div>

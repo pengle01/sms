@@ -32,54 +32,54 @@ const SECTIONS: Array<{
   {
     title: "Α΄ Τετράμηνο",
     fields: [
-      { key: "term1Start", label: "Starts" },
-      { key: "term1End", label: "Ends" },
-      { key: "testDeadline1", label: "Last day for tests" },
+      { key: "term1Start", label: "Έναρξη" },
+      { key: "term1End", label: "Λήξη" },
+      { key: "testDeadline1", label: "Τελευταία ημέρα διαγωνισμάτων" },
     ],
   },
   {
     title: "Β΄ Τετράμηνο",
     fields: [
-      { key: "term2Start", label: "Starts" },
-      { key: "term2End", label: "Ends" },
-      { key: "testDeadline2", label: "Last day for tests" },
+      { key: "term2Start", label: "Έναρξη" },
+      { key: "term2End", label: "Λήξη" },
+      { key: "testDeadline2", label: "Τελευταία ημέρα διαγωνισμάτων" },
     ],
   },
   {
-    title: "Christmas holidays",
+    title: "Διακοπές Χριστουγέννων",
     fields: [
-      { key: "christmasStart", label: "First day" },
-      { key: "christmasEnd", label: "Last day" },
+      { key: "christmasStart", label: "Πρώτη ημέρα" },
+      { key: "christmasEnd", label: "Τελευταία ημέρα" },
     ],
   },
   {
-    title: "Easter holidays",
+    title: "Διακοπές Πάσχα",
     fields: [
-      { key: "easterStart", label: "First day" },
-      { key: "easterEnd", label: "Last day" },
+      { key: "easterStart", label: "Πρώτη ημέρα" },
+      { key: "easterEnd", label: "Τελευταία ημέρα" },
     ],
   },
 ];
 
 function validate(v: TermDatesValues): string | null {
   if (!v.term1Start || !v.term1End || !v.term2Start || !v.term2End) {
-    return "The four term start/end dates are required.";
+    return "Οι τέσσερις ημερομηνίες έναρξης/λήξης των τετραμήνων είναι υποχρεωτικές.";
   }
   if (!(v.term1Start <= v.term1End && v.term1End < v.term2Start && v.term2Start <= v.term2End)) {
-    return "Term dates must be in order: Α΄ start ≤ Α΄ end < Β΄ start ≤ Β΄ end.";
+    return "Οι ημερομηνίες πρέπει να είναι με τη σειρά: έναρξη Α΄ ≤ λήξη Α΄ < έναρξη Β΄ ≤ λήξη Β΄.";
   }
   if (v.testDeadline1 && !(v.term1Start <= v.testDeadline1 && v.testDeadline1 <= v.term1End)) {
-    return "The Α΄ test deadline must fall inside Α΄ τετράμηνο.";
+    return "Η προθεσμία διαγωνισμάτων του Α΄ πρέπει να βρίσκεται εντός του Α΄ τετραμήνου.";
   }
   if (v.testDeadline2 && !(v.term2Start <= v.testDeadline2 && v.testDeadline2 <= v.term2End)) {
-    return "The Β΄ test deadline must fall inside Β΄ τετράμηνο.";
+    return "Η προθεσμία διαγωνισμάτων του Β΄ πρέπει να βρίσκεται εντός του Β΄ τετραμήνου.";
   }
   for (const [s, e, name] of [
-    [v.christmasStart, v.christmasEnd, "Christmas"],
-    [v.easterStart, v.easterEnd, "Easter"],
+    [v.christmasStart, v.christmasEnd, "Χριστουγέννων"],
+    [v.easterStart, v.easterEnd, "Πάσχα"],
   ] as const) {
-    if (!!s !== !!e) return `${name} holidays need both a first and a last day.`;
-    if (s && e && s > e) return `${name} holidays: the first day must come before the last.`;
+    if (!!s !== !!e) return `Οι διακοπές ${name} χρειάζονται και πρώτη και τελευταία ημέρα.`;
+    if (s && e && s > e) return `Διακοπές ${name}: η πρώτη ημέρα πρέπει να προηγείται της τελευταίας.`;
   }
   return null;
 }
@@ -112,9 +112,9 @@ export function TermDatesForm({ initial }: Props) {
   return (
     <div className="space-y-5">
       <p className="text-xs text-slate-400">
-        The ministry announces these dates at the start of each school year.
-        They drive the per-term absence totals, the test-scheduling deadlines,
-        and the holiday closures shown across the app.
+        Το υπουργείο ανακοινώνει αυτές τις ημερομηνίες στην αρχή κάθε σχολικής
+        χρονιάς. Καθορίζουν τα σύνολα απουσιών ανά τετράμηνο, τις προθεσμίες
+        προγραμματισμού διαγωνισμάτων και τις αργίες που εμφανίζονται στην εφαρμογή.
       </p>
 
       {SECTIONS.map((section) => (

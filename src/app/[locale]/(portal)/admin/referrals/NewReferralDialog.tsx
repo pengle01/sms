@@ -22,7 +22,7 @@ export function NewReferralDialog({ students, locale }: { students: Student[]; l
 
   const { mutate, isPending } = trpc.referrals.create.useMutation({
     onSuccess: () => {
-      toast.success("Referral filed");
+      toast.success("Η παραπομπή υποβλήθηκε");
       setOpen(false);
       setStudentId("");
       setDescription("");
@@ -44,7 +44,7 @@ export function NewReferralDialog({ students, locale }: { students: Student[]; l
         className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
       >
         <Plus className="w-4 h-4" />
-        New Referral
+        Νέα Παραπομπή
       </Button>
     );
   }
@@ -53,7 +53,7 @@ export function NewReferralDialog({ students, locale }: { students: Student[]; l
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-slate-900">File Referral</h3>
+          <h3 className="text-lg font-semibold text-slate-900">Υποβολή Παραπομπής</h3>
           <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-slate-600">
             <X className="w-5 h-5" />
           </button>
@@ -61,14 +61,14 @@ export function NewReferralDialog({ students, locale }: { students: Student[]; l
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-700">Student</label>
+            <label className="text-sm font-medium text-slate-700">Μαθητής</label>
             <select
               value={studentId}
               onChange={(e) => setStudentId(e.target.value)}
               required
               className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
             >
-              <option value="">Select student…</option>
+              <option value="">Επιλέξτε μαθητή…</option>
               {students.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.user?.name} ({s.studentId})
@@ -78,14 +78,14 @@ export function NewReferralDialog({ students, locale }: { students: Student[]; l
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-700">Description</label>
+            <label className="text-sm font-medium text-slate-700">Περιγραφή</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               required
               minLength={10}
               rows={4}
-              placeholder="Describe the incident or behavior (min. 10 characters)…"
+              placeholder="Περιγράψτε το περιστατικό ή τη συμπεριφορά (τουλ. 10 χαρακτήρες)…"
               className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
             />
           </div>
@@ -97,7 +97,7 @@ export function NewReferralDialog({ students, locale }: { students: Student[]; l
               onClick={() => setOpen(false)}
               className="h-9 px-4"
             >
-              Cancel
+              Άκυρο
             </Button>
             <Button
               type="submit"
@@ -105,7 +105,7 @@ export function NewReferralDialog({ students, locale }: { students: Student[]; l
               className="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white"
             >
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Submit
+              Υποβολή
             </Button>
           </div>
         </form>

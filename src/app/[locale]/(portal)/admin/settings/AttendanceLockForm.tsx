@@ -9,10 +9,10 @@ import { EditControls } from "./EditControls";
 import { saveAttendanceLock } from "./actions";
 
 const WINDOWS: { value: AttendanceLockWindow; label: string }[] = [
-  { value: "day", label: "Previous school day" },
-  { value: "week", label: "Last 7 days" },
-  { value: "term", label: "Current term" },
-  { value: "year", label: "Whole school year" },
+  { value: "day", label: "Προηγούμενη σχολική ημέρα" },
+  { value: "week", label: "Τελευταίες 7 ημέρες" },
+  { value: "term", label: "Τρέχον τετράμηνο" },
+  { value: "year", label: "Ολόκληρη σχολική χρονιά" },
 ];
 
 export function AttendanceLockForm({ initial }: { initial: AttendanceLockConfig }) {
@@ -39,13 +39,14 @@ export function AttendanceLockForm({ initial }: { initial: AttendanceLockConfig 
   return (
     <div className="space-y-4">
       <p className="text-xs text-slate-400">
-        When enabled, a teacher with unmarked past lessons is blocked from the
-        rest of the teacher portal until they record them. Lessons someone else
-        already marked (e.g. a cover) and days the teacher was absent don&apos;t count.
+        Όταν είναι ενεργό, εκπαιδευτικός με ακαταχώρητα προηγούμενα μαθήματα
+        αποκλείεται από την υπόλοιπη πύλη εκπαιδευτικών μέχρι να τα καταχωρήσει.
+        Μαθήματα που καταχώρησε ήδη κάποιος άλλος (π.χ. αντικαταστάτης) και
+        ημέρες που ο εκπαιδευτικός απουσίαζε δεν προσμετρώνται.
       </p>
 
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-medium text-slate-700">Lock the portal</span>
+        <span className="text-sm font-medium text-slate-700">Κλείδωμα πύλης</span>
         {editing ? (
           <label className="flex items-center gap-2 text-sm cursor-pointer">
             <input
@@ -54,23 +55,23 @@ export function AttendanceLockForm({ initial }: { initial: AttendanceLockConfig 
               onChange={(e) => setValue((v) => ({ ...v, enabled: e.target.checked }))}
               className="accent-emerald-600 w-4 h-4"
             />
-            <span className="text-slate-600">Enabled</span>
+            <span className="text-slate-600">Ενεργό</span>
           </label>
         ) : value.enabled ? (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs px-2.5 py-1">
             <Lock className="w-3 h-3" />
-            Enabled
+            Ενεργό
           </span>
         ) : (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 border border-slate-200 text-slate-500 text-xs px-2.5 py-1">
             <LockOpen className="w-3 h-3" />
-            Disabled
+            Ανενεργό
           </span>
         )}
       </div>
 
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-medium text-slate-700">Look back</span>
+        <span className="text-sm font-medium text-slate-700">Χρονικό εύρος ελέγχου</span>
         {editing ? (
           <select
             value={value.window}

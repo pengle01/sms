@@ -6,9 +6,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { updateStudent } from "./actions";
 
 const PARENT_ROLES = [
-  { role: "FATHER", label: "Father" },
-  { role: "MOTHER", label: "Mother" },
-  { role: "GUARDIAN", label: "Guardian" },
+  { role: "FATHER", label: "Πατέρας" },
+  { role: "MOTHER", label: "Μητέρα" },
+  { role: "GUARDIAN", label: "Κηδεμόνας" },
 ] as const;
 
 export default async function EditStudentPage({
@@ -50,9 +50,9 @@ export default async function EditStudentPage({
           className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 mb-3"
         >
           <ChevronLeft className="w-4 h-4" />
-          Back to student
+          Πίσω στον μαθητή
         </Link>
-        <h2 className="text-2xl font-bold text-slate-900">Edit student</h2>
+        <h2 className="text-2xl font-bold text-slate-900">Επεξεργασία μαθητή</h2>
         <p className="text-slate-500 text-sm mt-1 font-mono">{student.studentId}</p>
       </div>
 
@@ -63,51 +63,51 @@ export default async function EditStudentPage({
             {/* Identity */}
             <section className="space-y-4">
               <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide border-b border-slate-100 pb-2">
-                Identity
+                Στοιχεία ταυτότητας
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Registry No (Μητρώο) *" name="studentId" defaultValue={student.studentId} required mono />
-                <Field label="Full name *" name="name" defaultValue={user.name ?? ""} required />
+                <Field label="Αρ. Μητρώου (Μητρώο) *" name="studentId" defaultValue={student.studentId} required mono />
+                <Field label="Ονοματεπώνυμο *" name="name" defaultValue={user.name ?? ""} required />
                 <Field label="Email *" name="email" type="email" defaultValue={user.email} required />
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1.5">Gender</label>
+                  <label className="block text-xs text-slate-500 mb-1.5">Φύλο</label>
                   <select name="gender" defaultValue={student.gender ?? ""} className={selectCls}>
-                    <option value="">— not set —</option>
-                    <option value="MALE">Male</option>
-                    <option value="FEMALE">Female</option>
+                    <option value="">— δεν ορίστηκε —</option>
+                    <option value="MALE">Άρρεν</option>
+                    <option value="FEMALE">Θήλυ</option>
                   </select>
                 </div>
-                <Field label="Date of birth" name="dateOfBirth" type="date" defaultValue={dobValue} />
-                <Field label="Place of birth" name="placeOfBirth" defaultValue={student.placeOfBirth ?? ""} />
-                <Field label="Nationality"    name="nationality"  defaultValue={student.nationality   ?? ""} />
-                <Field label="Address"        name="address"      defaultValue={student.address       ?? ""} />
-                <Field label="ID card number" name="idCardNumber" defaultValue={student.idCardNumber  ?? ""} mono />
-                <Field label="Passport number" name="passportNumber" defaultValue={student.passportNumber ?? ""} mono />
+                <Field label="Ημ. γέννησης" name="dateOfBirth" type="date" defaultValue={dobValue} />
+                <Field label="Τόπος γέννησης" name="placeOfBirth" defaultValue={student.placeOfBirth ?? ""} />
+                <Field label="Υπηκοότητα"     name="nationality"  defaultValue={student.nationality   ?? ""} />
+                <Field label="Διεύθυνση"      name="address"      defaultValue={student.address       ?? ""} />
+                <Field label="Αρ. ταυτότητας" name="idCardNumber" defaultValue={student.idCardNumber  ?? ""} mono />
+                <Field label="Αρ. διαβατηρίου" name="passportNumber" defaultValue={student.passportNumber ?? ""} mono />
               </div>
             </section>
 
             {/* Enrollment */}
             <section className="space-y-4">
               <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide border-b border-slate-100 pb-2">
-                Enrollment
+                Φοίτηση
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1.5">Group</label>
+                  <label className="block text-xs text-slate-500 mb-1.5">Τμήμα</label>
                   <select name="groupId" defaultValue={group?.id ?? ""} className={selectCls}>
-                    <option value="">— no group —</option>
+                    <option value="">— χωρίς τμήμα —</option>
                     {groups.map((g) => (
                       <option key={g.id} value={g.id}>
-                        {g.name} (Year {g.grade})
+                        {g.name} ({["Α΄", "Β΄", "Γ΄"][g.grade - 1] ?? g.grade} Τάξη)
                       </option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1.5">Status</label>
+                  <label className="block text-xs text-slate-500 mb-1.5">Κατάσταση</label>
                   <select name="isActive" defaultValue={user.isActive ? "true" : "false"} className={selectCls}>
-                    <option value="true">Active</option>
-                    <option value="false">Inactive</option>
+                    <option value="true">Ενεργός</option>
+                    <option value="false">Ανενεργός</option>
                   </select>
                 </div>
               </div>
@@ -116,11 +116,11 @@ export default async function EditStudentPage({
             {/* Parents / Guardians (imported) */}
             <section className="space-y-4">
               <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide border-b border-slate-100 pb-2">
-                Parents / Guardians
+                Γονείς / Κηδεμόνες
               </h3>
               {student.parents.length === 0 ? (
                 <p className="text-sm text-slate-400">
-                  None linked. Add SMS recipients from the student page; parents come from the import.
+                  Δεν υπάρχουν συνδεδεμένοι. Προσθέστε παραλήπτες SMS από τη σελίδα του μαθητή· οι γονείς προέρχονται από την εισαγωγή.
                 </p>
               ) : (
                 <div className="space-y-5">
@@ -132,15 +132,15 @@ export default async function EditStudentPage({
                         <p className="text-xs font-semibold text-slate-500">{label}</p>
                         <input type="hidden" name={`parent_${role}_id`} value={p.id} />
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          <Field label="Name" name={`parent_${role}_name`} defaultValue={p.user?.name ?? ""} />
-                          <Field label="Phone" name={`parent_${role}_phone`} defaultValue={p.phone ?? ""} mono />
+                          <Field label="Όνομα" name={`parent_${role}_name`} defaultValue={p.user?.name ?? ""} />
+                          <Field label="Τηλέφωνο" name={`parent_${role}_phone`} defaultValue={p.phone ?? ""} mono />
                           <Field label="Email" name={`parent_${role}_email`} type="email" defaultValue={p.user?.email ?? ""} />
                         </div>
                       </div>
                     );
                   })}
                   <p className="text-xs text-slate-400">
-                    Changing a phone here also updates that contact in the student&apos;s SMS recipients.
+                    Η αλλαγή τηλεφώνου εδώ ενημερώνει και την αντίστοιχη επαφή στους παραλήπτες SMS του μαθητή.
                   </p>
                 </div>
               )}
@@ -152,13 +152,13 @@ export default async function EditStudentPage({
                 type="submit"
                 className="h-9 px-5 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors"
               >
-                Save changes
+                Αποθήκευση αλλαγών
               </button>
               <Link
                 href={`/${locale}/admin/students/${id}`}
                 className="h-9 px-5 rounded-lg border border-slate-200 text-sm text-slate-600 font-medium hover:bg-slate-50 transition-colors inline-flex items-center"
               >
-                Cancel
+                Άκυρο
               </Link>
             </div>
           </form>

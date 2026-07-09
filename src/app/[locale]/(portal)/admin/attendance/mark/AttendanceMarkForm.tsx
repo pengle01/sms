@@ -25,9 +25,9 @@ interface Props {
 }
 
 const STATUS_CONFIG = {
-  PRESENT: { label: "Present", icon: CheckCircle, color: "text-green-600 bg-green-50 border-green-200" },
-  ABSENT:  { label: "Absent",  icon: XCircle,     color: "text-red-600 bg-red-50 border-red-200" },
-  LATE:    { label: "Late",    icon: Clock,        color: "text-amber-600 bg-amber-50 border-amber-200" },
+  PRESENT: { label: "Παρών", icon: CheckCircle, color: "text-green-600 bg-green-50 border-green-200" },
+  ABSENT:  { label: "Απών",  icon: XCircle,     color: "text-red-600 bg-red-50 border-red-200" },
+  LATE:    { label: "Καθυστέρηση",    icon: Clock,        color: "text-amber-600 bg-amber-50 border-amber-200" },
 } as const;
 
 export function AttendanceMarkForm({
@@ -52,7 +52,7 @@ export function AttendanceMarkForm({
 
   const { mutate: markAttendance, isPending } = trpc.attendance.markAttendance.useMutation({
     onSuccess: () => {
-      toast.success("Attendance saved");
+      toast.success("Οι απουσίες αποθηκεύτηκαν");
       router.back();
     },
     onError: (e) => toast.error(e.message),
@@ -114,7 +114,7 @@ export function AttendanceMarkForm({
             onChange={handleGroupChange}
             className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
           >
-            <option value="">Select group…</option>
+            <option value="">Επιλογή τμήματος…</option>
             {groups.map((g) => (
               <option key={g.id} value={g.id}>{g.name}</option>
             ))}
@@ -125,31 +125,31 @@ export function AttendanceMarkForm({
             className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
           >
             {[1, 2, 3, 4, 5, 6, 7, 8].map((p) => (
-              <option key={p} value={p}>Period {p}</option>
+              <option key={p} value={p}>Ώρα {p}</option>
             ))}
           </select>
         </div>
 
       {!selectedGroupId && (
-        <p className="text-slate-400 text-sm">Select a group to begin marking attendance.</p>
+        <p className="text-slate-400 text-sm">Επιλέξτε τμήμα για να ξεκινήσετε την καταχώρηση.</p>
       )}
 
       {selectedGroupId && slot && (
         <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm">
           <span>
             <span className="font-semibold text-slate-900">{slot.course.name}</span>
-            {slot.room && <span className="text-slate-500"> · Room {slot.room}</span>}
-            <span className="text-slate-500"> · Period {selectedPeriod}</span>
+            {slot.room && <span className="text-slate-500"> · Αίθ. {slot.room}</span>}
+            <span className="text-slate-500"> · Ώρα {selectedPeriod}</span>
           </span>
           {isResubmit && (
-            <span className="text-xs text-emerald-700 font-medium">Previously saved — editing</span>
+            <span className="text-xs text-emerald-700 font-medium">Αποθηκεύτηκε προηγουμένως — επεξεργασία</span>
           )}
         </div>
       )}
 
       {selectedGroupId && !slot && students.length > 0 && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-700">
-          No timetable slot found for this group / period / day.
+          Δεν βρέθηκε ώρα προγράμματος για αυτό το τμήμα/ώρα/ημέρα.
         </div>
       )}
 
@@ -213,7 +213,7 @@ export function AttendanceMarkForm({
                             onChange={(e) => setDelay(student.id, parseInt(e.target.value) || 0)}
                             className="w-16 h-8 rounded-lg border border-slate-200 px-2 text-center text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                           />
-                          <span className="text-xs text-slate-500">min</span>
+                          <span className="text-xs text-slate-500">λεπ</span>
                         </div>
                       )}
                     </div>
@@ -230,7 +230,7 @@ export function AttendanceMarkForm({
               className="h-10 px-6 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
             >
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isResubmit ? "Update Attendance" : "Save Attendance"}
+              {isResubmit ? "Ενημέρωση Απουσιών" : "Αποθήκευση Απουσιών"}
             </Button>
           </div>
         </>

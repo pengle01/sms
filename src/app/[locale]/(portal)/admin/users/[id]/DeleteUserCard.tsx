@@ -33,19 +33,19 @@ export function DeleteUserCard({ userId, userName, locale, isSelf, isLastAdmin }
   const [pending, startTransition] = useTransition();
 
   const blockedReason = isSelf
-    ? "You cannot delete your own account."
+    ? "Δεν μπορείτε να διαγράψετε τον δικό σας λογαριασμό."
     : isLastAdmin
-      ? "Last administrator — cannot delete."
+      ? "Τελευταίος διαχειριστής — δεν είναι δυνατή η διαγραφή."
       : null;
 
   function onConfirm() {
     startTransition(async () => {
       const res = await deleteUser(userId);
       if (res.ok) {
-        toast.success("User deleted");
+        toast.success("Ο χρήστης διαγράφηκε");
         router.push(`/${locale}/admin/users`);
       } else {
-        toast.error(res.error ?? "Something went wrong");
+        toast.error(res.error ?? "Κάτι πήγε στραβά");
       }
     });
   }
@@ -55,18 +55,19 @@ export function DeleteUserCard({ userId, userName, locale, isSelf, isLastAdmin }
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2 text-red-700">
           <TriangleAlert className="w-4 h-4" />
-          Danger zone
+          Επικίνδυνη ζώνη
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-medium text-slate-800">Delete this user</p>
+            <p className="text-sm font-medium text-slate-800">Διαγραφή αυτού του χρήστη</p>
             <p className="text-xs text-slate-400 mt-0.5">
-              Permanently removes the login and frees the timetable name so another person can claim
-              that role. The staff profile is kept (detached) so attendance, referral, substitution
-              and message history is preserved. An account with its own admin activity (audit log,
-              resolved referrals, substitution plans) cannot be deleted.
+              Αφαιρεί οριστικά τη σύνδεση και αποδεσμεύει το όνομα προγράμματος ώστε άλλο πρόσωπο να
+              μπορεί να διεκδικήσει τον ρόλο. Το προφίλ προσωπικού διατηρείται (αποσυνδεδεμένο) ώστε
+              να μη χαθεί το ιστορικό παρουσιών, παραπομπών, αναπληρώσεων και μηνυμάτων. Λογαριασμός
+              με δική του διαχειριστική δραστηριότητα (αρχείο καταγραφής, διεκπεραιωμένες παραπομπές,
+              πλάνα αναπληρώσεων) δεν μπορεί να διαγραφεί.
             </p>
           </div>
           <div className="flex-shrink-0">
@@ -85,24 +86,25 @@ export function DeleteUserCard({ userId, userName, locale, isSelf, isLastAdmin }
                       ) : (
                         <Trash2 className="w-3.5 h-3.5" />
                       )}
-                      Delete user
+                      Διαγραφή χρήστη
                     </button>
                   }
                 />
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Delete {userName}?</AlertDialogTitle>
+                    <AlertDialogTitle>Διαγραφή {userName};</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This permanently deletes the login (email/password and sessions) and releases
-                      its timetable name so it can be re-claimed. The staff profile is kept
-                      (detached) to preserve attendance, referral, substitution and message history.
-                      This cannot be undone. If the account has its own admin activity (audit log,
-                      resolved referrals, substitution plans) the deletion is refused.
+                      Διαγράφει οριστικά τη σύνδεση (email/κωδικός και συνεδρίες) και αποδεσμεύει το
+                      όνομα προγράμματος ώστε να μπορεί να διεκδικηθεί ξανά. Το προφίλ προσωπικού
+                      διατηρείται (αποσυνδεδεμένο) για να μη χαθεί το ιστορικό παρουσιών, παραπομπών,
+                      αναπληρώσεων και μηνυμάτων. Η ενέργεια δεν αναιρείται. Αν ο λογαριασμός έχει
+                      δική του διαχειριστική δραστηριότητα (αρχείο καταγραφής, διεκπεραιωμένες
+                      παραπομπές, πλάνα αναπληρώσεων), η διαγραφή απορρίπτεται.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={onConfirm}>Delete</AlertDialogAction>
+                    <AlertDialogCancel>Άκυρο</AlertDialogCancel>
+                    <AlertDialogAction onClick={onConfirm}>Διαγραφή</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>

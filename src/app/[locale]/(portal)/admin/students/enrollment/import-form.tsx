@@ -31,7 +31,7 @@ export function EnrollmentImportForm() {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
             </svg>
-            <p className="text-sm text-slate-500 font-medium">Importing enrollments…</p>
+            <p className="text-sm text-slate-500 font-medium">Γίνεται εισαγωγή κατανομών…</p>
           </>
         ) : (
           <>
@@ -39,8 +39,8 @@ export function EnrollmentImportForm() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
             </svg>
             <div className="text-center">
-              <p className="text-sm font-medium text-slate-700">Click to upload enrollment Excel</p>
-              <p className="text-xs text-slate-400 mt-1">.xlsx or .xls — student subject-group assignments</p>
+              <p className="text-sm font-medium text-slate-700">Κάντε κλικ για μεταφόρτωση Excel κατανομής</p>
+              <p className="text-xs text-slate-400 mt-1">.xlsx ή .xls — αναθέσεις μαθητών σε ομάδες μαθημάτων</p>
             </div>
           </>
         )}
@@ -51,11 +51,11 @@ export function EnrollmentImportForm() {
         <div className="space-y-4">
           {result.success && (
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-              <p className="text-sm font-semibold text-emerald-800 mb-3">Import complete</p>
+              <p className="text-sm font-semibold text-emerald-800 mb-3">Η εισαγωγή ολοκληρώθηκε</p>
               <dl className="grid grid-cols-3 gap-3">
-                <Stat label="Students processed" value={result.studentsEnrolled} />
-                <Stat label="Links added"         value={result.linksCreated} />
-                <Stat label="Links removed"       value={result.linksRemoved} />
+                <Stat label="Μαθητές που επεξεργάστηκαν" value={result.studentsEnrolled} />
+                <Stat label="Συνδέσεις που προστέθηκαν"  value={result.linksCreated} />
+                <Stat label="Συνδέσεις που αφαιρέθηκαν"  value={result.linksRemoved} />
               </dl>
             </div>
           )}
@@ -63,7 +63,7 @@ export function EnrollmentImportForm() {
           {result.errors.length > 0 && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
               <p className="text-sm font-semibold text-amber-800 mb-2">
-                {result.errors.length} warning{result.errors.length !== 1 ? "s" : ""}
+                {result.errors.length} {result.errors.length !== 1 ? "προειδοποιήσεις" : "προειδοποίηση"}
               </p>
               <ul className="space-y-1 max-h-64 overflow-y-auto">
                 {result.errors.map((e, i) => (

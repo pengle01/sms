@@ -75,12 +75,12 @@ function parseDob(val: unknown): Date | undefined {
 export async function importStudents(_prev: ImportResult | null, formData: FormData): Promise<ImportResult> {
   const auth = await getSuperAdminAuth();
   if (!auth) {
-    return { success: false, studentsCreated: 0, studentsUpdated: 0, groupsCreated: 0, smsContactsCreated: 0, flaggedStudents: 0, flagged: [], skipped: 0, errors: ["Unauthorized"] };
+    return { success: false, studentsCreated: 0, studentsUpdated: 0, groupsCreated: 0, smsContactsCreated: 0, flaggedStudents: 0, flagged: [], skipped: 0, errors: ["Χωρίς εξουσιοδότηση"] };
   }
 
   const file = formData.get("file") as File | null;
   if (!file || file.size === 0) {
-    return { success: false, studentsCreated: 0, studentsUpdated: 0, groupsCreated: 0, smsContactsCreated: 0, flaggedStudents: 0, flagged: [], skipped: 0, errors: ["No file provided"] };
+    return { success: false, studentsCreated: 0, studentsUpdated: 0, groupsCreated: 0, smsContactsCreated: 0, flaggedStudents: 0, flagged: [], skipped: 0, errors: ["Δεν επιλέχθηκε αρχείο"] };
   }
 
   const buffer = await file.arrayBuffer();
@@ -112,7 +112,7 @@ export async function importStudents(_prev: ImportResult | null, formData: FormD
     }
 
     const fullName = [lastName, firstName].filter(Boolean).join(" ");
-    const rowLabel = `Row ${rowIndex + 2} (${registryId})`;
+    const rowLabel = `Γραμμή ${rowIndex + 2} (${registryId})`;
 
     try {
       // ── Group ───────────────────────────────────────────────────────────

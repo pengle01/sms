@@ -70,9 +70,9 @@ export function DutyRosterForm({ initial, deputies }: Props) {
   return (
     <div className="space-y-4">
       <p className="text-xs text-slate-400">
-        Fixed weekly schedule: the assigned headteacher is on duty
-        (εφημερεύει) every week on that day. Duty events (referrals, exit
-        permits) will be routed to them.
+        Σταθερό εβδομαδιαίο πρόγραμμα: ο ορισμένος βοηθός διευθυντής εφημερεύει
+        κάθε εβδομάδα τη συγκεκριμένη ημέρα. Τα συμβάντα εφημερίας (παραπομπές,
+        άδειες εξόδου) θα δρομολογούνται σε αυτόν.
       </p>
 
       <div className="divide-y divide-slate-100">
@@ -99,7 +99,7 @@ export function DutyRosterForm({ initial, deputies }: Props) {
                         type="button"
                         onClick={() => remove(dow, id)}
                         className="text-indigo-400 hover:text-indigo-700"
-                        aria-label={`Remove ${nameOf(id)}`}
+                        aria-label={`Αφαίρεση ${nameOf(id)}`}
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -112,7 +112,7 @@ export function DutyRosterForm({ initial, deputies }: Props) {
                     onChange={(e) => add(dow, e.target.value)}
                     className="h-7 px-2 rounded-lg border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
-                    <option value="">+ Add…</option>
+                    <option value="">+ Προσθήκη…</option>
                     {available.map((d) => (
                       <option key={d.staffProfileId} value={d.staffProfileId}>
                         {d.name}
@@ -128,8 +128,8 @@ export function DutyRosterForm({ initial, deputies }: Props) {
 
       {deputies.length === 0 && (
         <p className="text-xs text-amber-600">
-          No active headteachers with a linked staff profile found — link them
-          under Staff first.
+          Δεν βρέθηκαν ενεργοί βοηθοί διευθυντές με συνδεδεμένο προφίλ
+          προσωπικού — συνδέστε τους πρώτα στην ενότητα Προσωπικό.
         </p>
       )}
 

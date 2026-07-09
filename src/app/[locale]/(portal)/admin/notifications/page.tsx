@@ -15,7 +15,7 @@ export default async function AdminNotificationsPage({
 
   return (
     <div className="space-y-5">
-      <h2 className="text-2xl font-bold text-slate-900">Notifications</h2>
+      <h2 className="text-2xl font-bold text-slate-900">Ειδοποιήσεις</h2>
       <NotificationsBoard locale={locale} />
     </div>
   );

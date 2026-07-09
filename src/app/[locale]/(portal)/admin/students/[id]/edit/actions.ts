@@ -33,7 +33,7 @@ export async function updateStudent(id: string, locale: string, formData: FormDa
   const current = await db.studentProfile.findUnique({ where: { id }, select: { studentId: true } });
   if (registryId && current && registryId !== current.studentId) {
     const taken = await db.studentProfile.findUnique({ where: { studentId: registryId }, select: { id: true } });
-    if (taken) throw new Error("Registry number already in use by another student.");
+    if (taken) throw new Error("Ο αριθμός μητρώου χρησιμοποιείται ήδη από άλλον μαθητή.");
   }
 
   await db.studentProfile.update({
@@ -74,7 +74,7 @@ export async function updateStudent(id: string, locale: string, formData: FormDa
     if (pEmail) {
       const other = await db.user.findUnique({ where: { email: pEmail }, select: { id: true } });
       if (other && other.id !== parent.userId) {
-        throw new Error(`Email ${pEmail} is already in use by another account.`);
+        throw new Error(`Το email ${pEmail} χρησιμοποιείται ήδη από άλλον λογαριασμό.`);
       }
       emailUpdate = { email: pEmail };
     }

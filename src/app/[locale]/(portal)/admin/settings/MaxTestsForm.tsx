@@ -34,8 +34,8 @@ export function MaxTestsForm({ initial }: Props) {
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <p className="text-sm font-medium text-slate-700">Max tests per student per week</p>
-        <p className="text-xs text-slate-400">A student cannot receive more than this many tests in a single calendar week. Big tests are additionally limited to 1 per day.</p>
+        <p className="text-sm font-medium text-slate-700">Μέγιστα διαγωνίσματα ανά μαθητή ανά εβδομάδα</p>
+        <p className="text-xs text-slate-400">Ένας μαθητής δεν μπορεί να έχει περισσότερα διαγωνίσματα από αυτόν τον αριθμό μέσα σε μία ημερολογιακή εβδομάδα. Τα μεγάλα διαγωνίσματα περιορίζονται επιπλέον σε 1 ανά ημέρα.</p>
       </div>
 
       <div className="flex items-center gap-4">
@@ -61,7 +61,7 @@ export function MaxTestsForm({ initial }: Props) {
           </button>
         </div>
 
-        <span className="text-sm text-slate-400">tests / week</span>
+        <span className="text-sm text-slate-400">διαγωνίσματα / εβδομάδα</span>
       </div>
 
       <EditControls

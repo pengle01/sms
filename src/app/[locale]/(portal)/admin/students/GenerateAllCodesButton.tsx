@@ -22,7 +22,11 @@ export function GenerateAllCodesButton({ missing }: { missing: number }) {
   const router = useRouter();
   const generateAll = trpc.accessCodes.generateAll.useMutation({
     onSuccess: ({ created }) => {
-      toast.success(`Generated ${created} access code${created !== 1 ? "s" : ""}`);
+      toast.success(
+        created !== 1
+          ? `Δημιουργήθηκαν ${created} κωδικοί πρόσβασης`
+          : `Δημιουργήθηκε ${created} κωδικός πρόσβασης`
+      );
       router.refresh();
     },
     onError: (e) => toast.error(e.message),
@@ -39,21 +43,22 @@ export function GenerateAllCodesButton({ missing }: { missing: number }) {
             className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 disabled:opacity-60"
           >
             {generateAll.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
-            Generate access codes ({missing})
+            Δημιουργία κωδικών πρόσβασης ({missing})
           </button>
         }
       />
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Generate access codes</AlertDialogTitle>
+          <AlertDialogTitle>Δημιουργία κωδικών πρόσβασης</AlertDialogTitle>
           <AlertDialogDescription>
-            This will create an access code for {missing} student{missing !== 1 ? "s" : ""} that
-            {missing !== 1 ? " don't" : " doesn't"} have one yet. Existing codes are not changed.
+            Θα δημιουργηθεί κωδικός πρόσβασης για {missing}{" "}
+            {missing !== 1 ? "μαθητές που δεν έχουν" : "μαθητή που δεν έχει"} ακόμη κωδικό.
+            Οι υπάρχοντες κωδικοί δεν αλλάζουν.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={() => generateAll.mutate()}>Generate</AlertDialogAction>
+          <AlertDialogCancel>Άκυρο</AlertDialogCancel>
+          <AlertDialogAction onClick={() => generateAll.mutate()}>Δημιουργία</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

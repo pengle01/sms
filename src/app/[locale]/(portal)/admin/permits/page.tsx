@@ -47,11 +47,11 @@ export default async function AdminExitPermitsPage({
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">Άδειες Εξόδου (Exit Permits)</h2>
+        <h2 className="text-2xl font-bold text-slate-900">Άδειες Εξόδου</h2>
         <p className="text-slate-500 text-sm mt-1">
-          {total} permit{total !== 1 ? "s" : ""}
-          {dateStr ? ` on ${fmtDisplayDate(utcMidnight(dateStr))}` : " in total"}
-          {" · issued by the day's on-duty deputy"}
+          {total} {total === 1 ? "άδεια" : "άδειες"}
+          {dateStr ? ` στις ${fmtDisplayDate(utcMidnight(dateStr))}` : " συνολικά"}
+          {" · εκδίδονται από τον εφημερεύοντα Βοηθό Διευθυντή της ημέρας"}
         </p>
       </div>
 
@@ -64,11 +64,11 @@ export default async function AdminExitPermitsPage({
           className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
         />
         <button type="submit" className="h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700">
-          Apply
+          Εφαρμογή
         </button>
         {dateStr && (
           <Link href="?" className="h-9 px-3 flex items-center text-sm text-slate-500 hover:text-slate-800">
-            Clear
+            Καθαρισμός
           </Link>
         )}
       </form>
@@ -78,12 +78,12 @@ export default async function AdminExitPermitsPage({
           <table className="w-full text-sm min-w-[800px]">
             <thead>
               <tr className="border-b border-slate-100">
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Date</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Student</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Leaves from</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Reason</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Parent contacted</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Issued by</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Ημερομηνία</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Μαθητής</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Αποχωρεί από</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Λόγος</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Επικοινωνία με κηδεμόνα</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Εκδόθηκε από</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide" />
               </tr>
             </thead>
@@ -114,7 +114,7 @@ export default async function AdminExitPermitsPage({
                       className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-emerald-700"
                     >
                       <Printer className="w-3.5 h-3.5" />
-                      Print
+                      Εκτύπωση
                     </Link>
                   </td>
                 </tr>
@@ -123,7 +123,7 @@ export default async function AdminExitPermitsPage({
                 <tr>
                   <td colSpan={7} className="px-5 py-16 text-center text-slate-400">
                     <LogOut className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                    No exit permits found
+                    Δεν βρέθηκαν άδειες εξόδου
                   </td>
                 </tr>
               )}
@@ -135,16 +135,16 @@ export default async function AdminExitPermitsPage({
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-sm text-slate-500">
-          <span>Page {page} of {totalPages}</span>
+          <span>Σελίδα {page} από {totalPages}</span>
           <div className="flex gap-2">
             {page > 1 && (
               <Link href={pageHref(page - 1)} className="h-8 px-3 flex items-center rounded-lg border border-slate-200 hover:bg-slate-50">
-                Previous
+                Προηγούμενη
               </Link>
             )}
             {page < totalPages && (
               <Link href={pageHref(page + 1)} className="h-8 px-3 flex items-center rounded-lg border border-slate-200 hover:bg-slate-50">
-                Next
+                Επόμενη
               </Link>
             )}
           </div>

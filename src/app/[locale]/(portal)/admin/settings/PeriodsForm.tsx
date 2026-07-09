@@ -6,11 +6,11 @@ import { toast } from "sonner";
 import { EditControls } from "./EditControls";
 
 const DAYS = [
-  { dow: 1, label: "Monday" },
-  { dow: 2, label: "Tuesday" },
-  { dow: 3, label: "Wednesday" },
-  { dow: 4, label: "Thursday" },
-  { dow: 5, label: "Friday" },
+  { dow: 1, label: "Δευτέρα" },
+  { dow: 2, label: "Τρίτη" },
+  { dow: 3, label: "Τετάρτη" },
+  { dow: 4, label: "Πέμπτη" },
+  { dow: 5, label: "Παρασκευή" },
 ];
 
 interface Props {

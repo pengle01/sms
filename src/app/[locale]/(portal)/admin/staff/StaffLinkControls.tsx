@@ -56,11 +56,11 @@ export function StaffLinkControls({
           <button
             onClick={handleUnlink}
             disabled={pending}
-            title="Unlink user from this profile"
+            title="Αποσύνδεση χρήστη από αυτό το προφίλ"
             className="flex items-center gap-1 text-xs text-slate-400 hover:text-red-500 transition-colors disabled:opacity-40"
           >
             <Unlink className="w-3.5 h-3.5" />
-            Unlink
+            Αποσύνδεση
           </button>
         </>
       ) : (
@@ -73,7 +73,7 @@ export function StaffLinkControls({
               disabled={pending}
               className="h-8 rounded-lg border border-slate-200 px-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
             >
-              <option value="">— Select user —</option>
+              <option value="">— Επιλογή χρήστη —</option>
               {availableUsers.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.name ?? u.email}
@@ -87,10 +87,10 @@ export function StaffLinkControls({
               className="flex items-center gap-1 text-xs text-amber-600 hover:text-emerald-600 transition-colors disabled:opacity-40"
             >
               <Link2 className="w-3.5 h-3.5" />
-              Link user
+              Σύνδεση χρήστη
             </button>
           )}
-          <span className="text-xs text-amber-500 font-medium">Unlinked</span>
+          <span className="text-xs text-amber-500 font-medium">Μη συνδεδεμένο</span>
         </>
       )}
       <div className="w-4 flex-shrink-0">

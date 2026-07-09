@@ -31,7 +31,7 @@ export function DatabaseTools({ locale }: { locale: string }) {
     });
 
   async function doRestore() {
-    if (!file) return toast.error("Choose a .sql file first.");
+    if (!file) return toast.error("Επιλέξτε πρώτα ένα αρχείο .sql.");
     setBusy(true);
     try {
       const fd = new FormData();
@@ -40,12 +40,12 @@ export function DatabaseTools({ locale }: { locale: string }) {
       const res = await fetch(`/${locale}/admin/database/import`, { method: "POST", body: fd });
       const j = (await res.json()) as { ok: boolean; message?: string; error?: string };
       if (j.ok) {
-        toast.success(j.message ?? "Restore complete.");
+        toast.success(j.message ?? "Η επαναφορά ολοκληρώθηκε.");
         setRestorePhrase("");
         setFile(null);
         router.refresh();
       } else {
-        toast.error(j.error ?? "Import failed.");
+        toast.error(j.error ?? "Η εισαγωγή απέτυχε.");
       }
     } catch (e) {
       toast.error((e as Error).message);
@@ -64,19 +64,19 @@ export function DatabaseTools({ locale }: { locale: string }) {
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <Download className="w-4 h-4 text-slate-400" />
-            Export
+            Εξαγωγή
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-slate-500">
-            Download a full SQL dump (schema + all data). Keep it safe — it contains personal data.
+            Λήψη πλήρους αντιγράφου SQL (σχήμα + όλα τα δεδομένα). Φυλάξτε το με ασφάλεια — περιέχει προσωπικά δεδομένα.
           </p>
           <a
             href={`/${locale}/admin/database/export`}
             className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
           >
             <Download className="w-4 h-4" />
-            Download backup (.sql)
+            Λήψη αντιγράφου (.sql)
           </a>
         </CardContent>
       </Card>
@@ -86,13 +86,13 @@ export function DatabaseTools({ locale }: { locale: string }) {
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2 text-amber-800">
             <Upload className="w-4 h-4" />
-            Import (restore)
+            Εισαγωγή (επαναφορά)
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-slate-600">
-            Apply a <code>.sql</code> dump (from Export). This <strong>replaces the entire database</strong>.
-            You may be signed out if the dump contains a different admin.
+            Εφαρμογή ενός αντιγράφου <code>.sql</code> (από την Εξαγωγή). Αυτό <strong>αντικαθιστά ολόκληρη τη βάση δεδομένων</strong>.
+            Ενδέχεται να αποσυνδεθείτε αν το αντίγραφο περιέχει διαφορετικό διαχειριστή.
           </p>
           <input
             type="file"
@@ -101,7 +101,7 @@ export function DatabaseTools({ locale }: { locale: string }) {
             className="block text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm"
           />
           <label className="block text-xs text-slate-500">
-            Type <strong>RESTORE</strong> to confirm
+            Πληκτρολογήστε <strong>RESTORE</strong> για επιβεβαίωση
             <input value={restorePhrase} onChange={(e) => setRestorePhrase(e.target.value)} className={`${input} mt-1`} placeholder="RESTORE" />
           </label>
           <button
@@ -110,7 +110,7 @@ export function DatabaseTools({ locale }: { locale: string }) {
             className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
           >
             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-            Restore database
+            Επαναφορά βάσης
           </button>
         </CardContent>
       </Card>
@@ -120,16 +120,16 @@ export function DatabaseTools({ locale }: { locale: string }) {
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2 text-red-700">
             <AlertTriangle className="w-4 h-4" />
-            Wipe all data
+            Διαγραφή όλων των δεδομένων
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-slate-600">
-            Permanently delete <strong>all</strong> data (students, parents, attendance, grades, settings…).
-            Your own admin account is kept so you stay signed in. <strong>This cannot be undone.</strong>
+            Οριστική διαγραφή <strong>όλων</strong> των δεδομένων (μαθητές, γονείς, απουσίες, βαθμοί, ρυθμίσεις…).
+            Ο δικός σας λογαριασμός διαχειριστή διατηρείται ώστε να παραμείνετε συνδεδεμένοι. <strong>Αυτό δεν μπορεί να αναιρεθεί.</strong>
           </p>
           <label className="block text-xs text-slate-500">
-            Type <strong>WIPE</strong> to confirm
+            Πληκτρολογήστε <strong>WIPE</strong> για επιβεβαίωση
             <input value={wipePhrase} onChange={(e) => setWipePhrase(e.target.value)} className={`${input} mt-1`} placeholder="WIPE" />
           </label>
           <button
@@ -138,7 +138,7 @@ export function DatabaseTools({ locale }: { locale: string }) {
             className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
           >
             {pending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-            Wipe database
+            Διαγραφή βάσης
           </button>
         </CardContent>
       </Card>
