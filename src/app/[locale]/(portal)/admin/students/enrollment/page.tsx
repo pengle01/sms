@@ -31,8 +31,10 @@ export default async function EnrollmentImportPage({
         <p className="text-slate-500 text-sm mt-1">
           Assigns each student to their subject groups. Re-importing syncs each
           student to their row — groups in the file are added, ones no longer
-          listed are removed. (A row with an unrecognised group code is added-only,
-          never cleared, so a typo can't drop enrollments.)
+          listed are removed. Only groups the file mentions are ever removed:
+          assignments made by hand to groups outside the file are kept. (A row
+          with an unrecognised group code is added-only, never cleared, so a
+          typo can't drop enrollments.)
         </p>
       </div>
 

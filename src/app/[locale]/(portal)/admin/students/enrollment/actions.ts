@@ -42,6 +42,18 @@ export async function importEnrollment(
   const allGroups = await db.group.findMany({ select: { id: true, name: true } });
   for (const g of allGroups) groupCache.set(g.name, g.id);
 
+  // Every group id the file mentions anywhere. Removal is scoped to this set:
+  // the file is only authoritative for the kinds of groups it carries, so a
+  // link to a group it never mentions (e.g. a support group assigned by hand
+  // or by the admin checks tool) is never deleted by a re-import.
+  const fileGroupIds = new Set<string>();
+  for (let i = 1; i < rows.length; i++) {
+    for (const cell of rows[i]!.slice(4)) {
+      const id = groupCache.get(String(cell).trim());
+      if (id) fileGroupIds.add(id);
+    }
+  }
+
   // Row 0 is the header; skip it.
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i]!;
@@ -86,7 +98,8 @@ export async function importEnrollment(
 
       // Sync this student's subject-group links to match the file: add the ones
       // in the row, remove the stale ones. Removal is suppressed on an incomplete
-      // or empty row (see enrollmentSyncPlan) so a typo can't wipe enrollments.
+      // or empty row and scoped to groups the file mentions (see
+      // enrollmentSyncPlan) so a typo or a partial export can't wipe enrollments.
       const current = await db.studentGroup.findMany({
         where: { studentProfileId: student.id },
         select: { groupId: true },
@@ -95,6 +108,7 @@ export async function importEnrollment(
         current.map((g) => g.groupId),
         targetGroupIds,
         rowComplete,
+        fileGroupIds,
       );
 
       if (toAdd.length > 0) {
