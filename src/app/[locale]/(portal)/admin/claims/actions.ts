@@ -6,8 +6,8 @@ import { canManageClaims, SELF_REGISTER_EDUCATOR_ROLES } from "@/lib/rbac";
 import { getActiveAuth } from "@/server/authz";
 import { writeAudit, requestMeta } from "@/server/audit";
 import { db } from "@/server/db";
+import { linkStaffProfile } from "@/server/staffLink";
 import type { Role } from "@/generated/prisma";
-import { Prisma } from "@/generated/prisma";
 
 async function requireAdmin() {
   const auth = await getActiveAuth();
@@ -34,10 +34,7 @@ export async function approveRegistrationAction(userId: string, role: Role) {
       });
       const staffName = user.teacherClaim?.staffName;
       if (staffName) {
-        // scheduleName: the timetable's coding becomes the canonical display name.
-        const createData: Prisma.StaffProfileUncheckedCreateInput = { userId, scheduleName: staffName };
-        const profile = await tx.staffProfile.create({ data: createData });
-        await tx.timetableSlot.updateMany({ where: { staffName, staffId: null }, data: { staffId: profile.id } });
+        await linkStaffProfile(tx, userId, staffName);
         await tx.teacherClaim.update({ where: { userId }, data: { status: "APPROVED" } });
       }
     });
@@ -75,16 +72,10 @@ export async function approveTeacherClaimAction(claimId: string) {
   const claim = await db.teacherClaim.findUnique({ where: { id: claimId }, include: { user: true } });
   if (!claim || claim.status !== "PENDING") return;
 
-  let profile = await db.staffProfile.findUnique({ where: { userId: claim.userId } });
-  if (!profile) {
-    const createData: Prisma.StaffProfileUncheckedCreateInput = { userId: claim.userId, scheduleName: claim.staffName };
-    profile = await db.staffProfile.create({ data: createData });
-  } else if (profile.scheduleName !== claim.staffName) {
-    // Existing profile claiming a schedule name: adopt the timetable's coding.
-    profile = await db.staffProfile.update({ where: { id: profile.id }, data: { scheduleName: claim.staffName } });
-  }
-  await db.timetableSlot.updateMany({ where: { staffName: claim.staffName, staffId: null }, data: { staffId: profile.id } });
-  await db.teacherClaim.update({ where: { id: claimId }, data: { status: "APPROVED" } });
+  await db.$transaction(async (tx) => {
+    await linkStaffProfile(tx, claim.userId, claim.staffName);
+    await tx.teacherClaim.update({ where: { id: claimId }, data: { status: "APPROVED" } });
+  });
   revalidatePath("/", "layout");
 }
 

@@ -2,7 +2,7 @@
 // No DB — unit-tested in src/test/unit/timetableLink.test.ts.
 
 export type LinkSlot = { id: string; staffName: string | null; staffId: string | null };
-export type LinkProfile = { id: string; scheduleName: string | null };
+export type LinkProfile = { id: string; scheduleName: string | null; userId: string | null };
 
 /**
  * Decide which unclaimed timetable slots should be linked to which staff profile
@@ -11,6 +11,11 @@ export type LinkProfile = { id: string; scheduleName: string | null };
  * claimed (`staffId` is null). This mirrors registration-approval linking so a
  * lesson ADDED to an already-approved teacher shows up in their portal (which
  * filters by `staffId`) without re-approval.
+ *
+ * Only profiles with a live login (`userId` set) can claim slots: a detached
+ * profile (kept for history after user deletion) or a pre-seeded one keeps its
+ * `scheduleName`, and letting it re-grab the slots deleteUser just freed would
+ * make the name unclaimable at registration.
  *
  * Ambiguous names — a `scheduleName` shared by more than one profile — are
  * skipped: we never guess which teacher a slot belongs to.
@@ -24,6 +29,7 @@ export function slotLinkAssignments(
   // scheduleName → profileId, or null once we see a second profile with that name.
   const byName = new Map<string, string | null>();
   for (const p of profiles) {
+    if (!p.userId) continue; // no login → nothing to show in a portal
     const name = p.scheduleName?.trim();
     if (!name) continue;
     byName.set(name, byName.has(name) ? null : p.id);

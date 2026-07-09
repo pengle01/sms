@@ -173,8 +173,10 @@ export async function importSchedule(
       select: { id: true, staffName: true, staffId: true },
     }),
     db.staffProfile.findMany({
-      where: { scheduleName: { not: null } },
-      select: { id: true, scheduleName: true },
+      // Only profiles with a live login: a detached (deleted-user) or seeded
+      // profile must not re-grab slots — that blocks re-registration of the name.
+      where: { scheduleName: { not: null }, userId: { not: null } },
+      select: { id: true, scheduleName: true, userId: true },
     }),
   ]);
   const links = slotLinkAssignments(unclaimed, profiles);
