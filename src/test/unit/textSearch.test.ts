@@ -1,5 +1,22 @@
 import { describe, it, expect } from "vitest";
-import { normalizeSearch, matchesSearch, suggestionList } from "@/lib/textSearch";
+import { stripDiacritics, normalizeSearch, matchesSearch, suggestionList } from "@/lib/textSearch";
+
+describe("stripDiacritics (accent-insensitive matching, e.g. import headers)", () => {
+  it("strips tonos so accented headers match plain-vowel patterns", () => {
+    expect(stripDiacritics("Διευκόλυνση 1")).toBe("Διευκολυνση 1");
+    // The special-ed import column resolver matches against the stripped header.
+    expect(/διευκολ/i.test(stripDiacritics("Διευκόλυνση 1"))).toBe(true);
+    // Regression guard: the raw accented header did NOT match before.
+    expect(/διευκολ/i.test("Διευκόλυνση 1")).toBe(false);
+  });
+
+  it("handles the other ministry headers and leaves plain text unchanged", () => {
+    expect(/παρατηρ/i.test(stripDiacritics("Παρατηρήσεις"))).toBe(true);
+    expect(/αλλες\s*απαλλ/i.test(stripDiacritics("Άλλες Απαλλαγές"))).toBe(true);
+    expect(/γαλλικ/i.test(stripDiacritics("Απαλλαγή Γαλλικών"))).toBe(true);
+    expect(stripDiacritics("Αρ.Μητρ")).toBe("Αρ.Μητρ");
+  });
+});
 
 describe("normalizeSearch", () => {
   it("lowercases and strips Greek accents", () => {

@@ -4,13 +4,18 @@
 
 const COMBINING_MARKS = /[\u0300-\u036f]/g;
 
+/**
+ * Strip combining diacritics (tonos / dialytika, …) so Greek text can be
+ * compared accent-insensitively — e.g. "Διευκόλυνση" → "Διευκολυνση". NFD
+ * splits each accented letter into base + combining mark; we drop the marks.
+ * Used by search matching here and by spreadsheet-header matching in imports.
+ */
+export function stripDiacritics(s: string): string {
+  return (s ?? "").normalize("NFD").replace(COMBINING_MARKS, "");
+}
+
 export function normalizeSearch(s: string): string {
-  return s
-    .normalize("NFD")
-    .replace(COMBINING_MARKS, "")
-    .toLowerCase()
-    .replace(/ς/g, "σ")
-    .trim();
+  return stripDiacritics(s).toLowerCase().replace(/ς/g, "σ").trim();
 }
 
 /** True when `haystack` contains `q` (normalized). An empty query matches all. */

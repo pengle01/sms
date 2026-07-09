@@ -5,9 +5,11 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/server/db";
 import { getActiveAuth } from "@/server/authz";
-import { canViewSpecialEdFull, specialEdCodesSeeded, stripGreekAccents } from "@/lib/specialEd";
+import { canViewSpecialEdFull, specialEdCodesSeeded, splitKnownCodes } from "@/lib/specialEd";
+import { stripDiacritics } from "@/lib/textSearch";
 import { teacherUserIdsForStudent } from "@/server/specialEd";
 import { writeAudit, requestMeta } from "@/server/audit";
+import { logger, errInfo } from "@/server/logger";
 
 // Full special-ed access (deputy / counselor / headmaster / super-admin). Every
 // mutation in here is gated on this — the session decides, never the client.
@@ -20,6 +22,19 @@ async function requireFullAccess() {
   });
   if (!canViewSpecialEdFull(auth.roles, !!staff?.specialEducation)) redirect("/");
   return auth;
+}
+
+// Catalog code sets — the import and the edit form only ever attach codes that
+// exist in the lookup tables (see splitKnownCodes in @/lib/specialEd).
+async function knownCodeSets() {
+  const [problems, accoms] = await Promise.all([
+    db.specialEdProblemCode.findMany({ select: { code: true } }),
+    db.specialEdAccommodation.findMany({ select: { code: true } }),
+  ]);
+  return {
+    problemSet: new Set(problems.map((p) => p.code)),
+    accomSet: new Set(accoms.map((a) => a.code)),
+  };
 }
 
 export type UpdateResult = { ok: true } | { ok: false; error: string };
@@ -45,28 +60,21 @@ export async function updateSpecialEdRecord(input: {
   const remarks = input.remarks.trim() || null;
   const otherExemptions = input.otherExemptions.trim() || null;
 
-  // Connect only codes that actually exist in the catalog. A code not in the
-  // lookup (e.g. an unseeded install, or a code removed after the form loaded)
-  // would make Prisma's nested connect throw P2025 and silently fail the save —
-  // so filter to known codes and report any we had to drop.
-  const [knownProblems, knownAccoms] = await Promise.all([
-    db.specialEdProblemCode.findMany({ where: { code: { in: input.problemCodes } }, select: { code: true } }),
-    db.specialEdAccommodation.findMany({ where: { code: { in: input.accommodationCodes } }, select: { code: true } }),
-  ]);
-  const problemSet = new Set(knownProblems.map((p) => p.code));
-  const accomSet = new Set(knownAccoms.map((a) => a.code));
-  const unknown = [
-    ...input.problemCodes.filter((c) => !problemSet.has(c)),
-    ...input.accommodationCodes.filter((c) => !accomSet.has(c)),
-  ];
+  // A code not in the catalog (unseeded install, or removed after the form
+  // loaded) would make Prisma's nested connect throw P2025 — report it back
+  // instead of failing the save deep inside the upsert.
+  const { problemSet, accomSet } = await knownCodeSets();
+  const problemSplit = splitKnownCodes(input.problemCodes, problemSet);
+  const accomSplit = splitKnownCodes(input.accommodationCodes, accomSet);
+  const unknown = [...problemSplit.unknown, ...accomSplit.unknown];
   if (unknown.length > 0) {
     return {
       ok: false,
       error: `Άγνωστοι κωδικοί: ${unknown.join(", ")}. Ελέγξτε ότι έχουν αρχικοποιηθεί οι κωδικοί ειδικής αγωγής.`,
     };
   }
-  const problems = [...problemSet].map((code) => ({ code }));
-  const accommodations = [...accomSet].map((code) => ({ code }));
+  const problems = problemSplit.known.map((code) => ({ code }));
+  const accommodations = accomSplit.known.map((code) => ({ code }));
 
   try {
     await db.specialEdRecord.upsert({
@@ -90,7 +98,9 @@ export async function updateSpecialEdRecord(input: {
       },
     });
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Η αποθήκευση απέτυχε." };
+    // Raw Prisma messages are English and leak schema details — log them, show Greek.
+    logger.error({ event: "specialEd.updateFailed", err: errInfo(e), studentId: input.studentId }, "Special-ed record save failed");
+    return { ok: false, error: "Η αποθήκευση απέτυχε. Δοκιμάστε ξανά." };
   }
 
   const meta = await requestMeta();
@@ -184,7 +194,7 @@ export async function importSpecialEd(_prev: ImportResult | null, formData: Form
   // Resolve columns by header pattern. Match accent-insensitively — ministry
   // headers carry a tonos ("Διευκόλυνση") that a plain-vowel pattern would miss.
   const headers = Object.keys(rows[0]!);
-  const find = (re: RegExp) => headers.filter((h) => re.test(stripGreekAccents(h)));
+  const find = (re: RegExp) => headers.filter((h) => re.test(stripDiacritics(h)));
   const regCol = find(/μητρ/i)[0];
   if (!regCol) return { ok: false, error: "Δεν βρέθηκε στήλη «Αρ. Μητρ.»." };
   const problemCols = find(/κωδικ.*προβλ/i);
@@ -194,12 +204,7 @@ export async function importSpecialEd(_prev: ImportResult | null, formData: Form
   const otherExemptCol = find(/αλλες\s*απαλλ/i)[0];
 
   // Known codes (so we only connect valid ones; collect the rest for reporting).
-  const [knownProblems, knownAccoms] = await Promise.all([
-    db.specialEdProblemCode.findMany({ select: { code: true } }),
-    db.specialEdAccommodation.findMany({ select: { code: true } }),
-  ]);
-  const problemSet = new Set(knownProblems.map((p) => p.code));
-  const accomSet = new Set(knownAccoms.map((a) => a.code));
+  const { problemSet, accomSet } = await knownCodeSets();
 
   // Unseeded install: the lookup tables are empty, so every code would be
   // dropped as "unknown" and we'd import code-less records. Refuse loudly.
@@ -225,20 +230,11 @@ export async function importSpecialEd(_prev: ImportResult | null, formData: Form
       continue;
     }
 
-    const problemCodes: string[] = [];
-    for (const c of problemCols) {
-      const code = norm(row[c]);
-      if (!code) continue;
-      if (problemSet.has(code)) problemCodes.push(code);
-      else unknownCodes.add(code);
-    }
-    const accommodationCodes: string[] = [];
-    for (const c of accomCols) {
-      const code = norm(row[c]);
-      if (!code) continue;
-      if (accomSet.has(code)) accommodationCodes.push(code);
-      else unknownCodes.add(code);
-    }
+    const problemSplit = splitKnownCodes(problemCols.map((c) => norm(row[c])).filter((c) => c !== ""), problemSet);
+    const accomSplit = splitKnownCodes(accomCols.map((c) => norm(row[c])).filter((c) => c !== ""), accomSet);
+    for (const c of [...problemSplit.unknown, ...accomSplit.unknown]) unknownCodes.add(c);
+    const problemCodes = problemSplit.known;
+    const accommodationCodes = accomSplit.known;
 
     const data = {
       remarks: remarksCol ? norm(row[remarksCol]) || null : null,

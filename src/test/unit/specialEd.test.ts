@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseSupportGroup, canViewSpecialEdFull, specialEdCodesSeeded, stripGreekAccents } from "@/lib/specialEd";
+import { parseSupportGroup, canViewSpecialEdFull, specialEdCodesSeeded, splitKnownCodes } from "@/lib/specialEd";
 import { specialEdLegend } from "@/server/specialEd";
 import type { Role } from "@/generated/prisma";
 
@@ -21,20 +21,23 @@ describe("parseSupportGroup", () => {
   });
 });
 
-describe("stripGreekAccents (accent-insensitive header matching)", () => {
-  it("strips tonos so accented headers match plain-vowel patterns", () => {
-    expect(stripGreekAccents("Διευκόλυνση 1")).toBe("Διευκολυνση 1");
-    // The import column resolver matches against the stripped header.
-    expect(/διευκολ/i.test(stripGreekAccents("Διευκόλυνση 1"))).toBe(true);
-    // Regression guard: the raw accented header did NOT match before.
-    expect(/διευκολ/i.test("Διευκόλυνση 1")).toBe(false);
+describe("splitKnownCodes (only catalog codes may be attached)", () => {
+  const catalog = new Set(["ΔΞ", "ΔΑΦ", "1", "3"]);
+
+  it("splits into known catalog codes and unknown rest", () => {
+    expect(splitKnownCodes(["ΔΞ", "ΧΧΧ"], catalog)).toEqual({ known: ["ΔΞ"], unknown: ["ΧΧΧ"] });
   });
 
-  it("handles the other ministry headers and leaves plain text unchanged", () => {
-    expect(/παρατηρ/i.test(stripGreekAccents("Παρατηρήσεις"))).toBe(true);
-    expect(/αλλες\s*απαλλ/i.test(stripGreekAccents("Άλλες Απαλλαγές"))).toBe(true);
-    expect(/γαλλικ/i.test(stripGreekAccents("Απαλλαγή Γαλλικών"))).toBe(true);
-    expect(stripGreekAccents("Αρ.Μητρ")).toBe("Αρ.Μητρ");
+  it("deduplicates repeated codes (e.g. across import columns)", () => {
+    expect(splitKnownCodes(["ΔΞ", "ΔΞ", "ΧΧΧ", "ΧΧΧ"], catalog)).toEqual({
+      known: ["ΔΞ"],
+      unknown: ["ΧΧΧ"],
+    });
+  });
+
+  it("handles empty input and an empty catalog (unseeded install)", () => {
+    expect(splitKnownCodes([], catalog)).toEqual({ known: [], unknown: [] });
+    expect(splitKnownCodes(["ΔΞ"], new Set())).toEqual({ known: [], unknown: ["ΔΞ"] });
   });
 });
 

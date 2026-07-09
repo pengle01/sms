@@ -55,13 +55,21 @@ export const SPECIAL_ED_ACCOMMODATIONS: CodeEntry[] = [
 ];
 
 /**
- * Strip Greek diacritics (tonos / dialytika) so spreadsheet-header matching is
- * accent-insensitive — e.g. "Διευκόλυνση" → "Διευκολυνση", so a plain-vowel
- * pattern like /διευκολ/ matches the accented header. NFD splits each accented
- * letter into base + combining mark; we drop the combining marks (U+0300–036F).
+ * Split requested codes into the ones present in the catalog and the unknown
+ * rest, deduplicated. Both the Excel import and the edit form only ever attach
+ * catalog codes — an unknown code in Prisma's nested connect would throw P2025
+ * and fail the whole save, so callers filter first and report the dropped ones.
  */
-export function stripGreekAccents(s: string): string {
-  return (s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+export function splitKnownCodes(
+  codes: string[],
+  catalog: ReadonlySet<string>,
+): { known: string[]; unknown: string[] } {
+  const known: string[] = [];
+  const unknown: string[] = [];
+  for (const code of new Set(codes)) {
+    (catalog.has(code) ? known : unknown).push(code);
+  }
+  return { known, unknown };
 }
 
 /**

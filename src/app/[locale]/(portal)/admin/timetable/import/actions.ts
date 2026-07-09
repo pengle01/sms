@@ -194,10 +194,11 @@ export async function importSchedule(
     slotsLinked += res.count;
   }
 
-  // The timetable display and every teacher's schedule are derived from these
-  // slots — refresh their caches so the import shows immediately.
-  revalidatePath("/[locale]/(portal)/admin/timetable", "page");
-  revalidatePath("/[locale]/(portal)/teacher/attendance/schedule", "page");
+  // Slots feed the admin timetable, teacher schedules/mark sheets and group
+  // pages across portals. Imports are rare admin operations, so refresh
+  // everything rather than risk a stale page — same policy as the enrollment
+  // import.
+  revalidatePath("/", "layout");
 
   return { success: true, slotsCreated, slotsUpdated, slotsLinked, coursesCreated, groupsCreated, errors };
 }
