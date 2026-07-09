@@ -94,36 +94,50 @@ export function EditSpecialEdForm({
       <CardContent className="space-y-5">
         <div>
           <p className="text-sm font-medium text-slate-700 mb-2">Κωδικοί προβλημάτων</p>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="grid gap-x-4 gap-y-1.5 sm:grid-cols-2">
             {problemCatalog.map((c) => (
-              <button
+              <label
                 key={c.code}
-                type="button"
-                title={c.label}
-                onClick={() => toggle(problems, setProblems, c.code)}
                 className={cn(
-                  "px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors",
+                  "flex items-start gap-2 rounded-lg border px-2.5 py-1.5 text-sm cursor-pointer transition-colors",
                   problems.has(c.code)
-                    ? "bg-amber-600 text-white border-amber-600"
-                    : "bg-white text-slate-600 border-slate-200 hover:border-amber-400",
+                    ? "border-amber-300 bg-amber-50"
+                    : "border-transparent hover:bg-slate-50",
                 )}
               >
-                {c.code}
-              </button>
+                <input
+                  type="checkbox"
+                  checked={problems.has(c.code)}
+                  onChange={() => toggle(problems, setProblems, c.code)}
+                  className="mt-0.5 accent-amber-600"
+                />
+                <span>
+                  <span className="font-semibold">{c.code}</span>{" "}
+                  <span className="text-slate-600">— {c.label}</span>
+                </span>
+              </label>
             ))}
           </div>
         </div>
 
         <div>
           <p className="text-sm font-medium text-slate-700 mb-2">Διευκολύνσεις</p>
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             {accommodationCatalog.map((c) => (
-              <label key={c.code} className="flex items-start gap-2 text-sm cursor-pointer">
+              <label
+                key={c.code}
+                className={cn(
+                  "flex items-start gap-2 rounded-lg border px-2.5 py-1.5 text-sm cursor-pointer transition-colors",
+                  accoms.has(c.code)
+                    ? "border-emerald-300 bg-emerald-50"
+                    : "border-transparent hover:bg-slate-50",
+                )}
+              >
                 <input
                   type="checkbox"
                   checked={accoms.has(c.code)}
                   onChange={() => toggle(accoms, setAccoms, c.code)}
-                  className="mt-0.5"
+                  className="mt-0.5 accent-emerald-600"
                 />
                 <span><span className="font-semibold">{c.code}.</span> <span className="text-slate-600">{c.label}</span></span>
               </label>
