@@ -10,11 +10,6 @@ import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
 import { staffLoginAction, parentLoginAction } from "./actions";
 
-const ERROR_MESSAGES: Record<string, string> = {
-  MissingCredentials: "Please enter your email and password.",
-  InvalidCredentials: "Invalid email or password.",
-};
-
 interface LoginFormProps {
   locale: string;
   urlError?: string;
@@ -24,7 +19,11 @@ export async function LoginForm({ locale, urlError }: LoginFormProps) {
   const t = await getTranslations("auth");
   const tActivate = await getTranslations("activate");
 
-  const errorMessage = urlError ? (ERROR_MESSAGES[urlError] ?? `Error: ${urlError}`) : null;
+  const errorMessages: Record<string, string> = {
+    MissingCredentials: t("missingCredentials"),
+    InvalidCredentials: t("invalidCredentials"),
+  };
+  const errorMessage = urlError ? (errorMessages[urlError] ?? `Error: ${urlError}`) : null;
   const otherLocale = locale === "el" ? "en" : "el";
   const otherLocaleLabel = locale === "el" ? "EN" : "ΕΛ";
 
@@ -56,7 +55,7 @@ export async function LoginForm({ locale, urlError }: LoginFormProps) {
         <div className="rounded-2xl bg-white/10 border border-white/20 backdrop-blur-sm p-8 space-y-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-emerald-300 mb-1">
-              Email &amp; Password
+              {t("emailPassword")}
             </p>
             <h2 className="text-xl font-bold text-white">{t("staffLogin")}</h2>
             <p className="text-sm text-lime-300/70 mt-1">{t("parentLoginDesc")}</p>
@@ -112,7 +111,7 @@ export async function LoginForm({ locale, urlError }: LoginFormProps) {
         <div className="rounded-2xl bg-white/10 border border-white/20 backdrop-blur-sm p-8 space-y-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-emerald-300 mb-1">
-              Email &amp; Password
+              {t("emailPassword")}
             </p>
             <h2 className="text-xl font-bold text-white">{t("parentLogin")}</h2>
             <p className="text-sm text-lime-300/70 mt-1">{t("parentLoginDesc")}</p>
@@ -152,9 +151,9 @@ export async function LoginForm({ locale, urlError }: LoginFormProps) {
       </div>
 
       <p className="text-center text-sm text-emerald-300/60 mt-2">
-        New staff or chaperone?{" "}
+        {t("newStaffPrompt")}{" "}
         <Link href={`/${locale}/register`} className="text-lime-400 hover:text-lime-300 font-medium">
-          Create an account
+          {t("createAccount")}
         </Link>
       </p>
 

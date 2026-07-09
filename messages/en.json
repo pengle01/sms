@@ -38,7 +38,11 @@
     "password": "Password",
     "forgotPassword": "Forgot password?",
     "invalidCredentials": "Invalid email or password",
-    "accountDisabled": "Your account has been disabled"
+    "accountDisabled": "Your account has been disabled",
+    "missingCredentials": "Please enter your email and password.",
+    "emailPassword": "Email & Password",
+    "newStaffPrompt": "New staff or chaperone?",
+    "createAccount": "Create an account"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -182,6 +186,7 @@
     "room": "Room {room}",
     "markAttendance": "Mark →",
     "excursion": "Excursion",
+    "intercalary": "Intercalary",
     "substitution": "Substitution",
     "studyHall": "Duty study hall",
     "coveredToday": "Absent — covered",
@@ -673,7 +678,9 @@
       "Fri",
       "Sat"
     ],
-    "grades": "Grades →"
+    "grades": "Grades →",
+    "testDetails": "Test details",
+    "noSlots": "You have no timetable slots assigned. Ask an administrator to set up your timetable."
   },
   "testGrades": {
     "title": "Test Grades",

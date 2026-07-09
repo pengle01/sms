@@ -284,7 +284,7 @@ export default async function TeacherDashboardPage({
                         </span>
                         <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-medium text-purple-900">{homeroomGroup.name}</span>
-                          <span className="text-xs text-purple-400">Intercalary</span>
+                          <span className="text-xs text-purple-400">{t("intercalary")}</span>
                         </div>
                         {intercalaryMarked ? (
                           <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-purple-500" />
@@ -304,7 +304,7 @@ export default async function TeacherDashboardPage({
                         <span className="w-5 flex-shrink-0 text-center text-sm font-semibold text-purple-200">
                           {period}
                         </span>
-                        <span className="text-sm italic text-purple-300">Intercalary</span>
+                        <span className="text-sm italic text-purple-300">{t("intercalary")}</span>
                       </div>
                     );
                   }

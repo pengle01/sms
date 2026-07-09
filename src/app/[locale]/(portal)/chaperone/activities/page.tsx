@@ -38,16 +38,16 @@ export default async function ChaperoneActivitiesPage({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">My Activities</h2>
-        <p className="text-slate-500 mt-1">Activities you are assigned to escort.</p>
+        <h2 className="text-2xl font-bold text-slate-900">Οι Δραστηριότητές μου</h2>
+        <p className="text-slate-500 mt-1">Δραστηριότητες στις οποίες έχετε οριστεί συνοδός.</p>
       </div>
 
       {assignments.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Backpack className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-            <p className="text-slate-400 text-sm">You have no assigned activities yet.</p>
-            <p className="text-slate-400 text-xs mt-1">An administrator will assign you to an activity when needed.</p>
+            <p className="text-slate-400 text-sm">Δεν σας έχει ανατεθεί καμία δραστηριότητα ακόμη.</p>
+            <p className="text-slate-400 text-xs mt-1">Ένας διαχειριστής θα σας ορίσει σε δραστηριότητα όταν χρειαστεί.</p>
           </CardContent>
         </Card>
       ) : (
@@ -58,7 +58,7 @@ export default async function ChaperoneActivitiesPage({
                 <div className="flex items-start justify-between gap-4">
                   <CardTitle className="text-base">{activity.name}</CardTitle>
                   <Badge variant="outline" className="text-xs flex-shrink-0">
-                    Periods {activity.startPeriod}–{activity.endPeriod}
+                    Ώρες {activity.startPeriod}–{activity.endPeriod}
                   </Badge>
                 </div>
                 <div className="flex flex-wrap gap-3 text-sm text-slate-500 mt-1">
@@ -74,7 +74,7 @@ export default async function ChaperoneActivitiesPage({
                   )}
                   <span className="flex items-center gap-1">
                     <Users className="w-3.5 h-3.5" />
-                    {activity.participants.length} students
+                    {activity.participants.length} μαθητές
                   </span>
                 </div>
               </CardHeader>
@@ -84,7 +84,7 @@ export default async function ChaperoneActivitiesPage({
                     <div key={student.id} className="py-2 flex items-center justify-between">
                       <span className="text-sm text-slate-700">{student.user?.name ?? "—"}</span>
                       {!student.user.isActive && (
-                        <Badge variant="outline" className="text-xs text-slate-400">Inactive</Badge>
+                        <Badge variant="outline" className="text-xs text-slate-400">Ανενεργός</Badge>
                       )}
                     </div>
                   ))}

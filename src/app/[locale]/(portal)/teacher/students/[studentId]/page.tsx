@@ -20,8 +20,8 @@ import { AccessCodeCard } from "@/components/access/AccessCodeCard";
 import { SpecialEdCard } from "@/components/special-ed/SpecialEdCard";
 import type { Role } from "@/generated/prisma";
 
-const DOW_LABELS = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-const DOW_SHORT  = ["", "Mon", "Tue", "Wed", "Thu", "Fri"];
+const DOW_LABELS = ["", "Δευτέρα", "Τρίτη", "Τετάρτη", "Πέμπτη", "Παρασκευή"];
+const DOW_SHORT  = ["", "Δευ", "Τρι", "Τετ", "Πεμ", "Παρ"];
 
 const GENDER_LABEL: Record<string, string> = { MALE: "Άρρεν", FEMALE: "Θήλυ" };
 const ABSENCE_BADGE: Record<string, { label: string; cls: string }> = {
@@ -265,7 +265,7 @@ export default async function StudentSchedulePage({
             {student.group && <Badge variant="outline">{student.group.name}</Badge>}
             {student.subjectGroups.length > 0 && (
               <span className="text-xs text-slate-400">
-                +{student.subjectGroups.length} support group{student.subjectGroups.length > 1 ? "s" : ""}
+                +{student.subjectGroups.length} {student.subjectGroups.length > 1 ? "ομάδες μαθημάτων" : "ομάδα μαθήματος"}
               </span>
             )}
           </div>
@@ -282,7 +282,7 @@ export default async function StudentSchedulePage({
                 : "bg-white text-slate-500 hover:bg-slate-50"
             )}
           >
-            Today
+            Σήμερα
           </Link>
           <Link
             href={weekUrl}
@@ -293,7 +293,7 @@ export default async function StudentSchedulePage({
                 : "bg-white text-slate-500 hover:bg-slate-50"
             )}
           >
-            Week
+            Εβδομάδα
           </Link>
         </div>
         {canViewFull && (
@@ -601,7 +601,7 @@ export default async function StudentSchedulePage({
           {isSchoolDay ? (
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Today — {DOW_LABELS[todayDow]}</CardTitle>
+                <CardTitle className="text-base">Σήμερα — {DOW_LABELS[todayDow]}</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 <table className="w-full text-sm">
@@ -615,7 +615,7 @@ export default async function StudentSchedulePage({
                           {activity ? (
                             <td colSpan={3} className="px-5 py-3">
                               <span className="font-medium text-emerald-700">{activity}</span>
-                              <Badge variant="outline" className="ml-2 text-xs bg-emerald-50 text-emerald-700 border-emerald-200">Activity</Badge>
+                              <Badge variant="outline" className="ml-2 text-xs bg-emerald-50 text-emerald-700 border-emerald-200">Δραστηριότητα</Badge>
                             </td>
                           ) : slot ? (
                             <>
@@ -634,7 +634,7 @@ export default async function StudentSchedulePage({
               </CardContent>
             </Card>
           ) : (
-            <p className="text-sm text-slate-400">No school today — switch to Week view to see the timetable.</p>
+            <p className="text-sm text-slate-400">Δεν υπάρχουν μαθήματα σήμερα — δείτε την προβολή «Εβδομάδα» για το ωρολόγιο πρόγραμμα.</p>
           )}
         </>
       )}
@@ -645,18 +645,18 @@ export default async function StudentSchedulePage({
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <FlaskConical className="w-4 h-4" />
-              Upcoming Tests
+              Επερχόμενα Διαγωνίσματα
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Date</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Subject</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Group</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Period</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Type</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Ημερομηνία</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Μάθημα</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Τμήμα</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Ώρα</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Τύπος</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -677,7 +677,7 @@ export default async function StudentSchedulePage({
                           ? "text-xs bg-slate-800 text-white border-slate-800"
                           : "text-xs bg-slate-100 text-slate-600 border-slate-200"}
                       >
-                        {t.type === "BIG" ? "Big · 45 min" : "Small · 20 min"}
+                        {t.type === "BIG" ? "Μεγάλο · 45 λεπ" : "Μικρό · 20 λεπ"}
                       </Badge>
                     </td>
                   </tr>
@@ -692,7 +692,7 @@ export default async function StudentSchedulePage({
       {showWeek && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Weekly Timetable</CardTitle>
+            <CardTitle className="text-base">Εβδομαδιαίο Πρόγραμμα</CardTitle>
           </CardHeader>
           <CardContent className="p-0 overflow-x-auto">
             <table className="w-full text-sm min-w-[600px]">
@@ -724,7 +724,7 @@ export default async function StudentSchedulePage({
                           {activity ? (
                             <div>
                               <p className="font-medium text-emerald-700 leading-tight text-xs">{activity}</p>
-                              <Badge variant="outline" className="text-[10px] px-1 py-0 mt-0.5 bg-emerald-50 text-emerald-700 border-emerald-200">Activity</Badge>
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 mt-0.5 bg-emerald-50 text-emerald-700 border-emerald-200">Δραστηριότητα</Badge>
                             </div>
                           ) : slot ? (
                             <div className="space-y-0.5">
@@ -733,7 +733,7 @@ export default async function StudentSchedulePage({
                                 <p className="text-[11px] text-slate-500 leading-tight">{slot.staff?.scheduleName ?? slot.staffName ?? slot.staff?.user?.name}</p>
                               )}
                               {slot.room && (
-                                <p className="text-[11px] text-slate-400 leading-tight">Room {slot.room}</p>
+                                <p className="text-[11px] text-slate-400 leading-tight">Αίθ. {slot.room}</p>
                               )}
                               {slot.isSubjectGroup && (
                                 <Badge variant="outline" className="text-[10px] px-1 py-0">{slot.group.name}</Badge>
