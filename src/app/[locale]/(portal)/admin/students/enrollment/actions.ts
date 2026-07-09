@@ -42,98 +42,117 @@ export async function importEnrollment(
   const allGroups = await db.group.findMany({ select: { id: true, name: true } });
   for (const g of allGroups) groupCache.set(g.name, g.id);
 
+  // Parse every row up front so the DB work can run as a few batched queries
+  // instead of a round-trip per student (the real file has ~1000 rows).
+  // Row 0 is the header. Group codes start at col 4; deduplicate within the row.
+  const parsed: { line: number; name: string; registryId: string; codes: string[] }[] = [];
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i]!;
+    const name        = String(row[0] ?? "").trim();
+    const registryRaw = String(row[1] ?? "").trim();
+    if (!name || !registryRaw) continue; // blank row
+
+    const seen = new Set<string>();
+    parsed.push({
+      line: i + 1,
+      name,
+      // Col 1 comes in as a number from Excel — normalise to string.
+      registryId: registryRaw.replace(/\.0+$/, ""),
+      codes: row
+        .slice(4)
+        .map((c) => String(c).trim())
+        .filter((c) => c !== "" && !seen.has(c) && seen.add(c)),
+    });
+  }
+
   // Every group id the file mentions anywhere. Removal is scoped to this set:
   // the file is only authoritative for the kinds of groups it carries, so a
   // link to a group it never mentions (e.g. a support group assigned by hand
   // or by the admin checks tool) is never deleted by a re-import.
   const fileGroupIds = new Set<string>();
-  for (let i = 1; i < rows.length; i++) {
-    for (const cell of rows[i]!.slice(4)) {
-      const id = groupCache.get(String(cell).trim());
+  for (const r of parsed) {
+    for (const code of r.codes) {
+      const id = groupCache.get(code);
       if (id) fileGroupIds.add(id);
     }
   }
 
-  // Row 0 is the header; skip it.
-  for (let i = 1; i < rows.length; i++) {
-    const row = rows[i]!;
-    const name        = String(row[0] ?? "").trim();
-    const registryRaw = String(row[1] ?? "").trim();
+  // Batched lookups: registry number → profile id, then all current links.
+  const students = await db.studentProfile.findMany({
+    where: { studentId: { in: parsed.map((r) => r.registryId) } },
+    select: { id: true, studentId: true },
+  });
+  const profileByRegistry = new Map(students.map((s) => [s.studentId, s.id]));
+  const currentLinks = await db.studentGroup.findMany({
+    where: { studentProfileId: { in: students.map((s) => s.id) } },
+    select: { studentProfileId: true, groupId: true },
+  });
+  const currentByProfile = new Map<string, string[]>();
+  for (const l of currentLinks) {
+    const list = currentByProfile.get(l.studentProfileId) ?? [];
+    list.push(l.groupId);
+    currentByProfile.set(l.studentProfileId, list);
+  }
 
-    if (!name || !registryRaw) continue; // blank row
+  // Plan every student's sync in memory: add the groups in their row, remove
+  // the stale ones. Removal is suppressed on an incomplete or empty row and
+  // scoped to groups the file mentions (see enrollmentSyncPlan) so a typo or
+  // a partial export can't wipe enrollments.
+  const addLinks: Prisma.StudentGroupUncheckedCreateInput[] = [];
+  const removals: { studentProfileId: string; groupIds: string[] }[] = [];
+  for (const r of parsed) {
+    const profileId = profileByRegistry.get(r.registryId);
+    if (!profileId) {
+      errors.push(`Row ${r.line} (${r.name} / ${r.registryId}): student not found`);
+      continue;
+    }
 
-    // Col 1 comes in as a number from Excel — normalise to string.
-    const registryId = registryRaw.replace(/\.0+$/, "");
-
-    try {
-      const student = await db.studentProfile.findUnique({
-        where: { studentId: registryId },
-        select: { id: true },
-      });
-
-      if (!student) {
-        errors.push(`Row ${i + 1} (${name} / ${registryId}): student not found`);
+    let rowComplete = true;
+    const targetGroupIds: string[] = [];
+    for (const code of r.codes) {
+      const groupId = groupCache.get(code);
+      if (!groupId) {
+        errors.push(`Row ${r.line} (${r.name}): group "${code}" not found — import the schedule first`);
+        rowComplete = false; // incomplete target → sync will only add, never remove
         continue;
       }
-
-      // All group codes start at col 4 and continue to end of row. Deduplicate
-      // within the row; flag any code not already in the DB.
-      const seen = new Set<string>();
-      const codes = row
-        .slice(4)
-        .map((c) => String(c).trim())
-        .filter((c) => c !== "" && !seen.has(c) && seen.add(c));
-
-      let rowComplete = true;
-      const targetGroupIds: string[] = [];
-      for (const code of codes) {
-        const groupId = groupCache.get(code);
-        if (!groupId) {
-          errors.push(`Row ${i + 1} (${name}): group "${code}" not found — import the schedule first`);
-          rowComplete = false; // incomplete target → sync will only add, never remove
-          continue;
-        }
-        targetGroupIds.push(groupId);
-      }
-
-      // Sync this student's subject-group links to match the file: add the ones
-      // in the row, remove the stale ones. Removal is suppressed on an incomplete
-      // or empty row and scoped to groups the file mentions (see
-      // enrollmentSyncPlan) so a typo or a partial export can't wipe enrollments.
-      const current = await db.studentGroup.findMany({
-        where: { studentProfileId: student.id },
-        select: { groupId: true },
-      });
-      const { toAdd, toRemove } = enrollmentSyncPlan(
-        current.map((g) => g.groupId),
-        targetGroupIds,
-        rowComplete,
-        fileGroupIds,
-      );
-
-      if (toAdd.length > 0) {
-        await db.studentGroup.createMany({
-          data: toAdd.map(
-            (groupId) => ({ studentProfileId: student.id, groupId }) as Prisma.StudentGroupUncheckedCreateInput,
-          ),
-          skipDuplicates: true,
-        });
-        linksCreated += toAdd.length;
-      }
-      if (toRemove.length > 0) {
-        const del = await db.studentGroup.deleteMany({
-          where: { studentProfileId: student.id, groupId: { in: toRemove } },
-        });
-        linksRemoved += del.count;
-      }
-
-      studentsEnrolled++; // count every matched student; errors surface the detail
-    } catch (err) {
-      errors.push(
-        `Row ${i + 1} (${name}): ` +
-        (err instanceof Error ? err.message : String(err))
-      );
+      targetGroupIds.push(groupId);
     }
+
+    const { toAdd, toRemove } = enrollmentSyncPlan(
+      currentByProfile.get(profileId) ?? [],
+      targetGroupIds,
+      rowComplete,
+      fileGroupIds,
+    );
+    for (const groupId of toAdd) addLinks.push({ studentProfileId: profileId, groupId });
+    if (toRemove.length > 0) removals.push({ studentProfileId: profileId, groupIds: toRemove });
+    studentsEnrolled++; // count every matched student; errors surface the detail
+  }
+
+  try {
+    if (addLinks.length > 0) {
+      const created = await db.studentGroup.createMany({ data: addLinks, skipDuplicates: true });
+      linksCreated = created.count;
+    }
+    // deleteMany can't key on (student, group) pairs directly, so batch the
+    // pair conditions through OR in chunks instead of one query per student.
+    const CHUNK = 100;
+    for (let i = 0; i < removals.length; i += CHUNK) {
+      const del = await db.studentGroup.deleteMany({
+        where: {
+          OR: removals.slice(i, i + CHUNK).map((r) => ({
+            studentProfileId: r.studentProfileId,
+            groupId: { in: r.groupIds },
+          })),
+        },
+      });
+      linksRemoved += del.count;
+    }
+  } catch (err) {
+    errors.push("Import failed while writing: " + (err instanceof Error ? err.message : String(err)));
+    if (linksCreated > 0 || linksRemoved > 0) revalidatePath("/", "layout");
+    return { success: false, studentsEnrolled, linksCreated, linksRemoved, errors };
   }
 
   // Enrollment feeds rosters, attendance, locate and special-ed support across

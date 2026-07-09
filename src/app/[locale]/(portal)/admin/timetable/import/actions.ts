@@ -63,6 +63,9 @@ export async function importSchedule(
 
   let slotsCreated = 0, slotsUpdated = 0, coursesCreated = 0, groupsCreated = 0;
   const errors: string[] = [];
+  // Staff names seen in this file — the post-import re-link only needs to look
+  // at these teachers' slots, not the whole table.
+  const importedStaffNames = new Set<string>();
 
   // Cache to avoid redundant DB round-trips within the same import.
   const courseCache = new Map<string, string>(); // code → id
@@ -106,6 +109,7 @@ export async function importSchedule(
 
     const staffName = String(teacherRow[0] ?? "").trim();
     if (!staffName) continue; // blank / summary row
+    importedStaffNames.add(staffName);
 
     for (let col = SLOT_START; col <= SLOT_END; col++) {
       const groupCell  = String(teacherRow[col] ?? "").trim();
@@ -169,12 +173,15 @@ export async function importSchedule(
   let slotsLinked = 0;
   const [unclaimed, profiles] = await Promise.all([
     db.timetableSlot.findMany({
-      where: { staffId: null, staffName: { not: null } },
+      // Only this import's teachers — slots for other names can't have changed.
+      where: { staffId: null, staffName: { in: [...importedStaffNames] } },
       select: { id: true, staffName: true, staffId: true },
     }),
     db.staffProfile.findMany({
-      // Only profiles with a live login: a detached (deleted-user) or seeded
-      // profile must not re-grab slots — that blocks re-registration of the name.
+      // ALL live profiles, not just this import's names: ambiguity detection in
+      // slotLinkAssignments must see every profile sharing a scheduleName. Only
+      // profiles with a live login may claim slots — a detached (deleted-user)
+      // or seeded profile re-grabbing them would block re-registration.
       where: { scheduleName: { not: null }, userId: { not: null } },
       select: { id: true, scheduleName: true, userId: true },
     }),
@@ -186,12 +193,14 @@ export async function importSchedule(
     list.push(slotId);
     byProfile.set(profileId, list);
   }
-  for (const [profileId, slotIds] of byProfile) {
-    const res = await db.timetableSlot.updateMany({
-      where: { id: { in: slotIds } },
-      data: { staffId: profileId },
-    });
-    slotsLinked += res.count;
+  if (byProfile.size > 0) {
+    // One pipelined batch instead of a round-trip per profile.
+    const linked = await db.$transaction(
+      [...byProfile].map(([profileId, slotIds]) =>
+        db.timetableSlot.updateMany({ where: { id: { in: slotIds } }, data: { staffId: profileId } }),
+      ),
+    );
+    slotsLinked = linked.reduce((n, r) => n + r.count, 0);
   }
 
   // Slots feed the admin timetable, teacher schedules/mark sheets and group
