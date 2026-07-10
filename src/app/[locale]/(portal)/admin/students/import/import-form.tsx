@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { importStudents, type ImportResult } from "./actions";
 import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 const initial: ImportResult | null = null;
 
 export function ImportForm() {
+  const t = useTranslations("adminStudents");
   const [result, action, pending] = useActionState(importStudents, initial);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -20,8 +22,8 @@ export function ImportForm() {
           onClick={() => inputRef.current?.click()}
         >
           <FileSpreadsheet className="w-10 h-10 mx-auto mb-3 text-slate-400" />
-          <p className="text-sm font-medium text-slate-700">Κάντε κλικ για επιλογή αρχείου Excel</p>
-          <p className="text-xs text-slate-400 mt-1">.xlsx — εξαγωγή μητρώου μαθητών</p>
+          <p className="text-sm font-medium text-slate-700">{t("importClickToChoose")}</p>
+          <p className="text-xs text-slate-400 mt-1">{t("importFileHint")}</p>
           <input
             ref={inputRef}
             type="file"
@@ -38,9 +40,9 @@ export function ImportForm() {
           className="w-full h-10 rounded-lg bg-emerald-600 text-white text-sm font-medium flex items-center justify-center gap-2 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
         >
           {pending ? (
-            <><Loader2 className="w-4 h-4 animate-spin" /> Γίνεται εισαγωγή…</>
+            <><Loader2 className="w-4 h-4 animate-spin" /> {t("importing")}</>
           ) : (
-            <><Upload className="w-4 h-4" /> Εισαγωγή</>
+            <><Upload className="w-4 h-4" /> {t("importButton")}</>
           )}
         </button>
       </form>
@@ -52,28 +54,28 @@ export function ImportForm() {
               <>
                 <div className="flex items-center gap-2 text-green-700 font-medium">
                   <CheckCircle2 className="w-5 h-5" />
-                  Η εισαγωγή ολοκληρώθηκε
+                  {t("importComplete")}
                 </div>
                 <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                  <Stat label="Μαθητές που δημιουργήθηκαν" value={result.studentsCreated} />
-                  <Stat label="Μαθητές που ενημερώθηκαν"   value={result.studentsUpdated} />
-                  <Stat label="Τμήματα που δημιουργήθηκαν" value={result.groupsCreated} />
-                  <Stat label="Επαφές SMS"                 value={result.smsContactsCreated} />
-                  <Stat label="Επισημασμένοι (SMS)"        value={result.flaggedStudents} />
-                  <Stat label="Γραμμές που παραλείφθηκαν"  value={result.skipped} />
+                  <Stat label={t("statStudentsCreated")} value={result.studentsCreated} />
+                  <Stat label={t("statStudentsUpdated")} value={result.studentsUpdated} />
+                  <Stat label={t("statGroupsCreated")}   value={result.groupsCreated} />
+                  <Stat label={t("statSmsContacts")}     value={result.smsContactsCreated} />
+                  <Stat label={t("statFlaggedSms")}      value={result.flaggedStudents} />
+                  <Stat label={t("statRowsSkipped")}     value={result.skipped} />
                 </dl>
               </>
             ) : (
               <div className="flex items-center gap-2 text-red-700 font-medium">
                 <AlertCircle className="w-5 h-5" />
-                Η εισαγωγή απέτυχε
+                {t("importFailed")}
               </div>
             )}
 
             {result.errors.length > 0 && (
               <div className="space-y-1">
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                  {result.errors.length} {result.errors.length > 1 ? "σφάλματα" : "σφάλμα"}
+                  {t("errorCount", { count: result.errors.length })}
                 </p>
                 <ul className="text-xs text-red-700 space-y-1 max-h-48 overflow-y-auto font-mono bg-red-50 rounded-lg p-3">
                   {result.errors.map((e, i) => <li key={i}>{e}</li>)}
@@ -85,7 +87,7 @@ export function ImportForm() {
             {result.flagged.length > 0 && (
               <div className="space-y-1">
                 <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">
-                  {result.flagged.length} {result.flagged.length > 1 ? "μαθητές" : "μαθητής"} προς έλεγχο (SMS)
+                  {t("flaggedCount", { count: result.flagged.length })}
                 </p>
                 <ul className="text-xs space-y-1 max-h-56 overflow-y-auto bg-amber-50 border border-amber-200 rounded-lg p-3">
                   {result.flagged.map((f, i) => (
@@ -98,8 +100,7 @@ export function ImportForm() {
                   ))}
                 </ul>
                 <p className="text-xs text-slate-400">
-                  Διορθώστε τα από τη σελίδα του μαθητή (ορίστε προεπιλεγμένο παραλήπτη SMS ή προσθέστε αριθμό).
-                  Εμφανίζονται επίσης στο Διαχείριση → Έλεγχοι.
+                  {t("importFlaggedNote")}
                 </p>
               </div>
             )}

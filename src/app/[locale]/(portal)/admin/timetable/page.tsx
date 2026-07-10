@@ -2,9 +2,11 @@ import { getSuperAdminAuth } from "@/server/authz";
 import { db } from "@/server/db";
 import Link from "next/link";
 import { Upload, CalendarDays } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 
-const DAYS = ["Δευ", "Τρι", "Τετ", "Πεμ", "Παρ"] as const;
 const PERIODS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+
+type Translator = Awaited<ReturnType<typeof getTranslations>>;
 
 export default async function TimetablePage({
   params,
@@ -21,6 +23,11 @@ export default async function TimetablePage({
 
   const isSuperAdmin = !!adminAuth;
   const view = sp.view ?? "group";
+
+  const t = await getTranslations("adminTimetable");
+  const tTests = await getTranslations("tests");
+  // Reuse the shared Sun-first day-name array; keep Mon–Fri.
+  const DAYS = (tTests.raw("dow") as string[]).slice(1, 6);
 
   const [groups, teacherNames, slotCount] = await Promise.all([
     db.group.findMany({ orderBy: [{ grade: "asc" }, { name: "asc" }] }),
@@ -78,14 +85,14 @@ export default async function TimetablePage({
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
-        <h2 className="text-2xl font-bold text-slate-900">Ωρολόγιο Πρόγραμμα</h2>
+        <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>
         {isSuperAdmin && (
           <Link
             href={`/${locale}/admin/timetable/import`}
             className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors"
           >
             <Upload className="w-4 h-4" />
-            Εισαγωγή Excel
+            {t("importExcel")}
           </Link>
         )}
       </div>
@@ -93,10 +100,10 @@ export default async function TimetablePage({
       {slotCount === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 gap-3 text-center border-2 border-dashed border-slate-200 rounded-xl">
           <CalendarDays className="w-10 h-10 text-slate-300" />
-          <p className="text-slate-500 text-sm">Δεν έχει εισαχθεί ακόμη πρόγραμμα.</p>
+          <p className="text-slate-500 text-sm">{t("noSchedule")}</p>
           {isSuperAdmin && (
             <Link href={`/${locale}/admin/timetable/import`} className="text-sm text-emerald-600 hover:underline">
-              Εισαγωγή του Excel προγράμματος →
+              {t("importScheduleLink")}
             </Link>
           )}
         </div>
@@ -110,27 +117,27 @@ export default async function TimetablePage({
                 href={makeUrl({ view: "group" })}
                 className={`px-4 py-1.5 font-medium transition-colors ${view === "group" ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50"}`}
               >
-                Ανά τμήμα
+                {t("byGroup")}
               </Link>
               <Link
                 href={makeUrl({ view: "teacher" })}
                 className={`px-4 py-1.5 font-medium transition-colors ${view === "teacher" ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50"}`}
               >
-                Ανά καθηγητή
+                {t("byTeacher")}
               </Link>
             </div>
 
             {/* Selector */}
             {view === "group" ? (
-              <GroupSelector groups={groups} selected={selectedGroupId} locale={locale} view={view} teacher={selectedTeacher} />
+              <GroupSelector groups={groups} selected={selectedGroupId} locale={locale} view={view} teacher={selectedTeacher} t={t} />
             ) : (
-              <TeacherSelector teachers={teacherNames.map(t => t.staffName!)} selected={selectedTeacher} locale={locale} view={view} group={selectedGroupId} />
+              <TeacherSelector teachers={teacherNames.map(tn => tn.staffName!)} selected={selectedTeacher} locale={locale} view={view} group={selectedGroupId} t={t} />
             )}
           </div>
 
           {/* Grid */}
           {slots.length === 0 ? (
-            <p className="text-sm text-slate-400 py-8 text-center">Δεν υπάρχουν ώρες για αυτή την επιλογή.</p>
+            <p className="text-sm text-slate-400 py-8 text-center">{t("noSlots")}</p>
           ) : (
             <div className="overflow-x-auto rounded-xl border border-slate-200">
               <table className="min-w-full text-sm border-collapse">
@@ -162,7 +169,7 @@ export default async function TimetablePage({
                                   ? slot.staffName && <p className="text-xs text-slate-500 truncate">{slot.staffName}</p>
                                   : slot.group && <p className="text-xs text-emerald-600 font-mono">{slot.group.name}</p>
                                 }
-                                {slot.room && <p className="text-xs text-slate-400">Αίθ. {slot.room}</p>}
+                                {slot.room && <p className="text-xs text-slate-400">{t("roomShort", { room: slot.room })}</p>}
                               </div>
                             ) : (
                               <span className="text-slate-200 text-xs">—</span>
@@ -177,7 +184,7 @@ export default async function TimetablePage({
             </div>
           )}
 
-          <p className="text-xs text-slate-400">{slotCount} συνολικές ώρες σε {groups.length} τμήματα</p>
+          <p className="text-xs text-slate-400">{t("totals", { slots: slotCount, groups: groups.length })}</p>
         </>
       )}
     </div>
@@ -187,13 +194,14 @@ export default async function TimetablePage({
 // ── Selector components (server, use <form> + GET for zero-JS navigation) ────
 
 function GroupSelector({
-  groups, selected, locale, view, teacher,
+  groups, selected, locale, view, teacher, t,
 }: {
   groups: { id: string; name: string; grade: number }[];
   selected: string | null;
   locale: string;
   view: string;
   teacher: string | null;
+  t: Translator;
 }) {
   return (
     <form method="get" action={`/${locale}/admin/timetable`} className="flex items-center gap-2">
@@ -207,7 +215,7 @@ function GroupSelector({
       >
         {groups.map((g) => (
           <option key={g.id} value={g.id}>
-            {g.name} — Τάξη {g.grade === 1 ? "Α΄" : g.grade === 2 ? "Β΄" : g.grade === 3 ? "Γ΄" : g.grade}
+            {g.name} — {t("gradeLabel", { grade: String(g.grade) })}
           </option>
         ))}
       </select>
@@ -215,20 +223,21 @@ function GroupSelector({
         type="submit"
         className="h-9 px-3 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors"
       >
-        Μετάβαση
+        {t("go")}
       </button>
     </form>
   );
 }
 
 function TeacherSelector({
-  teachers, selected, locale, view, group,
+  teachers, selected, locale, view, group, t,
 }: {
   teachers: string[];
   selected: string | null;
   locale: string;
   view: string;
   group: string | null;
+  t: Translator;
 }) {
   return (
     <form method="get" action={`/${locale}/admin/timetable`} className="flex items-center gap-2">
@@ -239,15 +248,15 @@ function TeacherSelector({
         defaultValue={selected ?? ""}
         className="h-9 pl-3 pr-8 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
       >
-        {teachers.map((t) => (
-          <option key={t} value={t}>{t}</option>
+        {teachers.map((name) => (
+          <option key={name} value={name}>{name}</option>
         ))}
       </select>
       <button
         type="submit"
         className="h-9 px-3 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors"
       >
-        Μετάβαση
+        {t("go")}
       </button>
     </form>
   );

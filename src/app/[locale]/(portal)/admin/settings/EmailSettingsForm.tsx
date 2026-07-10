@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { trpc } from "@/trpc/client";
 import { toast } from "sonner";
 import { Eye, EyeOff, Send, Loader2 } from "lucide-react";
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function EmailSettingsForm({ initial }: Props) {
+  const t = useTranslations("adminSettings");
   const [host, setHost] = useState(initial.host);
   const [port, setPort] = useState(initial.port);
   const [user, setUser] = useState(initial.user);
@@ -32,7 +34,7 @@ export function EmailSettingsForm({ initial }: Props) {
   });
 
   const test = trpc.settings.sendTestEmail.useMutation({
-    onSuccess: (r) => (r.success ? toast.success("Το δοκιμαστικό email στάλθηκε") : toast.error(r.error ?? "Η αποστολή απέτυχε")),
+    onSuccess: (r) => (r.success ? toast.success(t("testEmailSent")) : toast.error(r.error ?? t("sendFailed"))),
     onError: (e) => toast.error(e.message),
   });
 
@@ -64,59 +66,56 @@ export function EmailSettingsForm({ initial }: Props) {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${configured ? "bg-green-500" : "bg-slate-300"}`} />
-        <span className="text-xs text-slate-500">{configured ? "Ρυθμισμένο" : "Μη ρυθμισμένο"}</span>
+        <span className="text-xs text-slate-500">{configured ? t("configured") : t("notConfigured")}</span>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-slate-700">Διακομιστής SMTP</label>
+          <label className="text-sm font-medium text-slate-700">{t("smtpHost")}</label>
           <input value={host} disabled={!editing} onChange={(e) => setHost(e.target.value)} placeholder="smtp.office365.com" className={field} />
         </div>
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-slate-700">Θύρα</label>
+          <label className="text-sm font-medium text-slate-700">{t("port")}</label>
           <input value={port} disabled={!editing} onChange={(e) => setPort(e.target.value)} placeholder="587" className={field} />
         </div>
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-slate-700">Όνομα χρήστη</label>
+        <label className="text-sm font-medium text-slate-700">{t("username")}</label>
         <input value={user} disabled={!editing} onChange={(e) => setUser(e.target.value)} placeholder="resend" className={field} />
-        <p className="text-xs text-slate-400">Resend: το κυριολεκτικό όνομα χρήστη <code>resend</code>. (Αργότερα με M365: το email της θυρίδας.)</p>
+        <p className="text-xs text-slate-400">{t.rich("usernameHint", { code: (chunks) => <code>{chunks}</code> })}</p>
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-sm font-medium text-slate-700">Κωδικός / Κλειδί API</label>
+        <label className="text-sm font-medium text-slate-700">{t("passwordApiKey")}</label>
         <div className="relative">
           <input
             type={showPass ? "text" : "password"}
             value={pass}
             disabled={!editing}
             onChange={(e) => setPass(e.target.value)}
-            placeholder="Κλειδί API Resend (re_…)"
+            placeholder={t("passwordPlaceholder")}
             className={`${field} pr-9`}
           />
           <button type="button" onClick={() => setShowPass((v) => !v)} className="absolute right-2 top-2 text-slate-400 hover:text-slate-600">
             {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
         </div>
-        <p className="text-xs text-slate-400">
-          Resend: επικολλήστε ένα κλειδί API από το resend.com → API Keys. (Αργότερα με M365: ο κωδικός της θυρίδας / App Password.)
-        </p>
+        <p className="text-xs text-slate-400">{t("passwordHint")}</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-slate-700">Διεύθυνση αποστολέα</label>
+          <label className="text-sm font-medium text-slate-700">{t("fromAddress")}</label>
           <input type="email" value={from} disabled={!editing} onChange={(e) => setFrom(e.target.value)} placeholder="noreply@your-verified-domain" className={field} />
         </div>
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-slate-700">Όνομα αποστολέα (εμφανίζεται στους παραλήπτες)</label>
-          <input value={fromName} disabled={!editing} onChange={(e) => setFromName(e.target.value)} placeholder="Όνομα σχολείου" className={field} />
+          <label className="text-sm font-medium text-slate-700">{t("fromNameLabel")}</label>
+          <input value={fromName} disabled={!editing} onChange={(e) => setFromName(e.target.value)} placeholder={t("fromNamePlaceholder")} className={field} />
         </div>
       </div>
       <p className="text-xs text-slate-400 -mt-1">
-        Το Resend παραδίδει σε οποιονδήποτε μόνο από domain που έχετε επαληθεύσει στο Resend (DNS). Για απλή δοκιμή, χρησιμοποιήστε
-        {" "}<code>onboarding@resend.dev</code> ως διεύθυνση αποστολέα και στείλτε στο email εγγραφής σας στο Resend.
+        {t.rich("deliverabilityNote", { code: (chunks) => <code>{chunks}</code> })}
       </p>
 
       <EditControls
@@ -134,7 +133,7 @@ export function EmailSettingsForm({ initial }: Props) {
 
       {/* Send a test email with the current values */}
       <div className="border-t border-slate-100 pt-4 space-y-1.5">
-        <label className="text-sm font-medium text-slate-700">Αποστολή δοκιμαστικού email</label>
+        <label className="text-sm font-medium text-slate-700">{t("sendTestEmail")}</label>
         <div className="flex gap-2">
           <input
             type="email"
@@ -150,10 +149,10 @@ export function EmailSettingsForm({ initial }: Props) {
             className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-slate-800 text-white text-sm font-medium hover:bg-slate-900 disabled:opacity-50 flex-shrink-0"
           >
             {test.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            Αποστολή
+            {t("send")}
           </button>
         </div>
-        <p className="text-xs text-slate-400">Χρησιμοποιεί τις παραπάνω τιμές (αποθηκεύστε πρώτα για να γίνουν μόνιμες).</p>
+        <p className="text-xs text-slate-400">{t("testUsesValuesHint")}</p>
       </div>
     </div>
   );

@@ -9,6 +9,7 @@ import { NewNoticeDialog } from "./NewNoticeDialog";
 import { AcknowledgeButton } from "./AcknowledgeButton";
 import { isStaff } from "@/lib/rbac";
 import { fmtDisplayDateTime } from "@/lib/dates";
+import { getTranslations } from "next-intl/server";
 import type { Role } from "@/generated/prisma";
 
 export default async function NoticeboardPage({
@@ -22,6 +23,7 @@ export default async function NoticeboardPage({
 
   const role = session.user.role as Role;
   const canPost = isStaff(role);
+  const t = await getTranslations("adminNoticeboard");
 
   const notices = await db.notice.findMany({
     where: canPost ? {} : { staffOnly: false },
@@ -37,8 +39,8 @@ export default async function NoticeboardPage({
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Πίνακας Ανακοινώσεων</h2>
-          <p className="text-slate-500 text-sm mt-1">{notices.length} {notices.length === 1 ? "ανακοίνωση" : "ανακοινώσεις"}</p>
+          <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>
+          <p className="text-slate-500 text-sm mt-1">{t("noticeCount", { count: notices.length })}</p>
         </div>
         {canPost && <NewNoticeDialog locale={locale} />}
       </div>
@@ -46,7 +48,7 @@ export default async function NoticeboardPage({
       {notices.length === 0 && (
         <div className="flex flex-col items-center justify-center py-24 text-slate-400">
           <Bell className="w-12 h-12 mb-3 opacity-30" />
-          <p>Δεν έχουν αναρτηθεί ανακοινώσεις</p>
+          <p>{t("empty")}</p>
         </div>
       )}
 
@@ -70,12 +72,12 @@ export default async function NoticeboardPage({
                       <h3 className="font-semibold text-slate-900">{notice.title}</h3>
                       {notice.urgent && (
                         <Badge className="bg-red-100 text-red-700 border-red-200 text-xs" variant="outline">
-                          Επείγον
+                          {t("urgent")}
                         </Badge>
                       )}
                       {notice.staffOnly && (
                         <Badge className="bg-slate-100 text-slate-600 border-slate-200 text-xs" variant="outline">
-                          Μόνο προσωπικό
+                          {t("staffOnly")}
                         </Badge>
                       )}
                       {notice.tags.map((tag) => (

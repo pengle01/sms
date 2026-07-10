@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { getTranslations } from "next-intl/server";
 import { getSuperAdminAuth } from "@/server/authz";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,10 +19,11 @@ export default async function StudentsPage({
   params: Promise<{ locale: string }>;
   searchParams: Promise<{ search?: string; grade?: string; groupId?: string; page?: string }>;
 }) {
-  const [{ locale }, { search, grade, groupId, page: pageStr }, adminAuth] = await Promise.all([
+  const [{ locale }, { search, grade, groupId, page: pageStr }, adminAuth, t] = await Promise.all([
     params,
     searchParams,
     getSuperAdminAuth(),
+    getTranslations("adminStudents"),
   ]);
 
   const gradeNum = grade ? parseInt(grade) : undefined;
@@ -98,8 +100,8 @@ export default async function StudentsPage({
       {/* Header */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Μαθητές</h2>
-          <p className="text-slate-500 text-sm mt-1">{allTotal} εγγεγραμμένοι μαθητές</p>
+          <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>
+          <p className="text-slate-500 text-sm mt-1">{t("enrolledCount", { count: allTotal })}</p>
         </div>
         {adminAuth && (
           <div className="flex items-center gap-2 flex-wrap">
@@ -109,14 +111,14 @@ export default async function StudentsPage({
               className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50"
             >
               <Upload className="w-4 h-4" />
-              Εισαγωγή μαθητών
+              {t("importStudents")}
             </Link>
             <Link
               href={`/${locale}/admin/students/enrollment`}
               className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
             >
               <Upload className="w-4 h-4" />
-              Εισαγωγή κατανομής
+              {t("importEnrollment")}
             </Link>
           </div>
         )}
@@ -124,7 +126,7 @@ export default async function StudentsPage({
 
       {/* Year selector */}
       <div className="space-y-1.5">
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Τάξη</p>
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("yearLabel")}</p>
         <div className="flex gap-2 flex-wrap">
           <Link
             href={buildHref({ grade: undefined, groupId: undefined, page: undefined })}
@@ -135,7 +137,7 @@ export default async function StudentsPage({
                 : "bg-white text-slate-600 border-slate-200 hover:border-emerald-400 hover:text-emerald-700"
             )}
           >
-            Όλο το σχολείο
+            {t("allSchool")}
           </Link>
           {[1, 2, 3].map((g) => (
             <Link
@@ -148,7 +150,7 @@ export default async function StudentsPage({
                   : "bg-white text-slate-600 border-slate-200 hover:border-emerald-400 hover:text-emerald-700"
               )}
             >
-              {["Α΄", "Β΄", "Γ΄"][g - 1]} Τάξη
+              {t(`grade${g as 1 | 2 | 3}`)}
             </Link>
           ))}
         </div>
@@ -157,7 +159,7 @@ export default async function StudentsPage({
       {/* Homegroup selector */}
       {gradeNum && homeroomGroups.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Τμήμα</p>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("homegroupLabel")}</p>
           <div className="flex gap-2 flex-wrap">
             {homeroomGroups.map((g) => (
               <Link
@@ -186,7 +188,7 @@ export default async function StudentsPage({
           <SuggestInput
             name="search"
             defaultValue={search}
-            placeholder="Αναζήτηση με όνομα…"
+            placeholder={t("searchPlaceholder")}
             suggestions={suggestions}
             className="w-full h-9 pl-9 pr-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
@@ -196,14 +198,14 @@ export default async function StudentsPage({
             href={buildHref({ search: undefined, page: undefined })}
             className="h-9 px-3 rounded-lg border border-slate-200 text-sm text-slate-400 hover:text-slate-700 flex items-center"
           >
-            Καθαρισμός
+            {t("clear")}
           </Link>
         )}
       </form>
 
       {/* Results label + Table — only when a homegroup or All school is selected */}
       {!showTable && (
-        <p className="text-sm text-slate-400 py-4 text-center">Επιλέξτε τμήμα για να δείτε τους μαθητές</p>
+        <p className="text-sm text-slate-400 py-4 text-center">{t("selectHomegroup")}</p>
       )}
 
       {showTable && (
@@ -211,10 +213,10 @@ export default async function StudentsPage({
         {selectedGroup ? (
           <><span className="font-medium text-slate-700">{selectedGroup.name}</span> · </>
         ) : gradeNum ? (
-          <><span className="font-medium text-slate-700">{["Α΄", "Β΄", "Γ΄"][gradeNum - 1]} Τάξη</span> · </>
+          <><span className="font-medium text-slate-700">{t(`grade${gradeNum as 1 | 2 | 3}`)}</span> · </>
         ) : null}
-        {total} {total !== 1 ? "μαθητές" : "μαθητής"}
-        {search && <> {total !== 1 ? "που αντιστοιχούν" : "που αντιστοιχεί"} σε «{search}»</>}
+        {t("studentCount", { count: total })}
+        {search && <> {t("matchingSearch", { count: total, search })}</>}
       </p>
       )}
 
@@ -224,10 +226,10 @@ export default async function StudentsPage({
           <table className="w-full text-sm min-w-[560px]">
             <thead>
               <tr className="border-b border-slate-100">
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Όνομα</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Αρ. Μητρώου</th>
-                {!groupId && <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Τμήμα</th>}
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Κατάσταση</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("name")}</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("studentIdLabel")}</th>
+                {!groupId && <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("group")}</th>}
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("status")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -249,7 +251,7 @@ export default async function StudentsPage({
                         ? "bg-green-50 text-green-700 border-green-200 text-xs"
                         : "bg-red-50 text-red-700 border-red-200 text-xs"}
                     >
-                      {s.user.isActive ? "Ενεργός" : "Ανενεργός"}
+                      {s.user.isActive ? t("active") : t("inactive")}
                     </Badge>
                   </td>
                 </StudentRow>
@@ -258,7 +260,7 @@ export default async function StudentsPage({
                 <tr>
                   <td colSpan={groupId ? 3 : 4} className="px-5 py-16 text-center text-slate-400">
                     <GraduationCap className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                    Δεν βρέθηκαν μαθητές
+                    {t("noStudentsFound")}
                   </td>
                 </tr>
               )}
@@ -271,18 +273,18 @@ export default async function StudentsPage({
       {/* Pagination */}
       {showTable && totalPages > 1 && (
         <div className="flex items-center justify-between text-sm text-slate-600">
-          <span>Σελίδα {page} από {totalPages}</span>
+          <span>{t("pageOf", { page, totalPages })}</span>
           <div className="flex gap-2">
             {page > 1 && (
               <Link href={buildHref({ page: String(page - 1) })}
                 className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50">
-                Προηγούμενη
+                {t("previous")}
               </Link>
             )}
             {page < totalPages && (
               <Link href={buildHref({ page: String(page + 1) })}
                 className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50">
-                Επόμενη
+                {t("next")}
               </Link>
             )}
           </div>

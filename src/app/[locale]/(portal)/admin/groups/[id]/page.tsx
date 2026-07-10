@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { GraduationCap, Users, ArrowLeft, ClipboardList } from "lucide-react";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { utcMidnight } from "@/lib/dates";
 
 export default async function GroupDetailPage({
@@ -57,7 +58,10 @@ export default async function GroupDetailPage({
     },
   });
 
-  const DAY_NAMES = ["", "Δευ", "Τρι", "Τετ", "Πεμ", "Παρ"];
+  const t = await getTranslations("adminGroupDetail");
+  const tTests = await getTranslations("tests");
+  // Reuse the shared Sun-first day-name array; index 1–5 = Mon–Fri.
+  const DAY_NAMES = tTests.raw("dow") as string[];
 
   const byDay = group.timetableSlots.reduce<Record<number, typeof group.timetableSlots>>((acc, slot) => {
     (acc[slot.dayOfWeek] ??= []).push(slot);
@@ -72,7 +76,7 @@ export default async function GroupDetailPage({
           className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700"
         >
           <ArrowLeft className="w-4 h-4" />
-          Τμήματα
+          {t("back")}
         </Link>
       </div>
 
@@ -80,9 +84,9 @@ export default async function GroupDetailPage({
         <div>
           <h2 className="text-2xl font-bold text-slate-900">{group.name}</h2>
           <p className="text-slate-500 text-sm mt-1">
-            Τάξη {group.grade === 1 ? "Α΄" : group.grade === 2 ? "Β΄" : group.grade === 3 ? "Γ΄" : group.grade}
-            {group.students.length > 0 && ` · ${group.students.length} μαθητές τμήματος`}
-            {group.studentGroups.length > 0 && ` · ${group.studentGroups.length} εγγεγραμμένοι`}
+            {t("gradeLabel", { grade: String(group.grade) })}
+            {group.students.length > 0 && ` · ${t("homeroomCount", { count: group.students.length })}`}
+            {group.studentGroups.length > 0 && ` · ${t("enrolledCount", { count: group.studentGroups.length })}`}
             {group.homeroomTeacher && ` · ${staffDisplayName(group.homeroomTeacher)}`}
             {group.homeroomHeadteacher && ` · ${staffDisplayName(group.homeroomHeadteacher)} (B')`}
           </p>
@@ -90,14 +94,14 @@ export default async function GroupDetailPage({
         <div className="flex items-center gap-3 flex-wrap">
           <div className="text-center px-4 py-2 bg-red-50 rounded-xl">
             <p className="text-xl font-bold text-red-600">{todayAbsences}</p>
-            <p className="text-xs text-slate-500">Απόντες σήμερα</p>
+            <p className="text-xs text-slate-500">{t("absentToday")}</p>
           </div>
           <Link
             href={`/${locale}/admin/attendance?groupId=${id}`}
             className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-slate-200 text-sm text-slate-700 hover:bg-slate-50"
           >
             <ClipboardList className="w-4 h-4" />
-            Προβολή Απουσιών
+            {t("viewAttendance")}
           </Link>
         </div>
       </div>
@@ -109,15 +113,15 @@ export default async function GroupDetailPage({
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Users className="w-4 h-4" />
-              Μαθητές τμήματος ({group.students.length})
+              {t("homeroomStudents", { count: group.students.length })}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Όνομα</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Κατάσταση</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("colName")}</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("colStatus")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -129,14 +133,14 @@ export default async function GroupDetailPage({
                         variant="outline"
                         className={`text-xs ${s.user.isActive ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}
                       >
-                        {s.user.isActive ? "Ενεργός" : "Ανενεργός"}
+                        {s.user.isActive ? t("active") : t("inactive")}
                       </Badge>
                     </td>
                   </tr>
                 ))}
                 {group.students.length === 0 && (
                   <tr>
-                    <td colSpan={2} className="px-5 py-10 text-center text-slate-400">Χωρίς μαθητές τμήματος</td>
+                    <td colSpan={2} className="px-5 py-10 text-center text-slate-400">{t("noHomeroomStudents")}</td>
                   </tr>
                 )}
               </tbody>
@@ -151,15 +155,15 @@ export default async function GroupDetailPage({
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <GraduationCap className="w-4 h-4" />
-              Εγγεγραμμένοι μαθητές ({group.studentGroups.length})
+              {t("enrolledStudents", { count: group.studentGroups.length })}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Όνομα</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Κατάσταση</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("colName")}</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("colStatus")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -171,7 +175,7 @@ export default async function GroupDetailPage({
                         variant="outline"
                         className={`text-xs ${s.user.isActive ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}
                       >
-                        {s.user.isActive ? "Ενεργός" : "Ανενεργός"}
+                        {s.user.isActive ? t("active") : t("inactive")}
                       </Badge>
                     </td>
                   </tr>
@@ -185,7 +189,7 @@ export default async function GroupDetailPage({
         {/* Timetable */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Εβδομαδιαίο Πρόγραμμα</CardTitle>
+            <CardTitle className="text-base">{t("weeklyTimetable")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {[1, 2, 3, 4, 5].map((day) => {
@@ -203,7 +207,7 @@ export default async function GroupDetailPage({
                         <span className="font-medium text-slate-900 flex-1">{slot.course.name}</span>
                         <span className="text-slate-500 text-xs">{slotTeacherName(slot)}</span>
                         {slot.room && (
-                          <span className="text-slate-400 text-xs">Αίθ. {slot.room}</span>
+                          <span className="text-slate-400 text-xs">{t("roomShort", { room: slot.room })}</span>
                         )}
                       </div>
                     ))}
@@ -212,7 +216,7 @@ export default async function GroupDetailPage({
               );
             })}
             {group.timetableSlots.length === 0 && (
-              <p className="text-slate-400 text-sm py-4 text-center">Δεν έχει ανατεθεί πρόγραμμα</p>
+              <p className="text-slate-400 text-sm py-4 text-center">{t("noTimetable")}</p>
             )}
           </CardContent>
         </Card>

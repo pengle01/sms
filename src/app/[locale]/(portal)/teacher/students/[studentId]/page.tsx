@@ -2,6 +2,7 @@ import { db } from "@/server/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { redirect, notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,22 +20,6 @@ import { getSpecialEdRecord, getStudentSupport, teachesStudent } from "@/server/
 import { AccessCodeCard } from "@/components/access/AccessCodeCard";
 import { SpecialEdCard } from "@/components/special-ed/SpecialEdCard";
 import type { Role } from "@/generated/prisma";
-
-const DOW_LABELS = ["", "Δευτέρα", "Τρίτη", "Τετάρτη", "Πέμπτη", "Παρασκευή"];
-const DOW_SHORT  = ["", "Δευ", "Τρι", "Τετ", "Πεμ", "Παρ"];
-
-const GENDER_LABEL: Record<string, string> = { MALE: "Άρρεν", FEMALE: "Θήλυ" };
-const ABSENCE_BADGE: Record<string, { label: string; cls: string }> = {
-  ABSENT: { label: "Απουσία", cls: "text-red-700 bg-red-50 border-red-200" },
-  LATE: { label: "Καθυστέρηση", cls: "text-amber-700 bg-amber-50 border-amber-200" },
-  EXCUSED: { label: "Δικαιολογημένη", cls: "text-slate-600 bg-slate-100 border-slate-200" },
-};
-const CONTACT_ROLE_LABEL: Record<string, string> = {
-  FATHER: "Πατέρας",
-  MOTHER: "Μητέρα",
-  GUARDIAN: "Κηδεμόνας",
-  OTHER: "Άλλο",
-};
 
 function Field({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;
@@ -56,6 +41,22 @@ export default async function StudentSchedulePage({
   const { locale, studentId } = await params;
   const { view, from, groupId } = await searchParams;
   const showWeek = view === "week";
+  const t = await getTranslations("studentFile");
+
+  const dowLabels = ["", t("dow1"), t("dow2"), t("dow3"), t("dow4"), t("dow5")];
+  const dowShort = ["", t("dowShort1"), t("dowShort2"), t("dowShort3"), t("dowShort4"), t("dowShort5")];
+  const genderLabel: Record<string, string> = { MALE: t("genderMale"), FEMALE: t("genderFemale") };
+  const absenceBadge: Record<string, { label: string; cls: string }> = {
+    ABSENT: { label: t("absenceAbsent"), cls: "text-red-700 bg-red-50 border-red-200" },
+    LATE: { label: t("absenceLate"), cls: "text-amber-700 bg-amber-50 border-amber-200" },
+    EXCUSED: { label: t("absenceExcused"), cls: "text-slate-600 bg-slate-100 border-slate-200" },
+  };
+  const contactRoleLabel: Record<string, string> = {
+    FATHER: t("contactFather"),
+    MOTHER: t("contactMother"),
+    GUARDIAN: t("contactGuardian"),
+    OTHER: t("contactOther"),
+  };
 
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login`);
@@ -265,7 +266,7 @@ export default async function StudentSchedulePage({
             {student.group && <Badge variant="outline">{student.group.name}</Badge>}
             {student.subjectGroups.length > 0 && (
               <span className="text-xs text-slate-400">
-                +{student.subjectGroups.length} {student.subjectGroups.length > 1 ? "ομάδες μαθημάτων" : "ομάδα μαθήματος"}
+                {t("supportGroups", { count: student.subjectGroups.length })}
               </span>
             )}
           </div>
@@ -282,7 +283,7 @@ export default async function StudentSchedulePage({
                 : "bg-white text-slate-500 hover:bg-slate-50"
             )}
           >
-            Σήμερα
+            {t("today")}
           </Link>
           <Link
             href={weekUrl}
@@ -293,7 +294,7 @@ export default async function StudentSchedulePage({
                 : "bg-white text-slate-500 hover:bg-slate-50"
             )}
           >
-            Εβδομάδα
+            {t("week")}
           </Link>
         </div>
         {canViewFull && (
@@ -302,7 +303,7 @@ export default async function StudentSchedulePage({
             className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 flex-shrink-0"
           >
             <ListFilter className="w-4 h-4" />
-            Όλα τα δεδομένα
+            {t("allData")}
           </Link>
         )}
       </div>
@@ -320,25 +321,25 @@ export default async function StudentSchedulePage({
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <User className="w-4 h-4" /> Προσωπικά Στοιχεία
+                <User className="w-4 h-4" /> {t("personalInfo")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1 text-sm">
-                <Field label="Αρ. Μητρώου" value={student.studentId} />
-                <Field label="Τμήμα" value={student.group?.name} />
-                <Field label="Φύλο" value={student.gender ? GENDER_LABEL[student.gender] : null} />
+                <Field label={t("fieldRegistryNo")} value={student.studentId} />
+                <Field label={t("fieldGroup")} value={student.group?.name} />
+                <Field label={t("fieldGender")} value={student.gender ? genderLabel[student.gender] : null} />
                 <Field
-                  label="Ημ. Γέννησης"
+                  label={t("fieldDateOfBirth")}
                   value={student.dateOfBirth ? fmtDisplayDate(student.dateOfBirth) : null}
                 />
-                <Field label="Τόπος Γέννησης" value={student.placeOfBirth} />
-                <Field label="Υπηκοότητα" value={student.nationality} />
+                <Field label={t("fieldPlaceOfBirth")} value={student.placeOfBirth} />
+                <Field label={t("fieldNationality")} value={student.nationality} />
                 {/* Identity documents (ταυτότητα/διαβατήριο/ARC) — super admin only. */}
                 {role === "SUPER_ADMIN" && (
                   <>
-                    <Field label="Αρ. Ταυτότητας" value={student.idCardNumber} />
-                    <Field label="Αρ. Διαβατηρίου" value={student.passportNumber} />
+                    <Field label={t("fieldIdCard")} value={student.idCardNumber} />
+                    <Field label={t("fieldPassport")} value={student.passportNumber} />
                   </>
                 )}
               </dl>
@@ -350,12 +351,12 @@ export default async function StudentSchedulePage({
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Phone className="w-4 h-4" /> Τηλέφωνα Επικοινωνίας
+                  <Phone className="w-4 h-4" /> {t("contactPhones")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {contacts.length === 0 ? (
-                  <p className="text-sm text-slate-400">Δεν υπάρχουν καταχωρημένα τηλέφωνα.</p>
+                  <p className="text-sm text-slate-400">{t("noPhones")}</p>
                 ) : (
                   <ul className="space-y-1.5">
                     {contacts.map((c) => (
@@ -367,10 +368,10 @@ export default async function StudentSchedulePage({
                           <p className="text-sm font-medium text-slate-800 flex items-center gap-1.5 min-w-0">
                             <span className="truncate">{c.name}</span>
                             {c.active && (
-                              <span className="flex-shrink-0 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1 py-px rounded">Τηλέφωνο sms</span>
+                              <span className="flex-shrink-0 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1 py-px rounded">{t("smsPhone")}</span>
                             )}
                           </p>
-                          <p className="text-xs text-slate-400">{CONTACT_ROLE_LABEL[c.role] ?? c.role}</p>
+                          <p className="text-xs text-slate-400">{contactRoleLabel[c.role] ?? c.role}</p>
                         </div>
                         <a
                           href={`tel:${c.phone}`}
@@ -390,12 +391,12 @@ export default async function StudentSchedulePage({
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <FileWarning className="w-4 h-4" /> Καταγγελίες ({referralRecords.length})
+                  <FileWarning className="w-4 h-4" /> {t("referrals", { count: referralRecords.length })}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {referralRecords.length === 0 ? (
-                  <p className="text-sm text-slate-400">Καμία καταγγελία.</p>
+                  <p className="text-sm text-slate-400">{t("noReferrals")}</p>
                 ) : (
                   <ul className="space-y-2">
                     {referralRecords.map((rs) => (
@@ -412,13 +413,13 @@ export default async function StudentSchedulePage({
                           </Link>
                           {rs.status === "RESOLVED" ? (
                             <span className="text-[11px] font-medium text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded">
-                              {rs.resolution ? actionLabel(rs.resolution.action) : "Επιλύθηκε"}
+                              {rs.resolution ? actionLabel(rs.resolution.action) : t("resolved")}
                               {rs.resolution && rs.resolution.expulsionDays.length > 0 &&
-                                ` · ${rs.resolution.expulsionDays.length}η`}
+                                ` · ${t("expulsionDays", { count: rs.resolution.expulsionDays.length })}`}
                             </span>
                           ) : (
                             <span className="text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
-                              Εκκρεμής
+                              {t("pending")}
                             </span>
                           )}
                         </div>
@@ -437,16 +438,16 @@ export default async function StudentSchedulePage({
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <CalendarX className="w-4 h-4" /> Απουσίες ({absenceRecords.length})
+                  <CalendarX className="w-4 h-4" /> {t("absences", { count: absenceRecords.length })}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {absenceRecords.length === 0 ? (
-                  <p className="text-sm text-slate-400">Καμία απουσία.</p>
+                  <p className="text-sm text-slate-400">{t("noAbsences")}</p>
                 ) : (
                   <ul className="space-y-1.5 max-h-80 overflow-y-auto">
                     {absenceRecords.map((a) => {
-                      const badge = ABSENCE_BADGE[a.status] ?? ABSENCE_BADGE.ABSENT!;
+                      const badge = absenceBadge[a.status] ?? absenceBadge.ABSENT!;
                       const period = a.timetableSlot?.period ?? a.intercalaryPeriod;
                       const course = a.timetableSlot
                         ? a.timetableSlot.course.nameEl || a.timetableSlot.course.name
@@ -458,18 +459,18 @@ export default async function StudentSchedulePage({
                         >
                           <div className="min-w-0 text-sm">
                             <span className="font-medium text-slate-700">{fmtDisplayDate(a.date)}</span>
-                            {period != null && <span className="text-slate-400"> · Π{period}</span>}
+                            {period != null && <span className="text-slate-400"> · {t("periodShort", { period })}</span>}
                             {course && <span className="text-slate-500"> · {course}</span>}
                           </div>
                           <div className="flex items-center gap-1.5 flex-shrink-0">
                             {a.exitPermitId && (
                               <span className="text-[10px] font-semibold text-yellow-700 bg-yellow-50 border border-yellow-200 px-1 py-px rounded">
-                                Άδεια εξόδου
+                                {t("exitPermit")}
                               </span>
                             )}
                             <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded border ${badge.cls}`}>
                               {badge.label}
-                              {a.status === "ABSENT" && a.isAutoAbsent && " (αυτ.)"}
+                              {a.status === "ABSENT" && a.isAutoAbsent && ` ${t("autoAbsentSuffix")}`}
                             </span>
                           </div>
                         </li>
@@ -484,12 +485,12 @@ export default async function StudentSchedulePage({
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <DoorOpen className="w-4 h-4" /> Έξοδοι Τουαλέτας ({toiletBreaks.length})
+                  <DoorOpen className="w-4 h-4" /> {t("toiletBreaks", { count: toiletBreaks.length })}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {toiletBreaks.length === 0 ? (
-                  <p className="text-sm text-slate-400">Καμία καταγεγραμμένη έξοδος.</p>
+                  <p className="text-sm text-slate-400">{t("noToiletBreaks")}</p>
                 ) : (
                   <ul className="space-y-1.5 max-h-80 overflow-y-auto">
                     {toiletBreaks.map((b) => {
@@ -502,7 +503,7 @@ export default async function StudentSchedulePage({
                         >
                           <div className="min-w-0">
                             <span className="font-medium text-slate-700">{fmtDisplayDate(b.date)}</span>
-                            {b.period != null && <span className="text-slate-400"> · Π{b.period}</span>}
+                            {b.period != null && <span className="text-slate-400"> · {t("periodShort", { period: b.period })}</span>}
                             {b.staff?.scheduleName && <span className="text-slate-400"> · {b.staff.scheduleName}</span>}
                           </div>
                           <span
@@ -514,7 +515,7 @@ export default async function StudentSchedulePage({
                                   : "text-slate-600 bg-slate-100 border-slate-200"
                             }`}
                           >
-                            {open ? "Σε εξέλιξη" : `${mins}′`}
+                            {open ? t("inProgress") : `${mins}′`}
                           </span>
                         </li>
                       );
@@ -534,7 +535,7 @@ export default async function StudentSchedulePage({
             <CardTitle className="text-base flex items-center justify-between gap-2">
               <span className="flex items-center gap-2">
                 <Award className="w-4 h-4 text-amber-600" />
-                ΔΔΚ {ddkSchoolYear}
+                {t("ddkTitle", { year: ddkSchoolYear })}
               </span>
               <span className="flex items-center gap-2">
                 <span className="text-2xl font-bold text-amber-700 leading-none">{ddkPoints}</span>
@@ -575,7 +576,7 @@ export default async function StudentSchedulePage({
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2 text-emerald-800">
               <CalendarRange className="w-4 h-4" />
-              Today&apos;s Activities
+              {t("todaysActivities")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">
@@ -583,11 +584,13 @@ export default async function StudentSchedulePage({
               <div key={a.id} className="flex items-center gap-3 text-sm">
                 <span className="text-emerald-700 font-medium">{a.name}</span>
                 <span className="text-emerald-600">
-                  P{a.startPeriod}{a.startPeriod !== a.endPeriod && `–${a.endPeriod}`}
+                  {a.startPeriod !== a.endPeriod
+                    ? t("periodRange", { from: a.startPeriod, to: a.endPeriod })
+                    : t("periodShort", { period: a.startPeriod })}
                 </span>
                 {a.location && <span className="text-emerald-500">· {a.location}</span>}
                 <Link href={`/${locale}/teacher/activities/${a.id}`} className="text-emerald-600 hover:underline text-xs ml-auto">
-                  View
+                  {t("view")}
                 </Link>
               </div>
             ))}
@@ -601,7 +604,7 @@ export default async function StudentSchedulePage({
           {isSchoolDay ? (
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Σήμερα — {DOW_LABELS[todayDow]}</CardTitle>
+                <CardTitle className="text-base">{t("todayHeading", { day: dowLabels[todayDow] ?? "" })}</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 <table className="w-full text-sm">
@@ -611,11 +614,11 @@ export default async function StudentSchedulePage({
                       const activity = activityByPeriod[p];
                       return (
                         <tr key={p} className={activity ? "bg-emerald-50/60" : "hover:bg-slate-50"}>
-                          <td className="px-5 py-3 text-xs font-semibold text-slate-400 w-14">P{p}</td>
+                          <td className="px-5 py-3 text-xs font-semibold text-slate-400 w-14">{t("periodShort", { period: p })}</td>
                           {activity ? (
                             <td colSpan={3} className="px-5 py-3">
                               <span className="font-medium text-emerald-700">{activity}</span>
-                              <Badge variant="outline" className="ml-2 text-xs bg-emerald-50 text-emerald-700 border-emerald-200">Δραστηριότητα</Badge>
+                              <Badge variant="outline" className="ml-2 text-xs bg-emerald-50 text-emerald-700 border-emerald-200">{t("activityBadge")}</Badge>
                             </td>
                           ) : slot ? (
                             <>
@@ -634,7 +637,7 @@ export default async function StudentSchedulePage({
               </CardContent>
             </Card>
           ) : (
-            <p className="text-sm text-slate-400">Δεν υπάρχουν μαθήματα σήμερα — δείτε την προβολή «Εβδομάδα» για το ωρολόγιο πρόγραμμα.</p>
+            <p className="text-sm text-slate-400">{t("noSchoolToday")}</p>
           )}
         </>
       )}
@@ -645,39 +648,41 @@ export default async function StudentSchedulePage({
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <FlaskConical className="w-4 h-4" />
-              Επερχόμενα Διαγωνίσματα
+              {t("upcomingTests")}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Ημερομηνία</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Μάθημα</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Τμήμα</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Ώρα</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Τύπος</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colDate")}</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colSubject")}</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colGroup")}</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colPeriod")}</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colType")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {upcomingTests.map((t) => (
-                  <tr key={t.id} className="hover:bg-slate-50">
+                {upcomingTests.map((test) => (
+                  <tr key={test.id} className="hover:bg-slate-50">
                     <td className="px-5 py-3 font-medium text-slate-900">
-                      {DOW_SHORT[t.date.getUTCDay()]} {fmtDisplayDate(t.date)}
+                      {dowShort[test.date.getUTCDay()]} {fmtDisplayDate(test.date)}
                     </td>
-                    <td className="px-5 py-3 text-slate-700">{t.course.name}</td>
-                    <td className="px-5 py-3 text-slate-500 text-xs">{t.group.name}</td>
+                    <td className="px-5 py-3 text-slate-700">{test.course.name}</td>
+                    <td className="px-5 py-3 text-slate-500 text-xs">{test.group.name}</td>
                     <td className="px-5 py-3 text-slate-400 text-xs">
-                      {t.periodCount > 1 ? `P${t.period}–${t.period + t.periodCount - 1}` : `P${t.period}`}
+                      {test.periodCount > 1
+                        ? t("periodRange", { from: test.period, to: test.period + test.periodCount - 1 })
+                        : t("periodShort", { period: test.period })}
                     </td>
                     <td className="px-5 py-3">
                       <Badge
                         variant="outline"
-                        className={t.type === "BIG"
+                        className={test.type === "BIG"
                           ? "text-xs bg-slate-800 text-white border-slate-800"
                           : "text-xs bg-slate-100 text-slate-600 border-slate-200"}
                       >
-                        {t.type === "BIG" ? "Μεγάλο · 45 λεπ" : "Μικρό · 20 λεπ"}
+                        {test.type === "BIG" ? t("testBig") : t("testSmall")}
                       </Badge>
                     </td>
                   </tr>
@@ -692,7 +697,7 @@ export default async function StudentSchedulePage({
       {showWeek && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Εβδομαδιαίο Πρόγραμμα</CardTitle>
+            <CardTitle className="text-base">{t("weeklyTimetable")}</CardTitle>
           </CardHeader>
           <CardContent className="p-0 overflow-x-auto">
             <table className="w-full text-sm min-w-[600px]">
@@ -706,7 +711,7 @@ export default async function StudentSchedulePage({
                         d === todayDow ? "text-emerald-600" : "text-slate-500"
                       }`}
                     >
-                      {DOW_SHORT[d]}
+                      {dowShort[d]}
                     </th>
                   ))}
                 </tr>
@@ -714,7 +719,7 @@ export default async function StudentSchedulePage({
               <tbody className="divide-y divide-slate-50">
                 {allPeriods.map((p) => (
                   <tr key={p} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 text-xs font-semibold text-slate-400">P{p}</td>
+                    <td className="px-4 py-3 text-xs font-semibold text-slate-400">{t("periodShort", { period: p })}</td>
                     {[1, 2, 3, 4, 5].map((d) => {
                       const slot = grid[d]?.[p];
                       const isToday = d === todayDow;
@@ -724,7 +729,7 @@ export default async function StudentSchedulePage({
                           {activity ? (
                             <div>
                               <p className="font-medium text-emerald-700 leading-tight text-xs">{activity}</p>
-                              <Badge variant="outline" className="text-[10px] px-1 py-0 mt-0.5 bg-emerald-50 text-emerald-700 border-emerald-200">Δραστηριότητα</Badge>
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 mt-0.5 bg-emerald-50 text-emerald-700 border-emerald-200">{t("activityBadge")}</Badge>
                             </div>
                           ) : slot ? (
                             <div className="space-y-0.5">
@@ -733,7 +738,7 @@ export default async function StudentSchedulePage({
                                 <p className="text-[11px] text-slate-500 leading-tight">{slot.staff?.scheduleName ?? slot.staffName ?? slot.staff?.user?.name}</p>
                               )}
                               {slot.room && (
-                                <p className="text-[11px] text-slate-400 leading-tight">Αίθ. {slot.room}</p>
+                                <p className="text-[11px] text-slate-400 leading-tight">{t("room", { room: slot.room })}</p>
                               )}
                               {slot.isSubjectGroup && (
                                 <Badge variant="outline" className="text-[10px] px-1 py-0">{slot.group.name}</Badge>

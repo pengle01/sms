@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +19,7 @@ import { periodsForDow, maxPeriodCount } from "@/lib/periods";
 import { isPassing } from "@/lib/grades";
 import { cn } from "@/lib/utils";
 
-const DAYS = ["Δευ", "Τρι", "Τετ", "Πεμ", "Παρ"] as const;
+const DAY_KEYS = ["dayMon", "dayTue", "dayWed", "dayThu", "dayFri"] as const;
 
 export default async function StudentDetailPage({
   params,
@@ -28,6 +29,7 @@ export default async function StudentDetailPage({
   searchParams: Promise<{ grade?: string; groupId?: string; search?: string; page?: string }>;
 }) {
   const { locale, id } = await params;
+  const t = await getTranslations("adminStudents");
 
   // List filters forwarded by the students table — "Back to students" returns
   // to the same pills/search/page instead of the bare list.
@@ -158,7 +160,7 @@ export default async function StudentDetailPage({
           className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 mb-3"
         >
           <ChevronLeft className="w-4 h-4" />
-          Πίσω στους μαθητές
+          {t("backToStudents")}
         </Link>
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
@@ -175,14 +177,14 @@ export default async function StudentDetailPage({
                 ? "bg-green-50 text-green-700 border-green-200"
                 : "bg-red-50 text-red-700 border-red-200"}
             >
-              {user.isActive ? "Ενεργός" : "Ανενεργός"}
+              {user.isActive ? t("active") : t("inactive")}
             </Badge>
             <Link
               href={`/${locale}/admin/students/${id}/edit`}
               className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg border border-slate-200 text-sm text-slate-600 font-medium hover:bg-slate-50 transition-colors"
             >
               <Pencil className="w-3.5 h-3.5" />
-              Επεξεργασία
+              {t("edit")}
             </Link>
           </div>
         </div>
@@ -196,17 +198,17 @@ export default async function StudentDetailPage({
           <div className="flex items-center justify-between flex-wrap gap-2">
             <CardTitle className="text-base flex items-center gap-2">
               <CalendarDays className="w-4 h-4 text-slate-400" />
-              Εβδομαδιαίο πρόγραμμα
+              {t("weeklyTimetable")}
             </CardTitle>
             <div className="flex items-center gap-2">
               {conflictCells > 0 && (
                 <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs">
-                  {conflictCells} {conflictCells !== 1 ? "συγκρούσεις" : "σύγκρουση"}
+                  {t("conflictCount", { count: conflictCells })}
                 </Badge>
               )}
               {gapCells > 0 && (
                 <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
-                  {gapCells} {gapCells !== 1 ? "κενές ώρες" : "κενή ώρα"}
+                  {t("freePeriodCount", { count: gapCells })}
                 </Badge>
               )}
             </div>
@@ -215,17 +217,16 @@ export default async function StudentDetailPage({
         <CardContent className="p-0">
           {groupIds.length === 0 ? (
             <p className="px-5 py-8 text-sm text-slate-400 text-center">
-              Δεν έχουν ανατεθεί τμήματα — ο μαθητής δεν έχει πρόγραμμα.
+              {t("noGroupsAssigned")}
             </p>
           ) : (
             <>
               {conflictCells > 0 && (
                 <div className="flex items-center gap-2 border-b border-red-100 bg-red-50 px-5 py-3 text-sm text-red-700">
                   <AlertTriangle className="w-4 h-4 shrink-0" />
-                  Δύο τμήματα του μαθητή έχουν μάθημα την ίδια ώρα — τα κελιά με
-                  σύγκρουση επισημαίνονται παρακάτω. Διορθώστε το από τους{" "}
+                  {t("conflictWarning")}{" "}
                   <Link href={`/${locale}/admin/checks`} className="font-semibold underline">
-                    Ελέγχους Δεδομένων
+                    {t("dataChecks")}
                   </Link>.
                 </div>
               )}
@@ -234,9 +235,9 @@ export default async function StudentDetailPage({
                   <thead>
                     <tr className="border-b border-slate-100">
                       <th className="w-10 px-3 py-2.5 text-xs font-semibold text-slate-400" />
-                      {DAYS.map((d) => (
+                      {DAY_KEYS.map((d) => (
                         <th key={d} className="px-3 py-2.5 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                          {d}
+                          {t(d)}
                         </th>
                       ))}
                     </tr>
@@ -260,7 +261,7 @@ export default async function StudentDetailPage({
                               )}
                             >
                               {!inDay ? null : cellSlots.length === 0 ? (
-                                <span className="text-[11px] text-amber-500">κενό</span>
+                                <span className="text-[11px] text-amber-500">{t("freeCell")}</span>
                               ) : (
                                 <div className="space-y-1">
                                   {cellSlots.map((s) => (
@@ -298,22 +299,22 @@ export default async function StudentDetailPage({
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <User className="w-4 h-4 text-slate-400" />
-                Προσωπικά στοιχεία
+                {t("personalInfo")}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
-                <Field label="Ονοματεπώνυμο"   value={user.name} />
-                <Field label="Αρ. Μητρώου"     value={student.studentId} mono />
-                <Field label="Φύλο"            value={student.gender === "MALE" ? "Άρρεν" : student.gender === "FEMALE" ? "Θήλυ" : null} />
-                <Field label="Ημ. γέννησης"    value={student.dateOfBirth ? fmtDisplayDate(student.dateOfBirth) : null} />
-                <Field label="Τόπος γέννησης"  value={student.placeOfBirth} />
-                <Field label="Υπηκοότητα"      value={student.nationality} />
-                <Field label="Διεύθυνση"       value={student.address} />
-                <Field label="Ταυτότητα"       value={student.idCardNumber} mono />
-                <Field label="Διαβατήριο"      value={student.passportNumber} mono />
-                <Field label="Τμήμα"           value={group?.name ?? null} />
-                <Field label="Email"           value={user.email} />
+                <Field label={t("fullName")}       value={user.name} />
+                <Field label={t("studentIdLabel")} value={student.studentId} mono />
+                <Field label={t("gender")}         value={student.gender === "MALE" ? t("male") : student.gender === "FEMALE" ? t("female") : null} />
+                <Field label={t("dateOfBirth")}    value={student.dateOfBirth ? fmtDisplayDate(student.dateOfBirth) : null} />
+                <Field label={t("placeOfBirth")}   value={student.placeOfBirth} />
+                <Field label={t("nationality")}    value={student.nationality} />
+                <Field label={t("address")}        value={student.address} />
+                <Field label={t("idCard")}         value={student.idCardNumber} mono />
+                <Field label={t("passport")}       value={student.passportNumber} mono />
+                <Field label={t("group")}          value={group?.name ?? null} />
+                <Field label={t("email")}          value={user.email} />
               </dl>
             </CardContent>
           </Card>
@@ -323,20 +324,20 @@ export default async function StudentDetailPage({
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Users className="w-4 h-4 text-slate-400" />
-                Γονείς / Κηδεμόνες
+                {t("parentsGuardians")}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               {parentContacts.length === 0 ? (
-                <p className="px-5 py-8 text-sm text-slate-400 text-center">Δεν υπάρχουν καταχωρημένοι γονείς</p>
+                <p className="px-5 py-8 text-sm text-slate-400 text-center">{t("noParentsOnRecord")}</p>
               ) : (
                 <>
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-slate-100">
-                        <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Όνομα</th>
-                        <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Ρόλος</th>
-                        <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Τηλέφωνο</th>
+                        <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("name")}</th>
+                        <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("role")}</th>
+                        <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("phone")}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
@@ -345,7 +346,7 @@ export default async function StudentDetailPage({
                           <td className="px-5 py-3 font-medium text-slate-900">{c.name}</td>
                           <td className="px-5 py-3">
                             <Badge variant="outline" className="text-xs capitalize">
-                              {c.role === "FATHER" ? "Πατέρας" : c.role === "MOTHER" ? "Μητέρα" : "Κηδεμόνας"}
+                              {c.role === "FATHER" ? t("father") : c.role === "MOTHER" ? t("mother") : t("guardian")}
                             </Badge>
                           </td>
                           <td className="px-5 py-3 text-slate-600">
@@ -360,7 +361,7 @@ export default async function StudentDetailPage({
                     </tbody>
                   </table>
                   <p className="px-5 py-3 text-xs text-slate-400 border-t border-slate-50">
-                    Καταχωρήθηκαν από την εισαγωγή. Ο γονέας αποκτά λογαριασμό σύνδεσης μόνο όταν ενεργοποιήσει τον κωδικό πρόσβασής του (βλ. Λογαριασμοί παρακάτω).
+                    {t("parentsImportNote")}
                   </p>
                 </>
               )}
@@ -380,12 +381,12 @@ export default async function StudentDetailPage({
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Layers className="w-4 h-4 text-slate-400" />
-                Ομάδες μαθημάτων ({subjectGroups.length})
+                {t("subjectGroups", { count: subjectGroups.length })}
               </CardTitle>
             </CardHeader>
             <CardContent>
               {subjectGroups.length === 0 ? (
-                <p className="text-sm text-slate-400">Δεν έχουν ανατεθεί ομάδες μαθημάτων — κάντε πρώτα εισαγωγή κατανομής.</p>
+                <p className="text-sm text-slate-400">{t("noSubjectGroups")}</p>
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {subjectGroups.map(({ group: g }) => (
@@ -404,16 +405,16 @@ export default async function StudentDetailPage({
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <BookOpen className="w-4 h-4 text-slate-400" />
-                  Πρόσφατοι βαθμοί
+                  {t("recentGrades")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-100">
-                      <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Μάθημα</th>
-                      <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Τετράμηνο</th>
-                      <th className="text-right px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Βαθμός</th>
+                      <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("course")}</th>
+                      <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("term")}</th>
+                      <th className="text-right px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("grade")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
@@ -444,13 +445,13 @@ export default async function StudentDetailPage({
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Clock className="w-4 h-4 text-slate-400" />
-                Απουσίες (τελευταίες {attendance.length})
+                {t("attendanceLast", { count: attendance.length })}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <AttStat label="Παρουσίες"      value={presentCount} color="text-green-700" bg="bg-green-50" />
-              <AttStat label="Καθυστερήσεις"  value={lateCount}    color="text-amber-700" bg="bg-amber-50" />
-              <AttStat label="Απουσίες"       value={absentCount}  color="text-red-700"   bg="bg-red-50" />
+              <AttStat label={t("present")} value={presentCount} color="text-green-700" bg="bg-green-50" />
+              <AttStat label={t("late")}    value={lateCount}    color="text-amber-700" bg="bg-amber-50" />
+              <AttStat label={t("absent")}  value={absentCount}  color="text-red-700"   bg="bg-red-50" />
             </CardContent>
           </Card>
 
@@ -467,7 +468,7 @@ export default async function StudentDetailPage({
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Globe className="w-4 h-4 text-slate-400" />
-                Πρόσθετα
+                {t("additional")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
@@ -490,7 +491,7 @@ export default async function StudentDetailPage({
                 </div>
               )}
               {!student.placeOfBirth && !student.dateOfBirth && !student.idCardNumber && (
-                <p className="text-slate-400">Χωρίς πρόσθετες πληροφορίες</p>
+                <p className="text-slate-400">{t("noAdditionalInfo")}</p>
               )}
             </CardContent>
           </Card>

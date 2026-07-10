@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition, useState } from "react";
+import { useTranslations } from "next-intl";
 import { unlinkStaffUser, linkStaffUser } from "./actions";
 import { Loader2, Check, Unlink, Link2 } from "lucide-react";
 
@@ -23,6 +24,7 @@ export function StaffLinkControls({
   linkedUserName,
   availableUsers,
 }: Props) {
+  const t = useTranslations("adminStaff");
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
   const [showLink, setShowLink] = useState(false);
@@ -56,11 +58,11 @@ export function StaffLinkControls({
           <button
             onClick={handleUnlink}
             disabled={pending}
-            title="Αποσύνδεση χρήστη από αυτό το προφίλ"
+            title={t("unlinkTitle")}
             className="flex items-center gap-1 text-xs text-slate-400 hover:text-red-500 transition-colors disabled:opacity-40"
           >
             <Unlink className="w-3.5 h-3.5" />
-            Αποσύνδεση
+            {t("unlink")}
           </button>
         </>
       ) : (
@@ -73,7 +75,7 @@ export function StaffLinkControls({
               disabled={pending}
               className="h-8 rounded-lg border border-slate-200 px-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
             >
-              <option value="">— Επιλογή χρήστη —</option>
+              <option value="">{t("selectUser")}</option>
               {availableUsers.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.name ?? u.email}
@@ -87,10 +89,10 @@ export function StaffLinkControls({
               className="flex items-center gap-1 text-xs text-amber-600 hover:text-emerald-600 transition-colors disabled:opacity-40"
             >
               <Link2 className="w-3.5 h-3.5" />
-              Σύνδεση χρήστη
+              {t("linkUser")}
             </button>
           )}
-          <span className="text-xs text-amber-500 font-medium">Μη συνδεδεμένο</span>
+          <span className="text-xs text-amber-500 font-medium">{t("unlinked")}</span>
         </>
       )}
       <div className="w-4 flex-shrink-0">

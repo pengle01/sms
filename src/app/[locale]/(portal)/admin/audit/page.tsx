@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollText } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { utcMidnight, fmtDisplayDateTime } from "@/lib/dates";
 import type { Prisma } from "@/generated/prisma";
 
@@ -22,6 +23,7 @@ export default async function AdminAuditPage({
   const auth = await getSuperAdminAuth();
   if (!auth) redirect(`/${locale}/login`);
 
+  const t = await getTranslations("adminAudit");
   const sp = await searchParams;
   const action = sp.action?.trim() || "";
   const resource = sp.resource?.trim() || "";
@@ -86,44 +88,44 @@ export default async function AdminAuditPage({
       <div>
         <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
           <ScrollText className="w-6 h-6" />
-          Αρχείο Καταγραφής
+          {t("title")}
         </h2>
-        <p className="text-slate-500 text-sm mt-1">{total} {total === 1 ? "εγγραφή" : "εγγραφές"}{hasFilter ? " (φιλτραρισμένες)" : ""}</p>
+        <p className="text-slate-500 text-sm mt-1">{t("recordCount", { count: total })}{hasFilter ? ` ${t("filtered")}` : ""}</p>
       </div>
 
       {/* Filters */}
       <form method="GET" className="flex flex-wrap items-end gap-3">
         <div>
-          <label className="block text-xs text-slate-400 mb-1">Ενέργεια</label>
+          <label className="block text-xs text-slate-400 mb-1">{t("filterAction")}</label>
           <select name="action" defaultValue={action} className={selectClass}>
-            <option value="">Όλα</option>
+            <option value="">{t("all")}</option>
             {actions.map((a) => <option key={a.action} value={a.action}>{a.action}</option>)}
           </select>
         </div>
         <div>
-          <label className="block text-xs text-slate-400 mb-1">Πόρος</label>
+          <label className="block text-xs text-slate-400 mb-1">{t("filterResource")}</label>
           <select name="resource" defaultValue={resource} className={selectClass}>
-            <option value="">Όλα</option>
+            <option value="">{t("all")}</option>
             {resources.map((r) => <option key={r.resource} value={r.resource}>{r.resource}</option>)}
           </select>
         </div>
         <div>
-          <label className="block text-xs text-slate-400 mb-1">Χρήστης</label>
-          <input name="user" defaultValue={userQ} placeholder="όνομα ή email" className={selectClass} />
+          <label className="block text-xs text-slate-400 mb-1">{t("filterUser")}</label>
+          <input name="user" defaultValue={userQ} placeholder={t("userPlaceholder")} className={selectClass} />
         </div>
         <div>
-          <label className="block text-xs text-slate-400 mb-1">Από</label>
+          <label className="block text-xs text-slate-400 mb-1">{t("from")}</label>
           <input type="date" name="from" defaultValue={from} className={selectClass} />
         </div>
         <div>
-          <label className="block text-xs text-slate-400 mb-1">Έως</label>
+          <label className="block text-xs text-slate-400 mb-1">{t("to")}</label>
           <input type="date" name="to" defaultValue={to} className={selectClass} />
         </div>
         <button type="submit" className="h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700">
-          Εφαρμογή
+          {t("apply")}
         </button>
         {hasFilter && (
-          <Link href="?" className="h-9 px-3 flex items-center text-sm text-slate-500 hover:text-slate-800">Καθαρισμός</Link>
+          <Link href="?" className="h-9 px-3 flex items-center text-sm text-slate-500 hover:text-slate-800">{t("clear")}</Link>
         )}
       </form>
 
@@ -132,11 +134,11 @@ export default async function AdminAuditPage({
           <table className="w-full text-sm min-w-[900px]">
             <thead>
               <tr className="border-b border-slate-100">
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Πότε</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Χρήστης</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Ενέργεια</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Πόρος</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Λεπτομέρειες</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colWhen")}</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colUser")}</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colAction")}</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colResource")}</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colDetails")}</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">IP</th>
               </tr>
             </thead>
@@ -168,7 +170,7 @@ export default async function AdminAuditPage({
                 <tr>
                   <td colSpan={6} className="px-5 py-16 text-center text-slate-400">
                     <ScrollText className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                    Δεν βρέθηκαν εγγραφές
+                    {t("empty")}
                   </td>
                 </tr>
               )}
@@ -179,13 +181,13 @@ export default async function AdminAuditPage({
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-sm text-slate-500">
-          <span>Σελίδα {page} από {totalPages}</span>
+          <span>{t("pageOf", { page, total: totalPages })}</span>
           <div className="flex gap-2">
             {page > 1 && (
-              <Link href={pageHref(page - 1)} className="h-8 px-3 flex items-center rounded-lg border border-slate-200 hover:bg-slate-50">Προηγούμενη</Link>
+              <Link href={pageHref(page - 1)} className="h-8 px-3 flex items-center rounded-lg border border-slate-200 hover:bg-slate-50">{t("previous")}</Link>
             )}
             {page < totalPages && (
-              <Link href={pageHref(page + 1)} className="h-8 px-3 flex items-center rounded-lg border border-slate-200 hover:bg-slate-50">Επόμενη</Link>
+              <Link href={pageHref(page + 1)} className="h-8 px-3 flex items-center rounded-lg border border-slate-200 hover:bg-slate-50">{t("next")}</Link>
             )}
           </div>
         </div>

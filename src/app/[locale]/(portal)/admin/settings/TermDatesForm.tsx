@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import { trpc } from "@/trpc/client";
 import { toast } from "sonner";
 import { EditControls } from "./EditControls";
@@ -25,66 +26,70 @@ interface Props {
 
 type FieldKey = keyof TermDatesValues;
 
+/** Section/field labels are adminSettings.* message keys. */
 const SECTIONS: Array<{
-  title: string;
-  fields: Array<{ key: FieldKey; label: string }>;
+  titleKey: string;
+  fields: Array<{ key: FieldKey; labelKey: string }>;
 }> = [
   {
-    title: "Α΄ Τετράμηνο",
+    titleKey: "term1",
     fields: [
-      { key: "term1Start", label: "Έναρξη" },
-      { key: "term1End", label: "Λήξη" },
-      { key: "testDeadline1", label: "Τελευταία ημέρα διαγωνισμάτων" },
+      { key: "term1Start", labelKey: "starts" },
+      { key: "term1End", labelKey: "ends" },
+      { key: "testDeadline1", labelKey: "lastDayForTests" },
     ],
   },
   {
-    title: "Β΄ Τετράμηνο",
+    titleKey: "term2",
     fields: [
-      { key: "term2Start", label: "Έναρξη" },
-      { key: "term2End", label: "Λήξη" },
-      { key: "testDeadline2", label: "Τελευταία ημέρα διαγωνισμάτων" },
+      { key: "term2Start", labelKey: "starts" },
+      { key: "term2End", labelKey: "ends" },
+      { key: "testDeadline2", labelKey: "lastDayForTests" },
     ],
   },
   {
-    title: "Διακοπές Χριστουγέννων",
+    titleKey: "christmasHolidays",
     fields: [
-      { key: "christmasStart", label: "Πρώτη ημέρα" },
-      { key: "christmasEnd", label: "Τελευταία ημέρα" },
+      { key: "christmasStart", labelKey: "firstDay" },
+      { key: "christmasEnd", labelKey: "lastDay" },
     ],
   },
   {
-    title: "Διακοπές Πάσχα",
+    titleKey: "easterHolidays",
     fields: [
-      { key: "easterStart", label: "Πρώτη ημέρα" },
-      { key: "easterEnd", label: "Τελευταία ημέρα" },
+      { key: "easterStart", labelKey: "firstDay" },
+      { key: "easterEnd", labelKey: "lastDay" },
     ],
   },
 ];
 
-function validate(v: TermDatesValues): string | null {
+type Translator = (key: string, values?: Record<string, string | number>) => string;
+
+function validate(v: TermDatesValues, t: Translator): string | null {
   if (!v.term1Start || !v.term1End || !v.term2Start || !v.term2End) {
-    return "Οι τέσσερις ημερομηνίες έναρξης/λήξης των τετραμήνων είναι υποχρεωτικές.";
+    return t("errTermDatesRequired");
   }
   if (!(v.term1Start <= v.term1End && v.term1End < v.term2Start && v.term2Start <= v.term2End)) {
-    return "Οι ημερομηνίες πρέπει να είναι με τη σειρά: έναρξη Α΄ ≤ λήξη Α΄ < έναρξη Β΄ ≤ λήξη Β΄.";
+    return t("errTermOrder");
   }
   if (v.testDeadline1 && !(v.term1Start <= v.testDeadline1 && v.testDeadline1 <= v.term1End)) {
-    return "Η προθεσμία διαγωνισμάτων του Α΄ πρέπει να βρίσκεται εντός του Α΄ τετραμήνου.";
+    return t("errDeadline1");
   }
   if (v.testDeadline2 && !(v.term2Start <= v.testDeadline2 && v.testDeadline2 <= v.term2End)) {
-    return "Η προθεσμία διαγωνισμάτων του Β΄ πρέπει να βρίσκεται εντός του Β΄ τετραμήνου.";
+    return t("errDeadline2");
   }
-  for (const [s, e, name] of [
-    [v.christmasStart, v.christmasEnd, "Χριστουγέννων"],
-    [v.easterStart, v.easterEnd, "Πάσχα"],
+  for (const [s, e, nameKey] of [
+    [v.christmasStart, v.christmasEnd, "holidayChristmas"],
+    [v.easterStart, v.easterEnd, "holidayEaster"],
   ] as const) {
-    if (!!s !== !!e) return `Οι διακοπές ${name} χρειάζονται και πρώτη και τελευταία ημέρα.`;
-    if (s && e && s > e) return `Διακοπές ${name}: η πρώτη ημέρα πρέπει να προηγείται της τελευταίας.`;
+    if (!!s !== !!e) return t("errHolidayPair", { name: t(nameKey) });
+    if (s && e && s > e) return t("errHolidayOrder", { name: t(nameKey) });
   }
   return null;
 }
 
 export function TermDatesForm({ initial }: Props) {
+  const t = useTranslations("adminSettings");
   const [values, setValues] = useState(initial);
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -99,7 +104,7 @@ export function TermDatesForm({ initial }: Props) {
     onError: (e) => toast.error(e.message),
   });
 
-  const error = editing ? validate(values) : null;
+  const error = editing ? validate(values, t as unknown as Translator) : null;
 
   function save() {
     if (error) return;
@@ -111,21 +116,17 @@ export function TermDatesForm({ initial }: Props) {
 
   return (
     <div className="space-y-5">
-      <p className="text-xs text-slate-400">
-        Το υπουργείο ανακοινώνει αυτές τις ημερομηνίες στην αρχή κάθε σχολικής
-        χρονιάς. Καθορίζουν τα σύνολα απουσιών ανά τετράμηνο, τις προθεσμίες
-        προγραμματισμού διαγωνισμάτων και τις αργίες που εμφανίζονται στην εφαρμογή.
-      </p>
+      <p className="text-xs text-slate-400">{t("termDatesIntro")}</p>
 
       {SECTIONS.map((section) => (
-        <div key={section.title}>
+        <div key={section.titleKey}>
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-            {section.title}
+            {t(section.titleKey)}
           </p>
           <div className="flex gap-3 flex-wrap">
             {section.fields.map((f) => (
               <div key={f.key}>
-                <label className="block text-xs text-slate-500 mb-1">{f.label}</label>
+                <label className="block text-xs text-slate-500 mb-1">{t(f.labelKey)}</label>
                 <input
                   type="date"
                   value={values[f.key]}

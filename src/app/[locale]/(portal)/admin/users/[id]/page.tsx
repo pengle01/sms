@@ -6,19 +6,20 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronLeft, CircleUser, Home, Calendar, KeyRound } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getTranslations } from "next-intl/server";
 import { RolesCard } from "./RolesCard";
 import { SetPasswordForm } from "./SetPasswordForm";
 import { DeleteUserCard } from "./DeleteUserCard";
 
-const ROLE_META: Record<string, { label: string; color: string }> = {
-  SUPER_ADMIN:       { label: "Υπερδιαχειριστής",     color: "bg-purple-100 text-purple-700 border-purple-200" },
-  HEADMASTER:        { label: "Διευθυντής",           color: "bg-slate-800 text-white border-slate-800" },
-  HEADTEACHER_A:     { label: "Βοηθός Διευθυντής Α",  color: "bg-blue-100 text-blue-700 border-blue-200" },
-  HEADTEACHER_B:     { label: "Βοηθός Διευθυντής",    color: "bg-indigo-100 text-indigo-700 border-indigo-200" },
-  STUDENT_COUNSELOR: { label: "Σύμβουλος Σπουδών",    color: "bg-teal-100 text-teal-700 border-teal-200" },
-  TEACHER:           { label: "Εκπαιδευτικός",        color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
-  SCHOOL_ADMIN:      { label: "Διοικητικός",          color: "bg-amber-100 text-amber-700 border-amber-200" },
-  CHAPERONE:         { label: "Συνοδός",              color: "bg-orange-100 text-orange-700 border-orange-200" },
+const ROLE_COLOR: Record<string, string> = {
+  SUPER_ADMIN:       "bg-purple-100 text-purple-700 border-purple-200",
+  HEADMASTER:        "bg-slate-800 text-white border-slate-800",
+  HEADTEACHER_A:     "bg-blue-100 text-blue-700 border-blue-200",
+  HEADTEACHER_B:     "bg-indigo-100 text-indigo-700 border-indigo-200",
+  STUDENT_COUNSELOR: "bg-teal-100 text-teal-700 border-teal-200",
+  TEACHER:           "bg-emerald-100 text-emerald-700 border-emerald-200",
+  SCHOOL_ADMIN:      "bg-amber-100 text-amber-700 border-amber-200",
+  CHAPERONE:         "bg-orange-100 text-orange-700 border-orange-200",
 };
 
 export default async function UserDetailPage({
@@ -29,6 +30,9 @@ export default async function UserDetailPage({
   const { locale, id } = await params;
   const auth = await getSuperAdminAuth();
   if (!auth) redirect(`/${locale}/login`);
+
+  const t = await getTranslations("adminUsers");
+  const tRoles = await getTranslations("roles");
 
   const user = await db.user.findUnique({
     where: { id },
@@ -50,7 +54,7 @@ export default async function UserDetailPage({
   });
   if (!user) notFound();
 
-  const meta = ROLE_META[user.role];
+  const roleColor = ROLE_COLOR[user.role];
   const sp = user.staffProfile;
   const scheduleName = sp?.scheduleName ?? sp?.timetableSlots[0]?.staffName ?? null;
   const hasAdminGrant = user.extraRoles.includes("SUPER_ADMIN");
@@ -93,7 +97,7 @@ export default async function UserDetailPage({
           className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 mb-3"
         >
           <ChevronLeft className="w-4 h-4" />
-          Προσωπικό
+          {t("title")}
         </Link>
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
@@ -106,24 +110,24 @@ export default async function UserDetailPage({
             )}
           </div>
           <div className="flex items-center gap-2">
-            {meta && (
-              <Badge variant="outline" className={cn("text-sm font-medium", meta.color)}>
-                {meta.label}
+            {roleColor && (
+              <Badge variant="outline" className={cn("text-sm font-medium", roleColor)}>
+                {tRoles(user.role)}
               </Badge>
             )}
             {hasAdminGrant && (
               <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-sm">
-                + Διαχειριστής Συστήματος
+                {t("badgeSystemAdmin")}
               </Badge>
             )}
             {sp?.specialEducation && (
               <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 text-sm">
-                Ειδική Εκπαίδευση
+                {t("badgeSpecialEducation")}
               </Badge>
             )}
             {!user.isActive && (
               <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-sm">
-                Ανενεργός
+                {t("inactive")}
               </Badge>
             )}
           </div>
@@ -136,15 +140,15 @@ export default async function UserDetailPage({
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <CircleUser className="w-4 h-4" />
-              Προσωπικά Στοιχεία
+              {t("personalInfo")}
             </CardTitle>
           </CardHeader>
           <CardContent className="divide-y divide-slate-50">
-            {infoRow("Email", user.email)}
-            {infoRow("Τηλέφωνο", sp?.phone)}
-            {infoRow("Ειδικότητα", sp?.department)}
-            {infoRow("ΠΜΠ", sp?.pmp ? <span className="font-mono">{sp.pmp}</span> : null)}
-            {infoRow("Όνομα προγράμματος", scheduleName ? <span className="font-mono">{scheduleName}</span> : null)}
+            {infoRow(t("email"), user.email)}
+            {infoRow(t("phone"), sp?.phone)}
+            {infoRow(t("department"), sp?.department)}
+            {infoRow(t("pmp"), sp?.pmp ? <span className="font-mono">{sp.pmp}</span> : null)}
+            {infoRow(t("scheduleName"), scheduleName ? <span className="font-mono">{scheduleName}</span> : null)}
           </CardContent>
         </Card>
 
@@ -153,15 +157,15 @@ export default async function UserDetailPage({
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <Home className="w-4 h-4" />
-              Αναθέσεις
+              {t("assignments")}
             </CardTitle>
           </CardHeader>
           <CardContent className="divide-y divide-slate-50">
-            {infoRow("Υπεύθυνος καθηγητής τμήματος", sp ? groupChips(sp.homeroomGroups) : null)}
-            {infoRow("Βοηθός Διευθυντής τμήματος", sp ? groupChips(sp.homeroomHeadGroups) : null)}
-            {infoRow("Σύμβουλος Σπουδών σε", sp ? groupChips(sp.homeroomCounselorGroups) : null)}
+            {infoRow(t("homegroupTeacher"), sp ? groupChips(sp.homeroomGroups) : null)}
+            {infoRow(t("homegroupHeadteacher"), sp ? groupChips(sp.homeroomHeadGroups) : null)}
+            {infoRow(t("counselorOf"), sp ? groupChips(sp.homeroomCounselorGroups) : null)}
             {infoRow(
-              "Ώρες προγράμματος",
+              t("timetableSlots"),
               sp ? (
                 scheduleName ? (
                   <Link
@@ -197,12 +201,12 @@ export default async function UserDetailPage({
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <KeyRound className="w-4 h-4" />
-            Σύνδεση με κωδικό πρόσβασης
+            {t("passwordSignIn")}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-slate-500 mb-4">
-            Ορίστε κωδικό πρόσβασης ώστε ο χρήστης να μπορεί να συνδέεται με email και κωδικό.
+            {t("passwordSignInHint")}
           </p>
           <SetPasswordForm userId={user.id} />
         </CardContent>
@@ -210,13 +214,13 @@ export default async function UserDetailPage({
 
       {!sp && (
         <p className="text-sm text-slate-400">
-          Δεν υπάρχει συνδεδεμένο προφίλ προσωπικού σε αυτόν τον λογαριασμό — συνδέστε ένα από τη λίστα Προσωπικού για να δείτε τα στοιχεία προγράμματος.
+          {t("noStaffProfileLinked")}
         </p>
       )}
 
       <DeleteUserCard
         userId={user.id}
-        userName={user.name ?? user.email ?? "αυτού του χρήστη"}
+        userName={user.name ?? user.email ?? t("thisUser")}
         locale={locale}
         isSelf={auth.userId === user.id}
         isLastAdmin={

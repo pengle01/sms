@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2, Pencil, Check } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -24,13 +25,14 @@ export function EditControls({
   onCancel: () => void;
   onSave: () => void;
 }) {
+  const t = useTranslations("adminSettings");
   if (!editing) {
     return (
       <div className="flex items-center justify-end gap-2 pt-1">
         {saved && <Check className="w-4 h-4 text-emerald-500" />}
         <Button variant="outline" size="sm" onClick={onEdit}>
           <Pencil className="w-3.5 h-3.5 mr-1.5" />
-          Επεξεργασία
+          {t("edit")}
         </Button>
       </div>
     );
@@ -38,7 +40,7 @@ export function EditControls({
   return (
     <div className="flex items-center justify-end gap-2 pt-1">
       <Button variant="ghost" size="sm" onClick={onCancel} disabled={pending}>
-        Άκυρο
+        {t("cancel")}
       </Button>
       <Button
         size="sm"
@@ -47,7 +49,7 @@ export function EditControls({
         className="bg-emerald-600 hover:bg-emerald-700 text-white"
       >
         {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Αποθήκευση
+        {t("save")}
       </Button>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -8,6 +9,7 @@ import { Plus, Loader2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export function NewNoticeDialog({ locale }: { locale: string }) {
+  const t = useTranslations("adminNoticeboard");
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -18,7 +20,7 @@ export function NewNoticeDialog({ locale }: { locale: string }) {
 
   const { mutate, isPending } = trpc.notices.create.useMutation({
     onSuccess: () => {
-      toast.success("Η ανακοίνωση αναρτήθηκε");
+      toast.success(t("posted"));
       setOpen(false);
       setTitle(""); setBody(""); setUrgent(false); setStaffOnly(false); setTagsInput("");
       router.refresh();
@@ -39,7 +41,7 @@ export function NewNoticeDialog({ locale }: { locale: string }) {
         className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
       >
         <Plus className="w-4 h-4" />
-        Ανάρτηση Ανακοίνωσης
+        {t("postNotice")}
       </Button>
     );
   }
@@ -48,7 +50,7 @@ export function NewNoticeDialog({ locale }: { locale: string }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-slate-900">Ανάρτηση Ανακοίνωσης</h3>
+          <h3 className="text-lg font-semibold text-slate-900">{t("postNotice")}</h3>
           <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-slate-600">
             <X className="w-5 h-5" />
           </button>
@@ -56,7 +58,7 @@ export function NewNoticeDialog({ locale }: { locale: string }) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-700">Τίτλος</label>
+            <label className="text-sm font-medium text-slate-700">{t("titleLabel")}</label>
             <input
               type="text"
               value={title}
@@ -67,7 +69,7 @@ export function NewNoticeDialog({ locale }: { locale: string }) {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-700">Κείμενο</label>
+            <label className="text-sm font-medium text-slate-700">{t("bodyLabel")}</label>
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
@@ -78,12 +80,12 @@ export function NewNoticeDialog({ locale }: { locale: string }) {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-700">Ετικέτες (χωρισμένες με κόμμα, προαιρετικό)</label>
+            <label className="text-sm font-medium text-slate-700">{t("tagsLabel")}</label>
             <input
               type="text"
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}
-              placeholder="π.χ. διαγώνισμα, αργία, συνάντηση"
+              placeholder={t("tagsPlaceholder")}
               className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
@@ -91,21 +93,21 @@ export function NewNoticeDialog({ locale }: { locale: string }) {
           <div className="flex gap-6">
             <label className="flex items-center gap-2 text-sm text-slate-700">
               <input type="checkbox" checked={urgent} onChange={(e) => setUrgent(e.target.checked)} className="rounded" />
-              Σήμανση ως επείγον
+              {t("markUrgent")}
             </label>
             <label className="flex items-center gap-2 text-sm text-slate-700">
               <input type="checkbox" checked={staffOnly} onChange={(e) => setStaffOnly(e.target.checked)} className="rounded" />
-              Μόνο προσωπικό
+              {t("staffOnly")}
             </label>
           </div>
 
           <div className="flex gap-3 justify-end pt-1">
             <Button type="button" variant="outline" onClick={() => setOpen(false)} className="h-9 px-4">
-              Άκυρο
+              {t("cancel")}
             </Button>
             <Button type="submit" disabled={isPending || !title || !body} className="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white">
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Ανάρτηση
+              {t("post")}
             </Button>
           </div>
         </form>

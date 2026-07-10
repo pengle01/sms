@@ -1,4 +1,5 @@
 import { getSuperAdminAuth } from "@/server/authz";
+import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
@@ -17,6 +18,8 @@ export default async function EnrollmentImportPage({
     redirect(`/${locale}/admin`);
   }
 
+  const t = await getTranslations("adminStudents");
+
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
@@ -25,23 +28,17 @@ export default async function EnrollmentImportPage({
           className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 mb-3"
         >
           <ChevronLeft className="w-4 h-4" />
-          Πίσω στους μαθητές
+          {t("backToStudents")}
         </Link>
-        <h2 className="text-2xl font-bold text-slate-900">Εισαγωγή κατανομής μαθητών</h2>
+        <h2 className="text-2xl font-bold text-slate-900">{t("enrollTitle")}</h2>
         <p className="text-slate-500 text-sm mt-1">
-          Αναθέτει κάθε μαθητή στις ομάδες μαθημάτων του. Η επανεισαγωγή
-          συγχρονίζει κάθε μαθητή με τη γραμμή του — οι ομάδες του αρχείου
-          προστίθενται και όσες δεν αναφέρονται πλέον αφαιρούνται. Αφαιρούνται
-          μόνο ομάδες που αναφέρονται στο αρχείο: οι αναθέσεις που έγιναν
-          χειροκίνητα σε ομάδες εκτός αρχείου διατηρούνται. (Γραμμή με μη
-          αναγνωρισμένο κωδικό ομάδας μόνο προσθέτει, ποτέ δεν αφαιρεί, ώστε ένα
-          τυπογραφικό λάθος να μη διαγράψει κατανομές.)
+          {t("enrollIntro")}
         </p>
       </div>
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Μεταφόρτωση αρχείου</CardTitle>
+          <CardTitle className="text-base">{t("enrollUploadFile")}</CardTitle>
         </CardHeader>
         <CardContent>
           <EnrollmentImportForm />
@@ -50,19 +47,19 @@ export default async function EnrollmentImportPage({
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base text-slate-700">Αναμενόμενη μορφή</CardTitle>
+          <CardTitle className="text-base text-slate-700">{t("enrollExpectedFormat")}</CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-slate-600 space-y-2">
-          <p>Το αρχείο πρέπει να ακολουθεί την τυπική διάταξη εξαγωγής κατανομής του υπουργείου:</p>
+          <p>{t("enrollFormatIntro")}</p>
           <ul className="list-disc list-inside space-y-1 text-slate-500">
-            <li>Γραμμή 1: επικεφαλίδες (παραλείπεται)</li>
-            <li>Στήλη A: όνομα μαθητή</li>
-            <li>Στήλη B: αριθμός μητρώου (ΑΡ.ΜΗΤ.) — χρησιμοποιείται για την αντιστοίχιση του μαθητή</li>
-            <li>Στήλη E: τμήμα (Νέο Τμήμα)</li>
-            <li>Στήλες F και εξής: κωδικοί ομάδων μαθημάτων</li>
+            <li>{t("enrollFormatRow1")}</li>
+            <li>{t("enrollFormatColA")}</li>
+            <li>{t("enrollFormatColB")}</li>
+            <li>{t("enrollFormatColE")}</li>
+            <li>{t("enrollFormatColF")}</li>
           </ul>
           <p className="text-slate-400 text-xs pt-1">
-            Οι μαθητές που δεν βρίσκονται με βάση τον αριθμό μητρώου αναφέρονται ως προειδοποιήσεις και παραλείπονται.
+            {t("enrollNotFoundNote")}
           </p>
         </CardContent>
       </Card>

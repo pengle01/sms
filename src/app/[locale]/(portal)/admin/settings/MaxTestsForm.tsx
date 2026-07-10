@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { trpc } from "@/trpc/client";
 import { toast } from "sonner";
 import { Minus, Plus } from "lucide-react";
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function MaxTestsForm({ initial }: Props) {
+  const t = useTranslations("adminSettings");
   const [value, setValue] = useState(initial);
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -34,8 +36,8 @@ export function MaxTestsForm({ initial }: Props) {
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <p className="text-sm font-medium text-slate-700">Μέγιστα διαγωνίσματα ανά μαθητή ανά εβδομάδα</p>
-        <p className="text-xs text-slate-400">Ένας μαθητής δεν μπορεί να έχει περισσότερα διαγωνίσματα από αυτόν τον αριθμό μέσα σε μία ημερολογιακή εβδομάδα. Τα μεγάλα διαγωνίσματα περιορίζονται επιπλέον σε 1 ανά ημέρα.</p>
+        <p className="text-sm font-medium text-slate-700">{t("maxTestsTitle")}</p>
+        <p className="text-xs text-slate-400">{t("maxTestsHint")}</p>
       </div>
 
       <div className="flex items-center gap-4">
@@ -61,7 +63,7 @@ export function MaxTestsForm({ initial }: Props) {
           </button>
         </div>
 
-        <span className="text-sm text-slate-400">διαγωνίσματα / εβδομάδα</span>
+        <span className="text-sm text-slate-400">{t("testsPerWeek")}</span>
       </div>
 
       <EditControls

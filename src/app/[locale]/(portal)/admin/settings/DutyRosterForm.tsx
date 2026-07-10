@@ -2,17 +2,19 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { X } from "lucide-react";
 import { EditControls } from "./EditControls";
 import { saveDutyRoster } from "./actions";
 
+/** Labels are adminSettings.* message keys. */
 const DAYS = [
-  { dow: 1, label: "Δευτέρα" },
-  { dow: 2, label: "Τρίτη" },
-  { dow: 3, label: "Τετάρτη" },
-  { dow: 4, label: "Πέμπτη" },
-  { dow: 5, label: "Παρασκευή" },
+  { dow: 1, labelKey: "monday" },
+  { dow: 2, labelKey: "tuesday" },
+  { dow: 3, labelKey: "wednesday" },
+  { dow: 4, labelKey: "thursday" },
+  { dow: 5, labelKey: "friday" },
 ];
 
 export interface DutyDeputyOption {
@@ -28,6 +30,7 @@ interface Props {
 }
 
 export function DutyRosterForm({ initial, deputies }: Props) {
+  const t = useTranslations("adminSettings");
   const router = useRouter();
   const [values, setValues] = useState<Record<number, string[]>>(initial);
   const [editing, setEditing] = useState(false);
@@ -69,20 +72,16 @@ export function DutyRosterForm({ initial, deputies }: Props) {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-slate-400">
-        Σταθερό εβδομαδιαίο πρόγραμμα: ο ορισμένος βοηθός διευθυντής εφημερεύει
-        κάθε εβδομάδα τη συγκεκριμένη ημέρα. Τα συμβάντα εφημερίας (παραπομπές,
-        άδειες εξόδου) θα δρομολογούνται σε αυτόν.
-      </p>
+      <p className="text-xs text-slate-400">{t("dutyIntro")}</p>
 
       <div className="divide-y divide-slate-100">
-        {DAYS.map(({ dow, label }) => {
+        {DAYS.map(({ dow, labelKey }) => {
           const assigned = values[dow] ?? [];
           const available = deputies.filter((d) => !assigned.includes(d.staffProfileId));
           return (
             <div key={dow} className="py-2.5 flex items-start justify-between gap-3">
               <span className="text-sm font-medium text-slate-700 w-24 flex-shrink-0 pt-1">
-                {label}
+                {t(labelKey)}
               </span>
               <div className="flex flex-wrap gap-1.5 justify-end items-center">
                 {assigned.length === 0 && !editing && (
@@ -99,7 +98,7 @@ export function DutyRosterForm({ initial, deputies }: Props) {
                         type="button"
                         onClick={() => remove(dow, id)}
                         className="text-indigo-400 hover:text-indigo-700"
-                        aria-label={`Αφαίρεση ${nameOf(id)}`}
+                        aria-label={t("removeName", { name: nameOf(id) })}
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -112,7 +111,7 @@ export function DutyRosterForm({ initial, deputies }: Props) {
                     onChange={(e) => add(dow, e.target.value)}
                     className="h-7 px-2 rounded-lg border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
-                    <option value="">+ Προσθήκη…</option>
+                    <option value="">{t("addDeputy")}</option>
                     {available.map((d) => (
                       <option key={d.staffProfileId} value={d.staffProfileId}>
                         {d.name}
@@ -127,10 +126,7 @@ export function DutyRosterForm({ initial, deputies }: Props) {
       </div>
 
       {deputies.length === 0 && (
-        <p className="text-xs text-amber-600">
-          Δεν βρέθηκαν ενεργοί βοηθοί διευθυντές με συνδεδεμένο προφίλ
-          προσωπικού — συνδέστε τους πρώτα στην ενότητα Προσωπικό.
-        </p>
+        <p className="text-xs text-amber-600">{t("noDeputies")}</p>
       )}
 
       <EditControls

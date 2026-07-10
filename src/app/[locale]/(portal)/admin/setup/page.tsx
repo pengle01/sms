@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { authOptions } from "@/server/auth";
 import { db } from "@/server/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +18,7 @@ export default async function TeacherSetupPage({
 }) {
   const { locale } = await params;
   const { submitted, error } = await searchParams;
+  const t = await getTranslations("setup");
   const session = await getServerSession(authOptions);
 
   if (!session?.user || session.user.role !== "TEACHER") redirect(`/${locale}/login`);
@@ -33,12 +35,14 @@ export default async function TeacherSetupPage({
         <Card>
           <CardContent className="py-10 text-center space-y-3">
             <Clock className="w-10 h-10 text-amber-500 mx-auto" />
-            <h2 className="text-lg font-semibold text-slate-900">Αίτημα σε αναμονή έγκρισης</h2>
+            <h2 className="text-lg font-semibold text-slate-900">{t("pendingTitle")}</h2>
             <p className="text-sm text-slate-500">
-              Το αίτημά σας για το όνομα <span className="font-mono font-semibold">{existing?.staffName}</span> υποβλήθηκε
-              και αναμένει έγκριση από τον διαχειριστή.
+              {t.rich("pendingBody", {
+                staffName: existing?.staffName ?? "",
+                name: (chunks) => <span className="font-mono font-semibold">{chunks}</span>,
+              })}
             </p>
-            <p className="text-xs text-slate-400">Θα έχετε πλήρη πρόσβαση μόλις εγκριθεί.</p>
+            <p className="text-xs text-slate-400">{t("pendingNote")}</p>
           </CardContent>
         </Card>
       </div>
@@ -61,34 +65,34 @@ export default async function TeacherSetupPage({
   return (
     <div className="max-w-xl mx-auto mt-16 space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-slate-900">Καλώς ήρθατε, {session.user?.name}</h2>
+        <h2 className="text-2xl font-bold text-slate-900">{t("welcome", { name: session.user?.name ?? "" })}</h2>
         <p className="text-slate-500 mt-1 text-sm">
-          Επιλέξτε το όνομά σας όπως εμφανίζεται στο ωρολόγιο πρόγραμμα για να συνδεθεί ο λογαριασμός σας με το πρόγραμμά σας.
+          {t("intro")}
         </p>
       </div>
 
       {error === "notfound" && (
         <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          Το όνομα αυτό έχει ήδη συνδεθεί με άλλον λογαριασμό ή δεν υπάρχει στο πρόγραμμα.
+          {t("errorNotFound")}
         </div>
       )}
 
       {existing?.status === "REJECTED" && (
         <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          Το προηγούμενο αίτημά σας απορρίφθηκε. Επιλέξτε ξανά ή επικοινωνήστε με τον διαχειριστή.
+          {t("errorRejected")}
         </div>
       )}
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Επιλέξτε το όνομά σας από το πρόγραμμα</CardTitle>
+          <CardTitle className="text-base">{t("selectTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           {staffNames.length === 0 ? (
             <p className="text-slate-400 text-sm text-center py-6">
-              Όλα τα ονόματα του προγράμματος έχουν ήδη συνδεθεί.
+              {t("allClaimed")}
             </p>
           ) : (
             <form action={submitTeacherClaimAction} className="space-y-4">
@@ -105,7 +109,7 @@ export default async function TeacherSetupPage({
                 ))}
               </div>
               <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
-                Υποβολή αιτήματος για έγκριση
+                {t("submit")}
               </Button>
             </form>
           )}
@@ -113,8 +117,8 @@ export default async function TeacherSetupPage({
       </Card>
 
       <p className="text-center text-xs text-slate-400">
-        Δεν βλέπετε το όνομά σας;{" "}
-        <span className="text-slate-500">Επικοινωνήστε με τον διαχειριστή — ίσως δεν έχει εισαχθεί ακόμη το πρόγραμμά σας.</span>
+        {t("dontSeeName")}{" "}
+        <span className="text-slate-500">{t("contactAdmin")}</span>
       </p>
     </div>
   );

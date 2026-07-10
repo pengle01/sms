@@ -4,18 +4,9 @@ import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { UserX, Users } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { StaffLinkControls } from "./StaffLinkControls";
 import { staffDisplayName } from "@/lib/staffName";
-
-const ROLE_LABEL: Record<string, string> = {
-  TEACHER:           "Εκπαιδευτικός",
-  HEADTEACHER_B:     "Βοηθός Διευθυντής",
-  HEADTEACHER_A:     "Βοηθός Διευθυντής Α",
-  HEADMASTER:        "Διευθυντής",
-  STUDENT_COUNSELOR: "Σύμβουλος Σπουδών",
-  SCHOOL_ADMIN:      "Διοικητικός",
-  SUPER_ADMIN:       "Υπερδιαχειριστής",
-};
 
 const ROLE_COLOR: Record<string, string> = {
   TEACHER:           "bg-emerald-100 text-emerald-700 border-emerald-200",
@@ -34,6 +25,9 @@ export default async function StaffProfilesPage({
   const { locale } = await params;
   const auth = await getSuperAdminAuth();
   if (!auth) redirect(`/${locale}/login`);
+
+  const t = await getTranslations("adminStaff");
+  const tRoles = await getTranslations("roles");
 
   const [staffProfiles, linkableUsers] = await Promise.all([
     db.staffProfile.findMany({
@@ -63,11 +57,11 @@ export default async function StaffProfilesPage({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">Προφίλ Εκπαιδευτικών</h2>
+        <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>
         <p className="text-slate-500 text-sm mt-1">
-          {staffProfiles.length} προφίλ · {linked.length} συνδεδεμένα
+          {t("summary", { profiles: staffProfiles.length, linked: linked.length })}
           {unlinked.length > 0 && (
-            <span className="text-amber-600 font-medium"> · {unlinked.length} μη συνδεδεμένα</span>
+            <span className="text-amber-600 font-medium"> {t("unlinkedSummary", { count: unlinked.length })}</span>
           )}
         </p>
       </div>
@@ -78,17 +72,17 @@ export default async function StaffProfilesPage({
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2 text-amber-800">
               <UserX className="w-4 h-4" />
-              Μη συνδεδεμένα προφίλ — χωρίς συνδεδεμένο λογαριασμό χρήστη
+              {t("unlinkedCardTitle")}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-amber-100">
-                  <th className="text-left px-5 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">Όνομα Προγράμματος</th>
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">Ώρες</th>
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">Τμήματα</th>
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">Σύνδεση με χρήστη</th>
+                  <th className="text-left px-5 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">{t("thScheduleName")}</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">{t("thSlots")}</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">{t("thHomegroups")}</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">{t("thLinkToUser")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-amber-50">
@@ -132,19 +126,19 @@ export default async function StaffProfilesPage({
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2 text-slate-700">
             <Users className="w-4 h-4" />
-            Συνδεδεμένα προφίλ ({linked.length})
+            {t("linkedProfiles", { count: linked.length })}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100">
-                <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Όνομα</th>
-                <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Ρόλος</th>
-                <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Email</th>
-                <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Ώρες</th>
-                <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Τμήματα</th>
-                <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Συνδεδεμένος χρήστης</th>
+                <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("thName")}</th>
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("thRole")}</th>
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("thEmail")}</th>
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("thSlots")}</th>
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("thHomegroups")}</th>
+                <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("thLinkedUser")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -159,7 +153,7 @@ export default async function StaffProfilesPage({
                     <td className="px-5 py-3 font-medium text-slate-900">{staffDisplayName(sp)}</td>
                     <td className="px-4 py-3">
                       <Badge variant="outline" className={`text-xs font-medium ${roleColor}`}>
-                        {ROLE_LABEL[sp.user!.role] ?? sp.user!.role}
+                        {tRoles(sp.user!.role)}
                       </Badge>
                     </td>
                     <td className="px-4 py-3 text-slate-500 text-xs">{sp.user?.email}</td>

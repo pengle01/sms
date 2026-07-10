@@ -2,6 +2,7 @@ import { db } from "@/server/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ClipboardList, LogOut } from "lucide-react";
@@ -16,6 +17,7 @@ export default async function ParentChildAttendancePage({
   searchParams: Promise<{ month?: string }>;
 }) {
   const { locale, studentId } = await params;
+  const t = await getTranslations("parentAttendance");
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login`);
 
@@ -78,7 +80,7 @@ export default async function ParentChildAttendancePage({
     <div className="space-y-5">
       <div>
         <h2 className="text-2xl font-bold text-slate-900">{student.user?.name}</h2>
-        <p className="text-slate-500 text-sm mt-1">Απουσίες · {student.group?.name ?? "Χωρίς τμήμα"}</p>
+        <p className="text-slate-500 text-sm mt-1">{t("subtitle", { group: student.group?.name ?? t("noGroup") })}</p>
       </div>
 
       <div className="flex items-center gap-3">
@@ -89,7 +91,7 @@ export default async function ParentChildAttendancePage({
           ←
         </a>
         <span className="font-medium text-slate-900">
-          {start.toLocaleDateString("el-GR", { month: "long", year: "numeric" })}
+          {start.toLocaleDateString(locale === "en" ? "en-GB" : "el-GR", { month: "long", year: "numeric" })}
         </span>
         <a
           href={`?month=${nextYear}-${String(nextMonth).padStart(2, "0")}`}
@@ -103,13 +105,13 @@ export default async function ParentChildAttendancePage({
         <Card>
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold text-red-600">{absent}</p>
-            <p className="text-xs text-slate-500 mt-1">Απουσίες</p>
+            <p className="text-xs text-slate-500 mt-1">{t("absences")}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold text-amber-600">{late}</p>
-            <p className="text-xs text-slate-500 mt-1">Καθυστερήσεις</p>
+            <p className="text-xs text-slate-500 mt-1">{t("lateArrivals")}</p>
           </CardContent>
         </Card>
       </div>
@@ -119,7 +121,7 @@ export default async function ParentChildAttendancePage({
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <LogOut className="w-4 h-4 text-yellow-500" />
-              Άδειες Εξόδου
+              {t("exitPermits")}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -128,16 +130,16 @@ export default async function ParentChildAttendancePage({
                 <div key={p.id} className="flex items-start gap-3 px-5 py-3.5">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-slate-900">
-                      {fmtDisplayDate(p.date)} · από την {p.fromPeriod}η ώρα
+                      {fmtDisplayDate(p.date)} · {t("fromPeriod", { period: p.fromPeriod })}
                     </p>
                     <p className="text-sm text-slate-600">{p.reason}</p>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      Εκδόθηκε από {staffDisplayName(p.issuer)}
+                      {t("issuedBy", { name: staffDisplayName(p.issuer) })}
                     </p>
                   </div>
                   {!p.active && (
                     <Badge variant="outline" className="text-xs bg-slate-50 text-slate-500 border-slate-200">
-                      Ακυρώθηκε
+                      {t("cancelled")}
                     </Badge>
                   )}
                 </div>
@@ -149,16 +151,16 @@ export default async function ParentChildAttendancePage({
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Καταγραφή Απουσιών</CardTitle>
+          <CardTitle className="text-base">{t("logTitle")}</CardTitle>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
           <table className="w-full text-sm min-w-[500px]">
             <thead>
               <tr className="border-b border-slate-100">
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Ημερομηνία</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Ώρα</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Μάθημα</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Κατάσταση</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("colDate")}</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("colPeriod")}</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("colCourse")}</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("colStatus")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -174,7 +176,7 @@ export default async function ParentChildAttendancePage({
                       variant="outline"
                       className={`text-xs ${r.isAutoAbsent || r.status === "ABSENT" ? "bg-red-50 text-red-700 border-red-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}
                     >
-                      {r.isAutoAbsent ? "Αυτόματη Απουσία" : r.status === "ABSENT" ? "Απουσία" : "Καθυστέρηση"}
+                      {r.isAutoAbsent ? t("statusAutoAbsent") : r.status === "ABSENT" ? t("statusAbsent") : t("statusLate")}
                     </Badge>
                   </td>
                 </tr>
@@ -183,7 +185,7 @@ export default async function ParentChildAttendancePage({
                 <tr>
                   <td colSpan={4} className="px-5 py-16 text-center text-slate-400">
                     <ClipboardList className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                    Καμία απουσία αυτόν τον μήνα
+                    {t("emptyMonth")}
                   </td>
                 </tr>
               )}

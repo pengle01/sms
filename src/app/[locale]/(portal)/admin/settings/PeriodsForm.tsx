@@ -1,16 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { trpc } from "@/trpc/client";
 import { toast } from "sonner";
 import { EditControls } from "./EditControls";
 
+/** Labels are adminSettings.* message keys. */
 const DAYS = [
-  { dow: 1, label: "Δευτέρα" },
-  { dow: 2, label: "Τρίτη" },
-  { dow: 3, label: "Τετάρτη" },
-  { dow: 4, label: "Πέμπτη" },
-  { dow: 5, label: "Παρασκευή" },
+  { dow: 1, labelKey: "monday" },
+  { dow: 2, labelKey: "tuesday" },
+  { dow: 3, labelKey: "wednesday" },
+  { dow: 4, labelKey: "thursday" },
+  { dow: 5, labelKey: "friday" },
 ];
 
 interface Props {
@@ -18,6 +20,7 @@ interface Props {
 }
 
 export function PeriodsForm({ initial }: Props) {
+  const t = useTranslations("adminSettings");
   const [values, setValues] = useState<Record<number, number>>(initial);
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -37,9 +40,9 @@ export function PeriodsForm({ initial }: Props) {
   return (
     <div className="space-y-4">
       <div className="divide-y divide-slate-100">
-        {DAYS.map(({ dow, label }) => (
+        {DAYS.map(({ dow, labelKey }) => (
           <div key={dow} className="flex items-center justify-between py-3">
-            <span className="text-sm font-medium text-slate-700">{label}</span>
+            <span className="text-sm font-medium text-slate-700">{t(labelKey)}</span>
             <div className="flex rounded-lg border border-slate-200 overflow-hidden">
               {[7, 8].map((n) => (
                 <button

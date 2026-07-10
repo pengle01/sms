@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { trpc } from "@/trpc/client";
 import { toast } from "sonner";
 import { Minus, Plus } from "lucide-react";
@@ -14,6 +15,7 @@ const MIN = 1;
 const MAX = 5;
 
 export function MaxGuardiansForm({ initial }: Props) {
+  const t = useTranslations("adminSettings");
   const [value, setValue] = useState(initial);
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -37,8 +39,8 @@ export function MaxGuardiansForm({ initial }: Props) {
   return (
     <div className="space-y-4">
       <div className="space-y-1">
-        <p className="text-sm font-medium text-slate-700">Μέγιστοι λογαριασμοί κηδεμόνων ανά μαθητή</p>
-        <p className="text-xs text-slate-400">Πόσοι λογαριασμοί γονέων/κηδεμόνων μπορούν να ενεργοποιήσουν τον κωδικό πρόσβασης ενός μαθητή. Ο λογαριασμός του ίδιου του μαθητή είναι ξεχωριστός και επιτρέπεται πάντα.</p>
+        <p className="text-sm font-medium text-slate-700">{t("maxGuardiansTitle")}</p>
+        <p className="text-xs text-slate-400">{t("maxGuardiansHint")}</p>
       </div>
 
       <div className="flex items-center gap-4">
@@ -64,7 +66,7 @@ export function MaxGuardiansForm({ initial }: Props) {
           </button>
         </div>
 
-        <span className="text-sm text-slate-400">κηδεμόνες / μαθητή</span>
+        <span className="text-sm text-slate-400">{t("guardiansPerStudent")}</span>
       </div>
 
       <EditControls

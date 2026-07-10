@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { UserCheck, UserX, GraduationCap, Undo2, CheckCircle2, XCircle } from "lucide-react";
@@ -53,12 +54,6 @@ interface Toast {
   approved: boolean;
 }
 
-const ROLE_LABELS: Record<string, string> = {
-  TEACHER: "Εκπαιδευτικός", SCHOOL_ADMIN: "Διοικητικός", CHAPERONE: "Συνοδός",
-  STUDENT_COUNSELOR: "Σύμβουλος Σπουδών", HEADTEACHER_A: "Βοηθός Διευθυντής Α", HEADTEACHER_B: "Βοηθός Διευθυντής",
-  HEADMASTER: "Διευθυντής",
-};
-
 const UNDO_MS = 5000;
 
 interface Props {
@@ -68,6 +63,8 @@ interface Props {
 }
 
 export function RequestsList({ registrations: initRegs, teacherClaims: initClaims, chaperoneRequests: initChaperones }: Props) {
+  const t = useTranslations("adminClaims");
+  const tRoles = useTranslations("roles");
   const router = useRouter();
   const [regs, setRegs] = useState(initRegs);
   const [claims, setClaims] = useState(initClaims);
@@ -122,7 +119,7 @@ export function RequestsList({ registrations: initRegs, teacherClaims: initClaim
 
   function approveReg(item: PendingUser) {
     setRegs((prev) => prev.filter((r) => r.id !== item.id));
-    schedule(item.id, `Εγκρίθηκε: ${item.name}`, true,
+    schedule(item.id, t("approvedName", { name: item.name }), true,
       () => approveRegistrationAction(item.id, item.role),
       () => setRegs((prev) => [...prev, item].sort((a, b) => a.createdAt.localeCompare(b.createdAt))),
     );
@@ -130,7 +127,7 @@ export function RequestsList({ registrations: initRegs, teacherClaims: initClaim
 
   function rejectReg(item: PendingUser) {
     setRegs((prev) => prev.filter((r) => r.id !== item.id));
-    schedule(item.id, `Απορρίφθηκε: ${item.name}`, false,
+    schedule(item.id, t("rejectedName", { name: item.name }), false,
       () => rejectRegistrationAction(item.id),
       () => setRegs((prev) => [...prev, item].sort((a, b) => a.createdAt.localeCompare(b.createdAt))),
     );
@@ -138,7 +135,7 @@ export function RequestsList({ registrations: initRegs, teacherClaims: initClaim
 
   function approveClaim(item: PendingClaim) {
     setClaims((prev) => prev.filter((c) => c.id !== item.id));
-    schedule(item.id, `Εγκρίθηκε: ${item.name}`, true,
+    schedule(item.id, t("approvedName", { name: item.name }), true,
       () => approveTeacherClaimAction(item.id),
       () => setClaims((prev) => [...prev, item].sort((a, b) => a.createdAt.localeCompare(b.createdAt))),
     );
@@ -146,7 +143,7 @@ export function RequestsList({ registrations: initRegs, teacherClaims: initClaim
 
   function rejectClaim(item: PendingClaim) {
     setClaims((prev) => prev.filter((c) => c.id !== item.id));
-    schedule(item.id, `Απορρίφθηκε: ${item.name}`, false,
+    schedule(item.id, t("rejectedName", { name: item.name }), false,
       () => rejectTeacherClaimAction(item.id),
       () => setClaims((prev) => [...prev, item].sort((a, b) => a.createdAt.localeCompare(b.createdAt))),
     );
@@ -154,7 +151,7 @@ export function RequestsList({ registrations: initRegs, teacherClaims: initClaim
 
   function approveChaperone(item: PendingChaperone) {
     setChaperones((prev) => prev.filter((c) => c.id !== item.id));
-    schedule(item.id, `Εγκρίθηκε: ${item.name}`, true,
+    schedule(item.id, t("approvedName", { name: item.name }), true,
       () => approveChaperoneRequestAction(item.id),
       () => setChaperones((prev) => [...prev, item].sort((a, b) => a.createdAt.localeCompare(b.createdAt))),
     );
@@ -162,7 +159,7 @@ export function RequestsList({ registrations: initRegs, teacherClaims: initClaim
 
   function rejectChaperone(item: PendingChaperone) {
     setChaperones((prev) => prev.filter((c) => c.id !== item.id));
-    schedule(item.id, `Απορρίφθηκε: ${item.name}`, false,
+    schedule(item.id, t("rejectedName", { name: item.name }), false,
       () => rejectChaperoneRequestAction(item.id),
       () => setChaperones((prev) => [...prev, item].sort((a, b) => a.createdAt.localeCompare(b.createdAt))),
     );
@@ -178,14 +175,14 @@ export function RequestsList({ registrations: initRegs, teacherClaims: initClaim
     <>
       <div>
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-slate-900">Αιτήματα</h2>
+          <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>
           {allItems.length > 0 && (
-            <p className="text-slate-500 mt-1">{allItems.length} σε εκκρεμότητα</p>
+            <p className="text-slate-500 mt-1">{t("pendingCount", { count: allItems.length })}</p>
           )}
         </div>
 
         {allItems.length === 0 && toasts.length === 0 ? (
-          <p className="text-slate-400 text-sm py-12 text-center">Δεν υπάρχουν εκκρεμή αιτήματα.</p>
+          <p className="text-slate-400 text-sm py-12 text-center">{t("noPending")}</p>
         ) : (
           <div className="divide-y divide-slate-100">
             {allItems.map((entry) => {
@@ -197,7 +194,7 @@ export function RequestsList({ registrations: initRegs, teacherClaims: initClaim
                       <p className="font-medium text-slate-900">{item.name || "—"}</p>
                       <p className="text-sm text-slate-500">{item.email}</p>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <Badge variant="outline" className="text-xs">{ROLE_LABELS[item.role] ?? item.role}</Badge>
+                        <Badge variant="outline" className="text-xs">{tRoles.has(item.role) ? tRoles(item.role) : item.role}</Badge>
                         {item.staffName && (
                           <Badge className="text-xs bg-blue-50 text-blue-700 border-blue-200 font-mono">{item.staffName}</Badge>
                         )}
@@ -206,10 +203,10 @@ export function RequestsList({ registrations: initRegs, teacherClaims: initClaim
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <Button size="sm" onClick={() => approveReg(item)} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5">
-                        <UserCheck className="w-3.5 h-3.5" /> Έγκριση
+                        <UserCheck className="w-3.5 h-3.5" /> {t("approve")}
                       </Button>
                       <Button variant="outline" size="sm" onClick={() => rejectReg(item)} className="border-red-200 text-red-600 hover:bg-red-50 gap-1.5">
-                        <UserX className="w-3.5 h-3.5" /> Απόρριψη
+                        <UserX className="w-3.5 h-3.5" /> {t("reject")}
                       </Button>
                     </div>
                   </div>
@@ -224,17 +221,17 @@ export function RequestsList({ registrations: initRegs, teacherClaims: initClaim
                       <p className="font-medium text-slate-900">{item.name || "—"}</p>
                       <p className="text-sm text-slate-500">{item.email}</p>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <Badge variant="outline" className="text-xs">Εκπαιδευτικός</Badge>
+                        <Badge variant="outline" className="text-xs">{tRoles("TEACHER")}</Badge>
                         <Badge className="text-xs bg-blue-50 text-blue-700 border-blue-200 font-mono">{item.staffName}</Badge>
                         <span className="text-xs text-slate-400">{fmtDisplayDate(new Date(item.createdAt))}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <Button size="sm" onClick={() => approveClaim(item)} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5">
-                        <UserCheck className="w-3.5 h-3.5" /> Έγκριση
+                        <UserCheck className="w-3.5 h-3.5" /> {t("approve")}
                       </Button>
                       <Button variant="outline" size="sm" onClick={() => rejectClaim(item)} className="border-red-200 text-red-600 hover:bg-red-50 gap-1.5">
-                        <UserX className="w-3.5 h-3.5" /> Απόρριψη
+                        <UserX className="w-3.5 h-3.5" /> {t("reject")}
                       </Button>
                     </div>
                   </div>
@@ -249,7 +246,7 @@ export function RequestsList({ registrations: initRegs, teacherClaims: initClaim
                     <p className="font-medium text-slate-900">{item.name || "—"}</p>
                     <p className="text-sm text-slate-500">{item.email}</p>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Badge variant="outline" className="text-xs">Συνοδός</Badge>
+                      <Badge variant="outline" className="text-xs">{tRoles("CHAPERONE")}</Badge>
                       <span className="text-xs text-slate-400">{fmtDisplayDate(new Date(item.createdAt))}</span>
                     </div>
                     {item.note && (
@@ -264,10 +261,10 @@ export function RequestsList({ registrations: initRegs, teacherClaims: initClaim
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <Button size="sm" onClick={() => approveChaperone(item)} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5">
-                      <UserCheck className="w-3.5 h-3.5" /> Έγκριση
+                      <UserCheck className="w-3.5 h-3.5" /> {t("approve")}
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => rejectChaperone(item)} className="border-red-200 text-red-600 hover:bg-red-50 gap-1.5">
-                      <UserX className="w-3.5 h-3.5" /> Απόρριψη
+                      <UserX className="w-3.5 h-3.5" /> {t("reject")}
                     </Button>
                   </div>
                 </div>
@@ -290,7 +287,7 @@ export function RequestsList({ registrations: initRegs, teacherClaims: initClaim
                 onClick={() => undo(toast.id)}
                 className="flex items-center gap-1 text-amber-400 hover:text-amber-300 font-medium flex-shrink-0 transition-colors"
               >
-                <Undo2 className="w-3.5 h-3.5" /> Αναίρεση
+                <Undo2 className="w-3.5 h-3.5" /> {t("undo")}
               </button>
             </div>
           ))}

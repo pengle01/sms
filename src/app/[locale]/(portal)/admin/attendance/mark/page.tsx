@@ -4,6 +4,7 @@ import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
 import { getNow, utcMidnight, fmtDisplayDate } from "@/lib/dates";
 import { ArrowLeft } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { AttendanceMarkForm } from "./AttendanceMarkForm";
 export default async function MarkAttendancePage({
@@ -18,6 +19,7 @@ export default async function MarkAttendancePage({
   if (!session) redirect(`/${locale}/login`);
 
   const { groupId, period: periodStr } = await searchParams;
+  const t = await getTranslations("adminAttendance");
   const period = periodStr ? parseInt(periodStr) : 1;
 
   const [groups, staff] = await Promise.all([
@@ -80,12 +82,12 @@ export default async function MarkAttendancePage({
           className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          Απουσίες
+          {t("title")}
         </Link>
       </div>
 
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">Καταχώρηση Απουσιών</h2>
+        <h2 className="text-2xl font-bold text-slate-900">{t("markAttendance")}</h2>
         <p className="text-slate-500 text-sm mt-1">
           {fmtDisplayDate(getNow())}
         </p>

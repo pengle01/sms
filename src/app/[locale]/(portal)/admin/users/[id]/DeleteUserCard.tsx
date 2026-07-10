@@ -16,6 +16,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Trash2, TriangleAlert, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { deleteUser } from "./actions";
 
 interface Props {
@@ -29,23 +30,24 @@ interface Props {
 }
 
 export function DeleteUserCard({ userId, userName, locale, isSelf, isLastAdmin }: Props) {
+  const t = useTranslations("adminUsers");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
   const blockedReason = isSelf
-    ? "Δεν μπορείτε να διαγράψετε τον δικό σας λογαριασμό."
+    ? t("cannotDeleteSelf")
     : isLastAdmin
-      ? "Τελευταίος διαχειριστής — δεν είναι δυνατή η διαγραφή."
+      ? t("lastAdminCannotDelete")
       : null;
 
   function onConfirm() {
     startTransition(async () => {
       const res = await deleteUser(userId);
       if (res.ok) {
-        toast.success("Ο χρήστης διαγράφηκε");
+        toast.success(t("userDeleted"));
         router.push(`/${locale}/admin/users`);
       } else {
-        toast.error(res.error ?? "Κάτι πήγε στραβά");
+        toast.error(res.error ?? t("somethingWentWrong"));
       }
     });
   }
@@ -55,19 +57,15 @@ export function DeleteUserCard({ userId, userName, locale, isSelf, isLastAdmin }
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2 text-red-700">
           <TriangleAlert className="w-4 h-4" />
-          Επικίνδυνη ζώνη
+          {t("dangerZone")}
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-medium text-slate-800">Διαγραφή αυτού του χρήστη</p>
+            <p className="text-sm font-medium text-slate-800">{t("deleteThisUser")}</p>
             <p className="text-xs text-slate-400 mt-0.5">
-              Αφαιρεί οριστικά τη σύνδεση και αποδεσμεύει το όνομα προγράμματος ώστε άλλο πρόσωπο να
-              μπορεί να διεκδικήσει τον ρόλο. Το προφίλ προσωπικού διατηρείται (αποσυνδεδεμένο) ώστε
-              να μη χαθεί το ιστορικό παρουσιών, παραπομπών, αναπληρώσεων και μηνυμάτων. Λογαριασμός
-              με δική του διαχειριστική δραστηριότητα (αρχείο καταγραφής, διεκπεραιωμένες παραπομπές,
-              πλάνα αναπληρώσεων) δεν μπορεί να διαγραφεί.
+              {t("deleteHint")}
             </p>
           </div>
           <div className="flex-shrink-0">
@@ -86,25 +84,20 @@ export function DeleteUserCard({ userId, userName, locale, isSelf, isLastAdmin }
                       ) : (
                         <Trash2 className="w-3.5 h-3.5" />
                       )}
-                      Διαγραφή χρήστη
+                      {t("deleteUser")}
                     </button>
                   }
                 />
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Διαγραφή {userName};</AlertDialogTitle>
+                    <AlertDialogTitle>{t("deleteConfirmTitle", { name: userName })}</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Διαγράφει οριστικά τη σύνδεση (email/κωδικός και συνεδρίες) και αποδεσμεύει το
-                      όνομα προγράμματος ώστε να μπορεί να διεκδικηθεί ξανά. Το προφίλ προσωπικού
-                      διατηρείται (αποσυνδεδεμένο) για να μη χαθεί το ιστορικό παρουσιών, παραπομπών,
-                      αναπληρώσεων και μηνυμάτων. Η ενέργεια δεν αναιρείται. Αν ο λογαριασμός έχει
-                      δική του διαχειριστική δραστηριότητα (αρχείο καταγραφής, διεκπεραιωμένες
-                      παραπομπές, πλάνα αναπληρώσεων), η διαγραφή απορρίπτεται.
+                      {t("deleteConfirmDescription")}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Άκυρο</AlertDialogCancel>
-                    <AlertDialogAction onClick={onConfirm}>Διαγραφή</AlertDialogAction>
+                    <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                    <AlertDialogAction onClick={onConfirm}>{t("delete")}</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
