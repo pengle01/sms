@@ -7,7 +7,6 @@ import { writeAudit, requestMeta } from "@/server/audit";
 import { isEducator } from "@/lib/rbac";
 import { utcMidnight, fmtDisplayDate } from "@/lib/dates";
 import { sendSms } from "@/lib/sms";
-import { isKnownRoom } from "@/lib/rooms";
 import type { SubstitutionRequestType } from "@/generated/prisma";
 
 export type RequestResult = { ok: true } | { ok: false; error: string };
@@ -94,7 +93,8 @@ export async function createSubstitutionRequest(input: {
   } else if (input.type === "ROOM_CHANGE") {
     if (periods.length !== 1) return { ok: false, error: "errPeriod" };
     if (!input.groupId || !input.newRoom?.trim()) return { ok: false, error: "errRoomChange" };
-    if (!isKnownRoom(input.newRoom)) return { ok: false, error: "errUnknownRoom" };
+    const room = await db.room.findUnique({ where: { name: input.newRoom.trim() } });
+    if (!room) return { ok: false, error: "errUnknownRoom" };
   }
 
   const request = await db.substitutionRequest.create({

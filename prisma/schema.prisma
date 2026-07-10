@@ -1122,6 +1122,15 @@ model GlobalSetting {
   value String
 }
 
+// The school's rooms, managed by the super admin (Settings → Rooms). Used by
+// the substitution room-change picker and the relocation cascade. «κιόσκια»
+// (study-hall yard code) is intentionally NOT a room.
+model Room {
+  id       String @id @default(cuid())
+  name     String @unique
+  capacity Int
+}
+
 // ─── Self-service access (students & parents) ─────────────────────────────────
 
 // One redeemable access code per student. The student redeems it once to set up

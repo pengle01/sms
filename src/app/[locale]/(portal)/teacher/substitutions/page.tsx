@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { utcMidnight, fmtDisplayDate } from "@/lib/dates";
 import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY } from "@/lib/schoolConfig";
 import { maxPeriodCount } from "@/lib/periods";
+import { getRooms } from "@/server/rooms";
 import { ClipboardEdit, MessageSquare, ArrowRight } from "lucide-react";
 import { RequestForm } from "./RequestForm";
 import { CancelRequestButton } from "./CancelRequestButton";
@@ -31,7 +32,7 @@ export default async function SubstitutionsPage({
   });
   if (!staff) redirect(`/${locale}/teacher/dashboard`);
 
-  const [requests, groups, periodsConfig] = await Promise.all([
+  const [requests, groups, periodsConfig, rooms] = await Promise.all([
     db.substitutionRequest.findMany({
       where: { staffId: staff.id },
       include: { group: { select: { name: true } } },
@@ -40,6 +41,7 @@ export default async function SubstitutionsPage({
     }),
     db.group.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
     getPeriodsPerDay(),
+    getRooms(),
   ]);
 
   const today = utcMidnight();
@@ -87,7 +89,7 @@ export default async function SubstitutionsPage({
             )}
           </CardHeader>
           <CardContent>
-            <RequestForm groups={groups} maxPeriod={maxPeriod} />
+            <RequestForm groups={groups} maxPeriod={maxPeriod} rooms={rooms.map(({ name, capacity }) => ({ name, capacity }))} />
           </CardContent>
         </Card>
 

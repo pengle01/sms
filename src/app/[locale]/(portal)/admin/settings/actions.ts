@@ -7,8 +7,56 @@ import { writeAudit, requestMeta } from "@/server/audit";
 import { DUTY_ELIGIBLE_ROLES } from "@/lib/dutyRoster";
 import { GRADES_UNLOCKED_KEY, GRADE_PERIODS, type GradesUnlocked } from "@/lib/grades";
 import { ATTENDANCE_LOCK_KEY, ATTENDANCE_LOCK_WINDOWS, type AttendanceLockConfig } from "@/lib/attendanceLock";
+import { parseRoomInput } from "@/lib/rooms";
 
 export type SaveRosterResult = { ok: true } | { ok: false; error: string };
+
+const SETTINGS_PAGE = "/[locale]/(portal)/admin/settings";
+
+/** Add a room to the school room list (name unique, capacity in seats). */
+export async function addRoom(name: string, capacity: number): Promise<SaveRosterResult> {
+  const auth = await getSuperAdminAuth();
+  if (!auth) return { ok: false, error: "forbidden" };
+
+  const parsed = parseRoomInput(name, capacity);
+  if (!parsed.ok) return { ok: false, error: parsed.error === "name" ? "roomErrName" : "roomErrCapacity" };
+
+  const existing = await db.room.findUnique({ where: { name: parsed.name } });
+  if (existing) return { ok: false, error: "roomErrExists" };
+
+  const room = await db.room.create({ data: { name: parsed.name, capacity: parsed.capacity } });
+  await writeAudit({
+    userId: auth.userId,
+    action: "settings.roomAdd",
+    resource: "Room",
+    resourceId: room.id,
+    details: { name: parsed.name, capacity: parsed.capacity },
+    ...(await requestMeta()),
+  });
+  revalidatePath(SETTINGS_PAGE, "page");
+  return { ok: true };
+}
+
+/** Remove a room from the school room list. */
+export async function removeRoom(id: string): Promise<SaveRosterResult> {
+  const auth = await getSuperAdminAuth();
+  if (!auth) return { ok: false, error: "forbidden" };
+
+  const room = await db.room.findUnique({ where: { id } });
+  if (room) {
+    await db.room.delete({ where: { id } });
+    await writeAudit({
+      userId: auth.userId,
+      action: "settings.roomRemove",
+      resource: "Room",
+      resourceId: room.id,
+      details: { name: room.name, capacity: room.capacity },
+      ...(await requestMeta()),
+    });
+  }
+  revalidatePath(SETTINGS_PAGE, "page");
+  return { ok: true };
+}
 
 /**
  * Enable/disable the attendance-completion lock and its look-back window.

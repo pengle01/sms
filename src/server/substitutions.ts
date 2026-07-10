@@ -7,6 +7,7 @@ import { getPeriodsPerDay, getSchoolYear } from "@/lib/schoolConfig";
 import { getOnDutyDeputies } from "@/lib/calendar";
 import { dutyDowFor } from "@/lib/dutyRoster";
 import { fmtDisplayDate } from "@/lib/dates";
+import { getRooms } from "@/server/rooms";
 import {
   buildPlan,
   lastPeriodFor,
@@ -42,7 +43,7 @@ async function loadEngineInput(date: Date) {
   const dow = dutyDowFor(date);
   if (!dow) return null; // weekend
 
-  const [periodsConfig, schoolYear, slotRows, staffRows, requestRows] = await Promise.all([
+  const [periodsConfig, schoolYear, slotRows, staffRows, requestRows, roomRows] = await Promise.all([
     getPeriodsPerDay(),
     getSchoolYear(),
     db.timetableSlot.findMany({
@@ -58,6 +59,7 @@ async function loadEngineInput(date: Date) {
       select: { id: true, scheduleName: true, maxSubstitutions: true },
     }),
     db.substitutionRequest.findMany({ where: requestsWhere(date) }),
+    getRooms(),
   ]);
 
   // Substitution history from FINAL plans (excluding this date itself)
@@ -116,6 +118,7 @@ async function loadEngineInput(date: Date) {
     slots,
     teachers,
     requests,
+    rooms: roomRows.map(({ name, capacity }) => ({ name, capacity })),
   };
 }
 

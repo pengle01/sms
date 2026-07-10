@@ -1561,7 +1561,20 @@
     "send": "Send",
     "testEmailSent": "Test email sent",
     "sendFailed": "Send failed",
-    "testUsesValuesHint": "Uses the values above (save first to make them permanent)."
+    "testUsesValuesHint": "Uses the values above (save first to make them permanent).",
+    "rooms": "Rooms",
+    "roomsHint": "The school's room list — feeds the room-change picker in Substitutions. «κιόσκια» is not a room and does not belong here.",
+    "roomsEmpty": "No rooms.",
+    "roomsCount": "{count, plural, one {# room} other {# rooms}}",
+    "roomSeats": "{count, plural, one {# seat} other {# seats}}",
+    "roomName": "Name",
+    "roomCapacity": "Seats",
+    "roomAdd": "Add",
+    "roomRemove": "Remove",
+    "roomErrName": "Invalid room name.",
+    "roomErrCapacity": "Invalid seat count.",
+    "roomErrExists": "This room already exists.",
+    "forbidden": "Not allowed."
   },
   "adminClaims": {
     "title": "Requests",

@@ -1,12 +1,14 @@
-// Canonical room list (Κτήρια-Αίθουσες) for the room-change picker.
-// Transcribed from the school's rooms Excel (αίθουσεςnew.xlsx, 2026-07-10),
-// kept in the file's original order: special rooms, then per-building numbering.
+// Room helpers. The live room list is the `Room` table, managed by the super
+// admin (Settings → Rooms) and read via getRooms() in src/server/rooms.ts;
+// DEFAULT_ROOMS below seeds an empty table. Transcribed from the school's
+// rooms Excel (αίθουσεςnew.xlsx, 2026-07-10) in the file's original order:
+// special rooms, then per-building numbering.
 export interface Room {
   name: string;
   capacity: number;
 }
 
-export const ROOMS: Room[] = [
+export const DEFAULT_ROOMS: Room[] = [
   { name: "ΒΙΒΛ", capacity: 8 },
   { name: "ΙΑΤΡ", capacity: 1 },
   { name: "107", capacity: 1 },
@@ -98,22 +100,34 @@ export const ROOMS: Room[] = [
   { name: "Λ3", capacity: 24 },
 ];
 
-export const ROOM_NAMES: string[] = ROOMS.map((r) => r.name);
-
-const ROOM_NAME_SET = new Set(ROOM_NAMES);
-
-export function isKnownRoom(name: string): boolean {
-  return ROOM_NAME_SET.has(name.trim());
-}
-
 /**
  * Pick a relocation room for a displaced class: the largest-capacity room not
  * in use that period (ties broken by list order). The class size is unknown at
  * planning time, so biggest-first keeps tiny rooms (ΙΑΤΡ, 107) as last resorts.
  * «κιόσκια» is not a room (the study-hall code for staying in the yard) and is
- * never a candidate — it simply isn't on the list.
+ * never a candidate — it is never on the room list.
  */
-export function pickFreeRoom(usedRooms: ReadonlySet<string>, rooms: Room[] = ROOMS): string | null {
+export function pickFreeRoom(usedRooms: ReadonlySet<string>, rooms: Room[]): string | null {
   const candidates = [...rooms].sort((a, b) => b.capacity - a.capacity);
   return candidates.find((r) => !usedRooms.has(r.name))?.name ?? null;
+}
+
+export const ROOM_NAME_MAX = 20;
+export const ROOM_CAPACITY_MAX = 999;
+
+export type ParsedRoomInput = { ok: true; name: string; capacity: number } | { ok: false; error: "name" | "capacity" };
+
+/** Validate an admin add-room submission (name trimmed, capacity a positive int). */
+export function parseRoomInput(name: string, capacity: number): ParsedRoomInput {
+  const trimmed = name.trim();
+  if (!trimmed || trimmed.length > ROOM_NAME_MAX) return { ok: false, error: "name" };
+  if (!Number.isInteger(capacity) || capacity < 1 || capacity > ROOM_CAPACITY_MAX) {
+    return { ok: false, error: "capacity" };
+  }
+  return { ok: true, name: trimmed, capacity };
+}
+
+/** Display/order comparator: numeric-aware Greek collation ("6Β" before "24α" before "107"). */
+export function roomOrder(a: Room, b: Room): number {
+  return a.name.localeCompare(b.name, "el", { numeric: true });
 }

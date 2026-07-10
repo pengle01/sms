@@ -1,35 +1,24 @@
 import { describe, it, expect } from "vitest";
-import { ROOMS, ROOM_NAMES, isKnownRoom, pickFreeRoom } from "@/lib/rooms";
+import { DEFAULT_ROOMS, pickFreeRoom, parseRoomInput, roomOrder } from "@/lib/rooms";
 
-describe("Room list", () => {
+const NAMES = DEFAULT_ROOMS.map((r) => r.name);
+
+describe("Default room list", () => {
   it("has 89 rooms matching the school's rooms file", () => {
-    expect(ROOMS).toHaveLength(89);
-    expect(ROOM_NAMES).toHaveLength(89);
+    expect(DEFAULT_ROOMS).toHaveLength(89);
   });
 
   it("has unique room names", () => {
-    expect(new Set(ROOM_NAMES).size).toBe(ROOM_NAMES.length);
+    expect(new Set(NAMES).size).toBe(NAMES.length);
   });
 
   it("has a positive capacity for every room", () => {
-    expect(ROOMS.every((r) => Number.isInteger(r.capacity) && r.capacity > 0)).toBe(true);
+    expect(DEFAULT_ROOMS.every((r) => Number.isInteger(r.capacity) && r.capacity > 0)).toBe(true);
   });
 
-  it("recognizes known rooms, including Greek-lettered ones", () => {
-    expect(isKnownRoom("107")).toBe(true);
-    expect(isKnownRoom("ΒΙΒΛ")).toBe(true);
-    expect(isKnownRoom("24α")).toBe(true);
-    expect(isKnownRoom("Β54")).toBe(true);
-  });
-
-  it("trims surrounding whitespace before matching", () => {
-    expect(isKnownRoom(" 107 ")).toBe(true);
-  });
-
-  it("rejects unknown or empty room names", () => {
-    expect(isKnownRoom("999")).toBe(false);
-    expect(isKnownRoom("")).toBe(false);
-    expect(isKnownRoom("B54")).toBe(false); // Latin B, not Greek Β
+  it("never contains κιόσκια — it is a yard code, not a room", () => {
+    expect(NAMES).not.toContain("κιόσκια");
+    expect(NAMES).not.toContain("ΚΙΟΣΚΙΑ");
   });
 });
 
@@ -57,9 +46,37 @@ describe("pickFreeRoom", () => {
     expect(pickFreeRoom(new Set(["ΙΑΤΡ", "40", "44", "130"]), rooms)).toBe(null);
   });
 
-  it("never offers κιόσκια — it is not on the school list", () => {
-    expect(ROOM_NAMES).not.toContain("κιόσκια");
-    expect(ROOM_NAMES).not.toContain("ΚΙΟΣΚΙΑ");
-    expect(pickFreeRoom(new Set(ROOM_NAMES))).toBe(null);
+  it("returns null when the room list is empty", () => {
+    expect(pickFreeRoom(new Set(), [])).toBe(null);
+  });
+});
+
+describe("parseRoomInput", () => {
+  it("accepts a valid room and trims the name", () => {
+    expect(parseRoomInput(" 107 ", 24)).toEqual({ ok: true, name: "107", capacity: 24 });
+  });
+
+  it("rejects empty or overlong names", () => {
+    expect(parseRoomInput("   ", 10)).toEqual({ ok: false, error: "name" });
+    expect(parseRoomInput("Α".repeat(21), 10)).toEqual({ ok: false, error: "name" });
+  });
+
+  it("rejects non-integer, zero, negative, or huge capacities", () => {
+    expect(parseRoomInput("107", 0)).toEqual({ ok: false, error: "capacity" });
+    expect(parseRoomInput("107", -3)).toEqual({ ok: false, error: "capacity" });
+    expect(parseRoomInput("107", 2.5)).toEqual({ ok: false, error: "capacity" });
+    expect(parseRoomInput("107", NaN)).toEqual({ ok: false, error: "capacity" });
+    expect(parseRoomInput("107", 1000)).toEqual({ ok: false, error: "capacity" });
+  });
+});
+
+describe("roomOrder", () => {
+  it("sorts numerically, not lexicographically", () => {
+    const sorted = [
+      { name: "107", capacity: 1 },
+      { name: "24α", capacity: 10 },
+      { name: "6Β", capacity: 24 },
+    ].sort(roomOrder);
+    expect(sorted.map((r) => r.name)).toEqual(["6Β", "24α", "107"]);
   });
 });

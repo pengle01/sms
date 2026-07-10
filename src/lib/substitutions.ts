@@ -172,7 +172,7 @@ export interface BuildPlanInput {
   slots: SubSlot[]; // every timetable slot of that weekday
   teachers: SubTeacher[]; // all registered staff (pool candidates among them)
   requests: SubRequest[];
-  rooms?: Room[]; // relocation candidates for room-change cascades (default: the school list)
+  rooms?: Room[]; // relocation candidates for room-change cascades (the school room list)
 }
 
 export function buildPlan(input: BuildPlanInput): PlanEntryDraft[] {
@@ -387,7 +387,7 @@ export function buildPlan(input: BuildPlanInput): PlanEntryDraft[] {
         slots.filter((s) => s.period === period).map((s) => (s.room ?? "").trim())
       );
       usedRooms.add(target);
-      const freeRoom = pickFreeRoom(usedRooms, input.rooms);
+      const freeRoom = pickFreeRoom(usedRooms, input.rooms ?? []);
       entries.push({
         kind: "ROOM_CHANGE",
         period,

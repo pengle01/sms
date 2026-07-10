@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY, getMaxTestsPerWeek, DEFAULT_MAX_TESTS_PER_WEEK, getMaxGuardiansPerStudent, DEFAULT_MAX_GUARDIANS_PER_STUDENT, getSchoolYear, getTermDatesConfig, getSchoolName, getGradesUnlocked, getAttendanceLockConfig } from "@/lib/schoolConfig";
 import { getSmsConfig } from "@/lib/sms";
 import { getEmailConfig } from "@/lib/email";
+import { getRooms } from "@/server/rooms";
 import { getTranslations } from "next-intl/server";
 
 export default async function AdminSettingsPage({
@@ -30,7 +31,8 @@ export default async function AdminSettingsPage({
   const { DutyRosterForm } = await import("./DutyRosterForm");
   const { GradesUnlockForm } = await import("./GradesUnlockForm");
   const { AttendanceLockForm } = await import("./AttendanceLockForm");
-  const [periodsPerDay, maxTestsPerWeek, maxGuardians, smsConfig, emailConfig, termConfig, schoolYear, schoolName, gradesUnlocked, attendanceLock, dutyEntries, dutyDeputies] = await Promise.all([
+  const { RoomsForm } = await import("./RoomsForm");
+  const [periodsPerDay, maxTestsPerWeek, maxGuardians, smsConfig, emailConfig, termConfig, schoolYear, schoolName, gradesUnlocked, attendanceLock, dutyEntries, dutyDeputies, rooms] = await Promise.all([
     getPeriodsPerDay(),
     getMaxTestsPerWeek(),
     getMaxGuardiansPerStudent(),
@@ -47,6 +49,7 @@ export default async function AdminSettingsPage({
       select: { id: true, scheduleName: true, user: { select: { name: true } } },
       orderBy: { user: { name: "asc" } },
     }),
+    getRooms(),
   ]);
   const initial = { ...DEFAULT_PERIODS_PER_DAY, ...periodsPerDay };
   const maxTestsInitial = maxTestsPerWeek ?? DEFAULT_MAX_TESTS_PER_WEEK;
@@ -145,6 +148,15 @@ export default async function AdminSettingsPage({
         </CardHeader>
         <CardContent>
           <PeriodsForm initial={initial} />
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">{t("rooms")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RoomsForm rooms={rooms} />
         </CardContent>
       </Card>
 

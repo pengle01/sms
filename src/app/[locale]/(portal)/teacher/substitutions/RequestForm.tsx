@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { createSubstitutionRequest } from "./actions";
-import { ROOMS } from "@/lib/rooms";
+import type { Room } from "@/lib/rooms";
 
 type RequestType = "ABSENCE" | "EXEMPTION" | "ROOM_CHANGE";
 type Duration = "DAY" | "RANGE" | "PERIODS";
@@ -25,9 +25,10 @@ const REASONS = [
 interface Props {
   groups: { id: string; name: string }[];
   maxPeriod: number;
+  rooms: Room[];
 }
 
-export function RequestForm({ groups, maxPeriod }: Props) {
+export function RequestForm({ groups, maxPeriod, rooms }: Props) {
   const t = useTranslations("substitutions");
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -251,7 +252,7 @@ export function RequestForm({ groups, maxPeriod }: Props) {
             <label className="text-sm font-medium text-slate-700">{t("newRoom")}</label>
             <select value={newRoom} onChange={(e) => setNewRoom(e.target.value)} className={input} required>
               <option value="">—</option>
-              {ROOMS.map((r) => (
+              {rooms.map((r) => (
                 <option key={r.name} value={r.name}>
                   {r.name} · {t("roomSeats", { count: r.capacity })}
                 </option>
