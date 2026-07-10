@@ -309,8 +309,12 @@ describe("buildPlan", () => {
         slots: [
           // occupant of room 24 at period 3
           slot({ staffId: "occ", period: 3, groupId: "G2", room: "24", scheduleName: "Μ-ΚΑΤΟΧΟΣ Κ." }),
-          // a free room exists ("30" used at another period only)
+          // room 30 is used at another period only, so it is free at period 3
           slot({ staffId: "x", period: 1, groupId: "G3", room: "30", scheduleName: "Φ-ΧΙ Χ." }),
+        ],
+        rooms: [
+          { name: "24", capacity: 14 },
+          { name: "30", capacity: 17 },
         ],
         teachers: [teacher({ staffId: "occ" }), teacher({ staffId: "x" })],
         requests: [

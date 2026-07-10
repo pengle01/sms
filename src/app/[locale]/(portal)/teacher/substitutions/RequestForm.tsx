@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { createSubstitutionRequest } from "./actions";
+import { ROOMS } from "@/lib/rooms";
 
 type RequestType = "ABSENCE" | "EXEMPTION" | "ROOM_CHANGE";
 type Duration = "DAY" | "RANGE" | "PERIODS";
@@ -248,7 +249,14 @@ export function RequestForm({ groups, maxPeriod }: Props) {
           </div>
           <div className="space-y-1">
             <label className="text-sm font-medium text-slate-700">{t("newRoom")}</label>
-            <input value={newRoom} onChange={(e) => setNewRoom(e.target.value)} className={input} required />
+            <select value={newRoom} onChange={(e) => setNewRoom(e.target.value)} className={input} required>
+              <option value="">—</option>
+              {ROOMS.map((r) => (
+                <option key={r.name} value={r.name}>
+                  {r.name} · {t("roomSeats", { count: r.capacity })}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       )}

@@ -17,7 +17,11 @@
 //                     by fewest substitutions this year.
 //   6. Fallback     — STUDY_HALL when nobody qualifies.
 // Plus ROOM_CHANGE requests with an automatic cascade: if the target room is
-// occupied that period, its occupant is relocated to a free room.
+// occupied that period, its occupant is relocated to a free room from the
+// school room list (largest free room first; «κιόσκια» is a study-hall code,
+// not a room, so it is never a relocation target).
+
+import { pickFreeRoom, type Room } from "@/lib/rooms";
 
 export type SubRequestType = "ABSENCE" | "EXEMPTION" | "ROOM_CHANGE";
 
@@ -168,6 +172,7 @@ export interface BuildPlanInput {
   slots: SubSlot[]; // every timetable slot of that weekday
   teachers: SubTeacher[]; // all registered staff (pool candidates among them)
   requests: SubRequest[];
+  rooms?: Room[]; // relocation candidates for room-change cascades (default: the school list)
 }
 
 export function buildPlan(input: BuildPlanInput): PlanEntryDraft[] {
@@ -382,10 +387,7 @@ export function buildPlan(input: BuildPlanInput): PlanEntryDraft[] {
         slots.filter((s) => s.period === period).map((s) => (s.room ?? "").trim())
       );
       usedRooms.add(target);
-      const allRooms = [...new Set(slots.map((s) => (s.room ?? "").trim()).filter(Boolean))].sort(
-        (a, b) => a.localeCompare(b, "el")
-      );
-      const freeRoom = allRooms.find((room) => !usedRooms.has(room)) ?? null;
+      const freeRoom = pickFreeRoom(usedRooms, input.rooms);
       entries.push({
         kind: "ROOM_CHANGE",
         period,
