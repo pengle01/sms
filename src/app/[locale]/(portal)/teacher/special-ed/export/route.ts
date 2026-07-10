@@ -75,11 +75,10 @@ export async function GET(_req: NextRequest) {
   const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Ειδική Αγωγή");
-  const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as Uint8Array;
-  // Copy into a fresh ArrayBuffer-backed view so the body type matches BodyInit.
-  const bytes = new Uint8Array(buf.length);
-  bytes.set(buf);
-  const body = new Blob([bytes], {
+  // type "array" yields an ArrayBuffer (NOT a Uint8Array — its .length is
+  // undefined, so sizing a view from it silently produced a 0-byte file).
+  const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
+  const body = new Blob([new Uint8Array(buf)], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
 
