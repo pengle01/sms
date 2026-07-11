@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { db } from "@/server/db";
+import { getSchoolName } from "@/lib/schoolConfig";
 import "@/app/globals.css";
 
 // lang is set per-locale below; suppressHydrationWarning stops React
@@ -15,9 +16,11 @@ const inter = Inter({
   subsets: ["latin", "greek"],
 });
 
-export const metadata: Metadata = {
-  title: "School Management System",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  // Browser-tab title = the school name from Settings, once configured.
+  const schoolName = await getSchoolName();
+  return { title: schoolName || "School Management System" };
+}
 
 export const viewport: Viewport = {
   width: "device-width",
