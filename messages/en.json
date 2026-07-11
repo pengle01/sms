@@ -1578,7 +1578,20 @@
     "roomErrName": "Invalid room name.",
     "roomErrCapacity": "Invalid seat count.",
     "roomErrExists": "This room already exists.",
-    "forbidden": "Not allowed."
+    "forbidden": "Not allowed.",
+    "specialEdCodes": "Special Education — Codes",
+    "specialEdCodesHint": "The problem-code and accommodation catalogs. An empty database initializes itself from the ministry list. A code used on student records is never deleted — it is deactivated (hidden from the form, kept on the records).",
+    "seProblems": "Problem Codes",
+    "seAccommodations": "Accommodation Codes",
+    "seCode": "Code",
+    "seLabel": "Description",
+    "seAdd": "Add",
+    "seRemove": "Remove",
+    "seInactive": "inactive",
+    "seInUse": "{count, plural, one {# student} other {# students}}",
+    "seCodeDeactivated": "This code is used on student records — it was deactivated instead of deleted.",
+    "seCodeErrExists": "This code already exists.",
+    "seCodeErrInput": "Invalid code or description."
   },
   "adminClaims": {
     "title": "Requests",

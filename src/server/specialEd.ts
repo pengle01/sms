@@ -1,5 +1,5 @@
 import { db } from "@/server/db";
-import { parseSupportGroup, type SupportKind } from "@/lib/specialEd";
+import { parseSupportGroup, SPECIAL_ED_ACCOMMODATIONS, SPECIAL_ED_PROBLEM_CODES, type SupportKind } from "@/lib/specialEd";
 
 export type SupportEntry = {
   kind: SupportKind;
@@ -135,8 +135,49 @@ export async function listSpecialEdStudents() {
     .sort((a, b) => (a.group ?? "").localeCompare(b.group ?? "") || a.name.localeCompare(b.name));
 }
 
+/**
+ * Seed EMPTY lookup tables from the ministry defaults — rooms-style: a fresh
+ * or wiped database self-initializes on first read, and the admin manages the
+ * lists afterwards (Settings → Ειδική Αγωγή — Κωδικοί). Non-empty tables are
+ * never touched, so admin edits survive.
+ */
+export async function ensureSpecialEdCodesSeeded(): Promise<void> {
+  const [p, a] = await Promise.all([
+    db.specialEdProblemCode.count(),
+    db.specialEdAccommodation.count(),
+  ]);
+  if (p === 0) {
+    await db.specialEdProblemCode.createMany({ data: SPECIAL_ED_PROBLEM_CODES, skipDuplicates: true });
+  }
+  if (a === 0) {
+    await db.specialEdAccommodation.createMany({ data: SPECIAL_ED_ACCOMMODATIONS, skipDuplicates: true });
+  }
+}
+
+/** Full lookup rows (incl. inactive + usage counts) for the admin settings card. */
+export async function getSpecialEdCodeTables() {
+  await ensureSpecialEdCodesSeeded();
+  const sel = {
+    id: true,
+    code: true,
+    label: true,
+    active: true,
+    _count: { select: { records: true } },
+  } as const;
+  const [problems, accommodations] = await Promise.all([
+    db.specialEdProblemCode.findMany({ select: sel, orderBy: { code: "asc" } }),
+    db.specialEdAccommodation.findMany({ select: sel }),
+  ]);
+  accommodations.sort((x, y) => (Number(x.code) || 9999) - (Number(y.code) || 9999) || x.code.localeCompare(y.code, "el"));
+  const shape = (r: (typeof problems)[number]) => ({
+    id: r.id, code: r.code, label: r.label, active: r.active, inUse: r._count.records,
+  });
+  return { problems: problems.map(shape), accommodations: accommodations.map(shape) };
+}
+
 /** Active lookup rows (problem codes + accommodations) for the edit form. */
 export async function getSpecialEdCatalog() {
+  await ensureSpecialEdCodesSeeded();
   const [problems, accommodations] = await Promise.all([
     db.specialEdProblemCode.findMany({ where: { active: true }, select: { code: true, label: true }, orderBy: { code: "asc" } }),
     db.specialEdAccommodation.findMany({ where: { active: true }, select: { code: true, label: true } }),

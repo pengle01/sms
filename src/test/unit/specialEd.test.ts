@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseSupportGroup, canViewSpecialEdFull, specialEdCodesSeeded, splitKnownCodes } from "@/lib/specialEd";
+import { parseSupportGroup, canViewSpecialEdFull, specialEdCodesSeeded, splitKnownCodes, parseSpecialEdCodeInput } from "@/lib/specialEd";
 import { specialEdLegend } from "@/server/specialEd";
 import type { Role } from "@/generated/prisma";
 
@@ -104,5 +104,25 @@ describe("specialEdLegend", () => {
 
   it("returns empty legends for an empty roster", () => {
     expect(specialEdLegend([])).toEqual({ problems: [], accommodations: [] });
+  });
+});
+
+describe("parseSpecialEdCodeInput", () => {
+  it("accepts and trims a valid code + label", () => {
+    expect(parseSpecialEdCodeInput(" ΔΞ ", "  Δυσλεξία  ")).toEqual({ ok: true, code: "ΔΞ", label: "Δυσλεξία" });
+  });
+
+  it("collapses inner whitespace in the label", () => {
+    expect(parseSpecialEdCodeInput("Χ", "α   β")).toEqual({ ok: true, code: "Χ", label: "α β" });
+  });
+
+  it("rejects empty or overlong codes", () => {
+    expect(parseSpecialEdCodeInput("", "x")).toEqual({ ok: false, error: "code" });
+    expect(parseSpecialEdCodeInput("Α".repeat(11), "x")).toEqual({ ok: false, error: "code" });
+  });
+
+  it("rejects empty or overlong labels", () => {
+    expect(parseSpecialEdCodeInput("ΔΞ", "   ")).toEqual({ ok: false, error: "label" });
+    expect(parseSpecialEdCodeInput("ΔΞ", "α".repeat(501))).toEqual({ ok: false, error: "label" });
   });
 });

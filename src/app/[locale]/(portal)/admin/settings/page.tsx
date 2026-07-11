@@ -8,6 +8,7 @@ import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY, getMaxTestsPerWeek, DEFAULT_
 import { getSmsConfig } from "@/lib/sms";
 import { getEmailConfig } from "@/lib/email";
 import { getRooms } from "@/server/rooms";
+import { getSpecialEdCodeTables } from "@/server/specialEd";
 import { getTranslations } from "next-intl/server";
 
 export default async function AdminSettingsPage({
@@ -32,7 +33,8 @@ export default async function AdminSettingsPage({
   const { GradesUnlockForm } = await import("./GradesUnlockForm");
   const { AttendanceLockForm } = await import("./AttendanceLockForm");
   const { RoomsForm } = await import("./RoomsForm");
-  const [periodsPerDay, maxTestsPerWeek, maxGuardians, smsConfig, emailConfig, termConfig, schoolYear, schoolName, gradesUnlocked, attendanceLock, dutyEntries, dutyDeputies, rooms] = await Promise.all([
+  const { SpecialEdCodesForm } = await import("./SpecialEdCodesForm");
+  const [periodsPerDay, maxTestsPerWeek, maxGuardians, smsConfig, emailConfig, termConfig, schoolYear, schoolName, gradesUnlocked, attendanceLock, dutyEntries, dutyDeputies, rooms, specialEdCodes] = await Promise.all([
     getPeriodsPerDay(),
     getMaxTestsPerWeek(),
     getMaxGuardiansPerStudent(),
@@ -50,6 +52,7 @@ export default async function AdminSettingsPage({
       orderBy: { user: { name: "asc" } },
     }),
     getRooms(),
+    getSpecialEdCodeTables(),
   ]);
   const initial = { ...DEFAULT_PERIODS_PER_DAY, ...periodsPerDay };
   const maxTestsInitial = maxTestsPerWeek ?? DEFAULT_MAX_TESTS_PER_WEEK;
@@ -157,6 +160,15 @@ export default async function AdminSettingsPage({
         </CardHeader>
         <CardContent>
           <RoomsForm rooms={rooms} />
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-2xl">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">{t("specialEdCodes")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <SpecialEdCodesForm problems={specialEdCodes.problems} accommodations={specialEdCodes.accommodations} />
         </CardContent>
       </Card>
 

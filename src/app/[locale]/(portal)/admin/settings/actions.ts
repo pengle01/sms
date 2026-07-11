@@ -8,8 +8,97 @@ import { DUTY_ELIGIBLE_ROLES } from "@/lib/dutyRoster";
 import { GRADES_UNLOCKED_KEY, GRADE_PERIODS, type GradesUnlocked } from "@/lib/grades";
 import { ATTENDANCE_LOCK_KEY, ATTENDANCE_LOCK_WINDOWS, type AttendanceLockConfig } from "@/lib/attendanceLock";
 import { parseRoomInput } from "@/lib/rooms";
+import { parseSpecialEdCodeInput } from "@/lib/specialEd";
 
 export type SaveRosterResult = { ok: true } | { ok: false; error: string };
+
+export type CodeKind = "problem" | "accommodation";
+export type CodeActionResult = { ok: true; deactivated?: boolean } | { ok: false; error: string };
+
+// The two lookup tables have identical shapes but distinct Prisma delegates
+// (a delegate union isn't callable), so each operation branches on `kind`.
+
+/** Add a special-ed code (problem or accommodation) to the admin-managed list. */
+export async function addSpecialEdCode(kind: CodeKind, code: string, label: string): Promise<CodeActionResult> {
+  const auth = await getSuperAdminAuth();
+  if (!auth) return { ok: false, error: "forbidden" };
+
+  const parsed = parseSpecialEdCodeInput(code, label);
+  if (!parsed.ok) return { ok: false, error: "seCodeErrInput" };
+
+  const existing =
+    kind === "problem"
+      ? await db.specialEdProblemCode.findUnique({ where: { code: parsed.code } })
+      : await db.specialEdAccommodation.findUnique({ where: { code: parsed.code } });
+  if (existing?.active) return { ok: false, error: "seCodeErrExists" };
+
+  // A previously deactivated code comes back with the (possibly updated) label.
+  const revive = existing ? { where: { id: existing.id }, data: { label: parsed.label, active: true } } : null;
+  const fresh = { data: { code: parsed.code, label: parsed.label } };
+  const row =
+    kind === "problem"
+      ? revive
+        ? await db.specialEdProblemCode.update(revive)
+        : await db.specialEdProblemCode.create(fresh)
+      : revive
+        ? await db.specialEdAccommodation.update(revive)
+        : await db.specialEdAccommodation.create(fresh);
+
+  await writeAudit({
+    userId: auth.userId,
+    action: "settings.specialEdCodeAdd",
+    resource: kind === "problem" ? "SpecialEdProblemCode" : "SpecialEdAccommodation",
+    resourceId: row.id,
+    details: { code: parsed.code, restored: !!existing },
+    ...(await requestMeta()),
+  });
+  revalidatePath(SETTINGS_PAGE, "page");
+  return { ok: true };
+}
+
+/**
+ * Remove a special-ed code. A code referenced by student records is
+ * DEACTIVATED (hidden from the edit form, kept on the records); an unused
+ * code is deleted outright.
+ */
+export async function removeSpecialEdCode(kind: CodeKind, id: string): Promise<CodeActionResult> {
+  const auth = await getSuperAdminAuth();
+  if (!auth) return { ok: false, error: "forbidden" };
+
+  const query = {
+    where: { id },
+    select: { id: true, code: true, _count: { select: { records: true } } },
+  } as const;
+  const row =
+    kind === "problem"
+      ? await db.specialEdProblemCode.findUnique(query)
+      : await db.specialEdAccommodation.findUnique(query);
+  if (!row) {
+    revalidatePath(SETTINGS_PAGE, "page");
+    return { ok: true };
+  }
+
+  const deactivated = row._count.records > 0;
+  const off = { where: { id }, data: { active: false } } as const;
+  if (kind === "problem") {
+    if (deactivated) await db.specialEdProblemCode.update(off);
+    else await db.specialEdProblemCode.delete({ where: { id } });
+  } else {
+    if (deactivated) await db.specialEdAccommodation.update(off);
+    else await db.specialEdAccommodation.delete({ where: { id } });
+  }
+
+  await writeAudit({
+    userId: auth.userId,
+    action: "settings.specialEdCodeRemove",
+    resource: kind === "problem" ? "SpecialEdProblemCode" : "SpecialEdAccommodation",
+    resourceId: row.id,
+    details: { code: row.code, deactivated },
+    ...(await requestMeta()),
+  });
+  revalidatePath(SETTINGS_PAGE, "page");
+  return { ok: true, deactivated };
+}
 
 const SETTINGS_PAGE = "/[locale]/(portal)/admin/settings";
 

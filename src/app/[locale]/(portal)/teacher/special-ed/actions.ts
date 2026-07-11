@@ -7,7 +7,7 @@ import { db } from "@/server/db";
 import { getActiveAuth } from "@/server/authz";
 import { canViewSpecialEdFull, specialEdCodesSeeded, splitKnownCodes } from "@/lib/specialEd";
 import { stripDiacritics } from "@/lib/textSearch";
-import { teacherUserIdsForStudent } from "@/server/specialEd";
+import { teacherUserIdsForStudent, ensureSpecialEdCodesSeeded } from "@/server/specialEd";
 import { writeAudit, requestMeta } from "@/server/audit";
 import { logger, errInfo } from "@/server/logger";
 
@@ -26,7 +26,10 @@ async function requireFullAccess() {
 
 // Catalog code sets — the import and the edit form only ever attach codes that
 // exist in the lookup tables (see splitKnownCodes in @/lib/specialEd).
+// Empty tables self-seed from the ministry defaults (rooms-style), so a fresh
+// or wiped database no longer needs a manual seeding step first.
 async function knownCodeSets() {
+  await ensureSpecialEdCodesSeeded();
   const [problems, accoms] = await Promise.all([
     db.specialEdProblemCode.findMany({ select: { code: true } }),
     db.specialEdAccommodation.findMany({ select: { code: true } }),

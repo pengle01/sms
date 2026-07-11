@@ -54,6 +54,22 @@ export const SPECIAL_ED_ACCOMMODATIONS: CodeEntry[] = [
   { code: "18", label: "Απαλλαγή από ακρόαση/κατανόηση κειμένου." },
 ];
 
+export const SPECIAL_ED_CODE_MAX = 10;
+export const SPECIAL_ED_LABEL_MAX = 500;
+
+export type ParsedCodeInput =
+  | { ok: true; code: string; label: string }
+  | { ok: false; error: "code" | "label" };
+
+/** Validate an admin add-code submission (code + human label, both trimmed). */
+export function parseSpecialEdCodeInput(code: string, label: string): ParsedCodeInput {
+  const c = code.trim();
+  if (!c || c.length > SPECIAL_ED_CODE_MAX) return { ok: false, error: "code" };
+  const l = label.trim().replace(/\s+/g, " ");
+  if (!l || l.length > SPECIAL_ED_LABEL_MAX) return { ok: false, error: "label" };
+  return { ok: true, code: c, label: l };
+}
+
 /**
  * Split requested codes into the ones present in the catalog and the unknown
  * rest, deduplicated. Both the Excel import and the edit form only ever attach
