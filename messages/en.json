@@ -410,7 +410,10 @@
     "errPhone": "Please enter a phone number.",
     "errDepartment": "Please select a department.",
     "errForbidden": "You are not allowed to do this.",
-    "noStaffProfile": "No staff profile is linked to your account yet — contact the system admin."
+    "noStaffProfile": "No staff profile is linked to your account yet — contact the system admin.",
+    "guardTitle": "Complete your profile",
+    "guardBody": "To use the portal, first fill in all the required details: first name, last name, phone, specialty and ΠΜΠ.",
+    "guardCta": "Complete profile"
   },
   "checks": {
     "title": "Data Checks",
@@ -1338,7 +1341,8 @@
     "importFailed": "Import failed",
     "errorCount": "{count, plural, one {# error} other {# errors}}",
     "flaggedCount": "{count, plural, one {# student to review (SMS)} other {# students to review (SMS)}}",
-    "importFlaggedNote": "Fix these from the student page (set a default SMS recipient or add a number). They’re also listed under Admin → Checks."
+    "importFlaggedNote": "Fix these from the student page (set a default SMS recipient or add a number). They’re also listed under Admin → Checks.",
+    "alsoGuardianOf": "Also guardian of"
   },
   "adminAttendance": {
     "title": "Attendance",

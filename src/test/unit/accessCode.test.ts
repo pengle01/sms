@@ -6,6 +6,7 @@ import {
   randomOtp,
   canAddGuardian,
   roleAvailability,
+  guardianLinkDigest,
   ACCESS_CODE_ALPHABET,
   ACCESS_CODE_LENGTH,
   OTP_LENGTH,
@@ -147,5 +148,19 @@ describe("canGenerateAccessCode", () => {
     expect(canGenerateAccessCode("TEACHER")).toBe(false);
     expect(canGenerateAccessCode("HEADTEACHER_B")).toBe(false);
     expect(canGenerateAccessCode("HEADMASTER")).toBe(false);
+  });
+});
+
+describe("guardianLinkDigest", () => {
+  it("uses the singular form for one link", () => {
+    const n = guardianLinkDigest(1);
+    expect(n.type).toBe("GUARDIAN_LINK");
+    expect(n.title).toBe("Νέοι κηδεμόνες");
+    expect(n.body).toBe("1 νέα σύνδεση κηδεμόνα σήμερα");
+    expect(n.linkUrl).toBe("/admin/audit?action=account.activate.guardian");
+  });
+
+  it("uses the plural form for many links", () => {
+    expect(guardianLinkDigest(14).body).toBe("14 νέες συνδέσεις κηδεμόνων σήμερα");
   });
 });

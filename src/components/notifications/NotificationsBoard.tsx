@@ -5,7 +5,7 @@ import { trpc } from "@/trpc/client";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import {
-  Bell, FileWarning, CheckCircle2, CheckCheck, Clock, MessageSquare, ShieldAlert,
+  Bell, FileWarning, CheckCircle2, CheckCheck, Clock, MessageSquare, ShieldAlert, UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +14,7 @@ const TYPE_ICON: Record<string, React.ReactNode> = {
   REFERRAL_RESOLVED: <CheckCircle2 className="w-5 h-5 text-green-500" />,
   STAFF_MESSAGE: <MessageSquare className="w-5 h-5 text-emerald-500" />,
   SPECIAL_ED_UPDATE: <ShieldAlert className="w-5 h-5 text-amber-500" />,
+  GUARDIAN_LINK: <UserPlus className="w-5 h-5 text-sky-500" />,
 };
 
 function relativeTime(date: Date | string): string {

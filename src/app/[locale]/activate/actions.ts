@@ -4,7 +4,8 @@ import { headers } from "next/headers";
 import bcrypt from "bcryptjs";
 import { db } from "@/server/db";
 import { rateLimit } from "@/server/rateLimit";
-import { canAddGuardian, isWellFormedCode, normalizeCode, randomOtp, roleAvailability } from "@/lib/accessCode";
+import { canAddGuardian, guardianLinkDigest, isWellFormedCode, normalizeCode, randomOtp, roleAvailability } from "@/lib/accessCode";
+import { fromAppTimeline, utcMidnight } from "@/lib/dates";
 import { getMaxGuardiansPerStudent } from "@/lib/schoolConfig";
 import { composeFullName } from "@/lib/profile";
 import { sendOtpEmail } from "@/lib/email";
@@ -184,6 +185,7 @@ export async function verifyActivation(input: {
   }
 
   let actorUserId: string | null = null;
+  let newGuardianLink = false; // true only when a NEW guardian link was created
   try {
     if (row.purpose === "ACTIVATE_STUDENT") {
       if (access.studentClaimedAt) {
@@ -299,6 +301,7 @@ export async function verifyActivation(input: {
             ]),
         db.emailOtp.delete({ where: { id: row.id } }),
       ]);
+      newGuardianLink = !alreadyLinked;
     }
   } catch (e) {
     logger.error({ event: "activate.verifyFailed", err: errInfo(e) }, "Account activation verify failed");
@@ -311,8 +314,53 @@ export async function verifyActivation(input: {
       action: row.purpose === "ACTIVATE_STUDENT" ? "account.activate.student" : "account.activate.guardian",
       resource: "StudentAccessCode",
       resourceId: row.studentProfileId,
-      details: { email: row.email },
+      details:
+        row.purpose === "ACTIVATE_STUDENT"
+          ? { email: row.email }
+          : { email: row.email, newLink: newGuardianLink },
     });
+  }
+
+  // Refresh the super admins' daily guardian-link digest (best effort — the
+  // activation itself already succeeded). One notification per admin per day;
+  // each new link bumps the count and marks it unread again.
+  if (newGuardianLink) {
+    try {
+      const dayStart = fromAppTimeline(utcMidnight());
+      const [count, admins] = await Promise.all([
+        db.auditLog.count({
+          where: {
+            action: "account.activate.guardian",
+            createdAt: { gte: dayStart },
+            details: { path: ["newLink"], equals: true },
+          },
+        }),
+        db.user.findMany({
+          where: {
+            isActive: true,
+            OR: [{ role: "SUPER_ADMIN" }, { extraRoles: { has: "SUPER_ADMIN" } }],
+          },
+          select: { id: true },
+        }),
+      ]);
+      const digest = guardianLinkDigest(Math.max(count, 1));
+      for (const admin of admins) {
+        const existing = await db.notification.findFirst({
+          where: { userId: admin.id, type: digest.type, createdAt: { gte: dayStart } },
+          select: { id: true },
+        });
+        if (existing) {
+          await db.notification.update({
+            where: { id: existing.id },
+            data: { body: digest.body, read: false, noticedAt: null },
+          });
+        } else {
+          await db.notification.create({ data: { userId: admin.id, ...digest } });
+        }
+      }
+    } catch (e) {
+      logger.error({ event: "activate.notifyFailed", err: errInfo(e) }, "Guardian-link digest update failed");
+    }
   }
 
   return { ok: true };

@@ -52,7 +52,18 @@ export default async function StudentDetailPage({
       parents: {
         include: {
           parentProfile: {
-            include: { user: true },
+            include: {
+              user: true,
+              // Every child of the guardian — the card shows their other
+              // children so multi-child parents are visible at a glance.
+              children: {
+                include: {
+                  studentProfile: {
+                    select: { id: true, user: { select: { name: true } }, group: { select: { name: true } } },
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -97,6 +108,12 @@ export default async function StudentDetailPage({
       kind: "guardian" as const,
       role: parentProfile.role,
       parentProfileId: parentProfile.id,
+      otherChildren: parentProfile.children
+        .filter((c) => c.studentProfile.id !== id)
+        .map((c) => {
+          const child = c.studentProfile;
+          return child.group ? `${child.user?.name ?? "—"} (${child.group.name})` : child.user?.name ?? "—";
+        }),
     })),
   ];
   const guardianClaims = student.accessCode?.guardianClaims ?? parents.length;
@@ -374,6 +391,7 @@ export default async function StudentDetailPage({
             accounts={accounts}
             guardianClaims={guardianClaims}
             maxGuardians={maxGuardians}
+            otherChildrenLabel={t("alsoGuardianOf")}
           />
 
           {/* Subject groups */}

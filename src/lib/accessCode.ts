@@ -82,3 +82,27 @@ export function randomOtp(): string {
   for (let i = 0; i < OTP_LENGTH; i++) out += String(ints[i]! % 10);
   return out;
 }
+
+/**
+ * Daily digest notification for super admins about guardian links made through
+ * the self-service activation flow. One notification per admin per day: each
+ * NEW link refreshes the day's digest (count + unread) instead of adding a row,
+ * so a rollout wave of activations can't flood the board. Re-activations of an
+ * already-linked guardian are just password resets and stay silent.
+ */
+export function guardianLinkDigest(count: number): {
+  type: string;
+  title: string;
+  body: string;
+  linkUrl: string;
+} {
+  return {
+    type: "GUARDIAN_LINK",
+    title: "Νέοι κηδεμόνες",
+    body:
+      count === 1
+        ? "1 νέα σύνδεση κηδεμόνα σήμερα"
+        : `${count} νέες συνδέσεις κηδεμόνων σήμερα`,
+    linkUrl: "/admin/audit?action=account.activate.guardian",
+  };
+}

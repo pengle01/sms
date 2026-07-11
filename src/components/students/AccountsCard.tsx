@@ -21,6 +21,7 @@ export type StudentAccount = {
   kind: "student" | "guardian";
   role?: string;
   parentProfileId?: string;
+  otherChildren?: string[]; // the guardian's other children, "Name (Group)"
 };
 
 const iconBtn = "h-8 w-8 inline-flex items-center justify-center rounded-lg hover:bg-slate-100 disabled:opacity-40";
@@ -30,11 +31,13 @@ export function AccountsCard({
   accounts,
   guardianClaims,
   maxGuardians,
+  otherChildrenLabel = "Also guardian of",
 }: {
   studentProfileId: string;
   accounts: StudentAccount[];
   guardianClaims: number;
   maxGuardians: number;
+  otherChildrenLabel?: string;
 }) {
   const [pending, startTransition] = useTransition();
   const [pwFor, setPwFor] = useState<string | null>(null);
@@ -85,6 +88,12 @@ export function AccountsCard({
                 <p className="text-xs text-slate-400 mt-0.5 truncate">
                   {a.email.endsWith("@pending.sms") ? "— (no email)" : a.email}
                 </p>
+                {a.otherChildren && a.otherChildren.length > 0 && (
+                  <p className="text-xs text-sky-600 mt-0.5">
+                    <Users className="w-3 h-3 inline mr-1 align-[-1px]" />
+                    {otherChildrenLabel}: {a.otherChildren.join(", ")}
+                  </p>
+                )}
               </div>
 
               <div className="flex items-center gap-1 shrink-0">
