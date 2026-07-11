@@ -5,6 +5,7 @@ import {
   validateProfileInput,
   composeFullName,
   splitFullName,
+  profileIncomplete,
 } from "@/lib/profile";
 
 describe("normalizePmp", () => {
@@ -134,5 +135,20 @@ describe("validateProfileInput", () => {
     it("still rejects a malformed ΠΜΠ before the required check", () => {
       expect(validateProfileInput({ ...full, pmp: "12#45" }, true)).toEqual({ ok: false, error: "errPmp" });
     });
+  });
+});
+
+describe("profileIncomplete", () => {
+  const full = { pmp: "12345", phone: "99123456", department: "Πληροφορικής/Επιστήμης Η.Υ.", firstName: "Χάρης", lastName: "Πικρίδης" };
+
+  it("is false when every field is filled", () => {
+    expect(profileIncomplete(full)).toBe(false);
+  });
+
+  it("is true when any single field is missing", () => {
+    for (const key of Object.keys(full) as (keyof typeof full)[]) {
+      expect(profileIncomplete({ ...full, [key]: null })).toBe(true);
+      expect(profileIncomplete({ ...full, [key]: "" })).toBe(true);
+    }
   });
 });

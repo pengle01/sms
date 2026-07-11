@@ -4,6 +4,7 @@ import { authOptions } from "@/server/auth";
 import { db } from "@/server/db";
 import type { Role } from "@/generated/prisma";
 import { getNow, utcMidnight, fmtDisplayDate } from "@/lib/dates";
+import { profileIncomplete } from "@/lib/profile";
 import { getSpecialDayForDate, getOnDutyDeputies } from "@/lib/calendar";
 import { getDayOverrides } from "@/server/substitutions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,9 +49,17 @@ export default async function TeacherDashboardPage({
   if (!staff && (session.user.role as Role) === "TEACHER") redirect(`/${locale}/teacher/setup`);
   // Staff must complete their profile on first sign-in — keep the completion
   // form forced until name, phone, department AND ΠΜΠ are all filled.
+  // (Portal-wide enforcement lives in <ProfileGuard/>; this redirect just
+  // lands first-time sign-ins on the right page.)
   if (
     staff &&
-    (!staff.pmp || !staff.phone || !staff.department || !staff.user?.firstName || !staff.user?.lastName)
+    profileIncomplete({
+      pmp: staff.pmp,
+      phone: staff.phone,
+      department: staff.department,
+      firstName: staff.user?.firstName ?? null,
+      lastName: staff.user?.lastName ?? null,
+    })
   ) {
     redirect(`/${locale}/teacher/profile?required=1`);
   }

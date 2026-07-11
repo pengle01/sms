@@ -30,6 +30,22 @@ export function splitFullName(full: string | null | undefined): { firstName: str
   return { firstName: v.slice(0, idx), lastName: v.slice(idx + 1) };
 }
 
+/**
+ * True while a staff member still owes first-login profile completion:
+ * name parts, phone, department and ΠΜΠ must ALL be filled. Single source of
+ * truth for the dashboard redirect, the profile page banner, and the
+ * portal-wide ProfileGuard overlay.
+ */
+export function profileIncomplete(p: {
+  pmp: string | null;
+  phone: string | null;
+  department: string | null;
+  firstName: string | null;
+  lastName: string | null;
+}): boolean {
+  return !p.pmp || !p.phone || !p.department || !p.firstName || !p.lastName;
+}
+
 export interface ProfileInput {
   firstName: string;
   lastName: string;

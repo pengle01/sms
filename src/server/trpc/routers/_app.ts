@@ -13,6 +13,7 @@ import { toiletRouter } from "./toilet";
 import { messagesRouter } from "./messages";
 import { specialEdRouter } from "./specialEd";
 import { smsRouter } from "./sms";
+import { profileRouter } from "./profile";
 
 export const appRouter = createTRPCRouter({
   attendance: attendanceRouter,
@@ -30,6 +31,7 @@ export const appRouter = createTRPCRouter({
   messages: messagesRouter,
   specialEd: specialEdRouter,
   sms: smsRouter,
+  profile: profileRouter,
 });
 
 export type AppRouter = typeof appRouter;

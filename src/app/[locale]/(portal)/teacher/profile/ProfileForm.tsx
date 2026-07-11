@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { Loader2, Save, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
+import { trpc } from "@/trpc/client";
 import { updateMyProfile } from "./actions";
 import { DEPARTMENTS } from "@/lib/departments";
 
@@ -26,6 +27,7 @@ export function ProfileForm({
   mustEdit?: boolean;
 }) {
   const t = useTranslations("profile");
+  const utils = trpc.useUtils();
   const [form, setForm] = useState<Form>(initial);
   const [editing, setEditing] = useState(mustEdit);
   const [pending, startTransition] = useTransition();
@@ -48,6 +50,8 @@ export function ProfileForm({
       if (res.ok) {
         toast.success(t("saved"));
         setEditing(false);
+        // Lift the portal-wide ProfileGuard overlay now that the data is in.
+        utils.profile.completeness.invalidate();
       } else {
         toast.error(t(res.error as "errFirstName"));
       }

@@ -7,6 +7,7 @@ import { db } from "@/server/db";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { AttendanceLockGuard } from "@/components/attendance/AttendanceLockGuard";
+import { ProfileGuard } from "@/components/layout/ProfileGuard";
 
 export default async function TeacherPortalLayout({
   children,
@@ -65,6 +66,9 @@ export default async function TeacherPortalLayout({
         </main>
       </div>
       <AttendanceLockGuard locale={locale} />
+      {/* Rendered last so an incomplete profile paints ABOVE the attendance
+          lock — completing the profile comes first on a brand-new account. */}
+      <ProfileGuard locale={locale} />
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, CircleUser } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { isEducator } from "@/lib/rbac";
-import { splitFullName } from "@/lib/profile";
+import { profileIncomplete, splitFullName } from "@/lib/profile";
 import type { Role } from "@/generated/prisma";
 import { ProfileForm } from "./ProfileForm";
 
@@ -46,7 +46,14 @@ export default async function ProfilePage({
 
   // Staff must complete every field on first sign-in (name/phone/department/ΠΜΠ).
   const incomplete =
-    !!staff && (!staff.pmp || !staff.phone || !staff.department || !user.firstName || !user.lastName);
+    !!staff &&
+    profileIncomplete({
+      pmp: staff.pmp,
+      phone: staff.phone,
+      department: staff.department,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    });
 
   return (
     <div className="space-y-5">
