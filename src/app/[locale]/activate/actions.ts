@@ -4,11 +4,11 @@ import { headers } from "next/headers";
 import bcrypt from "bcryptjs";
 import { db } from "@/server/db";
 import { rateLimit } from "@/server/rateLimit";
-import { canAddGuardian, guardianLinkDigest, isWellFormedCode, normalizeCode, randomOtp, roleAvailability } from "@/lib/accessCode";
+import { activationWelcomeEmail, canAddGuardian, guardianLinkDigest, isWellFormedCode, normalizeCode, randomOtp, roleAvailability } from "@/lib/accessCode";
 import { fromAppTimeline, utcMidnight } from "@/lib/dates";
 import { getMaxGuardiansPerStudent } from "@/lib/schoolConfig";
 import { composeFullName } from "@/lib/profile";
-import { sendOtpEmail } from "@/lib/email";
+import { sendEmail, sendOtpEmail } from "@/lib/email";
 import { writeAudit } from "@/server/audit";
 import { logger, errInfo } from "@/server/logger";
 
@@ -319,6 +319,24 @@ export async function verifyActivation(input: {
           ? { email: row.email }
           : { email: row.email, newLink: newGuardianLink },
     });
+  }
+
+  // Welcome email (best effort — the activation itself already succeeded).
+  // Confirms to the new account holder that everything worked and where to
+  // sign in; sendEmail never throws on transport errors.
+  try {
+    const student = await db.studentProfile.findUnique({
+      where: { id: row.studentProfileId },
+      select: { user: { select: { name: true } } },
+    });
+    const mail = activationWelcomeEmail(
+      row.purpose === "ACTIVATE_STUDENT" ? "student" : "guardian",
+      student?.user?.name ?? "",
+      process.env.NEXTAUTH_URL ?? ""
+    );
+    await sendEmail(row.email, mail.subject, mail.text);
+  } catch (e) {
+    logger.error({ event: "activate.welcomeFailed", err: errInfo(e) }, "Welcome email failed");
   }
 
   // Refresh the super admins' daily guardian-link digest (best effort — the

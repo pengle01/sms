@@ -106,3 +106,48 @@ export function guardianLinkDigest(count: number): {
     linkUrl: "/admin/audit?action=account.activate.guardian",
   };
 }
+
+/**
+ * Welcome/confirmation email sent right after a successful activation —
+ * the recipient's proof that the account now exists and where to sign in.
+ * Bilingual (Greek first) like the OTP email. `baseUrl` comes from
+ * NEXTAUTH_URL; when it is unset the login-link line is omitted.
+ */
+export function activationWelcomeEmail(
+  kind: "student" | "guardian",
+  studentName: string,
+  baseUrl: string
+): { subject: string; text: string } {
+  const login = baseUrl ? `${baseUrl.replace(/\/+$/, "")}/el/login` : "";
+  const loginLineEl = login ? `Σελίδα σύνδεσης: ${login}\n` : "";
+  const loginLineEn = login ? `Sign-in page: ${login}\n` : "";
+  const nameEl = studentName ? ` ${studentName}` : "";
+
+  if (kind === "student") {
+    return {
+      subject: "Ο λογαριασμός σας δημιουργήθηκε / Your account is ready",
+      text:
+        `Ο μαθητικός σας λογαριασμός ενεργοποιήθηκε επιτυχώς.\n` +
+        `Συνδέεστε με αυτό το email και τον κωδικό πρόσβασης που ορίσατε.\n` +
+        loginLineEl +
+        `\n` +
+        `Your student account has been activated.\n` +
+        `Sign in with this email and the password you chose.\n` +
+        loginLineEn,
+    };
+  }
+  return {
+    subject: "Ο λογαριασμός κηδεμόνα συνδέθηκε / Guardian account linked",
+    text:
+      `Ο λογαριασμός σας συνδέθηκε επιτυχώς με τον/τη μαθητή/ρια${nameEl}.\n` +
+      `Συνδέεστε με αυτό το email και τον κωδικό πρόσβασης που ορίσατε.\n` +
+      `Για να συνδέσετε και άλλο παιδί σας, χρησιμοποιήστε τον δικό του κωδικό πρόσβασης ` +
+      `στη σελίδα ενεργοποίησης με το ίδιο email.\n` +
+      loginLineEl +
+      `\n` +
+      `Your guardian account is now linked to the student${nameEl ? `${nameEl}` : ""}.\n` +
+      `Sign in with this email and the password you chose. To link another child, ` +
+      `use their own access code on the activation page with this same email.\n` +
+      loginLineEn,
+  };
+}
