@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { DateInput } from "@/components/ui/date-input";
 import { getSuperAdminAuth } from "@/server/authz";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -115,11 +116,11 @@ export default async function AdminAuditPage({
         </div>
         <div>
           <label className="block text-xs text-slate-400 mb-1">{t("from")}</label>
-          <input type="date" name="from" defaultValue={from} className={selectClass} />
+          <DateInput name="from" defaultValue={from} className={selectClass} />
         </div>
         <div>
           <label className="block text-xs text-slate-400 mb-1">{t("to")}</label>
-          <input type="date" name="to" defaultValue={to} className={selectClass} />
+          <DateInput name="to" defaultValue={to} className={selectClass} />
         </div>
         <button type="submit" className="h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700">
           {t("apply")}

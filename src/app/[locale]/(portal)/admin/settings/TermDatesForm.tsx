@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { DateInput } from "@/components/ui/date-input";
 import { useTranslations } from "next-intl";
 import { trpc } from "@/trpc/client";
 import { toast } from "sonner";
@@ -127,12 +128,11 @@ export function TermDatesForm({ initial }: Props) {
             {section.fields.map((f) => (
               <div key={f.key}>
                 <label className="block text-xs text-slate-500 mb-1">{t(f.labelKey)}</label>
-                <input
-                  type="date"
+                <DateInput
                   value={values[f.key]}
                   disabled={!editing}
-                  onChange={(e) => {
-                    setValues((v) => ({ ...v, [f.key]: e.target.value }));
+                  onChange={(iso) => {
+                    setValues((v) => ({ ...v, [f.key]: iso }));
                     setSaved(false);
                   }}
                   className="h-9 px-3 rounded-lg border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-50 disabled:text-slate-500"

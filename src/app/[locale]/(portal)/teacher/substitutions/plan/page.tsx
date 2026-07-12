@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { DateInput } from "@/components/ui/date-input";
 import Link from "next/link";
 import { db } from "@/server/db";
 import { getActiveAuth } from "@/server/authz";
@@ -221,8 +222,7 @@ export default async function SubstitutionPlanPage({
         <form method="GET" className="flex items-end gap-2">
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1">Ημερομηνία</label>
-            <input
-              type="date"
+            <DateInput
               name="date"
               defaultValue={dateStr}
               className="h-9 px-3 rounded-lg border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"

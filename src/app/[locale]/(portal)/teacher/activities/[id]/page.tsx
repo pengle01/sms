@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { DateInput } from "@/components/ui/date-input";
 import { staffDisplayName } from "@/lib/staffName";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
@@ -169,8 +170,7 @@ export default async function ActivityDetailPage({
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-slate-700">Ημερομηνία</label>
-                <input
-                  type="date"
+                <DateInput
                   name="date"
                   required
                   defaultValue={dateInput}
@@ -398,8 +398,7 @@ export default async function ActivityDetailPage({
               <input type="hidden" name="locale" value={locale} />
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-slate-700">Εβδομαδιαία επανάληψη έως</label>
-                <input
-                  type="date"
+                <DateInput
                   name="repeatUntil"
                   min={dateInput}
                   required

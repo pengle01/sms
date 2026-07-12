@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { DateInput } from "@/components/ui/date-input";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -297,8 +298,8 @@ export function ResolveReferralDialog({
 
                     {/* Add date */}
                     <div className="flex gap-2">
-                      <input type="date" value={dateInput} min={minDay}
-                        onChange={(e) => setDateInput(e.target.value)}
+                      <DateInput value={dateInput} min={minDay}
+                        onChange={setDateInput}
                         className="flex-1 h-10 px-3 rounded-xl border border-red-200 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 bg-white" />
                       <button type="button" onClick={addDay} disabled={!dateInput}
                         className="flex items-center gap-1.5 px-3 h-10 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-medium disabled:opacity-40 touch-manipulation">
@@ -367,8 +368,8 @@ export function ResolveReferralDialog({
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <label className="text-sm font-medium text-slate-700">Ημερ. επικοινωνίας</label>
-                      <input type="date" value={parentContactDate}
-                        onChange={(e) => setParentContactDate(e.target.value)}
+                      <DateInput value={parentContactDate}
+                        onChange={setParentContactDate}
                         className="w-full h-10 px-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
                     </div>
                     <div className="space-y-1.5">

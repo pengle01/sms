@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { DateInput } from "@/components/ui/date-input";
 import Link from "next/link";
 import { getActiveAuth } from "@/server/authz";
 import { db } from "@/server/db";
@@ -67,9 +68,8 @@ export default async function TeacherNotificationsPage({
             <label htmlFor="pinnedUntil" className="text-xs text-slate-500">
               {td("showUntil")}
             </label>
-            <input
+            <DateInput
               id="pinnedUntil"
-              type="date"
               name="pinnedUntil"
               defaultValue={todayIso}
               min={todayIso}

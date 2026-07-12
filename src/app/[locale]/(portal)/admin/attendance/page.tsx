@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { DateInput } from "@/components/ui/date-input";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
@@ -74,8 +75,7 @@ export default async function AttendancePage({
 
       {/* Filters */}
       <form method="GET" className="flex gap-3 flex-wrap">
-        <input
-          type="date"
+        <DateInput
           name="date"
           defaultValue={selectedDateStr}
           className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { DateInput } from "@/components/ui/date-input";
 import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ListFilter } from "lucide-react";
@@ -74,19 +75,17 @@ export function RecordsFilter({
         <div className="space-y-1">
           <label className="block text-xs font-medium text-slate-500">Χρονικό διάστημα</label>
           <div className="flex items-center gap-2">
-            <input
-              type="date"
+            <DateInput
               value={from}
               max={to}
-              onChange={(e) => setFrom(e.target.value)}
+              onChange={setFrom}
               className={inputCls}
             />
             <span className="text-slate-300">—</span>
-            <input
-              type="date"
+            <DateInput
               value={to}
               min={from}
-              onChange={(e) => setTo(e.target.value)}
+              onChange={setTo}
               className={inputCls}
             />
           </div>

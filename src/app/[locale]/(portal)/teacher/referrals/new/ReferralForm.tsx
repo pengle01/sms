@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { DateInput } from "@/components/ui/date-input";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/trpc/client";
 import { toast } from "sonner";
@@ -106,10 +107,9 @@ export function ReferralForm({ groups, filerName, locale }: Props) {
           <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
             Ημερ. Παραπτώματος
           </label>
-          <input
-            type="date"
+          <DateInput
             value={date}
-            onChange={(e) => setDate(e.target.value)}
+            onChange={setDate}
             className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>

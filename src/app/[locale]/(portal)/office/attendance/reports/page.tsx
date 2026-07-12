@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { DateInput } from "@/components/ui/date-input";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
@@ -99,8 +100,7 @@ export default async function OfficeAttendanceReportsPage({
       <form method="GET" className="flex gap-3 flex-wrap items-end">
         <label className="text-xs text-slate-500">
           {t("from")}
-          <input
-            type="date"
+          <DateInput
             name="from"
             defaultValue={fromStr}
             max={todayStr}
@@ -109,8 +109,7 @@ export default async function OfficeAttendanceReportsPage({
         </label>
         <label className="text-xs text-slate-500">
           {t("to")}
-          <input
-            type="date"
+          <DateInput
             name="to"
             defaultValue={toStr}
             max={todayStr}

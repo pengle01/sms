@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { DateInput } from "@/components/ui/date-input";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -119,17 +120,17 @@ export function SpecialDayForm({ day, open, onClose }: Props) {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>{t("dayStart")}</Label>
-                <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
+                <DateInput value={startDate} onChange={setStartDate} required />
               </div>
               <div className="space-y-1.5">
                 <Label>{t("dayEnd")}</Label>
-                <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
+                <DateInput value={endDate} onChange={setEndDate} required />
               </div>
             </div>
           ) : (
             <div className="space-y-1.5">
               <Label>{t("dayStart")}</Label>
-              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
+              <DateInput value={startDate} onChange={setStartDate} required />
             </div>
           )}
           {type === "INTERCALARY" && (

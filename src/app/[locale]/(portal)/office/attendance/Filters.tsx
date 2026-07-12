@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { DateInput } from "@/components/ui/date-input";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
@@ -24,12 +25,11 @@ export function AttendanceFilters({
 
   return (
     <form ref={formRef} method="GET" className="flex gap-3 flex-wrap items-center">
-      <input
-        type="date"
+      <DateInput
         name="date"
         defaultValue={date ?? ""}
         max={todayStr}
-        onChange={submit}
+        onCommit={submit}
         title={t("dateHint")}
         className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
       />

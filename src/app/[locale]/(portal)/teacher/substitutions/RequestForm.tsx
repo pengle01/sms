@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { DateInput } from "@/components/ui/date-input";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -167,12 +168,12 @@ export function RequestForm({ groups, maxPeriod, rooms }: Props) {
           <label className="text-sm font-medium text-slate-700">
             {type === "ABSENCE" && duration === "RANGE" ? t("firstDay") : t("date")}
           </label>
-          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={input} required />
+          <DateInput value={startDate} onChange={setStartDate} className={input} required />
         </div>
         {type === "ABSENCE" && duration === "RANGE" && (
           <div className="space-y-1">
             <label className="text-sm font-medium text-slate-700">{t("lastDay")}</label>
-            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={input} />
+            <DateInput value={endDate} onChange={setEndDate} className={input} />
           </div>
         )}
       </div>

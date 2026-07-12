@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { DateInput } from "@/components/ui/date-input";
 import { getSuperAdminAuth } from "@/server/authz";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -59,8 +60,7 @@ export default async function AdminExitPermitsPage({
 
       {/* Filters */}
       <form method="GET" className="flex gap-3 flex-wrap">
-        <input
-          type="date"
+        <DateInput
           name="date"
           defaultValue={dateStr ?? ""}
           className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
