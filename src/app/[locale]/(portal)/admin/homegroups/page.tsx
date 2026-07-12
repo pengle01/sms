@@ -29,7 +29,7 @@ export default async function HomegroupsPage({
 }) {
   const { locale } = await params;
   const auth = await getSuperAdminAuth();
-  if (!auth) redirect(`/${locale}/login`);
+  if (!auth) redirect(`/${locale}/login/staff`);
 
   const t = await getTranslations("groups");
   const tCommon = await getTranslations("common");

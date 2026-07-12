@@ -45,7 +45,7 @@ export default async function UsersPage({
   const { locale } = await params;
   const { role: roleParam } = await searchParams;
   const auth = await getSuperAdminAuth();
-  if (!auth) redirect(`/${locale}/login`);
+  if (!auth) redirect(`/${locale}/login/staff`);
 
   const t = await getTranslations("adminUsers");
   const tRoles = await getTranslations("roles");

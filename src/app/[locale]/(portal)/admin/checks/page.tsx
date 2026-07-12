@@ -19,7 +19,7 @@ export default async function ChecksPage({
 }) {
   const { locale } = await params;
   const auth = await getSuperAdminAuth();
-  if (!auth) redirect(`/${locale}/login`);
+  if (!auth) redirect(`/${locale}/login/staff`);
 
   const t = await getTranslations("checks");
 

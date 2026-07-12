@@ -30,7 +30,7 @@
   "auth": {
     "login": "Σύνδεση",
     "logout": "Αποσύνδεση",
-    "staffLogin": "Εκπαιδευτικοί & Μαθητές",
+    "staffLogin": "Εκπαιδευτικοί & Προσωπικό",
     "signInWithMicrosoft": "Σύνδεση με Microsoft",
     "parentLogin": "Γονείς / Κηδεμόνες",
     "parentLoginDesc": "Συνδεθείτε με email και κωδικό πρόσβασης",
@@ -42,7 +42,11 @@
     "missingCredentials": "Συμπληρώστε το email και τον κωδικό πρόσβασης.",
     "emailPassword": "Email & Κωδικός",
     "newStaffPrompt": "Νέος εκπαιδευτικός ή συνοδός;",
-    "createAccount": "Δημιουργία λογαριασμού"
+    "createAccount": "Δημιουργία λογαριασμού",
+    "familyLogin": "Γονείς & Μαθητές",
+    "staffLoginTitle": "Σύνδεση Προσωπικού",
+    "toStaffLogin": "Είστε εκπαιδευτικός ή προσωπικό; Σύνδεση εδώ →",
+    "toFamilyLogin": "Γονέας ή μαθητής; Σύνδεση εδώ →"
   },
   "nav": {
     "dashboard": "Πίνακας Ελέγχου",

@@ -20,7 +20,7 @@ export default async function ComposeNotificationPage({
   const { locale } = await params;
   const { sent, error } = await searchParams;
   const auth = await getActiveAuth();
-  if (!auth) redirect(`/${locale}/login`);
+  if (!auth) redirect(`/${locale}/login/staff`);
   if (!auth.roles.some((r) => isManagement(r))) redirect(`/${locale}/teacher/noticeboard`);
 
   const t = await getTranslations("staffNotify");

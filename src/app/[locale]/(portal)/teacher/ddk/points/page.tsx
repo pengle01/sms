@@ -20,8 +20,8 @@ export default async function DdkPointsPage({
   const { groupId } = await searchParams;
 
   const auth = await getActiveAuth();
-  if (!auth) redirect(`/${locale}/login`);
-  if (!isEducator(auth.role) && !auth.roles.includes("SUPER_ADMIN")) redirect(`/${locale}/login`);
+  if (!auth) redirect(`/${locale}/login/staff`);
+  if (!isEducator(auth.role) && !auth.roles.includes("SUPER_ADMIN")) redirect(`/${locale}/login/staff`);
 
   const [schoolName, ranges, group] = await Promise.all([
     getSchoolName(),

@@ -15,9 +15,9 @@ export default async function PrintSubstitutionPlanPage({
 }) {
   const { locale, date: dateStr } = await params;
   const auth = await getActiveAuth();
-  if (!auth) redirect(`/${locale}/login`);
+  if (!auth) redirect(`/${locale}/login/staff`);
   if (!isEducator(auth.role) && !auth.roles.includes("SUPER_ADMIN")) {
-    redirect(`/${locale}/login`);
+    redirect(`/${locale}/login/staff`);
   }
 
   const date = utcMidnight(dateStr);

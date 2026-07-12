@@ -16,7 +16,7 @@ export default async function TestGradesPage({
 }) {
   const { locale, testId } = await params;
   const session = await getServerSession(authOptions);
-  if (!session) redirect(`/${locale}/login`);
+  if (!session) redirect(`/${locale}/login/staff`);
 
   const staff = await db.staffProfile.findUnique({ where: { userId: session.user.id } });
   if (!staff) redirect(`/${locale}/teacher/tests`);

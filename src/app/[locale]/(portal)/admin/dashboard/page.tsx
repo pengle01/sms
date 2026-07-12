@@ -20,7 +20,7 @@ export default async function AdminDashboardPage({
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
-  if (!session) redirect(`/${locale}/login`);
+  if (!session) redirect(`/${locale}/login/staff`);
   const isAdmin = !!(await getSuperAdminAuth());
 
   const t = await getTranslations("dashboard");

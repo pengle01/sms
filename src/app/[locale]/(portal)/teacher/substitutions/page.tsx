@@ -21,7 +21,7 @@ export default async function SubstitutionsPage({
 }) {
   const { locale } = await params;
   const auth = await getActiveAuth();
-  if (!auth) redirect(`/${locale}/login`);
+  if (!auth) redirect(`/${locale}/login/staff`);
   if (!isEducator(auth.role)) redirect(`/${locale}/teacher/dashboard`);
 
   const t = await getTranslations("substitutions");

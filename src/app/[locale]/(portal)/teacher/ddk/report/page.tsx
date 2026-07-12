@@ -37,8 +37,8 @@ export default async function DdkReportPage({
   const certOnly = doc === "cert"; // certificate only (no detailed statement)
 
   const auth = await getActiveAuth();
-  if (!auth) redirect(`/${locale}/login`);
-  if (!isEducator(auth.role) && !auth.roles.includes("SUPER_ADMIN")) redirect(`/${locale}/login`);
+  if (!auth) redirect(`/${locale}/login/staff`);
+  if (!isEducator(auth.role) && !auth.roles.includes("SUPER_ADMIN")) redirect(`/${locale}/login/staff`);
   if (!studentId && !groupId && !allSchool) notFound();
 
   const [schoolName, ranges] = await Promise.all([getSchoolName(), getSchoolYear()]);

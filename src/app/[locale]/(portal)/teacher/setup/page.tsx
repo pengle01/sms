@@ -19,7 +19,7 @@ export default async function TeacherSetupPage({
   const { submitted, error } = await searchParams;
   const session = await getServerSession(authOptions);
 
-  if (!session?.user) redirect(`/${locale}/login`);
+  if (!session?.user) redirect(`/${locale}/login/staff`);
   // Setup (schedule claim) is only for plain teachers — management roles don't have a schedule to claim
   if ((session.user.role as Role) !== "TEACHER") redirect(`/${locale}/teacher/dashboard`);
 

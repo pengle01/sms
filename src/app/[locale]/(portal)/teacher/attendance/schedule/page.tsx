@@ -38,7 +38,7 @@ export default async function TeacherSchedulePage({
   const { locale } = await params;
   const { week: weekParam } = await searchParams;
   const session = await getServerSession(authOptions);
-  if (!session?.user) redirect(`/${locale}/login`);
+  if (!session?.user) redirect(`/${locale}/login/staff`);
 
   const tNav = await getTranslations("nav");
   const t = await getTranslations("attendance");

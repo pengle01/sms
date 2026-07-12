@@ -48,7 +48,10 @@ export default async function proxy(request: NextRequest) {
     if (!token) {
       const segments = pathname.split("/").filter(Boolean);
       const locale = segments[0] === "en" ? "en" : "el";
-      const loginUrl = new URL(`/${locale}/login`, request.url);
+      // Staff portals get the staff login page; everything else the family one.
+      const portalSeg = segments[0] === "en" || segments[0] === "el" ? segments[1] : segments[0];
+      const isStaffPortal = portalSeg === "teacher" || portalSeg === "admin" || portalSeg === "office";
+      const loginUrl = new URL(`/${locale}/login${isStaffPortal ? "/staff" : ""}`, request.url);
       loginUrl.searchParams.set("callbackUrl", pathname);
       return NextResponse.redirect(loginUrl);
     }

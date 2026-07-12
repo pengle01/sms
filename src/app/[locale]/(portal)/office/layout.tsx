@@ -15,7 +15,7 @@ export default async function OfficePortalLayout({
   const auth = await getActiveAuth();
 
   if (!auth || !isOfficeAdmin(auth.role)) {
-    redirect(`/${locale}/login`);
+    redirect(`/${locale}/login/staff`);
   }
 
   const { session } = auth;

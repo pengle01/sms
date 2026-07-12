@@ -19,7 +19,7 @@ export default async function EditSpecialEdPage({
   const { locale, studentId } = await params;
 
   const auth = await getActiveAuth();
-  if (!auth) redirect(`/${locale}/login`);
+  if (!auth) redirect(`/${locale}/login/staff`);
   const staff = await db.staffProfile.findUnique({
     where: { userId: auth.userId },
     select: { specialEducation: true },

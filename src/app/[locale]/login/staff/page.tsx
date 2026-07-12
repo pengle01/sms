@@ -3,11 +3,11 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/server/auth";
 import { getPortalForRole } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma/client";
-import { LoginForm } from "./LoginForm";
+import { LoginForm } from "../LoginForm";
 import { getTranslations } from "next-intl/server";
 
-// Family portal — parents & students. Staff sign in at /login/staff.
-export default async function LoginPage({
+// Staff portal — teachers, office, chaperones, admins. Families sign in at /login.
+export default async function StaffLoginPage({
   params,
   searchParams,
 }: {
@@ -27,7 +27,7 @@ export default async function LoginPage({
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4"
-         style={{ background: "linear-gradient(135deg, #052e16 0%, #14532d 50%, #064e3b 100%)" }}>
+         style={{ background: "linear-gradient(135deg, #020617 0%, #0f3d33 55%, #052e16 100%)" }}>
       <div className="w-full max-w-md">
         {/* Logo / Title */}
         <div className="text-center mb-10">
@@ -38,12 +38,12 @@ export default async function LoginPage({
             </svg>
           </div>
           <h1 className="text-3xl font-bold text-white tracking-tight">
-            {t("login")}
+            {t("staffLoginTitle")}
           </h1>
           <p className="text-emerald-300/70 mt-2 text-sm">School Management System</p>
         </div>
 
-        <LoginForm locale={locale} urlError={error} variant="family" />
+        <LoginForm locale={locale} urlError={error} variant="staff" />
       </div>
     </div>
   );

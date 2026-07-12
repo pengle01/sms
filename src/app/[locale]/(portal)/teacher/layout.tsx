@@ -20,7 +20,7 @@ export default async function TeacherPortalLayout({
   const auth = await getActiveAuth();
 
   if (!auth || !isEducator(auth.role)) {
-    redirect(`/${locale}/login`);
+    redirect(`/${locale}/login/staff`);
   }
 
   const { session } = auth;

@@ -31,52 +31,46 @@ async function createSession(userId: string, email: string, name: string | null,
   });
 }
 
-// Staff / student sign-in with email + password (same in dev and prod). Parents
-// use parentLoginAction; Microsoft SSO is the alternative on the same card.
-export async function staffLoginAction(formData: FormData) {
+// The two login portals share one credential check; each only admits its own
+// audience. `errorPath` keeps failures on the page the user was actually on.
+async function loginWith(
+  formData: FormData,
+  errorPath: string,
+  roleAllowed: (role: Role) => boolean
+) {
   const email = ((formData.get("email") as string) ?? "").toLowerCase().trim();
   const password = (formData.get("password") as string) ?? "";
   const locale = (formData.get("locale") as string) || "el";
 
-  if (!email || !password) redirect(`/${locale}/login?error=MissingCredentials`);
+  if (!email || !password) redirect(`/${locale}${errorPath}?error=MissingCredentials`);
 
   // Throttle password attempts per account to slow brute-forcing.
   if (!rateLimit(`login:${email}`, 10, 15 * 60 * 1000)) {
-    redirect(`/${locale}/login?error=InvalidCredentials`);
+    redirect(`/${locale}${errorPath}?error=InvalidCredentials`);
   }
 
   const user = await db.user.findUnique({ where: { email } });
 
-  // Generic error for every failure — never reveal whether an email exists.
-  if (!user || !user.isActive || user.role === "PARENT" || !user.passwordHash) {
-    redirect(`/${locale}/login?error=InvalidCredentials`);
+  // Generic error for every failure — never reveal whether an email exists
+  // or which portal it belongs to.
+  if (!user || !user.isActive || !user.passwordHash || !roleAllowed(user.role)) {
+    redirect(`/${locale}${errorPath}?error=InvalidCredentials`);
   }
   if (!(await bcrypt.compare(password, user.passwordHash))) {
-    redirect(`/${locale}/login?error=InvalidCredentials`);
+    redirect(`/${locale}${errorPath}?error=InvalidCredentials`);
   }
 
   resetRateLimit(`login:${email}`);
   await createSession(user.id, user.email, user.name, user.role, user.image);
-  const portal = getPortalForRole(user.role as Role);
-  redirect(`/${locale}/${portal}`);
+  redirect(`/${locale}/${getPortalForRole(user.role)}`);
 }
 
-export async function parentLoginAction(formData: FormData) {
-  const email = ((formData.get("email") as string) ?? "").toLowerCase().trim();
-  const password = (formData.get("password") as string) ?? "";
-  const locale = (formData.get("locale") as string) || "el";
+/** Parents & students — the family portal at /login. */
+export async function familyLoginAction(formData: FormData) {
+  await loginWith(formData, "/login", (role) => role === "PARENT" || role === "STUDENT");
+}
 
-  if (!email || !password) redirect(`/${locale}/login?error=MissingCredentials`);
-
-  const user = await db.user.findUnique({ where: { email } });
-
-  if (!user || !user.passwordHash || !user.isActive) {
-    redirect(`/${locale}/login?error=InvalidCredentials`);
-  }
-
-  const valid = await bcrypt.compare(password, user.passwordHash);
-  if (!valid) redirect(`/${locale}/login?error=InvalidCredentials`);
-
-  await createSession(user.id, user.email, user.name, user.role, user.image);
-  redirect(`/${locale}/parent`);
+/** Teachers, office, chaperones, admins — the staff portal at /login/staff. */
+export async function staffLoginAction(formData: FormData) {
+  await loginWith(formData, "/login/staff", (role) => role !== "PARENT" && role !== "STUDENT");
 }

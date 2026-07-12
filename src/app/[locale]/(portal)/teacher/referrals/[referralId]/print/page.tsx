@@ -37,7 +37,7 @@ export default async function PrintResolutionPage({
 }) {
   const { locale, referralId } = await params;
   const auth = await getActiveAuth();
-  if (!auth) redirect(`/${locale}/login`);
+  if (!auth) redirect(`/${locale}/login/staff`);
 
   const [referral, periodsPerDay] = await Promise.all([
     db.referral.findUnique({

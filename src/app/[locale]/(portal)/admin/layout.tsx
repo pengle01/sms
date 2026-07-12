@@ -17,7 +17,7 @@ export default async function AdminPortalLayout({
   const auth = await getActiveAuth();
 
   // Primary SUPER_ADMIN or an admin-granted extra role both unlock the portal.
-  if (!auth || !auth.roles.some(isAdminStaff)) redirect(`/${locale}/login`);
+  if (!auth || !auth.roles.some(isAdminStaff)) redirect(`/${locale}/login/staff`);
 
   const { session } = auth;
   // Sidebar/nav items are filtered by role — inside the admin portal that is

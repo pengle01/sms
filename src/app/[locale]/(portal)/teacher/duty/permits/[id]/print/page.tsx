@@ -23,11 +23,11 @@ export default async function PrintExitPermitPage({
   const { locale, id } = await params;
   const { back } = await searchParams;
   const auth = await getActiveAuth();
-  if (!auth) redirect(`/${locale}/login`);
+  if (!auth) redirect(`/${locale}/login/staff`);
   // The paper travels to the current teacher — any educator may view it;
   // the super admin reaches it from the admin permits log.
   if (!isEducator(auth.role) && !auth.roles.includes("SUPER_ADMIN")) {
-    redirect(`/${locale}/login`);
+    redirect(`/${locale}/login/staff`);
   }
 
   const [permit, schoolName, schoolYear] = await Promise.all([

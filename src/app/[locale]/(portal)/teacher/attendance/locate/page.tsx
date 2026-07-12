@@ -24,7 +24,7 @@ export default async function TeacherLocatePage({
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
-  if (!session) redirect(`/${locale}/login`);
+  if (!session) redirect(`/${locale}/login/staff`);
 
   const t = await getTranslations("locate");
 

@@ -13,7 +13,7 @@ export default async function ChaperonePortalLayout({
   const { locale } = await params;
   const auth = await getActiveAuth();
 
-  if (!auth || auth.role !== "CHAPERONE") redirect(`/${locale}/login`);
+  if (!auth || auth.role !== "CHAPERONE") redirect(`/${locale}/login/staff`);
 
   const { session } = auth;
   const role = auth.role;

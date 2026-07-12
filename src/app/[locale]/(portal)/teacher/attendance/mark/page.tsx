@@ -19,7 +19,7 @@ export default async function TeacherMarkAttendancePage({
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
-  if (!session) redirect(`/${locale}/login`);
+  if (!session) redirect(`/${locale}/login/staff`);
 
   const { groupId, period: periodStr, date: dateParam, intercalary: intercalaryParam, excursion: excursionParam, claim, claimGroupId } = await searchParams;
   const period = periodStr ? parseInt(periodStr) : 1;

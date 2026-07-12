@@ -50,7 +50,7 @@ export default async function TeacherReferralsPage({
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
-  if (!session) redirect(`/${locale}/login`);
+  if (!session) redirect(`/${locale}/login/staff`);
 
   const role = session.user.role as Role;
   const userId = session.user.id;

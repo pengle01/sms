@@ -19,7 +19,7 @@ export default async function TeacherNotificationsPage({
 }) {
   const { locale } = await params;
   const auth = await getActiveAuth();
-  if (!auth) redirect(`/${locale}/login`);
+  if (!auth) redirect(`/${locale}/login/staff`);
   const t = await getTranslations("staffNotify");
   const td = await getTranslations("dashboard");
 

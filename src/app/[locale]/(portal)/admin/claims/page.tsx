@@ -15,7 +15,7 @@ export default async function ClaimsPage({
   const auth = await getActiveAuth();
   // Effective roles: a teacher with an extra SUPER_ADMIN grant manages claims.
   if (!auth || !auth.roles.some(canManageClaims)) {
-    redirect(`/${locale}/login`);
+    redirect(`/${locale}/login/staff`);
   }
 
   const [rawUsers, rawClaims, rawChaperones] = await Promise.all([

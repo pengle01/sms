@@ -39,7 +39,7 @@ export default async function HomegroupPage({
     ? (windowParam as WindowKey)
     : "term"; // default: the current τετράμηνο, from the super-admin settings
   const session = await getServerSession(authOptions);
-  if (!session) redirect(`/${locale}/login`);
+  if (!session) redirect(`/${locale}/login/staff`);
 
   const t = await getTranslations("investigate");
   const groups = await groupsForStaff(session.user.id);

@@ -16,7 +16,7 @@ export default async function MarkAttendancePage({
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
-  if (!session) redirect(`/${locale}/login`);
+  if (!session) redirect(`/${locale}/login/staff`);
 
   const { groupId, period: periodStr } = await searchParams;
   const t = await getTranslations("adminAttendance");

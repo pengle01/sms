@@ -8,14 +8,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
-import { staffLoginAction, parentLoginAction } from "./actions";
+import { familyLoginAction, staffLoginAction } from "./actions";
 
 interface LoginFormProps {
   locale: string;
   urlError?: string;
+  variant: "family" | "staff";
 }
 
-export async function LoginForm({ locale, urlError }: LoginFormProps) {
+export async function LoginForm({ locale, urlError, variant }: LoginFormProps) {
   const t = await getTranslations("auth");
   const tActivate = await getTranslations("activate");
 
@@ -26,6 +27,8 @@ export async function LoginForm({ locale, urlError }: LoginFormProps) {
   const errorMessage = urlError ? (errorMessages[urlError] ?? `Error: ${urlError}`) : null;
   const otherLocale = locale === "el" ? "en" : "el";
   const otherLocaleLabel = locale === "el" ? "EN" : "ΕΛ";
+  const path = variant === "staff" ? "/login/staff" : "/login";
+  const isStaff = variant === "staff";
 
   return (
     <div className="space-y-5">
@@ -35,7 +38,7 @@ export async function LoginForm({ locale, urlError }: LoginFormProps) {
           {locale === "el" ? "ΕΛ" : "EN"}
         </span>
         <a
-          href={`/${otherLocale}/login`}
+          href={`/${otherLocale}${path}`}
           className="text-xs px-3 py-1.5 rounded-full text-emerald-300/70 hover:text-white hover:bg-white/10 transition-colors"
         >
           {otherLocaleLabel}
@@ -50,118 +53,95 @@ export async function LoginForm({ locale, urlError }: LoginFormProps) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {/* Staff / Students — email + password (same in dev and prod) + SSO */}
-        <div className="rounded-2xl bg-white/10 border border-white/20 backdrop-blur-sm p-8 space-y-6">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-emerald-300 mb-1">
-              {t("emailPassword")}
-            </p>
-            <h2 className="text-xl font-bold text-white">{t("staffLogin")}</h2>
-            <p className="text-sm text-lime-300/70 mt-1">{t("parentLoginDesc")}</p>
-          </div>
+      <div className="rounded-2xl bg-white/10 border border-white/20 backdrop-blur-sm p-8 space-y-6">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-emerald-300 mb-1">
+            {t("emailPassword")}
+          </p>
+          <h2 className="text-xl font-bold text-white">
+            {isStaff ? t("staffLogin") : t("familyLogin")}
+          </h2>
+          <p className="text-sm text-lime-300/70 mt-1">{t("parentLoginDesc")}</p>
+        </div>
 
-          <form action={staffLoginAction} className="space-y-4">
-            <input type="hidden" name="locale" value={locale} />
-            <div className="space-y-1.5">
-              <Label htmlFor="staff-email" className="text-lime-200 text-sm">{t("email")}</Label>
-              <Input
-                id="staff-email"
-                name="email"
-                type="email"
-                placeholder="teacher@school.cy"
-                required
-                autoComplete="email"
-                className="bg-white/10 border-white/20 text-white placeholder:text-lime-300/40 focus-visible:ring-emerald-400"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="staff-password" className="text-lime-200 text-sm">{t("password")}</Label>
-              <Input
-                id="staff-password"
-                name="password"
-                type="password"
-                required
-                autoComplete="current-password"
-                className="bg-white/10 border-white/20 text-white placeholder:text-lime-300/40 focus-visible:ring-emerald-400"
-              />
-            </div>
-            <Button
-              type="submit"
-              className="w-full h-11 bg-emerald-500 hover:bg-emerald-400 text-white font-semibold"
-            >
-              {t("login")}
-            </Button>
-          </form>
-
-          {/* Microsoft SSO — alternative sign-in (used in production once Azure is configured) */}
-          <div className="flex items-center gap-3 text-lime-300/40 text-xs">
-            <span className="h-px flex-1 bg-white/15" /> {locale === "el" ? "ή" : "or"} <span className="h-px flex-1 bg-white/15" />
+        <form action={isStaff ? staffLoginAction : familyLoginAction} className="space-y-4">
+          <input type="hidden" name="locale" value={locale} />
+          <div className="space-y-1.5">
+            <Label htmlFor="email" className="text-lime-200 text-sm">{t("email")}</Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              placeholder={isStaff ? "teacher@school.cy" : "name@example.com"}
+              required
+              autoComplete="email"
+              className="bg-white/10 border-white/20 text-white placeholder:text-lime-300/40 focus-visible:ring-emerald-400"
+            />
           </div>
-          <a
-            href={`/api/auth/signin/azure-ad?callbackUrl=/${locale}/admin`}
-            className="flex items-center justify-center w-full h-11 rounded-md bg-[#2F3E9E] hover:bg-[#3b4fc0] text-white font-semibold text-sm transition-colors"
+          <div className="space-y-1.5">
+            <Label htmlFor="password" className="text-lime-200 text-sm">{t("password")}</Label>
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              required
+              autoComplete="current-password"
+              className="bg-white/10 border-white/20 text-white placeholder:text-lime-300/40 focus-visible:ring-emerald-400"
+            />
+          </div>
+          <Button
+            type="submit"
+            className="w-full h-11 bg-emerald-500 hover:bg-emerald-400 text-white font-semibold"
           >
-            <MicrosoftIcon className="mr-2 h-5 w-5" />
-            {t("signInWithMicrosoft")}
-          </a>
-        </div>
+            {t("login")}
+          </Button>
+        </form>
 
-        {/* Parents */}
-        <div className="rounded-2xl bg-white/10 border border-white/20 backdrop-blur-sm p-8 space-y-6">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-emerald-300 mb-1">
-              {t("emailPassword")}
-            </p>
-            <h2 className="text-xl font-bold text-white">{t("parentLogin")}</h2>
-            <p className="text-sm text-lime-300/70 mt-1">{t("parentLoginDesc")}</p>
-          </div>
-
-          <form action={parentLoginAction} className="space-y-4">
-            <input type="hidden" name="locale" value={locale} />
-            <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-lime-200 text-sm">{t("email")}</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="parent@example.com"
-                required
-                className="bg-white/10 border-white/20 text-white placeholder:text-lime-300/40 focus-visible:ring-emerald-400"
-              />
+        {isStaff && (
+          <>
+            {/* Microsoft SSO — alternative sign-in (used in production once Azure is configured) */}
+            <div className="flex items-center gap-3 text-lime-300/40 text-xs">
+              <span className="h-px flex-1 bg-white/15" /> {locale === "el" ? "ή" : "or"} <span className="h-px flex-1 bg-white/15" />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-lime-200 text-sm">{t("password")}</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                required
-                className="bg-white/10 border-white/20 text-white placeholder:text-lime-300/40 focus-visible:ring-emerald-400"
-              />
-            </div>
-            <Button
-              type="submit"
-              className="w-full h-11 bg-emerald-500 hover:bg-emerald-400 text-white font-semibold"
+            <a
+              href={`/api/auth/signin/azure-ad?callbackUrl=/${locale}/admin`}
+              className="flex items-center justify-center w-full h-11 rounded-md bg-[#2F3E9E] hover:bg-[#3b4fc0] text-white font-semibold text-sm transition-colors"
             >
-              {t("login")}
-            </Button>
-          </form>
-        </div>
+              <MicrosoftIcon className="mr-2 h-5 w-5" />
+              {t("signInWithMicrosoft")}
+            </a>
+          </>
+        )}
       </div>
 
-      <p className="text-center text-sm text-emerald-300/60 mt-2">
-        {t("newStaffPrompt")}{" "}
-        <Link href={`/${locale}/register`} className="text-lime-400 hover:text-lime-300 font-medium">
-          {t("createAccount")}
-        </Link>
-      </p>
-
-      <p className="text-center text-sm text-emerald-300/60 mt-1">
-        <Link href={`/${locale}/activate`} className="text-lime-400 hover:text-lime-300 font-medium">
-          {tActivate("haveCode")}
-        </Link>
-      </p>
+      {isStaff ? (
+        <>
+          <p className="text-center text-sm text-emerald-300/60 mt-2">
+            {t("newStaffPrompt")}{" "}
+            <Link href={`/${locale}/register`} className="text-lime-400 hover:text-lime-300 font-medium">
+              {t("createAccount")}
+            </Link>
+          </p>
+          <p className="text-center text-sm text-emerald-300/60 mt-1">
+            <Link href={`/${locale}/login`} className="text-lime-400 hover:text-lime-300 font-medium">
+              {t("toFamilyLogin")}
+            </Link>
+          </p>
+        </>
+      ) : (
+        <>
+          <p className="text-center text-sm text-emerald-300/60 mt-2">
+            <Link href={`/${locale}/activate`} className="text-lime-400 hover:text-lime-300 font-medium">
+              {tActivate("haveCode")}
+            </Link>
+          </p>
+          <p className="text-center text-sm text-emerald-300/60 mt-1">
+            <Link href={`/${locale}/login/staff`} className="text-lime-400 hover:text-lime-300 font-medium">
+              {t("toStaffLogin")}
+            </Link>
+          </p>
+        </>
+      )}
     </div>
   );
 }

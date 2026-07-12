@@ -59,7 +59,7 @@ export default async function StudentSchedulePage({
   };
 
   const session = await getServerSession(authOptions);
-  if (!session) redirect(`/${locale}/login`);
+  if (!session) redirect(`/${locale}/login/staff`);
 
   const student = await db.studentProfile.findUnique({
     where: { id: studentId },

@@ -30,7 +30,7 @@
   "auth": {
     "login": "Sign In",
     "logout": "Sign Out",
-    "staffLogin": "Staff & Students",
+    "staffLogin": "Teachers & Staff",
     "signInWithMicrosoft": "Sign in with Microsoft",
     "parentLogin": "Parents",
     "parentLoginDesc": "Sign in with your email and password",
@@ -42,7 +42,11 @@
     "missingCredentials": "Please enter your email and password.",
     "emailPassword": "Email & Password",
     "newStaffPrompt": "New staff or chaperone?",
-    "createAccount": "Create an account"
+    "createAccount": "Create an account",
+    "familyLogin": "Parents & Students",
+    "staffLoginTitle": "Staff Sign-in",
+    "toStaffLogin": "Teacher or staff member? Sign in here →",
+    "toFamilyLogin": "Parent or student? Sign in here →"
   },
   "nav": {
     "dashboard": "Dashboard",

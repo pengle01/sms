@@ -17,7 +17,7 @@ export default async function GroupDetailPage({
 }) {
   const { locale, id } = await params;
   const session = await getServerSession(authOptions);
-  if (!session) redirect(`/${locale}/login`);
+  if (!session) redirect(`/${locale}/login/staff`);
 
   const group = await db.group.findUnique({
     where: { id },

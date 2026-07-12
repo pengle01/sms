@@ -41,7 +41,7 @@ export default async function ActivityDetailPage({
   const { locale, id } = await params;
   const { edit, ddk, grade, groupId } = await searchParams;
   const session = await getServerSession(authOptions);
-  if (!session) redirect(`/${locale}/login`);
+  if (!session) redirect(`/${locale}/login/staff`);
 
   const activity = await db.activity.findUnique({
     where: { id },

@@ -22,7 +22,7 @@ export default async function AdminAuditPage({
 }) {
   const { locale } = await params;
   const auth = await getSuperAdminAuth();
-  if (!auth) redirect(`/${locale}/login`);
+  if (!auth) redirect(`/${locale}/login/staff`);
 
   const t = await getTranslations("adminAudit");
   const sp = await searchParams;

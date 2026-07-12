@@ -33,7 +33,7 @@ export default async function NewActivityPage({
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
-  if (!session) redirect(`/${locale}/login`);
+  if (!session) redirect(`/${locale}/login/staff`);
 
   const { name, date, startPeriod, endPeriod, location, repeatUntil, grade, groupId } =
     await searchParams;

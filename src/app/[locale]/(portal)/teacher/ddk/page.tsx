@@ -24,7 +24,7 @@ export default async function DdkOverviewPage({
   const { grade, groupId } = await searchParams;
 
   const auth = await getActiveAuth();
-  if (!auth || !isEducator(auth.role)) redirect(`/${locale}/login`);
+  if (!auth || !isEducator(auth.role)) redirect(`/${locale}/login/staff`);
 
   // Designation gate (fresh lookup) — coordinator, or a super admin.
   const staff = await db.staffProfile.findUnique({

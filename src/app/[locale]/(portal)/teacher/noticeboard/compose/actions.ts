@@ -8,7 +8,7 @@ import { writeAudit } from "@/server/audit";
 
 export async function sendStaffNotification(locale: string, formData: FormData) {
   const auth = await getActiveAuth();
-  if (!auth) redirect(`/${locale}/login`);
+  if (!auth) redirect(`/${locale}/login/staff`);
   // Fresh role check — only management (headmaster / headteachers) may compose
   if (!auth.roles.some((r) => isManagement(r))) redirect(`/${locale}/teacher/noticeboard`);
 

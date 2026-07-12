@@ -21,7 +21,7 @@ export default async function TeacherSetupPage({
   const t = await getTranslations("setup");
   const session = await getServerSession(authOptions);
 
-  if (!session?.user || session.user.role !== "TEACHER") redirect(`/${locale}/login`);
+  if (!session?.user || session.user.role !== "TEACHER") redirect(`/${locale}/login/staff`);
 
   const profile = await db.staffProfile.findUnique({ where: { userId: session.user.id } });
   if (profile) redirect(`/${locale}/teacher/dashboard`);

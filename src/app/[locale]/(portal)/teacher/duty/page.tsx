@@ -37,7 +37,7 @@ export default async function TeacherDutyPage({
   const { locale } = await params;
   const { tab: tabParam, grade, groupId, q, student: selectedStudentId, error } = await searchParams;
   const auth = await getActiveAuth();
-  if (!auth) redirect(`/${locale}/login`);
+  if (!auth) redirect(`/${locale}/login/staff`);
   if (!isDutyEligible(auth.role)) redirect(`/${locale}/teacher/dashboard`);
 
   const t = await getTranslations("duty");

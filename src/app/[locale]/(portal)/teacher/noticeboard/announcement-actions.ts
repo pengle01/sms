@@ -13,7 +13,7 @@ const MAX_LEN = 1000;
 /** Post a daily announcement, surfaced on every educator's dashboard. */
 export async function postAnnouncement(locale: string, formData: FormData) {
   const auth = await getActiveAuth();
-  if (!auth) redirect(`/${locale}/login`);
+  if (!auth) redirect(`/${locale}/login/staff`);
   if (!canManageAnnouncements(auth.roles)) redirect(`/${locale}/teacher/noticeboard`);
 
   const title = (formData.get("title") as string | null)?.trim() || null;
@@ -41,7 +41,7 @@ export async function postAnnouncement(locale: string, formData: FormData) {
 /** Remove an announcement (management only — peers may clear any). */
 export async function deleteAnnouncement(locale: string, formData: FormData) {
   const auth = await getActiveAuth();
-  if (!auth) redirect(`/${locale}/login`);
+  if (!auth) redirect(`/${locale}/login/staff`);
   if (!canManageAnnouncements(auth.roles)) redirect(`/${locale}/teacher/noticeboard`);
 
   const id = (formData.get("id") as string | null)?.trim();

@@ -16,7 +16,7 @@ export default async function ChaperoneActivitiesPage({
   const { locale } = await params;
   const t = await getTranslations("chaperoneActivities");
   const session = await getServerSession(authOptions);
-  if (!session?.user) redirect(`/${locale}/login`);
+  if (!session?.user) redirect(`/${locale}/login/staff`);
 
   const assignments = await db.activityChaperone.findMany({
     where: { userId: session.user.id },

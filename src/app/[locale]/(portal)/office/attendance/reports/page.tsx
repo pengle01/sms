@@ -24,9 +24,9 @@ export default async function OfficeAttendanceReportsPage({
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
-  if (!session) redirect(`/${locale}/login`);
+  if (!session) redirect(`/${locale}/login/staff`);
   if (!["SCHOOL_ADMIN", "SUPER_ADMIN"].includes(session.user.role)) {
-    redirect(`/${locale}/login`);
+    redirect(`/${locale}/login/staff`);
   }
 
   const t = await getTranslations("officeReports");

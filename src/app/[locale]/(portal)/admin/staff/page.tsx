@@ -24,7 +24,7 @@ export default async function StaffProfilesPage({
 }) {
   const { locale } = await params;
   const auth = await getSuperAdminAuth();
-  if (!auth) redirect(`/${locale}/login`);
+  if (!auth) redirect(`/${locale}/login/staff`);
 
   const t = await getTranslations("adminStaff");
   const tRoles = await getTranslations("roles");

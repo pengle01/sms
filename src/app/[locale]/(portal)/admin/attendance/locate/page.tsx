@@ -21,7 +21,7 @@ export default async function LocatePage({
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
-  if (!session) redirect(`/${locale}/login`);
+  if (!session) redirect(`/${locale}/login/staff`);
 
   const { search, groupId } = await searchParams;
 

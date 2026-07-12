@@ -22,7 +22,7 @@ export default async function OfficeAttendancePage({
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
-  if (!session) redirect(`/${locale}/login`);
+  if (!session) redirect(`/${locale}/login/staff`);
 
   const t = await getTranslations("officeAttendance");
   const { date: dateStr, groupId, days: daysStr, sq, student: studentParam } = await searchParams;

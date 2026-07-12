@@ -13,7 +13,7 @@ export default async function AdminDatabasePage({
 }) {
   const { locale } = await params;
   const auth = await getSuperAdminAuth();
-  if (!auth) redirect(`/${locale}/login`);
+  if (!auth) redirect(`/${locale}/login/staff`);
 
   const [stats, users, students] = await Promise.all([
     databaseStats().catch(() => ({ tables: 0 })),

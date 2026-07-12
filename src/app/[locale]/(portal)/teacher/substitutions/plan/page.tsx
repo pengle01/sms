@@ -37,7 +37,7 @@ export default async function SubstitutionPlanPage({
   const { locale } = await params;
   const { date: dateParam, error, finalized, tab } = await searchParams;
   const auth = await getActiveAuth();
-  if (!auth) redirect(`/${locale}/login`);
+  if (!auth) redirect(`/${locale}/login/staff`);
   const coordinator = await getCoordinatorStaff(auth.userId);
   if (!coordinator) redirect(`/${locale}/teacher/substitutions`);
 

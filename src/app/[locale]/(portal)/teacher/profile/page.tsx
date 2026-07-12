@@ -19,7 +19,7 @@ export default async function ProfilePage({
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
-  if (!session || !isEducator(session.user.role as Role)) redirect(`/${locale}/login`);
+  if (!session || !isEducator(session.user.role as Role)) redirect(`/${locale}/login/staff`);
 
   const { required } = await searchParams;
   const t = await getTranslations("profile");
@@ -34,7 +34,7 @@ export default async function ProfilePage({
       staffProfile: { select: { phone: true, department: true, pmp: true } },
     },
   });
-  if (!user) redirect(`/${locale}/login`);
+  if (!user) redirect(`/${locale}/login/staff`);
 
   const staff = user.staffProfile;
 

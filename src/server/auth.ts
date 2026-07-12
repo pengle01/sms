@@ -24,8 +24,10 @@ export const authOptions: NextAuthOptions = {
   // sets __Secure- cookie prefixes — but browsers drop Secure cookies over HTTP.
   useSecureCookies: process.env.NODE_ENV === "production",
   pages: {
-    signIn: "/el/login",
-    error: "/el/login",
+    // Only the Entra ID (staff) OAuth flow bounces through NextAuth's own
+    // sign-in/error pages — families use the custom /login form directly.
+    signIn: "/el/login/staff",
+    error: "/el/login/staff",
   },
   providers: [
     // Microsoft Entra ID (Azure AD) SSO — the "Sign in with Microsoft" button on

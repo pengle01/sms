@@ -20,7 +20,7 @@ export default async function ChaperoneRequestPage({
   const { error } = await searchParams;
   const session = await getServerSession(authOptions);
 
-  if (!session?.user || session.user.role !== "CHAPERONE") redirect(`/${locale}/login`);
+  if (!session?.user || session.user.role !== "CHAPERONE") redirect(`/${locale}/login/staff`);
 
   const students = await db.studentProfile.findMany({
     where: { user: { isActive: true } },

@@ -18,7 +18,7 @@ export default async function ActivitiesPage({
   const { locale } = await params;
 
   const session = await getServerSession(authOptions);
-  if (!session) redirect(`/${locale}/login`);
+  if (!session) redirect(`/${locale}/login/staff`);
 
   const today = utcMidnight(localDateStr());
   // Every activity — the complete list teachers can browse.

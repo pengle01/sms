@@ -28,7 +28,7 @@ export default async function SpecialEdAddPage({
   const { tab: tabParam, grade, groupId, q, student: selectedStudentId } = await searchParams;
 
   const auth = await getActiveAuth();
-  if (!auth) redirect(`/${locale}/login`);
+  if (!auth) redirect(`/${locale}/login/staff`);
   const staff = await db.staffProfile.findUnique({
     where: { userId: auth.userId },
     select: { specialEducation: true },

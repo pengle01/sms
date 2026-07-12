@@ -9,7 +9,7 @@ import { SpecialEdImportForm } from "./SpecialEdImportForm";
 export default async function SpecialEdImportPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   const auth = await getActiveAuth();
-  if (!auth) redirect(`/${locale}/login`);
+  if (!auth) redirect(`/${locale}/login/staff`);
   const staff = await db.staffProfile.findUnique({
     where: { userId: auth.userId },
     select: { specialEducation: true },
