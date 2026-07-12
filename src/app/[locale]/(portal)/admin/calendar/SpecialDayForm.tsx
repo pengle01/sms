@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { createSpecialDay, updateSpecialDay, deleteSpecialDay } from "./actions";
 import { localDateStr } from "@/lib/dates";
-import type { SpecialDay, SpecialDayType } from "@/generated/prisma";
+import type { SpecialDay, SpecialDayType } from "@/generated/prisma/client";
 
 // CHRISTMAS / EASTER are ministry dates managed under Settings → School Year
 // & Terms, so they are not offered here.

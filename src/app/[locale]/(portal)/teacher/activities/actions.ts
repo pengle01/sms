@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { authOptions } from "@/server/auth";
 import { isEducator } from "@/lib/rbac";
 import { db } from "@/server/db";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 import { utcMidnight, normalizeIsoDate } from "@/lib/dates";
 import { weeklyOccurrences } from "@/lib/activities";
 import { getSchoolYear } from "@/lib/schoolConfig";

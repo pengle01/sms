@@ -10,7 +10,7 @@ import { AcknowledgeButton } from "./AcknowledgeButton";
 import { isStaff } from "@/lib/rbac";
 import { fmtDisplayDateTime } from "@/lib/dates";
 import { getTranslations } from "next-intl/server";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 
 export default async function NoticeboardPage({
   params,

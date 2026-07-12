@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { isHolidayType, buildDayTypeMap } from "@/lib/calendar";
-import type { SpecialDayType } from "@/generated/prisma";
+import type { SpecialDayType } from "@/generated/prisma/client";
 
 describe("isHolidayType", () => {
   it("returns true for BANK_HOLIDAY", () => {

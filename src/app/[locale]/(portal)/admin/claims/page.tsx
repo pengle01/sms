@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getActiveAuth } from "@/server/authz";
 import { canManageClaims } from "@/lib/rbac";
 import { db } from "@/server/db";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 import { RequestsList } from "./RequestsList";
 import type { PendingUser, PendingClaim, PendingChaperone } from "./RequestsList";
 

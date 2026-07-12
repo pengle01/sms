@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { UserX } from "lucide-react";
-import type { Role, Prisma } from "@/generated/prisma";
+import type { Role, Prisma } from "@/generated/prisma/client";
 import { getTranslations } from "next-intl/server";
 import { StaffLinkControls } from "../staff/StaffLinkControls";
 

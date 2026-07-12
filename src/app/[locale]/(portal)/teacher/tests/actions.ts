@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { utcMidnight, fmtDisplayDate } from "@/lib/dates";
 import { getActiveTermInfo, getMaxTestsPerWeek } from "@/lib/schoolConfig";
 import { isSchoolClosed } from "@/lib/calendar";
-import { TestType } from "@/generated/prisma";
+import { TestType } from "@/generated/prisma/client";
 
 export type TestConflict = {
   studentName: string;

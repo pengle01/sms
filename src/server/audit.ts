@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { db } from "@/server/db";
-import type { Prisma } from "@/generated/prisma";
+import type { Prisma } from "@/generated/prisma/client";
 import { logger, errInfo } from "@/server/logger";
 
 type AuditEntry = {

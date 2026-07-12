@@ -3,7 +3,7 @@ import { utcMidnight } from "@/lib/dates";
 import { getPeriodsPerDay, getSchoolYear } from "@/lib/schoolConfig";
 import { configuredHolidayFor, type DateRange } from "@/lib/schoolYear";
 import { dutyDowFor } from "@/lib/dutyRoster";
-import type { SpecialDay, SpecialDayType } from "@/generated/prisma";
+import type { SpecialDay, SpecialDayType } from "@/generated/prisma/client";
 
 export type { SpecialDayType };
 

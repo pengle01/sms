@@ -4,10 +4,12 @@
 
 export type AttendanceLockWindow = "day" | "week" | "term" | "year";
 
-export interface AttendanceLockConfig {
+// A `type` (not `interface`) so it gets an implicit index signature and stays
+// assignable to Prisma's JSON input types (audit details, GlobalSetting).
+export type AttendanceLockConfig = {
   enabled: boolean;
   window: AttendanceLockWindow;
-}
+};
 
 export const ATTENDANCE_LOCK_KEY = "attendance_lock";
 export const ATTENDANCE_LOCK_WINDOWS: AttendanceLockWindow[] = ["day", "week", "term", "year"];

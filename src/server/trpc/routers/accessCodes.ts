@@ -4,7 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { canViewAccessCode } from "@/lib/rbac";
 import { randomAccessCode } from "@/lib/accessCode";
 import { writeAudit, requestMeta } from "@/server/audit";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 import type { PrismaClient } from "@/generated/prisma/client";
 
 // Loads the student's homeroom + the viewer's staff id and throws unless the

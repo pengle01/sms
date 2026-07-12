@@ -5,7 +5,7 @@
 // the rostered headteacher assumes the on-duty role. Resolution from a date
 // to the day's deputies lives in getOnDutyDeputies() (src/lib/calendar.ts).
 
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 
 /** The duty is filled by the headteachers. */
 export const DUTY_ELIGIBLE_ROLES: Role[] = ["HEADTEACHER_A", "HEADTEACHER_B"];

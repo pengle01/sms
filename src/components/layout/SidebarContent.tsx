@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useSchoolName } from "./SchoolNameContext";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 import {
   LayoutDashboard, ClipboardList, AlertTriangle, BookOpen,
   Calendar, CalendarRange, FileText, Bell, Users, Settings, Shield,

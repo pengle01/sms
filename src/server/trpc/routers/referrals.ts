@@ -11,7 +11,7 @@ import { canViewAllReferrals, canViewCounselorNotes } from "@/lib/rbac";
 import { localDateStr } from "@/lib/dates";
 import { expulsionDaysInPast } from "@/lib/periods";
 import { writeAudit } from "@/server/audit";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 
 function reqMeta(req?: Request) {
   const fwd = req?.headers.get("x-forwarded-for");

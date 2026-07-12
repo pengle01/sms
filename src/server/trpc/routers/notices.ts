@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, staffProcedure, protectedProcedure } from "../init";
 import { TRPCError } from "@trpc/server";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 import { isStaff } from "@/lib/rbac";
 
 export const noticesRouter = createTRPCRouter({

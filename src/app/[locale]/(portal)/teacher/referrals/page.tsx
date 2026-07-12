@@ -20,7 +20,7 @@ import { overallStatus } from "@/lib/referralStatus";
 import { recommendationLabel, resolutionSummary } from "@/lib/referralLabels";
 import { parseReferralSearchTab, referralSearchWhere } from "@/lib/referralSearch";
 import { UnlockResolutionDialog } from "./UnlockResolutionDialog";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 
 // Include shape — same as in router
 const referralInclude = {

@@ -1,4 +1,4 @@
-import type { Prisma } from "@/generated/prisma";
+import type { Prisma } from "@/generated/prisma/client";
 import { staffProfilePlan } from "@/lib/staffLink";
 
 type Db = Prisma.TransactionClient;

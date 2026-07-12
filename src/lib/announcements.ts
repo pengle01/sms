@@ -3,7 +3,7 @@
 // Announcements are pushed by management (headteachers/headmaster) and shown on
 // the teacher dashboard while still "pinned" (pinnedUntil >= today).
 
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 import { isManagement } from "@/lib/rbac";
 import { normalizeIsoDate, utcMidnight } from "@/lib/dates";
 

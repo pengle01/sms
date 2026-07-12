@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { canManageAnnouncements, resolvePinnedUntil } from "@/lib/announcements";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 
 describe("canManageAnnouncements", () => {
   it("allows headteachers and the headmaster", () => {

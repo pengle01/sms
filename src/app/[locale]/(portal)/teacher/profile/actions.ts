@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { isEducator } from "@/lib/rbac";
 import { validateProfileInput, type ProfileInput } from "@/lib/profile";
 import { writeAudit, requestMeta } from "@/server/audit";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 
 export type UpdateProfileResult = { ok: true } | { ok: false; error: string };
 

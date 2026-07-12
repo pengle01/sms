@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getSuperAdminAuth } from "@/server/authz";
 import { db } from "@/server/db";
-import { Prisma } from "@/generated/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { enrollmentSyncPlan } from "@/lib/enrollmentSync";
 import * as XLSX from "xlsx";
 

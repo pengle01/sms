@@ -1,5 +1,5 @@
 // Special-education catalog + pure helpers (unit-tested; no DB).
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 import { canViewCounselorNotes } from "@/lib/rbac";
 
 export type CodeEntry = { code: string; label: string };

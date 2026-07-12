@@ -2,7 +2,7 @@ import { z } from "zod";
 import { createTRPCRouter, staffProcedure, protectedProcedure } from "../init";
 import { TRPCError } from "@trpc/server";
 import { GRADES_UNLOCKED_KEY, parseGradesUnlocked, GRADE_MIN, GRADE_MAX } from "@/lib/grades";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 
 export const gradesRouter = createTRPCRouter({
   // Enter or update a grade (teacher only — their assigned courses)

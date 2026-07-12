@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { parseSupportGroup, canViewSpecialEdFull, specialEdCodesSeeded, splitKnownCodes, parseSpecialEdCodeInput } from "@/lib/specialEd";
 import { specialEdLegend } from "@/server/specialEd";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 
 describe("parseSupportGroup", () => {
   it("classifies group support (ΣΤ_) and extracts the subject", () => {

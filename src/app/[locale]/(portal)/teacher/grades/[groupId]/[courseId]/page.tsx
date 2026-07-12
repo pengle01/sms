@@ -12,7 +12,7 @@ import { getGradesUnlocked } from "@/lib/schoolConfig";
 import { isManagement } from "@/lib/rbac";
 import { parseSupportGroup } from "@/lib/specialEd";
 import { Lock } from "lucide-react";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 import { GradeEntryForm } from "./GradeEntryForm";
 
 export default async function LessonGradesPage({

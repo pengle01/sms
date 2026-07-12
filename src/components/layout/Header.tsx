@@ -8,7 +8,7 @@ import { LogOut, Globe, Menu, X } from "lucide-react";
 import { SidebarContent } from "./SidebarContent";
 import { NotificationBell } from "./NotificationBell";
 import { AppearanceDialog } from "./AppearanceDialog";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 
 interface HeaderProps {
   userName?: string;

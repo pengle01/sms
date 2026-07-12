@@ -97,7 +97,7 @@ The portal prefix is determined by `getPortalForRole()` in `src/lib/rbac.ts`.
 - Server actions live in co-located `actions.ts` files; always call `getServerSession` + role check inside.
 
 ### Prisma
-- Import types from `@/generated/prisma`, NOT from `@prisma/client`.
+- Import from `@/generated/prisma/client` (types, `Prisma` namespace) or `@/generated/prisma/enums` — the generated entry FILES. Never from `@prisma/client`, and never the bare directory `@/generated/prisma` (no index barrel — dev resolves it, `next build`'s strict type gate may not).
 - `StaffProfile.userId` is nullable — a profile can exist without a linked user (substitute cover). Always use `user?.name`, never `user.name`.
 - Use `db push` + `db generate` for schema changes. Never use `migrate dev` in development.
 

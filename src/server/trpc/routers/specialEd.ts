@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, staffProcedure } from "../init";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 import { canViewSpecialEdFull } from "@/lib/specialEd";
 import { teachesStudent, getSpecialEdCodes } from "@/server/specialEd";
 import { writeAudit } from "@/server/audit";

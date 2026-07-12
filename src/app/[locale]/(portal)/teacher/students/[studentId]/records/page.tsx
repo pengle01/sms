@@ -12,7 +12,7 @@ import { breakMinutes } from "@/lib/toilet";
 import { actionLabel } from "@/lib/referralLabels";
 import { GRADE_PASS } from "@/lib/grades";
 import { RecordsFilter } from "./RecordsFilter";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 
 const ABSENCE_BADGE: Record<string, { label: string; cls: string }> = {
   ABSENT: { label: "Απουσία", cls: "text-red-700 bg-red-50 border-red-200" },

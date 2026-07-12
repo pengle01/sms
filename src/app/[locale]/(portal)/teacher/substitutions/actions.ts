@@ -7,7 +7,7 @@ import { writeAudit, requestMeta } from "@/server/audit";
 import { isEducator } from "@/lib/rbac";
 import { utcMidnight, fmtDisplayDate } from "@/lib/dates";
 import { sendSms } from "@/lib/sms";
-import type { SubstitutionRequestType } from "@/generated/prisma";
+import type { SubstitutionRequestType } from "@/generated/prisma/client";
 
 export type RequestResult = { ok: true } | { ok: false; error: string };
 

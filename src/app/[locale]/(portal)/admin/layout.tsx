@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getActiveAuth } from "@/server/authz";
 import { isAdminStaff, isEducator } from "@/lib/rbac";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 import { db } from "@/server/db";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";

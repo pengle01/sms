@@ -7,7 +7,7 @@ import { AlertTriangle, CircleUser } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { isEducator } from "@/lib/rbac";
 import { profileIncomplete, splitFullName } from "@/lib/profile";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 import { ProfileForm } from "./ProfileForm";
 
 export default async function ProfilePage({

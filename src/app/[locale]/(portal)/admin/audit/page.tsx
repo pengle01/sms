@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollText } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { utcMidnight, fmtDisplayDateTime } from "@/lib/dates";
-import type { Prisma } from "@/generated/prisma";
+import type { Prisma } from "@/generated/prisma/client";
 
 const PAGE_SIZE = 50;
 const DAY_MS = 24 * 60 * 60 * 1000;

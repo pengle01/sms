@@ -16,7 +16,7 @@ async function requireSuperAdmin() {
 
 // ── Special Days ──────────────────────────────────────────────────────────────
 
-import type { SpecialDayType } from "@/generated/prisma";
+import type { SpecialDayType } from "@/generated/prisma/client";
 
 export async function createSpecialDay(data: {
   type: SpecialDayType;

@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 import { routing } from "@/i18n/routing";
 import { getToken } from "next-auth/jwt";
 import { getPortalForRole } from "@/lib/rbac";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 
 const intlMiddleware = createMiddleware(routing);
 

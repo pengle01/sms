@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/server/auth";
 import { db } from "@/server/db";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 import { getNow, utcMidnight, fmtDisplayDate } from "@/lib/dates";
 import { profileIncomplete } from "@/lib/profile";
 import { getSpecialDayForDate, getOnDutyDeputies } from "@/lib/calendar";

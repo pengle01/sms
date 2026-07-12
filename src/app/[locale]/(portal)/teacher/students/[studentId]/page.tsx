@@ -19,7 +19,7 @@ import { canViewSpecialEdFull } from "@/lib/specialEd";
 import { getSpecialEdRecord, getStudentSupport, teachesStudent } from "@/server/specialEd";
 import { AccessCodeCard } from "@/components/access/AccessCodeCard";
 import { SpecialEdCard } from "@/components/special-ed/SpecialEdCard";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 
 function Field({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;

@@ -3,7 +3,7 @@ import { authOptions } from "@/server/auth";
 import { db } from "@/server/db";
 import { effectiveRoles, isEffectiveSuperAdmin } from "@/lib/roleAssignment";
 import type { Session } from "next-auth";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 
 export interface ActiveAuth {
   session: Session;

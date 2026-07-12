@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { UserCheck, UserX, GraduationCap, Undo2, CheckCircle2, XCircle } from "lucide-react";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 import { fmtDisplayDate } from "@/lib/dates";
 import {
   approveRegistrationAction,

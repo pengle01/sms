@@ -6,7 +6,7 @@
 // system keeps the full teacher portal. The primary role is never changed
 // here — only the extra grant is managed.
 
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 
 /** Primary + extra roles, deduplicated, primary first. */
 export function effectiveRoles(primary: Role, extra: Role[]): Role[] {

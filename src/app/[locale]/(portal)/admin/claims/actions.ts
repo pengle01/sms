@@ -7,7 +7,7 @@ import { getActiveAuth } from "@/server/authz";
 import { writeAudit, requestMeta } from "@/server/audit";
 import { db } from "@/server/db";
 import { linkStaffProfile } from "@/server/staffLink";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 
 async function requireAdmin() {
   const auth = await getActiveAuth();

@@ -8,7 +8,7 @@ import { isManagement } from "@/lib/rbac";
 import { parseGradeInput, isGradePeriod } from "@/lib/grades";
 import { getGradesUnlocked } from "@/lib/schoolConfig";
 import { writeAudit, requestMeta } from "@/server/audit";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 
 export type SaveGradesResult = { success: true } | { success: false; message: string };
 

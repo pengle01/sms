@@ -7,7 +7,7 @@ import { db } from "@/server/db";
 import { rateLimit } from "@/server/rateLimit";
 import { composeFullName } from "@/lib/profile";
 import { SELF_REGISTER_EDUCATOR_ROLES } from "@/lib/rbac";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 
 // Educators (teacher / deputy heads / headmaster) claim a timetable name;
 // office & chaperone just register for approval without a claim.

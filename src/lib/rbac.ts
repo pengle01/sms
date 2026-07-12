@@ -1,4 +1,4 @@
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 
 // Ordered from highest to lowest clearance
 const ROLE_HIERARCHY: Role[] = [

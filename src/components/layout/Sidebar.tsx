@@ -1,7 +1,7 @@
 "use client";
 
 import { SidebarContent } from "./SidebarContent";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 
 interface SidebarProps {
   role: Role;

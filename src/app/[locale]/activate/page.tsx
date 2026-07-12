@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/server/auth";
 import { getPortalForRole } from "@/lib/rbac";
 import { getTranslations } from "next-intl/server";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 import { ActivateForm } from "./ActivateForm";
 
 const LABEL_KEYS = [

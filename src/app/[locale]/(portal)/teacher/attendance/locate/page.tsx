@@ -12,7 +12,7 @@ import { getTranslations } from "next-intl/server";
 import { locateHref, parseLocateTab, studentSearchWhere, type LocateTab } from "@/lib/studentSearch";
 import { suggestionList } from "@/lib/textSearch";
 import { SuggestInput } from "@/components/SuggestInput";
-import type { Prisma } from "@/generated/prisma";
+import type { Prisma } from "@/generated/prisma/client";
 import { Search } from "lucide-react";
 
 export default async function TeacherLocatePage({

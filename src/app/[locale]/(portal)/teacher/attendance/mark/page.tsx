@@ -4,7 +4,7 @@ import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
 import { utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { isDutyEligible } from "@/lib/dutyRoster";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 import { ArrowLeft, Plus } from "lucide-react";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";

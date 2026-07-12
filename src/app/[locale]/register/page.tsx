@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/server/auth";
 import { getPortalForRole } from "@/lib/rbac";
 import { db } from "@/server/db";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 import { RegisterForm } from "./RegisterForm";
 
 export default async function RegisterPage({

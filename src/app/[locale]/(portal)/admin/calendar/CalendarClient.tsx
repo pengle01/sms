@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CalendarRange, Plus, Pencil } from "lucide-react";
 import { SpecialDayForm } from "./SpecialDayForm";
 import { localDateStr, fmtDisplayDate } from "@/lib/dates";
-import type { SpecialDay, SpecialDayType } from "@/generated/prisma";
+import type { SpecialDay, SpecialDayType } from "@/generated/prisma/client";
 
 const RANGE_TYPES: SpecialDayType[] = ["CHRISTMAS", "EASTER"];
 

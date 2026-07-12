@@ -3,7 +3,7 @@ import superjson from "superjson";
 import { ZodError } from "zod";
 import type { Context } from "./context";
 import { canViewCounselorNotes, isManagement, isStaff } from "@/lib/rbac";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 import { logger } from "@/server/logger";
 
 const t = initTRPC.context<Context>().create({

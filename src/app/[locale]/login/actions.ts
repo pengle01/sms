@@ -5,7 +5,7 @@ import { encode } from "next-auth/jwt";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 import { getPortalForRole } from "@/lib/rbac";
 import { rateLimit, resetRateLimit } from "@/server/rateLimit";
 

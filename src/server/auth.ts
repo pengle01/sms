@@ -4,7 +4,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { db } from "@/server/db";
 import { rateLimit, resetRateLimit } from "@/server/rateLimit";
-import type { Role } from "@/generated/prisma";
+import type { Role } from "@/generated/prisma/client";
 import { logger } from "@/server/logger";
 
 const IS_DEV = process.env.NODE_ENV === "development";
