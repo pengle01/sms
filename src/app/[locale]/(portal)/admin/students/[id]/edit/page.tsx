@@ -1,5 +1,4 @@
 import { db } from "@/server/db";
-import { DateInput } from "@/components/ui/date-input";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -40,8 +39,6 @@ export default async function EditStudentPage({
   const { user, group } = student;
   const action = updateStudent.bind(null, id, locale);
 
-  const dobValue = student.dateOfBirth ? student.dateOfBirth.toISOString().slice(0, 10) : "";
-
   // Linked parents by role, for editing the imported parent/guardian fields.
   const parentByRole = new Map(student.parents.map((p) => [p.parentProfile.role, p.parentProfile]));
 
@@ -80,15 +77,7 @@ export default async function EditStudentPage({
                     <option value="FEMALE">{t("female")}</option>
                   </select>
                 </div>
-                <div>
-                  <label className="block text-xs text-slate-500 mb-1.5">{t("dateOfBirth")}</label>
-                  <DateInput name="dateOfBirth" defaultValue={dobValue} className={inputCls} />
-                </div>
-                <Field label={t("placeOfBirth")} name="placeOfBirth" defaultValue={student.placeOfBirth ?? ""} />
-                <Field label={t("nationality")}  name="nationality"  defaultValue={student.nationality   ?? ""} />
                 <Field label={t("address")}      name="address"      defaultValue={student.address       ?? ""} />
-                <Field label={t("idCardNumber")} name="idCardNumber" defaultValue={student.idCardNumber  ?? ""} mono />
-                <Field label={t("passportNumber")} name="passportNumber" defaultValue={student.passportNumber ?? ""} mono />
               </div>
             </section>
 

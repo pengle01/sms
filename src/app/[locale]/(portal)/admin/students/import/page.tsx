@@ -32,7 +32,7 @@ export default async function ImportStudentsPage({ params }: { params: Promise<{
 
       <div className="text-xs text-slate-400 space-y-1 max-w-xl">
         <p className="font-medium text-slate-500">{t("importExpectedColumns")}</p>
-        <p>Τμήμα · Τάξη · Επώνυμο · Όνομα · Μητρώο · Φύλο · Ημ/νία Γέννησης · Αρ. Ταυτότητας · Αρ. Διαβατηρίου · Εθνικότητα · Τόπος Γέννησης</p>
+        <p>Τμήμα · Τάξη · Επώνυμο · Όνομα · Μητρώο · Φύλο</p>
         <p>e-Mail (1) - Μαθητή · Επώνυμο/Όνομα Πατέρα · Κινητό (2) - Πατέρα · e-Mail (2) - Πατέρα</p>
         <p>Επώνυμο/Όνομα Μητέρας · Κινητό (3) - Μητέρας · e-Mail (3) - Μητέρας</p>
         <p>Επώνυμο/Όνομα Κηδεμόνα · Τηλέφωνο (1) · τηλέφωνο SMS</p>

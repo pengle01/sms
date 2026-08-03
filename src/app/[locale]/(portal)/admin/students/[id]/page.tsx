@@ -5,11 +5,9 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  ChevronLeft, Pencil, User, Phone, Calendar, MapPin,
-  CreditCard, Globe, Users, BookOpen, Clock, Layers,
+  ChevronLeft, Pencil, User, Phone, Users, BookOpen, Clock, Layers,
   CalendarDays, AlertTriangle,
 } from "lucide-react";
-import { fmtDisplayDate } from "@/lib/dates";
 import { SmsRecipientsCard } from "@/components/students/SmsRecipientsCard";
 import { AccountsCard, type StudentAccount } from "@/components/students/AccountsCard";
 import { pickQueryString } from "@/lib/listFilters";
@@ -324,12 +322,7 @@ export default async function StudentDetailPage({
                 <Field label={t("fullName")}       value={user.name} />
                 <Field label={t("studentIdLabel")} value={student.studentId} mono />
                 <Field label={t("gender")}         value={student.gender === "MALE" ? t("male") : student.gender === "FEMALE" ? t("female") : null} />
-                <Field label={t("dateOfBirth")}    value={student.dateOfBirth ? fmtDisplayDate(student.dateOfBirth) : null} />
-                <Field label={t("placeOfBirth")}   value={student.placeOfBirth} />
-                <Field label={t("nationality")}    value={student.nationality} />
                 <Field label={t("address")}        value={student.address} />
-                <Field label={t("idCard")}         value={student.idCardNumber} mono />
-                <Field label={t("passport")}       value={student.passportNumber} mono />
                 <Field label={t("group")}          value={group?.name ?? null} />
                 <Field label={t("email")}          value={user.email} />
               </dl>
@@ -480,39 +473,6 @@ export default async function StudentDetailPage({
             flagged={student.smsFlagged}
             flagReason={student.smsFlagReason}
           />
-
-          {/* Quick info */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Globe className="w-4 h-4 text-slate-400" />
-                {t("additional")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              {student.placeOfBirth && (
-                <div className="flex items-center gap-2 text-slate-600">
-                  <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  {student.placeOfBirth}
-                </div>
-              )}
-              {student.dateOfBirth && (
-                <div className="flex items-center gap-2 text-slate-600">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  {fmtDisplayDate(student.dateOfBirth)}
-                </div>
-              )}
-              {student.idCardNumber && (
-                <div className="flex items-center gap-2 text-slate-600">
-                  <CreditCard className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  {student.idCardNumber}
-                </div>
-              )}
-              {!student.placeOfBirth && !student.dateOfBirth && !student.idCardNumber && (
-                <p className="text-slate-400">{t("noAdditionalInfo")}</p>
-              )}
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>

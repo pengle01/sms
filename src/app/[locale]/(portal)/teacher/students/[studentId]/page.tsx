@@ -329,19 +329,6 @@ export default async function StudentSchedulePage({
                 <Field label={t("fieldRegistryNo")} value={student.studentId} />
                 <Field label={t("fieldGroup")} value={student.group?.name} />
                 <Field label={t("fieldGender")} value={student.gender ? genderLabel[student.gender] : null} />
-                <Field
-                  label={t("fieldDateOfBirth")}
-                  value={student.dateOfBirth ? fmtDisplayDate(student.dateOfBirth) : null}
-                />
-                <Field label={t("fieldPlaceOfBirth")} value={student.placeOfBirth} />
-                <Field label={t("fieldNationality")} value={student.nationality} />
-                {/* Identity documents (ταυτότητα/διαβατήριο/ARC) — super admin only. */}
-                {role === "SUPER_ADMIN" && (
-                  <>
-                    <Field label={t("fieldIdCard")} value={student.idCardNumber} />
-                    <Field label={t("fieldPassport")} value={student.passportNumber} />
-                  </>
-                )}
               </dl>
             </CardContent>
           </Card>

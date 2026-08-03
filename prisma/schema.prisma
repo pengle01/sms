@@ -243,12 +243,10 @@ model StudentProfile {
   groupId        String?
   group          Group?    @relation(fields: [groupId], references: [id])
   gender         Gender?
-  dateOfBirth    DateTime? @db.Date
-  placeOfBirth   String?
-  nationality    String?
+  // Date/place of birth, nationality and identity-document numbers are
+  // deliberately NOT stored (GDPR data minimisation, 2026-08-03): the app has
+  // no use for them, so they are neither imported nor kept. Do not re-add.
   address        String?
-  idCardNumber   String?
-  passportNumber String?
 
   parents                ParentStudent[]
   subjectGroups          StudentGroup[]

@@ -25,11 +25,6 @@ const COLS = {
   firstName:         "Όνομα",
   registryId:        "Μητρώο",
   gender:            "Φύλο",
-  dob:               "Ημ/νία Γέννησης",
-  placeOfBirth:      "Τόπος Γέννησης",
-  nationality:       "Εθνικότητα",
-  idCard:            "Αρ. Ταυτότητας",
-  passport:          "Αρ. Διαβατηρίου",
   studentEmail:      "e-Mail (1) - Μαθητή",
   fatherLastName:    "Επώνυμο Πατέρα",
   fatherFirstName:   "Όνομα Πατέρα",
@@ -63,13 +58,6 @@ function parseGender(val: string): Gender | undefined {
   if (v === "Α" || v === "ΑΡΡΕΝ" || v === "M" || v === "MALE") return Gender.MALE;
   if (v === "Θ" || v === "ΘΗΛΥ" || v === "F" || v === "FEMALE") return Gender.FEMALE;
   return undefined;
-}
-
-function parseDob(val: unknown): Date | undefined {
-  if (!val) return undefined;
-  if (val instanceof Date) return isNaN(val.getTime()) ? undefined : val;
-  const d = new Date(String(val));
-  return isNaN(d.getTime()) ? undefined : d;
 }
 
 export async function importStudents(_prev: ImportResult | null, formData: FormData): Promise<ImportResult> {
@@ -148,14 +136,12 @@ export async function importStudents(_prev: ImportResult | null, formData: FormD
         if (taken) studentEmail = placeholder;
       }
 
+      // Identity documents, birth details and nationality are deliberately NOT
+      // imported — the app has no use for them (GDPR data minimisation), and
+      // any such columns still present in the spreadsheet are ignored.
       const personalFields = {
         ...(groupId !== undefined ? { group: { connect: { id: groupId } } } : {}),
         gender:        parseGender(str(row, COLS.gender)),
-        dateOfBirth:   parseDob(row[COLS.dob]),
-        placeOfBirth:  str(row, COLS.placeOfBirth)   || undefined,
-        nationality:   str(row, COLS.nationality)    || undefined,
-        idCardNumber:  str(row, COLS.idCard)         || undefined,
-        passportNumber:str(row, COLS.passport)       || undefined,
       };
 
       if (existing) {

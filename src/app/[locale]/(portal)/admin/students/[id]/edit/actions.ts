@@ -19,15 +19,8 @@ export async function updateStudent(id: string, locale: string, formData: FormDa
   const email         = (formData.get("email") as string).trim().toLowerCase();
   const groupId       = (formData.get("groupId") as string) || null;
   const gender        = (formData.get("gender") as string) || null;
-  const dobRaw        = (formData.get("dateOfBirth") as string) || null;
-  const placeOfBirth  = (formData.get("placeOfBirth") as string).trim() || null;
-  const nationality   = (formData.get("nationality") as string).trim() || null;
   const address       = (formData.get("address") as string).trim() || null;
-  const idCardNumber  = (formData.get("idCardNumber") as string).trim() || null;
-  const passportNumber= (formData.get("passportNumber") as string).trim() || null;
   const isActive      = formData.get("isActive") === "true";
-
-  const dateOfBirth = dobRaw ? new Date(dobRaw) : null;
 
   // Registry number is the unique import key — guard against collisions.
   const current = await db.studentProfile.findUnique({ where: { id }, select: { studentId: true } });
@@ -41,12 +34,7 @@ export async function updateStudent(id: string, locale: string, formData: FormDa
     data: {
       ...(registryId ? { studentId: registryId } : {}),
       gender:         (gender === "MALE" || gender === "FEMALE") ? (gender as Gender) : null,
-      dateOfBirth:    dateOfBirth ?? null,
-      placeOfBirth:   placeOfBirth,
-      nationality:    nationality,
       address:        address,
-      idCardNumber:   idCardNumber,
-      passportNumber: passportNumber,
       ...(groupId ? { group: { connect: { id: groupId } } } : { group: { disconnect: true } }),
       user: {
         update: {
@@ -99,7 +87,7 @@ export async function updateStudent(id: string, locale: string, formData: FormDa
     action: "student.update",
     resource: "StudentProfile",
     resourceId: id,
-    details: { fields: ["registryId", "name", "email", "group", "gender", "dob", "address", "idCard", "passport", "isActive", "parents"] },
+    details: { fields: ["registryId", "name", "email", "group", "gender", "address", "isActive", "parents"] },
     ...meta,
   });
 
