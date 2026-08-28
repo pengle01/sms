@@ -2,6 +2,7 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import type { NextAuthOptions, Session } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
+import { SESSION_COOKIE, USE_SECURE_COOKIES } from "@/lib/sessionCookie";
 import { db } from "@/server/db";
 import { rateLimit, resetRateLimit } from "@/server/rateLimit";
 import type { Role } from "@/generated/prisma/client";
@@ -19,10 +20,16 @@ export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(db),
   secret: process.env.NEXTAUTH_SECRET,
   session: { strategy: "jwt" },
-  // Disable secure-cookie prefix in dev so HTTP LAN access (192.168.x.x) works.
-  // With AUTH_TRUST_HOST=1 and no x-forwarded-proto, NextAuth infers HTTPS and
-  // sets __Secure- cookie prefixes — but browsers drop Secure cookies over HTTP.
-  useSecureCookies: process.env.NODE_ENV === "production",
+  // Cookie naming lives in one place — see src/lib/sessionCookie.ts for why.
+  // The name is pinned explicitly as well as useSecureCookies being set, so
+  // getServerSession can never disagree with what the login action wrote.
+  useSecureCookies: USE_SECURE_COOKIES,
+  cookies: {
+    sessionToken: {
+      name: SESSION_COOKIE,
+      options: { httpOnly: true, sameSite: "lax", path: "/", secure: USE_SECURE_COOKIES },
+    },
+  },
   pages: {
     // Only the Entra ID (staff) OAuth flow bounces through NextAuth's own
     // sign-in/error pages — families use the custom /login form directly.

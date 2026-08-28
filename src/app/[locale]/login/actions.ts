@@ -8,12 +8,9 @@ import bcrypt from "bcryptjs";
 import type { Role } from "@/generated/prisma/client";
 import { getPortalForRole } from "@/lib/rbac";
 import { rateLimit, resetRateLimit } from "@/server/rateLimit";
+import { SESSION_COOKIE, USE_SECURE_COOKIES } from "@/lib/sessionCookie";
 
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
-// Must match the cookie name getToken() looks for in the middleware.
-// getToken() uses __Secure- prefix only when NEXTAUTH_URL starts with https:// or VERCEL is set.
-// Neither is true in dev, so we use the plain name.
-const SESSION_COOKIE = "next-auth.session-token";
 
 async function createSession(userId: string, email: string, name: string | null, role: Role, image: string | null) {
   const token = await encode({
@@ -23,10 +20,13 @@ async function createSession(userId: string, email: string, name: string | null,
   });
 
   const cookieStore = await cookies();
+  // Flags must match what authOptions declares, or getServerSession looks for a
+  // cookie by a different name and every page treats the user as signed out.
   cookieStore.set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
+    secure: USE_SECURE_COOKIES,
     maxAge: SESSION_MAX_AGE,
   });
 }

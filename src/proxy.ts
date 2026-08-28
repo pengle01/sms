@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { routing } from "@/i18n/routing";
 import { getToken } from "next-auth/jwt";
+import { USE_SECURE_COOKIES } from "@/lib/sessionCookie";
 import { getPortalForRole } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma/client";
 
@@ -43,6 +44,9 @@ export default async function proxy(request: NextRequest) {
     const token = await getToken({
       req: request,
       secret: process.env.NEXTAUTH_SECRET,
+      // Without this getToken picks the name from NEXTAUTH_URL's protocol,
+      // which is a different rule from the one authOptions uses.
+      secureCookie: USE_SECURE_COOKIES,
     });
 
     if (!token) {
