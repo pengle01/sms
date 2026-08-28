@@ -33,6 +33,18 @@ const nextConfig: NextConfig = {
   // `pino` uses Node built-ins and must be required natively, not bundled, on the
   // server (see src/server/logger.ts).
   serverExternalPackages: ["pino"],
+  logging: {
+    // Next's dev server prints every Server Function call WITH ITS ARGUMENTS.
+    // Our actions carry credentials in those arguments — startActivation and
+    // registerAction take a password and its confirmation, loginWith takes a
+    // password, setUserPassword takes a new one — so the default put real
+    // passwords in the terminal and in any captured dev log, in plaintext.
+    // There is no redaction option, only on/off. The app's own pino logger
+    // already redacts `password`/`passwordHash` (src/server/logger.ts), and
+    // tRPC timings come from its own middleware, so little is lost.
+    // Dev-only setting: production never logged this.
+    serverFunctions: false,
+  },
   // DEV ONLY — allowedDevOrigins is consumed exclusively by `next dev` and has no
   // effect on `next build`/`next start`. We additionally gate it on NODE_ENV so a
   // production build never carries the LAN hosts at all.
