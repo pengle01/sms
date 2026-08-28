@@ -25,6 +25,33 @@ export function overallStatus(r: { isDraft: boolean; students: { status: string 
   return "PARTIAL";
 }
 
+/**
+ * May this staff member delete the referral?
+ *
+ * Only its filer, and only while nobody downstream has acted on it:
+ *   - a draft was never filed, so it is the author's alone;
+ *   - a filed referral can still be withdrawn until a headteacher opens it
+ *     (openedAt), which is the moment it enters someone else's workload.
+ *
+ * Once it has been opened, or any student already carries a resolution, it is
+ * part of the disciplinary record and stays — a resolution implies it was
+ * opened, but it is checked separately rather than trusted to imply openedAt.
+ */
+export function canDeleteReferral(
+  r: {
+    isDraft: boolean;
+    openedAt?: Date | string | null;
+    filerId: string;
+    students: { status: string }[];
+  },
+  staffId: string | null | undefined,
+): boolean {
+  if (!staffId || r.filerId !== staffId) return false;
+  if (r.isDraft) return true;
+  if (r.openedAt) return false;
+  return r.students.every((s) => s.status !== "RESOLVED");
+}
+
 export function referralColor(r: ReferralLike): ReferralColor {
   if (r.isDraft) return "GRAY";
   const total = r.students.length;

@@ -348,7 +348,13 @@
     "draft": "Draft",
     "noMyReferrals": "No referrals filed yet",
     "noGroupReferrals": "No pending referrals",
-    "deleteConfirm": "Delete this draft?"
+    "deleteConfirm": "Delete this draft?",
+    "deleteDraft": "Delete draft",
+    "withdraw": "Withdraw",
+    "confirmDeleteDraft": "Delete this draft?",
+    "confirmWithdraw": "Withdraw referral #{number}? No deputy head has opened it yet and it will be permanently deleted.",
+    "draftDeleted": "Draft deleted",
+    "withdrawn": "Referral withdrawn"
   },
   "grades": {
     "title": "Grades",

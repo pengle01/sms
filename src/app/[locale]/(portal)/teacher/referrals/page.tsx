@@ -10,13 +10,13 @@ import { fmtDisplayDate } from "@/lib/dates";
 import { canViewCounselorNotes, canViewAllReferrals } from "@/lib/rbac";
 import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY } from "@/lib/schoolConfig";
 import { ResolveReferralDialog } from "./ResolveReferralDialog";
-import { DeleteDraftButton } from "./DeleteDraftButton";
+import { DeleteReferralButton } from "./DeleteReferralButton";
 import { ReferralStatusBadge, ReferralGroupSignals, referralBorderClass, referralLeftAccentClass } from "@/components/referrals/ReferralStatusBadge";
 import { StudentInfoDialog } from "@/components/referrals/StudentInfoDialog";
 import { StudentsDropdown } from "@/components/referrals/StudentsDropdown";
 import { ReferralInfo } from "@/components/referrals/ReferralInfo";
 import { ReferralTabs } from "@/components/referrals/ReferralTabs";
-import { overallStatus } from "@/lib/referralStatus";
+import { canDeleteReferral, overallStatus } from "@/lib/referralStatus";
 import { recommendationLabel, resolutionSummary } from "@/lib/referralLabels";
 import { parseReferralSearchTab, referralSearchWhere } from "@/lib/referralSearch";
 import { UnlockResolutionDialog } from "./UnlockResolutionDialog";
@@ -232,8 +232,10 @@ export default async function TeacherReferralsPage({
           <ReferralGroupSignals referral={r} className="mt-1.5" />
         </td>
         <td className="px-4 py-3 text-sm">
-          {status === "DRAFT" && r.filerId === staff.id && (
-            <DeleteDraftButton referralId={r.id} />
+          {/* The filer may remove their own referral until a headteacher opens
+              it — a draft outright, a filed one as a withdrawal. */}
+          {canDeleteReferral(r, staff.id) && (
+            <DeleteReferralButton referralId={r.id} number={r.number} isDraft={r.isDraft} />
           )}
           {canResolve && (
             <ResolveReferralDialog

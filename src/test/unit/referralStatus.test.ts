@@ -1,10 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  overallStatus,
-  referralColor,
-  referralColorScoped,
-  referralGroupSignals,
-} from "@/lib/referralStatus";
+import { overallStatus, referralColor, referralColorScoped, referralGroupSignals, canDeleteReferral } from "@/lib/referralStatus";
 
 const students = (statuses: string[]) => statuses.map((status) => ({ status }));
 
@@ -120,5 +115,67 @@ describe("referralGroupSignals", () => {
     expect(
       referralGroupSignals({ isDraft: true, openedAt: null, students: [{ status: "PENDING", groupId: "A" }] })
     ).toEqual([]);
+  });
+});
+
+describe("canDeleteReferral", () => {
+  const ME = "sp_me";
+  const base = { filerId: ME, isDraft: false, openedAt: null, students: [{ status: "PENDING" }] };
+
+  it("lets the filer delete their own draft", () => {
+    expect(canDeleteReferral({ ...base, isDraft: true }, ME)).toBe(true);
+  });
+
+  it("lets the filer withdraw a filed referral nobody has opened", () => {
+    expect(canDeleteReferral(base, ME)).toBe(true);
+  });
+
+  it("refuses once a headteacher has opened it", () => {
+    expect(canDeleteReferral({ ...base, openedAt: new Date() }, ME)).toBe(false);
+  });
+
+  it("accepts an ISO string for openedAt", () => {
+    expect(canDeleteReferral({ ...base, openedAt: "2026-06-02T10:00:00Z" }, ME)).toBe(false);
+  });
+
+  it("refuses someone who did not file it", () => {
+    expect(canDeleteReferral(base, "sp_someone_else")).toBe(false);
+  });
+
+  it("refuses a viewer with no staff profile", () => {
+    expect(canDeleteReferral(base, null)).toBe(false);
+    expect(canDeleteReferral(base, undefined)).toBe(false);
+  });
+
+  it("refuses when any student already has a resolution", () => {
+    expect(
+      canDeleteReferral({ ...base, students: [{ status: "PENDING" }, { status: "RESOLVED" }] }, ME),
+    ).toBe(false);
+  });
+
+  it("still allows a draft even if it somehow carries a resolved student", () => {
+    // Drafts are never visible to a resolver, so this cannot arise in practice;
+    // the draft branch is unconditional on purpose and this pins that down.
+    expect(
+      canDeleteReferral({ ...base, isDraft: true, students: [{ status: "RESOLVED" }] }, ME),
+    ).toBe(true);
+  });
+
+  it("allows a filed referral with no students yet", () => {
+    expect(canDeleteReferral({ ...base, students: [] }, ME)).toBe(true);
+  });
+
+  it("checks ownership before anything else", () => {
+    expect(canDeleteReferral({ ...base, isDraft: true }, "sp_other")).toBe(false);
+  });
+
+  it("agrees with the colour helper: only RED or GRAY referrals are deletable", () => {
+    for (const openedAt of [null, new Date()]) {
+      for (const statuses of [["PENDING"], ["RESOLVED"], ["PENDING", "RESOLVED"]]) {
+        const r = { ...base, openedAt, students: statuses.map((status) => ({ status })) };
+        const colour = referralColor(r);
+        if (canDeleteReferral(r, ME)) expect(colour).toBe("RED");
+      }
+    }
   });
 });

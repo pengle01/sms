@@ -10,6 +10,7 @@ import { TRPCError } from "@trpc/server";
 import { canViewAllReferrals, canViewCounselorNotes } from "@/lib/rbac";
 import { localDateStr } from "@/lib/dates";
 import { expulsionDaysInPast } from "@/lib/periods";
+import { canDeleteReferral } from "@/lib/referralStatus";
 import { writeAudit } from "@/server/audit";
 import type { Role } from "@/generated/prisma/client";
 
@@ -193,19 +194,59 @@ export const referralsRouter = createTRPCRouter({
       });
     }),
 
-  // Delete a draft referral
+  // Withdraw a referral: a draft, or one filed but not yet opened by a
+  // headteacher. See canDeleteReferral for the rule.
   delete: staffProcedure
     .input(z.object({ referralId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const staff = await ctx.db.staffProfile.findUnique({ where: { userId: ctx.session.user.id } });
       if (!staff) throw new TRPCError({ code: "NOT_FOUND" });
 
-      const referral = await ctx.db.referral.findUnique({ where: { id: input.referralId } });
+      const referral = await ctx.db.referral.findUnique({
+        where: { id: input.referralId },
+        select: {
+          id: true,
+          number: true,
+          isDraft: true,
+          openedAt: true,
+          filerId: true,
+          students: { select: { status: true } },
+          resolution: { select: { id: true } },
+        },
+      });
       if (!referral) throw new TRPCError({ code: "NOT_FOUND" });
       if (referral.filerId !== staff.id) throw new TRPCError({ code: "FORBIDDEN" });
-      if (!referral.isDraft) throw new TRPCError({ code: "BAD_REQUEST", message: "Only drafts can be deleted" });
 
-      return ctx.db.referral.delete({ where: { id: input.referralId } });
+      if (!canDeleteReferral(referral, staff.id)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Η καταγγελία έχει ήδη ανοιχτεί και δεν διαγράφεται.",
+        });
+      }
+      // ReferralResolution has no cascade (deleting would hit a FK restrict),
+      // and its presence means the referral was acted on regardless.
+      if (referral.resolution) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Η καταγγελία έχει ήδη ανοιχτεί και δεν διαγράφεται.",
+        });
+      }
+
+      await ctx.db.referral.delete({ where: { id: input.referralId } });
+
+      // Drafts were never visible to anyone else; a filed referral was, so its
+      // withdrawal is a real event in the disciplinary record.
+      if (!referral.isDraft) {
+        await writeAudit({
+          userId: ctx.session.user.id,
+          action: "referral.withdraw",
+          resource: "Referral",
+          resourceId: input.referralId,
+          details: { number: referral.number, students: referral.students.length },
+        });
+      }
+
+      return { id: input.referralId, wasDraft: referral.isDraft };
     }),
 
   // List referrals — scope depends on role
