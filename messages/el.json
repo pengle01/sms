@@ -514,17 +514,6 @@
     "roleTakenGuardian": "Συμπληρώθηκε ο μέγιστος αριθμός",
     "changeCode": "Αλλαγή κωδικού"
   },
-  "noticeboard": {
-    "title": "Ανακοινώσεις",
-    "new": "Νέα Ανακοίνωση",
-    "urgent": "Επείγον",
-    "staffOnly": "Μόνο για Εκπαιδευτικούς",
-    "markAsRead": "Σήμανση ως Αναγνωσμένο",
-    "read": "Αναγνωσμένο",
-    "unread": "Μη Αναγνωσμένο",
-    "tags": "Ετικέτες",
-    "attachFile": "Επισύναψη Αρχείου"
-  },
   "roles": {
     "SUPER_ADMIN": "Υπερδιαχειριστής",
     "HEADMASTER": "Διευθυντής",
@@ -1609,5 +1598,19 @@
     "markUrgent": "Σήμανση ως επείγον",
     "post": "Ανάρτηση",
     "cancel": "Άκυρο"
+  },
+  "attachments": {
+    "attachmentLabel": "Συνημμένα αρχεία (προαιρετικά)",
+    "attachmentHint": "PDF, εικόνα, Word, Excel ή PowerPoint — έως {count} αρχεία, 10 MB το καθένα",
+    "chooseFile": "Επιλογή αρχείου",
+    "removeFile": "Αφαίρεση",
+    "uploading": "Μεταφόρτωση…",
+    "download": "Λήψη",
+    "attachErr_empty": "Το αρχείο είναι κενό.",
+    "attachErr_tooLarge": "Το αρχείο ξεπερνά τα 10 MB.",
+    "attachErr_tooLargeTotal": "Τα αρχεία μαζί ξεπερνούν τα 20 MB.",
+    "attachErr_tooMany": "Επιτρέπονται έως 5 αρχεία.",
+    "attachErr_type": "Μη επιτρεπτός τύπος αρχείου.",
+    "attachErr_failed": "Η μεταφόρτωση του αρχείου απέτυχε."
   }
 }

@@ -112,6 +112,15 @@ The portal prefix is determined by `getPortalForRole()` in `src/lib/rbac.ts`.
 - **Display format is always DD/MM/YY** — use `fmtDisplayDate()` / `fmtDisplayDateTime()` from `src/lib/dates.ts`. When a hand-rolled `toLocaleDateString` is unavoidable (e.g. weekday labels), pass `year: "2-digit"`, never `"numeric"`. Exceptions: month-only headings ("Μάρτιος 2026") and the official A4 print documents (exit permit, substitution daily sheet, referral print), which keep DD/MM/YYYY to match the paper forms.
 - **Date ENTRY: never use `<input type="date">`** — native date inputs render in the BROWSER's locale (MM/DD/YYYY on English machines). Use `<DateInput>` from `@/components/ui/date-input` instead: displays/accepts DD/MM/YY, calendar button opens the native picker, submits ISO via a hidden input (`name` prop) or reports it via `onChange(iso)`. `onCommit` for auto-submitting filters.
 
+### File uploads
+- Uploaded files live on disk in `UPLOADS_DIR` (dev falls back to `<project>/uploads`), never in `public/` — they must stay behind an authorisation check.
+- Upload via the route handler `POST /api/attachments` (multipart, repeated `file` fields plus a `category` from `ATTACHMENT_CATEGORIES`), not a server action (server actions cap the body at 1 MB) and not tRPC (JSON would base64 the bytes). It is all-or-nothing: any rejected file fails the whole request.
+- Notices, announcements and staff messages each hold **many** files (`files StoredFile[]`, a Prisma implicit m-n). Limits live in `src/lib/attachments.ts`: 5 files, 10 MB each, 20 MB per request — validate a selection with `validateAttachmentSet()`.
+- Download only via `GET /api/files/[id]`, which re-checks visibility per surface (a staff-only notice's attachment stays staff-only; an announcement's is staff-wide; a staff message's is limited to its recipients and sender) and always responds `Content-Disposition: attachment`.
+- Compose with `<AttachmentPicker>` + `uploadAttachments()` and render with `<AttachmentList>` (both under `@/components/attachments/`) — don't hand-roll either.
+- Accepted types and the size cap live in `src/lib/attachments.ts`. The extension written to disk comes from that allowlist, never from the uploaded filename. SVG/HTML are deliberately excluded — both can carry script.
+- The client-side check is a courtesy; the route re-validates everything.
+
 ### Styling
 - Tailwind v4 — no `tailwind.config.js`, config is in CSS.
 - Brand palette: `emerald-*` (primary), `slate-*` (text/borders), `amber-*` (warnings).

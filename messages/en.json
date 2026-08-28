@@ -514,17 +514,6 @@
     "roleTakenGuardian": "Maximum number reached",
     "changeCode": "Change code"
   },
-  "noticeboard": {
-    "title": "Noticeboard",
-    "new": "New Notice",
-    "urgent": "Urgent",
-    "staffOnly": "Staff Only",
-    "markAsRead": "Mark as Read",
-    "read": "Read",
-    "unread": "Unread",
-    "tags": "Tags",
-    "attachFile": "Attach File"
-  },
   "roles": {
     "SUPER_ADMIN": "Super Admin",
     "HEADMASTER": "Headmaster",
@@ -1609,5 +1598,19 @@
     "markUrgent": "Mark as urgent",
     "post": "Post",
     "cancel": "Cancel"
+  },
+  "attachments": {
+    "attachmentLabel": "Attachments (optional)",
+    "attachmentHint": "PDF, image, Word, Excel or PowerPoint — up to {count} files, 10 MB each",
+    "chooseFile": "Choose file",
+    "removeFile": "Remove",
+    "uploading": "Uploading…",
+    "download": "Download",
+    "attachErr_empty": "The file is empty.",
+    "attachErr_tooLarge": "The file is larger than 10 MB.",
+    "attachErr_tooLargeTotal": "The files together are larger than 20 MB.",
+    "attachErr_tooMany": "At most 5 files are allowed.",
+    "attachErr_type": "That file type is not allowed.",
+    "attachErr_failed": "The upload failed."
   }
 }

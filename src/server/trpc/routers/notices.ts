@@ -3,6 +3,7 @@ import { createTRPCRouter, staffProcedure, protectedProcedure } from "../init";
 import { TRPCError } from "@trpc/server";
 import type { Role } from "@/generated/prisma/client";
 import { isStaff } from "@/lib/rbac";
+import { ATTACHMENT_MAX_COUNT } from "@/lib/attachments";
 
 export const noticesRouter = createTRPCRouter({
   list: protectedProcedure
@@ -29,7 +30,7 @@ export const noticesRouter = createTRPCRouter({
             acknowledgments: {
               where: { userId: ctx.session.user.id },
             },
-            file: true,
+            files: true,
           },
           orderBy: [{ urgent: "desc" }, { createdAt: "desc" }],
           skip: (input.page - 1) * input.limit,
@@ -51,11 +52,24 @@ export const noticesRouter = createTRPCRouter({
         staffOnly: z.boolean().default(false),
         gradeTarget: z.number().int().min(1).max(3).optional(),
         tags: z.array(z.string()).default([]),
-        fileId: z.string().optional(),
+        fileIds: z.array(z.string()).max(ATTACHMENT_MAX_COUNT).default([]),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { tags, ...rest } = input;
+      const { tags, fileIds, ...rest } = input;
+
+      // Every attachment must be one this user just uploaded. Without this check
+      // a staff member could attach any existing file by id — including one on a
+      // staff-only notice — and re-publish it to everyone.
+      if (fileIds.length > 0) {
+        const owned = await ctx.db.storedFile.count({
+          where: { id: { in: fileIds }, uploadedById: ctx.session.user.id },
+        });
+        if (owned !== new Set(fileIds).size) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid attachment" });
+        }
+      }
+
       return ctx.db.notice.create({
         data: {
           ...rest,
@@ -63,8 +77,9 @@ export const noticesRouter = createTRPCRouter({
           tags: {
             create: tags.map((tag) => ({ tag })),
           },
+          files: { connect: fileIds.map((id) => ({ id })) },
         },
-        include: { tags: true },
+        include: { tags: true, files: true },
       });
     }),
 

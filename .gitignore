@@ -42,8 +42,9 @@ next-env.d.ts
 
 /src/generated/prisma
 
-# Runtime logs & backups (ops/README.md)
+# Runtime logs, uploads & backups (ops/README.md)
 /logs/
+/uploads/
 /backups/
 *.dump
 ops/backup/offsite.sh

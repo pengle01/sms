@@ -143,15 +143,15 @@ model VerificationToken {
 // ─── Users ────────────────────────────────────────────────────────────────────
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String  @id @default(cuid())
+  email        String  @unique
   // `name` stays the composed full name ("first last") used for display/search
   // across the app; firstName/lastName hold the split parts edited in the profile.
   name         String?
   firstName    String?
   lastName     String?
   nameEl       String?
-  passwordHash String?  // Parents only — staff use Entra ID
+  passwordHash String? // Parents only — staff use Entra ID
   image        String?
   role         Role
   // Secondary roles granted on top of the primary one. Currently only
@@ -159,12 +159,12 @@ model User {
   // system keeps their teacher role and features). Authorization: the primary
   // role drives everything; an extra SUPER_ADMIN additionally unlocks the
   // admin portal + admin procedures (see authz.ts / trpc/init.ts).
-  extraRoles   Role[]   @default([])
-  entraId      String?  @unique
-  isActive     Boolean  @default(true)
+  extraRoles   Role[]  @default([])
+  entraId      String? @unique
+  isActive     Boolean @default(true)
   // Per-account appearance preferences
-  colorTheme   String   @default("emerald") // emerald | ocean | violet | rose | amber
-  fontSize     String   @default("small")   // small | medium | large
+  colorTheme   String  @default("emerald") // emerald | ocean | violet | rose | amber
+  fontSize     String  @default("small") // small | medium | large
 
   accounts Account[]
   sessions Session[]
@@ -173,91 +173,91 @@ model User {
   studentProfile StudentProfile?
   parentProfile  ParentProfile?
 
-  uploadedNotices               Notice[]
-  resolvedReferrals             ReferralResolution[]
-  resolvedReferralStudents      ReferralStudentResolution[] @relation("ReferralStudentResolver")
-  resolutionUnlockRequests      ResolutionUnlockRequest[]   @relation("ResolutionUnlockRequester")
-  resolutionUnlockDecisions     ResolutionUnlockRequest[]   @relation("ResolutionUnlockDecider")
-  substitutionPlansGenerated    SubstitutionPlan[]          @relation("SubstitutionPlanGenerator")
-  substitutionPlansFinalized    SubstitutionPlan[]          @relation("SubstitutionPlanFinalizer")
-  notifications                 Notification[]
-  sentNotifications             Notification[] @relation("SentNotifications")
-  attendanceExports             AttendanceExport[]
-  waivedAttendance              Attendance[] @relation("AttendanceWaiver")
-  auditLogs            AuditLog[]
-  chaperoneAssignments ActivityChaperone[]
-  teacherClaim         TeacherClaim?
-  chaperoneRequests    ChaperoneRequest[]
-  startedConversations Conversation[] @relation("ConversationStarter")
-  authoredMessages     Message[]      @relation("MessageAuthor")
-  announcements        Announcement[]
+  uploadedNotices            Notice[]
+  resolvedReferrals          ReferralResolution[]
+  resolvedReferralStudents   ReferralStudentResolution[] @relation("ReferralStudentResolver")
+  resolutionUnlockRequests   ResolutionUnlockRequest[]   @relation("ResolutionUnlockRequester")
+  resolutionUnlockDecisions  ResolutionUnlockRequest[]   @relation("ResolutionUnlockDecider")
+  substitutionPlansGenerated SubstitutionPlan[]          @relation("SubstitutionPlanGenerator")
+  substitutionPlansFinalized SubstitutionPlan[]          @relation("SubstitutionPlanFinalizer")
+  notifications              Notification[]
+  sentNotifications          Notification[]              @relation("SentNotifications")
+  attendanceExports          AttendanceExport[]
+  waivedAttendance           Attendance[]                @relation("AttendanceWaiver")
+  auditLogs                  AuditLog[]
+  chaperoneAssignments       ActivityChaperone[]
+  teacherClaim               TeacherClaim?
+  chaperoneRequests          ChaperoneRequest[]
+  startedConversations       Conversation[]              @relation("ConversationStarter")
+  authoredMessages           Message[]                   @relation("MessageAuthor")
+  announcements              Announcement[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model StaffProfile {
-  id         String  @id @default(cuid())
-  userId     String? @unique
-  user       User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
-  phone      String?
-  department String?
-  pmp        String? // ΠΜΠ — personnel/payroll number, asked at first sign-in
+  id                      String  @id @default(cuid())
+  userId                  String? @unique
+  user                    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  phone                   String?
+  department              String?
+  pmp                     String? // ΠΜΠ — personnel/payroll number, asked at first sign-in
   // Canonical display name in the timetable's coding (e.g. "ΗΥ-ΜΑΣΙΑ Μ. ΒΔ").
   // Copied from the schedule's staffName when the profile is linked to slots.
-  scheduleName String?
+  scheduleName            String?
   // Designation: deputy B responsible for special education (set by admin)
-  specialEducation Boolean @default(false)
+  specialEducation        Boolean @default(false)
   // Designation: the teacher who runs the daily substitution plan (set by admin)
   substitutionCoordinator Boolean @default(false)
   // Designation: the headteacher responsible for ΔΔΚ (set by admin)
-  ddkCoordinator Boolean @default(false)
+  ddkCoordinator          Boolean @default(false)
   // Substitution quota: null = unlimited, 0 = never picked
-  maxSubstitutions Int?
+  maxSubstitutions        Int?
 
-  homeroomGroups        Group[]            @relation("HomeroomTeacher")
-  homeroomHeadGroups    Group[]            @relation("HomeroomHeadteacher")
-  homeroomCounselorGroups Group[]          @relation("HomeroomCounselor")
-  courseAssignments CourseAssignment[]
-  filedReferrals    Referral[]         @relation("ReferralFiler")
-  attendanceRecords Attendance[]       @relation("AttendanceTeacher")
-  issuedPermits     ExitPermit[]       @relation("PermitIssuer")
-  filedActivities   Activity[]         @relation("ActivityFiler")
-  timetableSlots    TimetableSlot[]
-  testSchedules     TestSchedule[]
-  grades            Grade[]
-  dutyDays          DutyRosterEntry[]
-  substitutionRequests     SubstitutionRequest[]   @relation("SubstitutionRequester")
-  substitutionAbsences     SubstitutionPlanEntry[] @relation("SubstitutionAbsent")
-  substitutionAssignments  SubstitutionPlanEntry[] @relation("SubstitutionSubstitute")
-  toiletBreaks             ToiletBreak[]
-  ddkAwards                DdkAward[]              @relation("DdkAwarder")
-  conversations            Conversation[]
+  homeroomGroups          Group[]                 @relation("HomeroomTeacher")
+  homeroomHeadGroups      Group[]                 @relation("HomeroomHeadteacher")
+  homeroomCounselorGroups Group[]                 @relation("HomeroomCounselor")
+  courseAssignments       CourseAssignment[]
+  filedReferrals          Referral[]              @relation("ReferralFiler")
+  attendanceRecords       Attendance[]            @relation("AttendanceTeacher")
+  issuedPermits           ExitPermit[]            @relation("PermitIssuer")
+  filedActivities         Activity[]              @relation("ActivityFiler")
+  timetableSlots          TimetableSlot[]
+  testSchedules           TestSchedule[]
+  grades                  Grade[]
+  dutyDays                DutyRosterEntry[]
+  substitutionRequests    SubstitutionRequest[]   @relation("SubstitutionRequester")
+  substitutionAbsences    SubstitutionPlanEntry[] @relation("SubstitutionAbsent")
+  substitutionAssignments SubstitutionPlanEntry[] @relation("SubstitutionSubstitute")
+  toiletBreaks            ToiletBreak[]
+  ddkAwards               DdkAward[]              @relation("DdkAwarder")
+  conversations           Conversation[]
 }
 
 model StudentProfile {
-  id             String    @id @default(cuid())
-  userId         String    @unique
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  studentId      String    @unique
-  groupId        String?
-  group          Group?    @relation(fields: [groupId], references: [id])
-  gender         Gender?
+  id        String  @id @default(cuid())
+  userId    String  @unique
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studentId String  @unique
+  groupId   String?
+  group     Group?  @relation(fields: [groupId], references: [id])
+  gender    Gender?
   // Date/place of birth, nationality and identity-document numbers are
   // deliberately NOT stored (GDPR data minimisation, 2026-08-03): the app has
   // no use for them, so they are neither imported nor kept. Do not re-add.
-  address        String?
+  address   String?
 
-  parents                ParentStudent[]
-  subjectGroups          StudentGroup[]
-  smsContacts            SmsContact[]
-  smsLogs                SmsLog[]
-  attendance             Attendance[]
-  grades                 Grade[]
-  testGrades             TestGrade[]
-  referrals              Referral[]           @relation("StudentReferrals")
-  referralStudents       ReferralStudent[]    @relation("ReferralStudentProfile")
-  exitPermits            ExitPermit[]
+  parents                  ParentStudent[]
+  subjectGroups            StudentGroup[]
+  smsContacts              SmsContact[]
+  smsLogs                  SmsLog[]
+  attendance               Attendance[]
+  grades                   Grade[]
+  testGrades               TestGrade[]
+  referrals                Referral[]                @relation("StudentReferrals")
+  referralStudents         ReferralStudent[]         @relation("ReferralStudentProfile")
+  exitPermits              ExitPermit[]
   activityParticipations   ActivityParticipant[]
   chaperoneRequestStudents ChaperoneRequestStudent[]
   accessCode               StudentAccessCode?
@@ -267,7 +267,7 @@ model StudentProfile {
   specialEd                SpecialEdRecord?
   // Flagged when the import's default SMS number is missing or doesn't match a
   // parent/guardian — the office should review the recipient.
-  smsFlagged               Boolean   @default(false)
+  smsFlagged               Boolean                   @default(false)
   smsFlagReason            String?
 }
 
@@ -301,7 +301,7 @@ model ParentStudent {
 model SpecialEdProblemCode {
   id     String  @id @default(cuid())
   code   String  @unique // e.g. "ΔΞ"
-  label  String          // e.g. "Δυσλεξία"
+  label  String // e.g. "Δυσλεξία"
   active Boolean @default(true)
 
   records SpecialEdRecord[] @relation("RecordProblems")
@@ -375,9 +375,9 @@ model SmsContact {
 // ─── Groups ───────────────────────────────────────────────────────────────────
 
 model Group {
-  id                String        @id @default(cuid())
-  name              String        @unique
-  grade             Int           // 1, 2, or 3
+  id                    String        @id @default(cuid())
+  name                  String        @unique
+  grade                 Int // 1, 2, or 3
   homeroomTeacherId     String?
   homeroomTeacher       StaffProfile? @relation("HomeroomTeacher", fields: [homeroomTeacherId], references: [id])
   homeroomHeadteacherId String?
@@ -385,13 +385,13 @@ model Group {
   counselorId           String?
   counselor             StaffProfile? @relation("HomeroomCounselor", fields: [counselorId], references: [id])
 
-  students          StudentProfile[]
-  studentGroups     StudentGroup[]
-  courseAssignments CourseAssignment[]
-  timetableSlots    TimetableSlot[]
-  referrals         Referral[]       @relation("ReferralGroup")
-  referralStudents  ReferralStudent[] @relation("ReferralStudentGroup")
-  testSchedules     TestSchedule[]
+  students                StudentProfile[]
+  studentGroups           StudentGroup[]
+  courseAssignments       CourseAssignment[]
+  timetableSlots          TimetableSlot[]
+  referrals               Referral[]              @relation("ReferralGroup")
+  referralStudents        ReferralStudent[]       @relation("ReferralStudentGroup")
+  testSchedules           TestSchedule[]
   substitutionRequests    SubstitutionRequest[]   @relation("SubstitutionRequestGroup")
   substitutionPlanEntries SubstitutionPlanEntry[] @relation("SubstitutionEntryGroup")
   toiletBreaks            ToiletBreak[]
@@ -432,14 +432,14 @@ model TimetableSlot {
   group     Group         @relation(fields: [groupId], references: [id])
   courseId  String
   course    Course        @relation(fields: [courseId], references: [id])
-  staffId   String?       // null until teacher claims the slot
+  staffId   String? // null until teacher claims the slot
   staff     StaffProfile? @relation(fields: [staffId], references: [id])
-  staffName String?       // raw name from import for matching
-  dayOfWeek Int           // 1=Mon … 5=Fri
-  period    Int           // 1-based
+  staffName String? // raw name from import for matching
+  dayOfWeek Int // 1=Mon … 5=Fri
+  period    Int // 1-based
   room      String?
 
-  attendance Attendance[]
+  attendance              Attendance[]
   substitutionPlanEntries SubstitutionPlanEntry[]
 
   @@unique([groupId, dayOfWeek, period])
@@ -448,30 +448,30 @@ model TimetableSlot {
 // ─── Attendance ───────────────────────────────────────────────────────────────
 
 model Attendance {
-  id              String           @id @default(cuid())
-  studentId       String
-  student         StudentProfile   @relation(fields: [studentId], references: [id])
-  timetableSlotId String?
-  timetableSlot   TimetableSlot?   @relation(fields: [timetableSlotId], references: [id])
-  staffId         String
-  staff           StaffProfile     @relation("AttendanceTeacher", fields: [staffId], references: [id])
-  date            DateTime         @db.Date
-  status          AttendanceStatus
-  minutesDelayed  Int              @default(0)
-  isAutoAbsent    Boolean          @default(false)
-  smsSent         Boolean          @default(false)
+  id                 String           @id @default(cuid())
+  studentId          String
+  student            StudentProfile   @relation(fields: [studentId], references: [id])
+  timetableSlotId    String?
+  timetableSlot      TimetableSlot?   @relation(fields: [timetableSlotId], references: [id])
+  staffId            String
+  staff              StaffProfile     @relation("AttendanceTeacher", fields: [staffId], references: [id])
+  date               DateTime         @db.Date
+  status             AttendanceStatus
+  minutesDelayed     Int              @default(0)
+  isAutoAbsent       Boolean          @default(false)
+  smsSent            Boolean          @default(false)
   // Absence covered by an exit permit (Άδεια Εξόδου) — informs the office admin
-  exitPermitId    String?
-  exitPermit      ExitPermit?      @relation(fields: [exitPermitId], references: [id], onDelete: SetNull)
+  exitPermitId       String?
+  exitPermit         ExitPermit?      @relation(fields: [exitPermitId], references: [id], onDelete: SetNull)
   // Intercalary period attendance (when timetableSlotId is null)
   intercalaryGroupId String?
   intercalaryPeriod  Int?
   // Soft-erased (διαγραφή απουσίας): stays on record but does not count
   // towards any totals.
-  waived     Boolean   @default(false)
-  waivedAt   DateTime?
-  waivedById String?
-  waivedBy   User?     @relation("AttendanceWaiver", fields: [waivedById], references: [id])
+  waived             Boolean          @default(false)
+  waivedAt           DateTime?
+  waivedById         String?
+  waivedBy           User?            @relation("AttendanceWaiver", fields: [waivedById], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -563,22 +563,22 @@ model SubstitutionPlanEntry {
 // Issued by the day's on-duty deputy (Εφημερεύων Βοηθός) after the parents
 // agree by phone. Covers fromPeriod → end of the school day.
 model ExitPermit {
-  id          String         @id @default(cuid())
-  studentId   String
-  student     StudentProfile @relation(fields: [studentId], references: [id])
-  issuerId    String
-  issuer      StaffProfile   @relation("PermitIssuer", fields: [issuerId], references: [id])
-  date        DateTime       @db.Date // school day it covers
-  fromPeriod  Int // student leaves from this period to end of day
-  reason      String
+  id           String         @id @default(cuid())
+  studentId    String
+  student      StudentProfile @relation(fields: [studentId], references: [id])
+  issuerId     String
+  issuer       StaffProfile   @relation("PermitIssuer", fields: [issuerId], references: [id])
+  date         DateTime       @db.Date // school day it covers
+  fromPeriod   Int // student leaves from this period to end of day
+  reason       String
   // The parent/guardian the deputy spoke with (picked from the student's contacts);
   // contactNote is the free-text fallback when no contacts are on record.
   smsContactId String?
-  smsContact   SmsContact?   @relation(fields: [smsContactId], references: [id], onDelete: SetNull)
-  contactNote String?
-  issuedAt    DateTime       @default(now())
-  active      Boolean        @default(true) // false = cancelled
-  attendance  Attendance[]
+  smsContact   SmsContact?    @relation(fields: [smsContactId], references: [id], onDelete: SetNull)
+  contactNote  String?
+  issuedAt     DateTime       @default(now())
+  active       Boolean        @default(true) // false = cancelled
+  attendance   Attendance[]
 
   @@index([date, studentId])
 }
@@ -629,14 +629,14 @@ model DdkAward {
   id           String         @id @default(cuid())
   studentId    String
   student      StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  categoryCode String         // catalog code, e.g. "A4a", "Z2f" (see src/lib/ddk.ts)
+  categoryCode String // catalog code, e.g. "A4a", "Z2f" (see src/lib/ddk.ts)
   points       Int
-  note         String?        // optional detail (role, distinction level, …)
-  activityId   String?        // source activity when converted from one
+  note         String? // optional detail (role, distinction level, …)
+  activityId   String? // source activity when converted from one
   activity     Activity?      @relation(fields: [activityId], references: [id], onDelete: SetNull)
   awardedById  String
   awardedBy    StaffProfile   @relation("DdkAwarder", fields: [awardedById], references: [id])
-  schoolYear   String         // "2025-2026" — points are tallied per school year
+  schoolYear   String // "2025-2026" — points are tallied per school year
   createdAt    DateTime       @default(now())
 
   @@index([studentId, schoolYear])
@@ -659,13 +659,13 @@ model TeacherClaim {
 // A chaperone requests responsibility for a set of students.
 // Admin approves → chaperone can view those students in their portal.
 model ChaperoneRequest {
-  id        String      @id @default(cuid())
+  id        String                    @id @default(cuid())
   userId    String
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  note      String?     @db.Text
-  status    ClaimStatus @default(PENDING)
+  user      User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  note      String?                   @db.Text
+  status    ClaimStatus               @default(PENDING)
   students  ChaperoneRequestStudent[]
-  createdAt DateTime    @default(now())
+  createdAt DateTime                  @default(now())
 
   @@index([userId])
   @@index([status])
@@ -705,16 +705,16 @@ model Grade {
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 model TestSchedule {
-  id       String       @id @default(cuid())
-  courseId String
-  course   Course       @relation(fields: [courseId], references: [id])
-  groupId  String
-  group    Group        @relation(fields: [groupId], references: [id])
-  staffId  String
-  staff    StaffProfile @relation(fields: [staffId], references: [id])
+  id          String       @id @default(cuid())
+  courseId    String
+  course      Course       @relation(fields: [courseId], references: [id])
+  groupId     String
+  group       Group        @relation(fields: [groupId], references: [id])
+  staffId     String
+  staff       StaffProfile @relation(fields: [staffId], references: [id])
   date        DateTime     @db.Date
   period      Int
-  periodCount Int          @default(1)  // 1 or 2 periods (BIG tests only)
+  periodCount Int          @default(1) // 1 or 2 periods (BIG tests only)
   type        TestType     @default(BIG)
 
   createdAt  DateTime    @default(now())
@@ -741,31 +741,31 @@ model TestGrade {
 // ─── Referrals ────────────────────────────────────────────────────────────────
 
 model Referral {
-  id             String         @id @default(cuid())
+  id         String              @id @default(cuid())
   // Human-friendly sequential identifier for easy coordination (e.g. "#42").
-  number         Int            @unique @default(autoincrement())
+  number     Int                 @unique @default(autoincrement())
   // Legacy single-student fields (nullable; kept for old data only)
-  studentId      String?
-  student        StudentProfile? @relation("StudentReferrals", fields: [studentId], references: [id])
-  groupId        String?
-  group          Group?          @relation("ReferralGroup", fields: [groupId], references: [id])
-  resolution     ReferralResolution?
+  studentId  String?
+  student    StudentProfile?     @relation("StudentReferrals", fields: [studentId], references: [id])
+  groupId    String?
+  group      Group?              @relation("ReferralGroup", fields: [groupId], references: [id])
+  resolution ReferralResolution?
 
   filerId        String
-  filer          StaffProfile   @relation("ReferralFiler", fields: [filerId], references: [id])
-  description    String         @db.Text
+  filer          StaffProfile           @relation("ReferralFiler", fields: [filerId], references: [id])
+  description    String                 @db.Text
   location       String?
   incidentTime   String?
-  extraInfo      String?        @db.Text
+  extraInfo      String?                @db.Text
   recommendation ReferralRecommendation @default(NO_RECOMMENDATION)
   date           DateTime
-  isDraft        Boolean        @default(false)
+  isDraft        Boolean                @default(false)
   // Set the first time a headteacher opens the referral to examine it.
   // Drives the at-a-glance colour: unopened+unresolved = red, opened/partial = yellow, all resolved = green.
   openedAt       DateTime?
-  counselorNotes String?        @db.Text
+  counselorNotes String?                @db.Text
 
-  students  ReferralStudent[]
+  students ReferralStudent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -779,13 +779,13 @@ enum ReferralStudentStatus {
 }
 
 model ReferralStudent {
-  id         String              @id @default(cuid())
+  id         String                @id @default(cuid())
   referralId String
-  referral   Referral            @relation(fields: [referralId], references: [id], onDelete: Cascade)
+  referral   Referral              @relation(fields: [referralId], references: [id], onDelete: Cascade)
   studentId  String
-  student    StudentProfile      @relation("ReferralStudentProfile", fields: [studentId], references: [id])
+  student    StudentProfile        @relation("ReferralStudentProfile", fields: [studentId], references: [id])
   groupId    String?
-  group      Group?              @relation("ReferralStudentGroup", fields: [groupId], references: [id])
+  group      Group?                @relation("ReferralStudentGroup", fields: [groupId], references: [id])
   status     ReferralStudentStatus @default(PENDING)
 
   resolution     ReferralStudentResolution?
@@ -797,23 +797,23 @@ model ReferralStudent {
 }
 
 model ReferralStudentResolution {
-  id                String          @id @default(cuid())
-  referralStudentId String          @unique
-  referralStudent   ReferralStudent @relation(fields: [referralStudentId], references: [id], onDelete: Cascade)
-  action            ResolutionAction
+  id                  String           @id @default(cuid())
+  referralStudentId   String           @unique
+  referralStudent     ReferralStudent  @relation(fields: [referralStudentId], references: [id], onDelete: Cascade)
+  action              ResolutionAction
   // Required description of the punishment (what exactly was imposed/agreed).
   // Nullable only for legacy rows created before the field existed.
-  actionDetails     String?         @db.Text
-  notes             String?         @db.Text
-  counselorNotes    String?         @db.Text
-  parentContacted   Boolean         @default(false)
+  actionDetails       String?          @db.Text
+  notes               String?          @db.Text
+  counselorNotes      String?          @db.Text
+  parentContacted     Boolean          @default(false)
   parentContactDate   DateTime?
   parentContactMethod String?
-  resolvedById      String
-  resolvedBy        User            @relation("ReferralStudentResolver", fields: [resolvedById], references: [id])
-  resolvedAt        DateTime        @default(now())
+  resolvedById        String
+  resolvedBy          User             @relation("ReferralStudentResolver", fields: [resolvedById], references: [id])
+  resolvedAt          DateTime         @default(now())
 
-  expulsionDays     ReferralExpulsionDay[]
+  expulsionDays ReferralExpulsionDay[]
 }
 
 enum EditRequestStatus {
@@ -826,20 +826,20 @@ enum EditRequestStatus {
 // deletes the resolution and moves the student back to PENDING — the referral
 // returns to the examine tab so it can be resolved afresh.
 model ResolutionUnlockRequest {
-  id                String          @id @default(cuid())
+  id                String            @id @default(cuid())
   referralStudentId String
-  referralStudent   ReferralStudent @relation(fields: [referralStudentId], references: [id], onDelete: Cascade)
+  referralStudent   ReferralStudent   @relation(fields: [referralStudentId], references: [id], onDelete: Cascade)
   requestedById     String
-  requestedBy       User            @relation("ResolutionUnlockRequester", fields: [requestedById], references: [id])
-  reason            String          @db.Text // why the unlock is needed
+  requestedBy       User              @relation("ResolutionUnlockRequester", fields: [requestedById], references: [id])
+  reason            String            @db.Text // why the unlock is needed
   // Snapshot of the resolution at request time (JSON) — kept for the trail,
   // since approval deletes the resolution itself.
-  snapshot          String?         @db.Text
+  snapshot          String?           @db.Text
   status            EditRequestStatus @default(PENDING)
   decidedById       String?
-  decidedBy         User?           @relation("ResolutionUnlockDecider", fields: [decidedById], references: [id])
+  decidedBy         User?             @relation("ResolutionUnlockDecider", fields: [decidedById], references: [id])
   decidedAt         DateTime?
-  createdAt         DateTime        @default(now())
+  createdAt         DateTime          @default(now())
 
   @@index([status])
   @@index([referralStudentId])
@@ -908,19 +908,22 @@ model ToiletBreak {
 // ─── Notifications ────────────────────────────────────────────────────────────
 
 model Notification {
-  id        String    @id @default(cuid())
+  id        String       @id @default(cuid())
   userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   type      String
   title     String
   body      String?
   linkUrl   String?
-  read      Boolean   @default(false)
+  read      Boolean      @default(false)
   noticedAt DateTime?
-  createdAt DateTime  @default(now())
+  createdAt DateTime     @default(now())
   // Who composed it (staff messages) — enables the sender's read-receipt view
   senderId  String?
-  sender    User?     @relation("SentNotifications", fields: [senderId], references: [id])
+  sender    User?        @relation("SentNotifications", fields: [senderId], references: [id])
+  // Staff messages may carry attachments; every recipient's row points at the
+  // same StoredFile rows, so each file is stored once however many recipients.
+  files     StoredFile[] @relation("NotificationFiles")
 
   @@index([userId, read])
   @@index([userId, noticedAt])
@@ -932,11 +935,11 @@ model Notification {
 // specific student. Staff reply only. Homegroup staff/admin get an oversight view.
 model Conversation {
   id        String         @id @default(cuid())
-  studentId String         // the student the thread concerns (for oversight scope)
+  studentId String // the student the thread concerns (for oversight scope)
   student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  staffId   String         // the staff participant (recipient)
+  staffId   String // the staff participant (recipient)
   staff     StaffProfile   @relation(fields: [staffId], references: [id], onDelete: Cascade)
-  starterId String         // the parent/student user who opened the thread
+  starterId String // the parent/student user who opened the thread
   starter   User           @relation("ConversationStarter", fields: [starterId], references: [id], onDelete: Cascade)
   subject   String?
 
@@ -968,17 +971,16 @@ model Message {
 // ─── Noticeboard ──────────────────────────────────────────────────────────────
 
 model Notice {
-  id           String      @id @default(cuid())
+  id           String       @id @default(cuid())
   title        String
   titleEl      String?
-  body         String      @db.Text
-  bodyEl       String?     @db.Text
+  body         String       @db.Text
+  bodyEl       String?      @db.Text
   uploadedById String
-  uploadedBy   User        @relation(fields: [uploadedById], references: [id])
-  fileId       String?
-  file         StoredFile? @relation(fields: [fileId], references: [id])
-  urgent       Boolean     @default(false)
-  staffOnly    Boolean     @default(false)
+  uploadedBy   User         @relation(fields: [uploadedById], references: [id])
+  files        StoredFile[] @relation("NoticeFiles")
+  urgent       Boolean      @default(false)
+  staffOnly    Boolean      @default(false)
   gradeTarget  Int?
 
   tags            NoticeTag[]
@@ -1009,13 +1011,14 @@ model NoticeAcknowledgment {
 // the teacher dashboard. An announcement shows while pinnedUntil >= today, so a
 // post defaults to "today only" but can be kept up for several days.
 model Announcement {
-  id          String   @id @default(cuid())
+  id          String       @id @default(cuid())
   title       String?
-  body        String   @db.Text
+  body        String       @db.Text
   authorId    String
-  author      User     @relation(fields: [authorId], references: [id])
-  pinnedUntil DateTime @db.Date
-  createdAt   DateTime @default(now())
+  author      User         @relation(fields: [authorId], references: [id])
+  files       StoredFile[] @relation("AnnouncementFiles")
+  pinnedUntil DateTime     @db.Date
+  createdAt   DateTime     @default(now())
 
   @@index([pinnedUntil])
 }
@@ -1023,7 +1026,7 @@ model Announcement {
 // ─── File Storage ─────────────────────────────────────────────────────────────
 
 model StoredFile {
-  id           String   @id @default(cuid())
+  id           String  @id @default(cuid())
   filename     String
   path         String
   mimeType     String
@@ -1031,7 +1034,9 @@ model StoredFile {
   uploadedById String
   category     String?
 
-  notices Notice[]
+  notices       Notice[]       @relation("NoticeFiles")
+  announcements Announcement[] @relation("AnnouncementFiles")
+  notifications Notification[] @relation("NotificationFiles")
 
   createdAt DateTime @default(now())
 }
@@ -1059,7 +1064,7 @@ model Template {
   id            Int      @id @default(autoincrement())
   totalPoints   Float    @map("total_points")
   maxPointsJson String   @map("max_points_json")
-  createdAt     DateTime @default(now()) @db.Timestamptz @map("created_at")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   auditResults   AuditResult[]
   ldAuditResults LdAuditResult[]
@@ -1085,7 +1090,7 @@ model AuditResult {
   conversionAbsent   Boolean  @map("conversion_absent")
   conversionError    Boolean  @map("conversion_error")
   passed             Boolean
-  createdAt          DateTime @default(now()) @db.Timestamptz @map("created_at")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   @@map("audit_results")
 }
@@ -1108,7 +1113,7 @@ model LdAuditResult {
   conversionAbsent    Boolean  @map("conversion_absent")
   conversionError     Boolean  @map("conversion_error")
   passed              Boolean
-  createdAt           DateTime @default(now()) @db.Timestamptz @map("created_at")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   @@map("ld_audit_results")
 }
@@ -1154,10 +1159,10 @@ model EmailOtp {
   id               String   @id @default(cuid())
   email            String
   codeHash         String
-  purpose          String   // "ACTIVATE_STUDENT" | "ACTIVATE_GUARDIAN"
+  purpose          String // "ACTIVATE_STUDENT" | "ACTIVATE_GUARDIAN"
   studentProfileId String
-  name             String?  // composed full name (back-compat / display)
-  firstName        String?  // split parts captured at guardian sign-up
+  name             String? // composed full name (back-compat / display)
+  firstName        String? // split parts captured at guardian sign-up
   lastName         String?
   passwordHash     String
   expiresAt        DateTime
@@ -1176,7 +1181,7 @@ model EmailOtp {
 // are on duty on each school day. Resolved per-date via getOnDutyDeputies().
 model DutyRosterEntry {
   id             String       @id @default(cuid())
-  dayOfWeek      Int          // 1 (Mon) – 5 (Fri)
+  dayOfWeek      Int // 1 (Mon) – 5 (Fri)
   staffProfileId String
   staffProfile   StaffProfile @relation(fields: [staffProfileId], references: [id], onDelete: Cascade)
 
@@ -1190,9 +1195,9 @@ model SpecialDay {
   startDate                DateTime       @db.Date
   endDate                  DateTime       @db.Date
   label                    String?
-  intercalaryMeetingPeriod Int?           // only for INTERCALARY type
-  eventStartPeriod         Int?           // only for SCHOOL_EVENT type
-  eventEndPeriod           Int?           // only for SCHOOL_EVENT type
+  intercalaryMeetingPeriod Int? // only for INTERCALARY type
+  eventStartPeriod         Int? // only for SCHOOL_EVENT type
+  eventEndPeriod           Int? // only for SCHOOL_EVENT type
   createdAt                DateTime       @default(now())
 }
 
