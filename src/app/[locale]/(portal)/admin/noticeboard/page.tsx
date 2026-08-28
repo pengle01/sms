@@ -9,6 +9,7 @@ import { NewNoticeDialog } from "./NewNoticeDialog";
 import { AcknowledgeButton } from "./AcknowledgeButton";
 import { isStaff } from "@/lib/rbac";
 import { fmtDisplayDateTime } from "@/lib/dates";
+import { AttachmentList } from "@/components/attachments/AttachmentLink";
 import { getTranslations } from "next-intl/server";
 import type { Role } from "@/generated/prisma/client";
 
@@ -30,6 +31,7 @@ export default async function NoticeboardPage({
     include: {
       tags: true,
       acknowledgments: { where: { userId: session.user.id } },
+      files: true,
     },
     orderBy: [{ urgent: "desc" }, { createdAt: "desc" }],
     take: 50,
@@ -85,6 +87,7 @@ export default async function NoticeboardPage({
                       ))}
                     </div>
                     <p className="text-sm text-slate-600 whitespace-pre-wrap">{notice.body}</p>
+                    <AttachmentList files={notice.files} className="mt-3" />
                     <div className="flex items-center justify-between mt-3 flex-wrap gap-2">
                       <p className="text-xs text-slate-400">
                         {fmtDisplayDateTime(notice.createdAt)}

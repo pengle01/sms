@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Plus, Loader2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { AttachmentPicker, uploadAttachments } from "@/components/attachments/AttachmentPicker";
 
 export function NewNoticeDialog({ locale }: { locale: string }) {
   const t = useTranslations("adminNoticeboard");
+  const ta = useTranslations("attachments");
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -17,21 +19,31 @@ export function NewNoticeDialog({ locale }: { locale: string }) {
   const [urgent, setUrgent] = useState(false);
   const [staffOnly, setStaffOnly] = useState(false);
   const [tagsInput, setTagsInput] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
 
   const { mutate, isPending } = trpc.notices.create.useMutation({
     onSuccess: () => {
       toast.success(t("posted"));
       setOpen(false);
       setTitle(""); setBody(""); setUrgent(false); setStaffOnly(false); setTagsInput("");
+      setFiles([]);
       router.refresh();
     },
     onError: (e) => toast.error(e.message),
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const tags = tagsInput.split(",").map((t) => t.trim()).filter(Boolean);
-    mutate({ title, body, urgent, staffOnly, tags });
+
+    // Attachments are uploaded first; the notice stores only their ids.
+    setUploading(true);
+    const fileIds = await uploadAttachments(files, "notice", ta);
+    setUploading(false);
+    if (fileIds === null) return;
+
+    mutate({ title, body, urgent, staffOnly, tags, fileIds });
   };
 
   if (!open) {
@@ -90,6 +102,11 @@ export function NewNoticeDialog({ locale }: { locale: string }) {
             />
           </div>
 
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-700">{ta("attachmentLabel")}</label>
+            <AttachmentPicker files={files} onChange={setFiles} />
+          </div>
+
           <div className="flex gap-6">
             <label className="flex items-center gap-2 text-sm text-slate-700">
               <input type="checkbox" checked={urgent} onChange={(e) => setUrgent(e.target.checked)} className="rounded" />
@@ -105,9 +122,9 @@ export function NewNoticeDialog({ locale }: { locale: string }) {
             <Button type="button" variant="outline" onClick={() => setOpen(false)} className="h-9 px-4">
               {t("cancel")}
             </Button>
-            <Button type="submit" disabled={isPending || !title || !body} className="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white">
-              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t("post")}
+            <Button type="submit" disabled={isPending || uploading || !title || !body} className="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white">
+              {(isPending || uploading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {uploading ? ta("uploading") : t("post")}
             </Button>
           </div>
         </form>
