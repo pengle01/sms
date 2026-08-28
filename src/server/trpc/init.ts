@@ -76,17 +76,20 @@ export const protectedProcedure = publicProcedure.use(async ({ ctx, next }) => {
   return next({ ctx: { ...ctx, session, effectiveRoles } });
 });
 
-// Requires staff role
+// Requires staff role. Effective roles, so an admin-granted SUPER_ADMIN counts
+// exactly as a primary one — same rule as adminProcedure below.
 export const staffProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (!isStaff(ctx.session.user.role as Role)) {
+  if (!ctx.effectiveRoles.some(isStaff)) {
     throw new TRPCError({ code: "FORBIDDEN" });
   }
   return next({ ctx });
 });
 
-// Requires management role (headmaster+)
+// Requires management role (headmaster+). Effective roles for consistency —
+// note SUPER_ADMIN is deliberately NOT a management role, so an admin grant
+// alone does not confer it.
 export const managementProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (!isManagement(ctx.session.user.role as Role)) {
+  if (!ctx.effectiveRoles.some(isManagement)) {
     throw new TRPCError({ code: "FORBIDDEN" });
   }
   return next({ ctx });

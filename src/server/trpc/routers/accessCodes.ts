@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, staffProcedure, adminProcedure } from "../init";
 import { TRPCError } from "@trpc/server";
-import { canViewAccessCode } from "@/lib/rbac";
+import { canAnyRoleViewAccessCode } from "@/lib/rbac";
 import { randomAccessCode } from "@/lib/accessCode";
 import { writeAudit, requestMeta } from "@/server/audit";
 import type { Role } from "@/generated/prisma/client";
@@ -12,7 +12,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 async function authorizeView(
   db: PrismaClient,
   userId: string,
-  role: Role,
+  roles: Role[],
   studentProfileId: string
 ) {
   const student = await db.studentProfile.findUnique({
@@ -29,7 +29,7 @@ async function authorizeView(
     select: { id: true },
   });
 
-  if (!canViewAccessCode(role, viewerStaff?.id, student.group)) {
+  if (!canAnyRoleViewAccessCode(roles, viewerStaff?.id, student.group)) {
     throw new TRPCError({ code: "FORBIDDEN" });
   }
 }
@@ -49,7 +49,9 @@ export const accessCodesRouter = createTRPCRouter({
   get: staffProcedure
     .input(z.object({ studentProfileId: z.string() }))
     .query(async ({ ctx, input }) => {
-      await authorizeView(ctx.db, ctx.session.user.id, ctx.session.user.role as Role, input.studentProfileId);
+      // Effective roles, not just the primary one — an admin-granted SUPER_ADMIN
+      // opens this page, so it must also open the data the page asks for.
+      await authorizeView(ctx.db, ctx.session.user.id, ctx.effectiveRoles, input.studentProfileId);
       const rec = await ctx.db.studentAccessCode.findUnique({
         where: { studentProfileId: input.studentProfileId },
         select: { code: true, studentClaimedAt: true, guardianClaims: true, updatedAt: true },

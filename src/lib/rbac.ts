@@ -94,6 +94,22 @@ export function canViewAccessCode(
   );
 }
 
+/**
+ * The same rule for a user's full set of effective roles.
+ *
+ * A staff member can hold an admin-granted extra role on top of their primary
+ * one (see effectiveRoles in roleAssignment.ts). Checking only the primary role
+ * means a teacher with a SUPER_ADMIN grant is refused data the grant is
+ * supposed to give them, on a page the same grant already let them open.
+ */
+export function canAnyRoleViewAccessCode(
+  roles: Role[],
+  viewerStaffId: string | null | undefined,
+  group: { homeroomTeacherId: string | null; homeroomHeadteacherId: string | null } | null
+): boolean {
+  return roles.some((role) => canViewAccessCode(role, viewerStaffId, group));
+}
+
 // Only the system admin may generate or regenerate access codes;
 // everyone else with access can merely view them.
 export function canGenerateAccessCode(role: Role): boolean {

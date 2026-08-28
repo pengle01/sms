@@ -12,6 +12,8 @@ import {
   getPortalForRole,
   EDUCATOR_ROLES,
   SELF_REGISTER_EDUCATOR_ROLES,
+  canViewAccessCode,
+  canAnyRoleViewAccessCode,
 } from "@/lib/rbac";
 
 describe("RBAC utilities", () => {
@@ -207,6 +209,43 @@ describe("RBAC utilities", () => {
       for (const role of SELF_REGISTER_EDUCATOR_ROLES) {
         expect(getPortalForRole(role)).toBe("teacher");
       }
+    });
+  });
+
+  // Regression cover: a teacher holding an admin-granted SUPER_ADMIN could open
+  // the admin student page (that guard reads effective roles) but the access-code
+  // query refused them, because it checked the primary role alone.
+  describe("canAnyRoleViewAccessCode", () => {
+    const otherGroup = { homeroomTeacherId: "sp_someone_else", homeroomHeadteacherId: null };
+    const ownGroup = { homeroomTeacherId: "sp_me", homeroomHeadteacherId: null };
+
+    it("allows a teacher whose extra role is SUPER_ADMIN, for any student", () => {
+      expect(canViewAccessCode("TEACHER", "sp_me", otherGroup)).toBe(false);
+      expect(canAnyRoleViewAccessCode(["TEACHER", "SUPER_ADMIN"], "sp_me", otherGroup)).toBe(true);
+    });
+
+    it("still allows a plain teacher for their own homeroom", () => {
+      expect(canAnyRoleViewAccessCode(["TEACHER"], "sp_me", ownGroup)).toBe(true);
+    });
+
+    it("still refuses a plain teacher for someone else's homeroom", () => {
+      expect(canAnyRoleViewAccessCode(["TEACHER"], "sp_me", otherGroup)).toBe(false);
+    });
+
+    it("refuses a parent even with a staff id", () => {
+      expect(canAnyRoleViewAccessCode(["PARENT"], "sp_me", ownGroup)).toBe(false);
+    });
+
+    it("matches the single-role form when there is only one role", () => {
+      for (const role of ["SUPER_ADMIN", "SCHOOL_ADMIN", "TEACHER", "PARENT", "STUDENT"] as const) {
+        expect(canAnyRoleViewAccessCode([role], "sp_me", ownGroup)).toBe(
+          canViewAccessCode(role, "sp_me", ownGroup),
+        );
+      }
+    });
+
+    it("refuses an empty role list", () => {
+      expect(canAnyRoleViewAccessCode([], "sp_me", ownGroup)).toBe(false);
     });
   });
 });
