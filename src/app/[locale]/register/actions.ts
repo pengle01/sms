@@ -1,10 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import bcrypt from "bcryptjs";
 import { db } from "@/server/db";
-import { rateLimit } from "@/server/rateLimit";
+import { allowRegistration } from "@/server/rateLimit";
+import { clientIp } from "@/server/audit";
+import { logger } from "@/server/logger";
 import { composeFullName } from "@/lib/profile";
 import { SELF_REGISTER_EDUCATOR_ROLES } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma/client";
@@ -27,14 +28,21 @@ export async function registerAction(formData: FormData) {
 
   const base = `/${locale}/register`;
 
-  // Throttle registrations per client IP to curb spam / enumeration.
-  const h = await headers();
-  const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? h.get("x-real-ip") ?? "unknown";
-  if (!rateLimit(`register:${ip}`, 5, 60 * 60 * 1000)) {
-    redirect(`${base}?error=errorGeneric`);
-  }
-
   if (!firstName || !lastName || !email || !password) redirect(`${base}?error=errorGeneric`);
+
+  // Throttled per email (tight) and per IP (wide) — a whole staff room signs up
+  // from one NAT address, so the IP alone cannot carry the tight limit. Checked
+  // after the required-field test so an empty form reports what is actually
+  // wrong instead of silently spending someone's budget.
+  const ip = (await clientIp()) ?? "unknown";
+  const limit = allowRegistration(ip, email);
+  if (!limit.allowed) {
+    logger.warn(
+      { event: "register.rateLimited", tier: limit.tier, role },
+      "Registration rate-limited",
+    );
+    redirect(`${base}?error=errorTooMany`);
+  }
   if (password.length < MIN_PASSWORD_LENGTH) redirect(`${base}?error=errorPasswordWeak`);
   if (password !== confirm) redirect(`${base}?error=errorPasswordMismatch`);
   if (!CLAIMABLE_ROLES.includes(role)) redirect(`${base}?error=errorInvalidRole`);

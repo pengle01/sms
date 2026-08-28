@@ -513,7 +513,8 @@
     "errGuardianCap": "The maximum number of guardians (2) has already registered for this student. Please contact the school.",
     "roleTakenStudent": "Already activated",
     "roleTakenGuardian": "Maximum number reached",
-    "changeCode": "Change code"
+    "changeCode": "Change code",
+    "errTooMany": "Too many attempts. Please try again in an hour."
   },
   "roles": {
     "SUPER_ADMIN": "Super Admin",
@@ -558,7 +559,8 @@
     "errorStaffNameRequired": "Please select your name from the timetable.",
     "errorStaffNameNotFound": "That name was not found in the timetable. Contact the administrator.",
     "errorStaffNameTaken": "That name has already been claimed by another account.",
-    "errorGeneric": "Registration failed. Please try again."
+    "errorGeneric": "Registration failed. Please try again.",
+    "errorTooMany": "Too many registration attempts. Please try again in an hour."
   },
   "groups": {
     "title": "Homeroom Groups",

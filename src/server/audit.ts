@@ -36,14 +36,24 @@ export async function writeAudit(entry: AuditEntry): Promise<void> {
 }
 
 /** Best-effort client metadata from the current request headers (server actions). */
-export async function requestMeta(): Promise<{ ipAddress: string | null; userAgent: string | null }> {
+/**
+ * The caller's IP as seen through the reverse proxy, or null when no proxy
+ * header is present — which is the normal case in local development, where
+ * every request would otherwise share one identity.
+ */
+export async function clientIp(): Promise<string | null> {
   try {
     const h = await headers();
     const fwd = h.get("x-forwarded-for");
-    return {
-      ipAddress: fwd ? fwd.split(",")[0]!.trim() : h.get("x-real-ip"),
-      userAgent: h.get("user-agent"),
-    };
+    return fwd ? fwd.split(",")[0]!.trim() : h.get("x-real-ip");
+  } catch {
+    return null;
+  }
+}
+
+export async function requestMeta(): Promise<{ ipAddress: string | null; userAgent: string | null }> {
+  try {
+    return { ipAddress: await clientIp(), userAgent: (await headers()).get("user-agent") };
   } catch {
     return { ipAddress: null, userAgent: null };
   }

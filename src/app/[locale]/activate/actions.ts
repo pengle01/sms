@@ -1,15 +1,14 @@
 "use server";
 
-import { headers } from "next/headers";
 import bcrypt from "bcryptjs";
 import { db } from "@/server/db";
-import { rateLimit } from "@/server/rateLimit";
+import { allowActivation, allowActivationCheck } from "@/server/rateLimit";
 import { activationWelcomeEmail, canAddGuardian, guardianLinkDigest, isWellFormedCode, normalizeCode, randomOtp, roleAvailability } from "@/lib/accessCode";
 import { fromAppTimeline, utcMidnight } from "@/lib/dates";
 import { getMaxGuardiansPerStudent } from "@/lib/schoolConfig";
 import { composeFullName } from "@/lib/profile";
 import { sendEmail, sendOtpEmail } from "@/lib/email";
-import { writeAudit } from "@/server/audit";
+import { clientIp, writeAudit } from "@/server/audit";
 import { logger, errInfo } from "@/server/logger";
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -35,9 +34,14 @@ export type CheckCodeResult =
  * re-check everything server-side regardless.
  */
 export async function checkAccessCode(input: { code: string }): Promise<CheckCodeResult> {
-  const h = await headers();
-  const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? h.get("x-real-ip") ?? "unknown";
-  if (!rateLimit(`activate-check:${ip}`, 30, 60 * 60 * 1000)) return { ok: false, error: "errGeneric" };
+  // Keyed on the IP alone: this is the code-enumeration surface, and the code
+  // an attacker supplies is useless as an actor key. A whole class checking
+  // their codes in one lesson must not exhaust it — see allowActivationCheck.
+  const ip = (await clientIp()) ?? "unknown";
+  if (!allowActivationCheck(ip)) {
+    logger.warn({ event: "activate.rateLimited", stage: "check" }, "Access-code check rate-limited");
+    return { ok: false, error: "errTooMany" };
+  }
 
   const code = normalizeCode(input.code);
   if (!isWellFormedCode(code)) return { ok: false, error: "errCodeInvalid" };
@@ -61,11 +65,20 @@ export async function startActivation(input: {
   password: string;
   confirm: string;
 }): Promise<StartResult> {
-  const h = await headers();
-  const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? h.get("x-real-ip") ?? "unknown";
-  if (!rateLimit(`activate:${ip}`, 10, 60 * 60 * 1000)) return { ok: false, error: "errGeneric" };
-
   const code = normalizeCode(input.code);
+
+  // Throttled per access code (tight) and per IP (wide) — students activating
+  // together at school all share one NAT address.
+  const ip = (await clientIp()) ?? "unknown";
+  const limit = allowActivation(ip, code);
+  if (!limit.allowed) {
+    logger.warn(
+      { event: "activate.rateLimited", stage: "start", tier: limit.tier },
+      "Activation rate-limited",
+    );
+    return { ok: false, error: "errTooMany" };
+  }
+
   const email = input.email.toLowerCase().trim();
   const firstName = input.firstName.trim().replace(/\s+/g, " ");
   const lastName = input.lastName.trim().replace(/\s+/g, " ");
