@@ -7,6 +7,7 @@ import { getNow, utcMidnight, fmtDisplayDate } from "@/lib/dates";
 import { profileIncomplete } from "@/lib/profile";
 import { getSpecialDayForDate, getOnDutyDeputies } from "@/lib/calendar";
 import { getDayOverrides } from "@/server/substitutions";
+import { AttachmentList } from "@/components/attachments/AttachmentLink";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, AlertCircle, CalendarRange, Megaphone, ShieldCheck } from "lucide-react";
@@ -192,6 +193,7 @@ export default async function TeacherDashboardPage({
       orderBy: { createdAt: "desc" },
       include: {
         author: { select: { name: true, staffProfile: { select: { scheduleName: true } } } },
+        files: true,
       },
     }),
   ]);
@@ -219,6 +221,7 @@ export default async function TeacherDashboardPage({
               <div key={a.id} className="rounded-lg border border-amber-100 bg-white/70 px-3 py-2">
                 {a.title && <p className="text-sm font-semibold text-slate-900">{a.title}</p>}
                 <p className="text-sm text-slate-700 whitespace-pre-wrap">{a.body}</p>
+                <AttachmentList files={a.files} className="mt-2" />
                 <p className="text-xs text-slate-400 mt-1">
                   {a.author?.staffProfile?.scheduleName ?? a.author?.name} · {fmtDisplayDate(a.createdAt)}
                 </p>

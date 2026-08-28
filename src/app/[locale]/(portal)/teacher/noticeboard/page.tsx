@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { DateInput } from "@/components/ui/date-input";
 import Link from "next/link";
 import { getActiveAuth } from "@/server/authz";
 import { db } from "@/server/db";
@@ -9,8 +8,10 @@ import { utcMidnight, localDateStr, fmtDisplayDate, fmtDisplayDateTime } from "@
 import { NotificationsBoard } from "@/components/notifications/NotificationsBoard";
 import { ReferralTabs } from "@/components/referrals/ReferralTabs";
 import { groupSentNotifications } from "@/lib/staffNotifications";
-import { PenSquare, Megaphone, X, CheckCheck, Send } from "lucide-react";
+import { PenSquare, X, CheckCheck, Send } from "lucide-react";
 import { postAnnouncement, deleteAnnouncement } from "./announcement-actions";
+import { AnnouncementComposer } from "./AnnouncementComposer";
+import { AttachmentList } from "@/components/attachments/AttachmentLink";
 
 export default async function TeacherNotificationsPage({
   params,
@@ -35,6 +36,7 @@ export default async function TeacherNotificationsPage({
           orderBy: { createdAt: "desc" },
           include: {
             author: { select: { name: true, staffProfile: { select: { scheduleName: true } } } },
+            files: true,
           },
         }),
         db.notification.findMany({
@@ -48,43 +50,10 @@ export default async function TeacherNotificationsPage({
   const sentHistory = groupSentNotifications(sentRows);
 
   const todayIso = localDateStr();
-  const field =
-    "w-full px-3 py-2 rounded-lg border border-amber-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400";
 
   const announcementsTab = (
     <div className="space-y-3">
-      <details className="group">
-        <summary className="inline-flex w-fit cursor-pointer list-none items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 [&::-webkit-details-marker]:hidden">
-          <Megaphone className="w-4 h-4" />
-          {td("newAnnouncement")}
-        </summary>
-        <form
-          action={postAnnouncement.bind(null, locale)}
-          className="mt-3 space-y-2 rounded-xl border border-amber-200 bg-amber-50/40 p-3"
-        >
-          <input name="title" placeholder={td("announcementTitle")} className={field} />
-          <textarea name="body" required rows={2} placeholder={td("announcementPlaceholder")} className={field} />
-          <div className="flex items-center gap-2 flex-wrap">
-            <label htmlFor="pinnedUntil" className="text-xs text-slate-500">
-              {td("showUntil")}
-            </label>
-            <DateInput
-              id="pinnedUntil"
-              name="pinnedUntil"
-              defaultValue={todayIso}
-              min={todayIso}
-              className="px-2 py-1 rounded-lg border border-amber-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-            />
-            <button
-              type="submit"
-              className="ml-auto inline-flex items-center gap-1.5 h-8 px-4 rounded-lg bg-amber-600 text-white text-sm font-medium hover:bg-amber-700"
-            >
-              <Megaphone className="w-3.5 h-3.5" />
-              {td("post")}
-            </button>
-          </div>
-        </form>
-      </details>
+      <AnnouncementComposer action={postAnnouncement.bind(null, locale)} todayIso={todayIso} />
 
       {announcements.length === 0 ? (
         <p className="text-sm text-slate-400 border-t border-slate-100 pt-3">{td("noAnnouncements")}</p>
@@ -98,6 +67,7 @@ export default async function TeacherNotificationsPage({
               <div className="flex-1 min-w-0">
                 {a.title && <p className="text-sm font-semibold text-slate-900">{a.title}</p>}
                 <p className="text-sm text-slate-700 whitespace-pre-wrap">{a.body}</p>
+                <AttachmentList files={a.files} className="mt-2" />
                 <p className="text-xs text-slate-400 mt-1">
                   {a.author?.staffProfile?.scheduleName ?? a.author?.name} · {td("showUntil")}{" "}
                   {fmtDisplayDate(a.pinnedUntil)}
