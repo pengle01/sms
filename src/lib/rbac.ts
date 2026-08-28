@@ -30,10 +30,14 @@ export const MANAGEMENT_ROLES: Role[] = [
 ];
 
 // Educator roles a person can self-register for at sign-up by claiming their
-// timetable name (admin approves → StaffProfile created). STUDENT_COUNSELOR is
-// admin-assigned only, so it is intentionally excluded here.
+// timetable name (admin approves → StaffProfile created). Membership here is
+// what makes approval call linkStaffProfile(), so a role that needs a
+// StaffProfile — STUDENT_COUNSELOR does, to be assignable as a homegroup
+// counselor — must be listed. Self-selection grants nothing on its own: every
+// registration stays inactive until an admin approves it.
 export const SELF_REGISTER_EDUCATOR_ROLES: Role[] = [
   "TEACHER",
+  "STUDENT_COUNSELOR",
   "HEADTEACHER_B",
   "HEADTEACHER_A",
   "HEADMASTER",

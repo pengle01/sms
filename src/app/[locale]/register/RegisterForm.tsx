@@ -18,10 +18,11 @@ interface RegisterFormProps {
   staffNames: string[];
 }
 
-// Roles offered at sign-up, with their message key. Educators (the first four)
-// claim a timetable name; office & chaperone do not.
+// Roles offered at sign-up, with their message key. Educators (everything up to
+// HEADMASTER) claim a timetable name; office & chaperone do not.
 const REGISTER_ROLES = [
   "TEACHER",
+  "STUDENT_COUNSELOR",
   "HEADTEACHER_B",
   "HEADTEACHER_A",
   "HEADMASTER",
@@ -30,6 +31,7 @@ const REGISTER_ROLES = [
 ] as const;
 const ROLE_LABEL_KEY = {
   TEACHER: "roleTeacher",
+  STUDENT_COUNSELOR: "roleCounselor",
   HEADTEACHER_B: "roleHeadteacherB",
   HEADTEACHER_A: "roleHeadteacherA",
   HEADMASTER: "roleHeadmaster",

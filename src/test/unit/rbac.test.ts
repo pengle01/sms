@@ -10,6 +10,8 @@ import {
   canViewCounselorNotes,
   canViewAllReferrals,
   getPortalForRole,
+  EDUCATOR_ROLES,
+  SELF_REGISTER_EDUCATOR_ROLES,
 } from "@/lib/rbac";
 
 describe("RBAC utilities", () => {
@@ -165,6 +167,46 @@ describe("RBAC utilities", () => {
       expect(canManageClaims("HEADMASTER")).toBe(false);
       expect(canManageClaims("TEACHER")).toBe(false);
       expect(canManageClaims("SCHOOL_ADMIN")).toBe(false);
+    });
+  });
+
+  // Membership in this set is what makes registration approval call
+  // linkStaffProfile(), so a role that needs a StaffProfile must be listed —
+  // the counselor was missing, which left them uncreatable and made the
+  // homegroup counselor dropdown permanently empty.
+  describe("SELF_REGISTER_EDUCATOR_ROLES", () => {
+    it("includes the student counselor", () => {
+      expect(SELF_REGISTER_EDUCATOR_ROLES).toContain("STUDENT_COUNSELOR");
+    });
+
+    it("includes the teacher and every management role", () => {
+      expect(SELF_REGISTER_EDUCATOR_ROLES).toContain("TEACHER");
+      expect(SELF_REGISTER_EDUCATOR_ROLES).toContain("HEADTEACHER_B");
+      expect(SELF_REGISTER_EDUCATOR_ROLES).toContain("HEADTEACHER_A");
+      expect(SELF_REGISTER_EDUCATOR_ROLES).toContain("HEADMASTER");
+    });
+
+    it("contains only educator roles", () => {
+      for (const role of SELF_REGISTER_EDUCATOR_ROLES) {
+        expect(EDUCATOR_ROLES).toContain(role);
+      }
+    });
+
+    it("excludes office and chaperone, which register without a timetable claim", () => {
+      expect(SELF_REGISTER_EDUCATOR_ROLES).not.toContain("SCHOOL_ADMIN");
+      expect(SELF_REGISTER_EDUCATOR_ROLES).not.toContain("CHAPERONE");
+    });
+
+    it("excludes families and the system admin", () => {
+      expect(SELF_REGISTER_EDUCATOR_ROLES).not.toContain("STUDENT");
+      expect(SELF_REGISTER_EDUCATOR_ROLES).not.toContain("PARENT");
+      expect(SELF_REGISTER_EDUCATOR_ROLES).not.toContain("SUPER_ADMIN");
+    });
+
+    it("every listed role lands in the teacher portal", () => {
+      for (const role of SELF_REGISTER_EDUCATOR_ROLES) {
+        expect(getPortalForRole(role)).toBe("teacher");
+      }
     });
   });
 });
