@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A newer push to the same branch makes an in-flight run pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      # 20 is what the app is developed on, 22 is what DEPLOY.md installs in
+      # production. Both are checked so a version-only breakage can't reach the
+      # server unnoticed.
+      matrix:
+        node: [20, 22]
+
+    env:
+      # No database is contacted: `prisma generate` only reads the schema, and
+      # every route is server-rendered on demand, so `next build` prerenders
+      # nothing. These are placeholders purely to satisfy config validation —
+      # they are not secrets and grant access to nothing.
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:1/nodb
+      NEXTAUTH_SECRET: ci-placeholder-not-a-real-secret
+      NEXTAUTH_URL: http://localhost:3000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        # The client is generated TypeScript — typecheck, tests and build all
+        # need it present before they run.
+        run: npm run db:generate
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Lint
+        # Non-blocking: the repo carries pre-existing lint errors that predate
+        # this workflow. Output is still visible in the run log. Make this a
+        # hard gate once those are cleared.
+        continue-on-error: true
+        run: npm run lint
+
+      - name: Production build
+        # The check that matters most: `npm run dev` uses a different toolchain
+        # and has hidden a broken production build before.
+        run: npm run build
