@@ -4,9 +4,10 @@
 # directory, make it executable (chmod +x), and fill in a real destination.
 # backup.sh calls it after each successful local backup.
 #
-#   $1  BACKUP_DIR         the local backup root (contains db/ and logs/)
-#   $2  DB_DUMP_PATH       the dump just created
-#   $3  LOG_ARCHIVE_PATH   the logs archive just created (may be empty)
+#   $1  BACKUP_DIR             the local backup root (db/, logs/, uploads/)
+#   $2  DB_DUMP_PATH           the dump just created
+#   $3  LOG_ARCHIVE_PATH       the logs archive just created (may be empty)
+#   $4  UPLOADS_ARCHIVE_PATH   the uploads archive just created (may be empty)
 #
 # Local-only backups protect against mistakes but NOT against losing this
 # machine. Point this at another disk / NAS / cloud bucket for real safety.
@@ -17,10 +18,12 @@ set -euo pipefail
 BACKUP_DIR="$1"
 DB_DUMP_PATH="$2"
 LOG_ARCHIVE_PATH="${3:-}"
+UPLOADS_ARCHIVE_PATH="${4:-}"
 
 # --- Example: rclone to a configured remote (cloud: S3, B2, Drive, …) --------
 #   rclone copy "$DB_DUMP_PATH" remote:sms-backups/db/
 #   [ -n "$LOG_ARCHIVE_PATH" ] && rclone copy "$LOG_ARCHIVE_PATH" remote:sms-backups/logs/
+#   [ -n "$UPLOADS_ARCHIVE_PATH" ] && rclone copy "$UPLOADS_ARCHIVE_PATH" remote:sms-backups/uploads/
 
 # --- Example: rsync to another host over SSH ---------------------------------
 #   rsync -az --delete "$BACKUP_DIR/" backupuser@nas.local:/srv/sms-backups/
@@ -28,6 +31,7 @@ LOG_ARCHIVE_PATH="${3:-}"
 # --- Example: copy to a mounted external/second disk -------------------------
 #   cp -a "$DB_DUMP_PATH" /mnt/backup-disk/sms/db/
 #   [ -n "$LOG_ARCHIVE_PATH" ] && cp -a "$LOG_ARCHIVE_PATH" /mnt/backup-disk/sms/logs/
+#   [ -n "$UPLOADS_ARCHIVE_PATH" ] && cp -a "$UPLOADS_ARCHIVE_PATH" /mnt/backup-disk/sms/uploads/
 
 echo "[offsite] no destination configured — edit ops/backup/offsite.sh" >&2
 exit 0
