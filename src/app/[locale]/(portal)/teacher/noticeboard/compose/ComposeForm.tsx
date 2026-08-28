@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { useFormStatus } from "react-dom";
+import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
-import { Send } from "lucide-react";
+import { Send, Loader2 } from "lucide-react";
+import { AttachmentPicker, uploadAttachments } from "@/components/attachments/AttachmentPicker";
 
 type Recipient = {
   id: string;
@@ -17,21 +17,6 @@ type Recipient = {
 const GRADE_LABELS: Record<number, string> = { 1: "Α΄", 2: "Β΄", 3: "Γ΄", 4: "Δ΄" };
 const gradeLabel = (g: number) => GRADE_LABELS[g] ?? String(g);
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  const t = useTranslations("staffNotify");
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
-    >
-      <Send className="w-4 h-4" />
-      {pending ? t("sending") : t("send")}
-    </button>
-  );
-}
-
 export function ComposeForm({
   recipients,
   action,
@@ -40,9 +25,32 @@ export function ComposeForm({
   action: (formData: FormData) => Promise<void>;
 }) {
   const t = useTranslations("staffNotify");
+  const ta = useTranslations("attachments");
   const [mode, setMode] = useState<"all" | "pick">("all");
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [pending, startTransition] = useTransition();
   const [filter, setFilter] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  // The attachments are uploaded before the action runs — server actions cap
+  // request bodies at 1 MB, far under what a set of files may be.
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+
+    setUploading(true);
+    const fileIds = await uploadAttachments(files, "notification", ta);
+    setUploading(false);
+    if (fileIds === null) return;
+    for (const id of fileIds) formData.append("fileId", id);
+
+    startTransition(async () => {
+      await action(formData);
+    });
+  }
+
+  const busy = uploading || pending;
 
   const visible = filter.trim()
     ? recipients.filter((r) =>
@@ -94,7 +102,7 @@ export function ComposeForm({
   );
 
   return (
-    <form action={action} className="space-y-5">
+    <form onSubmit={onSubmit} className="space-y-5">
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-1.5">{t("fieldTitle")}</label>
         <input
@@ -215,7 +223,22 @@ export function ComposeForm({
         )}
       </div>
 
-      <SubmitButton />
+      {/* Attachment */}
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1.5">
+          {ta("attachmentLabel")}
+        </label>
+        <AttachmentPicker files={files} onChange={setFiles} />
+      </div>
+
+      <button
+        type="submit"
+        disabled={busy}
+        className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+      >
+        {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+        {uploading ? ta("uploading") : pending ? t("sending") : t("send")}
+      </button>
     </form>
   );
 }

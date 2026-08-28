@@ -17,10 +17,12 @@ export const notificationsRouter = createTRPCRouter({
       ctx.db.notification.findMany({
         where: { userId: ctx.session.user.id, noticedAt: null },
         orderBy: { createdAt: "desc" },
+        include: { files: true },
       }),
       ctx.db.notification.findMany({
         where: { userId: ctx.session.user.id, noticedAt: { not: null } },
         orderBy: { noticedAt: "desc" },
+        include: { files: true },
       }),
     ]);
     return { active, noticed };

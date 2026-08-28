@@ -5,6 +5,7 @@ import { db } from "@/server/db";
 import { getActiveAuth } from "@/server/authz";
 import { isManagement, EDUCATOR_ROLES } from "@/lib/rbac";
 import { writeAudit } from "@/server/audit";
+import { ATTACHMENT_MAX_COUNT } from "@/lib/attachments";
 
 export async function sendStaffNotification(locale: string, formData: FormData) {
   const auth = await getActiveAuth();
@@ -21,6 +22,18 @@ export async function sendStaffNotification(locale: string, formData: FormData) 
   if (!title) redirect(`${back}?error=title`);
   if (!body) redirect(`${back}?error=body`);
   if (mode !== "all" && picked.length === 0) redirect(`${back}?error=recipients`);
+
+  // Every attachment must be one this sender just uploaded — otherwise any file
+  // id could be pushed to every teacher, including one from a staff-only notice.
+  const fileIds = [...new Set(formData.getAll("fileId").map(String).filter(Boolean))];
+  if (fileIds.length > 0) {
+    const owned = await db.storedFile.count({
+      where: { id: { in: fileIds }, uploadedById: auth.userId },
+    });
+    if (fileIds.length > ATTACHMENT_MAX_COUNT || owned !== fileIds.length) {
+      redirect(`${back}?error=attachment`);
+    }
+  }
 
   // Resolve recipients server-side: active educators only, never the sender
   const recipients = await db.user.findMany({
@@ -40,22 +53,39 @@ export async function sendStaffNotification(locale: string, formData: FormData) 
   });
   const signature = sender?.staffProfile?.scheduleName ?? sender?.name ?? "";
 
-  await db.notification.createMany({
-    data: recipients.map((r) => ({
-      userId: r.id,
-      senderId: auth.userId,
-      type: "STAFF_MESSAGE",
-      title,
-      body: signature ? `${body}\n— ${signature}` : body,
-      read: false,
-    })),
-  });
+  const signedBody = signature ? `${body}\n— ${signature}` : body;
+
+  // createMany cannot write relations, so attachments force one create per
+  // recipient. Wrapped in a transaction so a partial send is impossible; the
+  // staff list is at most ~130 people, well within a single transaction.
+  await db.$transaction(
+    recipients.map((r) =>
+      db.notification.create({
+        data: {
+          userId: r.id,
+          senderId: auth.userId,
+          type: "STAFF_MESSAGE",
+          title,
+          body: signedBody,
+          read: false,
+          // The files are stored once; every recipient's row links to the same rows.
+          files: { connect: fileIds.map((id) => ({ id })) },
+        },
+        select: { id: true },
+      }),
+    ),
+  );
 
   await writeAudit({
     userId: auth.userId,
     action: "notification.staffSend",
     resource: "Notification",
-    details: { title, recipients: recipients.length, mode: mode === "all" ? "all" : "picked" },
+    details: {
+      title,
+      recipients: recipients.length,
+      mode: mode === "all" ? "all" : "picked",
+      ...(fileIds.length > 0 ? { fileIds } : {}),
+    },
   });
 
   redirect(`${back}?sent=${recipients.length}`);

@@ -8,6 +8,7 @@ import {
   Bell, FileWarning, CheckCircle2, CheckCheck, Clock, MessageSquare, ShieldAlert, UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AttachmentList } from "@/components/attachments/AttachmentLink";
 
 const TYPE_ICON: Record<string, React.ReactNode> = {
   REFERRAL_CREATED: <FileWarning className="w-5 h-5 text-amber-500" />,
@@ -135,6 +136,11 @@ export function NotificationsBoard({ locale }: { locale: string }) {
                   >
                     <p className="text-sm font-semibold text-slate-900">{n.title}</p>
                     {n.body && <p className="text-sm text-slate-500 mt-0.5">{n.body}</p>}
+                    {n.files.length > 0 && (
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <AttachmentList files={n.files} className="mt-2" />
+                      </div>
+                    )}
                     <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
                       <Clock className="w-3 h-3" />
                       {relativeTime(n.createdAt)}
@@ -182,6 +188,11 @@ export function NotificationsBoard({ locale }: { locale: string }) {
                   >
                     <p className="text-sm font-semibold text-slate-700">{n.title}</p>
                     {n.body && <p className="text-sm text-slate-400 mt-0.5">{n.body}</p>}
+                    {n.files.length > 0 && (
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <AttachmentList files={n.files} className="mt-2" />
+                      </div>
+                    )}
                     <p className="text-xs text-slate-400 mt-1">{relativeTime(n.createdAt)}</p>
                   </div>
 
