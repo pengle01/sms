@@ -87,7 +87,8 @@
     "sms": "Send SMS",
     "permits": "Exit Permits",
     "substitutions": "Substitutions",
-    "reports": "Reports"
+    "reports": "Reports",
+    "notices": "Noticeboard"
   },
   "sms": {
     "title": "Send SMS",
