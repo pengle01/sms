@@ -3,7 +3,7 @@ import { staffDisplayName } from "@/lib/staffName";
 import { redirect } from "next/navigation";
 import { getActiveAuth } from "@/server/authz";
 import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY, totalPeriodsForDays } from "@/lib/schoolConfig";
-import { PrintTrigger } from "./PrintTrigger";
+import { PrintTrigger, PrintButton } from "./PrintTrigger";
 
 const FULL_ACCESS_ROLES = ["SUPER_ADMIN", "HEADMASTER", "HEADTEACHER_A", "STUDENT_COUNSELOR"];
 
@@ -71,7 +71,8 @@ export default async function PrintResolutionPage({
 
   // Authorization: full-access roles, the filer, or a headteacher of one of the
   // referral's students' groups. Other staff may not read arbitrary referrals.
-  let allowed = FULL_ACCESS_ROLES.includes(auth.role);
+  // Effective roles, so an admin-granted SUPER_ADMIN counts like a primary one.
+  let allowed = auth.roles.some((r) => FULL_ACCESS_ROLES.includes(r));
   if (!allowed) {
     const staff = await db.staffProfile.findUnique({
       where: { userId: auth.userId },
@@ -107,12 +108,7 @@ export default async function PrintResolutionPage({
           >
             ← Επιστροφή
           </a>
-          <button
-            onClick={() => window.print()}
-            className="px-5 py-2 rounded-lg bg-slate-800 text-white text-sm font-medium hover:bg-slate-700"
-          >
-            Εκτύπωση
-          </button>
+          <PrintButton />
         </div>
 
         {/* A4 content */}

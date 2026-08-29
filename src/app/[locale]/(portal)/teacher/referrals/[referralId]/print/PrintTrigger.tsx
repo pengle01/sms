@@ -17,3 +17,23 @@ export function PrintTrigger() {
   }, []);
   return null;
 }
+
+/**
+ * The on-screen "print" button.
+ *
+ * Lives here rather than in the page because the page is a Server Component,
+ * and an onClick handler there is not merely inert — React refuses to
+ * serialize a function prop and throws "Event handlers cannot be passed to
+ * Client Component props", taking the whole page down. Any interactivity on
+ * this document has to be a client component.
+ */
+export function PrintButton() {
+  return (
+    <button
+      onClick={() => window.print()}
+      className="px-5 py-2 rounded-lg bg-slate-800 text-white text-sm font-medium hover:bg-slate-700"
+    >
+      Εκτύπωση
+    </button>
+  );
+}
