@@ -4,7 +4,7 @@ import { db } from "@/server/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { revalidatePath } from "next/cache";
-import { utcMidnight, fmtDisplayDate } from "@/lib/dates";
+import { utcMidnight } from "@/lib/dates";
 import { getActiveTermInfo, getMaxTestsPerWeek } from "@/lib/schoolConfig";
 import { isSchoolClosed } from "@/lib/calendar";
 import { TestType } from "@/generated/prisma/client";
@@ -12,19 +12,41 @@ import { TestType } from "@/generated/prisma/client";
 export type TestConflict = {
   studentName: string;
   reason: "BIG_SAME_DAY" | "WEEKLY_LIMIT";
-  /** Tests that caused the conflict (existing ones on that day or week) */
+  /**
+   * Tests that caused the conflict (existing ones on that day or week).
+   * Raw values, not sentences: the client component that renders them holds
+   * the reader's locale and formats the date and period itself.
+   */
   existingTests: Array<{
     courseName: string;
     groupName: string;
     type: "BIG" | "SMALL";
-    dateStr: string;
-    periodLabel: string;
+    /** ISO date, YYYY-MM-DD. */
+    date: string;
+    period: number;
+    periodCount: number;
   }>;
 };
 
+/**
+  * Why a test could not be scheduled, as a `tests.*` message key. The action
+  * returns the key rather than the sentence: the form that renders it is a
+  * client component that already holds the reader's locale, so there is no
+  * second place where the locale has to be resolved.
+  */
+export type ScheduleTestError =
+  | "errGeneric"
+  | "errSchoolClosed"
+  | "errNoActiveTerm"
+  | "errAfterDeadline"
+  | "errNoLesson"
+  | "errNoConsecutive"
+  | "errNoStudents";
+
 export type ScheduleTestResult =
   | { success: true }
-  | { success: false; message: string }
+  /** `period` is the second period a 2-period test would need (errNoConsecutive). */
+  | { success: false; error: ScheduleTestError; period?: number }
   | { success: false; conflicts: TestConflict[] };
 
 function weekBounds(date: Date): { weekStart: Date; weekEnd: Date } {
@@ -37,16 +59,6 @@ function weekBounds(date: Date): { weekStart: Date; weekEnd: Date } {
   return { weekStart, weekEnd };
 }
 
-const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-function fmtDate(d: Date) {
-  return `${DOW[d.getUTCDay()]} ${fmtDisplayDate(d)}`;
-}
-
-function fmtPeriod(period: number, periodCount: number) {
-  return periodCount > 1 ? `P${period}–${period + periodCount - 1}` : `P${period}`;
-}
-
 export async function scheduleTest(data: {
   groupId: string;
   courseId: string;
@@ -56,10 +68,10 @@ export async function scheduleTest(data: {
   type: TestType;
 }): Promise<ScheduleTestResult> {
   const session = await getServerSession(authOptions);
-  if (!session) return { success: false, message: "Unauthenticated" };
+  if (!session) return { success: false, error: "errGeneric" };
 
   const staff = await db.staffProfile.findUnique({ where: { userId: session.user.id } });
-  if (!staff) return { success: false, message: "No staff profile" };
+  if (!staff) return { success: false, error: "errGeneric" };
 
   const targetDate = utcMidnight(data.date);
   const { weekStart, weekEnd } = weekBounds(targetDate);
@@ -70,9 +82,9 @@ export async function scheduleTest(data: {
     isSchoolClosed(targetDate),
     getActiveTermInfo(targetDate),
   ]);
-  if (schoolClosed) return { success: false, message: "School is closed on this date." };
-  if (!activeTerm) return { success: false, message: "No active school term for this date." };
-  if (targetDate > activeTerm.testDeadline) return { success: false, message: "This date is after the test deadline for the current term." };
+  if (schoolClosed) return { success: false, error: "errSchoolClosed" };
+  if (!activeTerm) return { success: false, error: "errNoActiveTerm" };
+  if (targetDate > activeTerm.testDeadline) return { success: false, error: "errAfterDeadline" };
 
   // Validate that this teacher has a timetable slot for the chosen period on this day
   const dayOfWeek = targetDate.getUTCDay(); // 1=Mon…5=Fri matches TimetableSlot.dayOfWeek
@@ -80,14 +92,14 @@ export async function scheduleTest(data: {
     where: { staffId: staff.id, groupId: data.groupId, courseId: data.courseId, dayOfWeek, period: data.period },
   });
   if (!slot) {
-    return { success: false, message: "You do not have a lesson in this period on the selected date." };
+    return { success: false, error: "errNoLesson" };
   }
   if (data.type === "BIG" && data.periodCount === 2) {
     const slot2 = await db.timetableSlot.findFirst({
       where: { staffId: staff.id, groupId: data.groupId, courseId: data.courseId, dayOfWeek, period: data.period + 1 },
     });
     if (!slot2) {
-      return { success: false, message: `You do not have a lesson in period ${data.period + 1} on this day — a 2-period test requires consecutive slots.` };
+      return { success: false, error: "errNoConsecutive", period: data.period + 1 };
     }
   }
 
@@ -105,7 +117,7 @@ export async function scheduleTest(data: {
     },
   });
 
-  if (students.length === 0) return { success: false, message: "No students in this group" };
+  if (students.length === 0) return { success: false, error: "errNoStudents" };
 
   // All groups these students belong to
   const allGroupIds = [
@@ -159,8 +171,9 @@ export async function scheduleTest(data: {
             courseName: t.course.name,
             groupName: t.group.name,
             type: t.type,
-            dateStr: fmtDate(t.date),
-            periodLabel: fmtPeriod(t.period, t.periodCount),
+            date: t.date.toISOString().slice(0, 10),
+            period: t.period,
+            periodCount: t.periodCount,
           })),
       });
       continue;
@@ -175,8 +188,9 @@ export async function scheduleTest(data: {
           courseName: t.course.name,
           groupName: t.group.name,
           type: t.type,
-          dateStr: fmtDate(t.date),
-          periodLabel: fmtPeriod(t.period, t.periodCount),
+          date: t.date.toISOString().slice(0, 10),
+          period: t.period,
+          periodCount: t.periodCount,
         })),
       });
     }
