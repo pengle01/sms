@@ -4,22 +4,26 @@ import { useState } from "react";
 import { trpc } from "@/trpc/client";
 import { useRouter } from "next/navigation";
 import { Palette, X, Check } from "lucide-react";
+import { useTranslations } from "next-intl";
 
+// `label` is a message key in the `appearance` namespace, not text — these are
+// module constants, outside any component, so they cannot hold translations.
 const THEMES = [
-  { key: "emerald", label: "Πράσινο", color: "oklch(0.696 0.17 162.48)" },
-  { key: "ocean", label: "Μπλε", color: "oklch(0.623 0.214 259.815)" },
-  { key: "violet", label: "Μωβ", color: "oklch(0.606 0.25 292.717)" },
-  { key: "rose", label: "Ροζ", color: "oklch(0.645 0.246 16.439)" },
-  { key: "amber", label: "Κεχριμπάρι", color: "oklch(0.769 0.188 70.08)" },
+  { key: "emerald", label: "themeEmerald", color: "oklch(0.696 0.17 162.48)" },
+  { key: "ocean", label: "themeOcean", color: "oklch(0.623 0.214 259.815)" },
+  { key: "violet", label: "themeViolet", color: "oklch(0.606 0.25 292.717)" },
+  { key: "rose", label: "themeRose", color: "oklch(0.645 0.246 16.439)" },
+  { key: "amber", label: "themeAmber", color: "oklch(0.769 0.188 70.08)" },
 ] as const;
 
 const SIZES = [
-  { key: "small", label: "Μικρά", sample: "text-sm" },
-  { key: "medium", label: "Μεσαία", sample: "text-lg" },
-  { key: "large", label: "Μεγάλα", sample: "text-2xl" },
+  { key: "small", label: "sizeSmall", sample: "text-sm" },
+  { key: "medium", label: "sizeMedium", sample: "text-lg" },
+  { key: "large", label: "sizeLarge", sample: "text-2xl" },
 ] as const;
 
 export function AppearanceDialog() {
+  const t = useTranslations("appearance");
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState("emerald");
@@ -59,7 +63,7 @@ export function AppearanceDialog() {
         className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 active:bg-slate-100 touch-manipulation"
       >
         <Palette className="w-4 h-4" />
-        Εμφάνιση
+        {t("title")}
       </button>
 
       {open && (
@@ -70,7 +74,7 @@ export function AppearanceDialog() {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
               <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
-                <Palette className="w-4 h-4" /> Εμφάνιση
+                <Palette className="w-4 h-4" /> {t("title")}
               </h3>
               <button onClick={() => setOpen(false)} className="p-1 rounded-lg hover:bg-slate-100 text-slate-400">
                 <X className="w-5 h-5" />
@@ -81,19 +85,19 @@ export function AppearanceDialog() {
               {/* Colour palette */}
               <section>
                 <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
-                  Χρώμα
+                  {t("colour")}
                 </h4>
                 <div className="flex flex-wrap gap-3">
                   {THEMES.map((th) => (
                     <button
                       key={th.key}
                       onClick={() => pickTheme(th.key)}
-                      title={th.label}
+                      title={t(th.label)}
                       className={`relative w-11 h-11 rounded-full border-2 transition-transform active:scale-90 touch-manipulation ${
                         theme === th.key ? "border-slate-800 scale-105" : "border-transparent"
                       }`}
                       style={{ background: th.color }}
-                      aria-label={th.label}
+                      aria-label={t(th.label)}
                     >
                       {theme === th.key && (
                         <Check className="w-5 h-5 text-white absolute inset-0 m-auto drop-shadow" />
@@ -106,7 +110,7 @@ export function AppearanceDialog() {
               {/* Font size */}
               <section>
                 <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
-                  Μέγεθος γραμμάτων
+                  {t("fontSize")}
                 </h4>
                 <div className="grid grid-cols-3 gap-2">
                   {SIZES.map((sz) => (
@@ -120,7 +124,7 @@ export function AppearanceDialog() {
                       }`}
                     >
                       <span className={`font-semibold leading-none ${sz.sample}`}>Α</span>
-                      <span className="text-xs">{sz.label}</span>
+                      <span className="text-xs">{t(sz.label)}</span>
                     </button>
                   ))}
                 </div>

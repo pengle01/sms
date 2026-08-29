@@ -4,9 +4,16 @@ import { authOptions } from "@/server/auth";
 import { localDateStr, getNow } from "@/lib/dates";
 import { summarizeByStudent, toCsv } from "@/lib/attendanceReport";
 import { loadReportRows } from "@/server/attendanceReport";
+import { getTranslations } from "next-intl/server";
 
 // CSV export of the per-student attendance summary for the selected range.
-export async function GET(req: NextRequest) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ locale: string }> },
+) {
+  const { locale } = await params;
+  // Explicit locale: a route handler has no rendered page to infer it from.
+  const t = await getTranslations({ locale, namespace: "officeReports" });
   const session = await getServerSession(authOptions);
   if (!session || !["SCHOOL_ADMIN", "SUPER_ADMIN"].includes(session.user.role)) {
     return new NextResponse("Forbidden", { status: 403 });
@@ -22,7 +29,10 @@ export async function GET(req: NextRequest) {
   const students = summarizeByStudent(rows);
 
   const csv = toCsv(
-    ["Αρ. Μητρώου", "Μαθητής", "Τμήμα", "Ημέρες", "Απουσίες", "Αυτόματες", "Καθυστερήσεις", "Δικαιολογημένες", "Με Άδεια Εξόδου", "Διεγραμμένες"],
+    [
+      t("colId"), t("colStudent"), t("colGroup"), t("colDays"), t("colAbsences"),
+      t("colAuto"), t("colLate"), t("colExcused"), t("colPermit"), t("colWaived"),
+    ],
     students.map((s) => [
       s.studentId,
       s.studentName,

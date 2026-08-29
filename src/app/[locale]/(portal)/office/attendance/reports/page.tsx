@@ -30,6 +30,7 @@ export default async function OfficeAttendanceReportsPage({
   }
 
   const t = await getTranslations("officeReports");
+  const tCommon = await getTranslations("common");
   const { from, to, groupId } = await searchParams;
 
   // Default range: the last 30 days
@@ -159,7 +160,7 @@ export default async function OfficeAttendanceReportsPage({
                   className="w-full max-w-10 rounded-t bg-emerald-500/80"
                   style={{ height: `${Math.round((d.count / maxDistCount) * 72) + 2}px` }}
                 />
-                <span className="text-[11px] text-slate-400">Π{d.period}</span>
+                <span className="text-[11px] text-slate-400">{tCommon("periodShort", { period: d.period })}</span>
               </div>
             ))}
           </div>

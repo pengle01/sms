@@ -5,11 +5,19 @@ import { db } from "@/server/db";
 import { utcMidnight, toAppTimeline, fromAppTimeline } from "@/lib/dates";
 import { toCsv } from "@/lib/attendanceReport";
 import { substitutionKinds } from "@/server/attendanceReport";
+import { getTranslations } from "next-intl/server";
 
 // Downloads one day's absence log as CSV and records the download, so the
 // office always knows which days were already taken and whether rows were
 // added afterwards.
-export async function GET(req: NextRequest) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ locale: string }> },
+) {
+  const { locale } = await params;
+  // Explicit locale rather than the request-scoped one: a route handler has no
+  // rendered page to infer it from, and the segment already carries it.
+  const t = await getTranslations({ locale, namespace: "officeAttendance" });
   const session = await getServerSession(authOptions);
   if (!session || !["SCHOOL_ADMIN", "SUPER_ADMIN"].includes(session.user.role)) {
     return new NextResponse("Forbidden", { status: 403 });
@@ -58,28 +66,33 @@ export async function GET(req: NextRequest) {
       ? subKinds.get(`${a.date.toISOString().slice(0, 10)}:${a.timetableSlotId}`)
       : undefined;
     if (!kind) return "";
-    return kind === "STUDY_HALL" ? "Φ/δι ΒΔ" : kind === "CLAIM" ? "Κάλυψη" : "Αναπλήρωση";
+    return kind === "STUDY_HALL" ? t("subHeadteacher") : kind === "CLAIM" ? t("subClaim") : t("subTeacher");
   };
 
   const csv = toCsv(
-    ["Ημ. Καταχώρησης", "Ημ. Απουσίας", "Άλλη Ημέρα", "Αρ. Μητρώου", "Μαθητής", "Τμήμα", "Περίοδος", "Μάθημα", "Κατάσταση", "Αυτόματη", "Καθυστέρηση (λεπτά)", "Άδεια Εξόδου", "Καθηγητής", "Αναπλήρωση", "Διεγραμμένη", "SMS"],
+    [
+      t("csvFiledOn"), t("csvAbsenceDate"), t("csvOtherDay"), t("csvStudentId"), t("colStudent"),
+      t("colGroup"), t("colPeriod"), t("colCourse"), t("colStatus"), t("csvAuto"),
+      t("csvDelayMinutes"), t("exitPermit"), t("colTeacher"), t("csvSubstitution"), t("waived"),
+      t("csvSms"),
+    ],
     rows.map((a) => [
       dateStr,
       a.date.toISOString().slice(0, 10),
-      a.date.toISOString().slice(0, 10) !== dateStr ? "Ναι" : "",
+      a.date.toISOString().slice(0, 10) !== dateStr ? t("csvYes") : "",
       a.student.studentId,
       a.student.user?.name ?? "",
       a.student.group?.name ?? "",
       a.timetableSlot?.period ?? a.intercalaryPeriod ?? "",
       a.timetableSlot?.course.name ?? "",
-      a.status === "ABSENT" ? "Απουσία" : a.status === "LATE" ? "Καθυστέρηση" : a.status,
-      a.isAutoAbsent ? "Ναι" : "",
+      a.status === "ABSENT" ? t("absent") : a.status === "LATE" ? t("late") : a.status,
+      a.isAutoAbsent ? t("csvYes") : "",
       a.minutesDelayed > 0 ? a.minutesDelayed : "",
       a.exitPermit ? a.exitPermit.reason : "",
       a.staff.scheduleName ?? a.staff.user?.name ?? "",
       subLabel(a),
-      a.waived ? "Ναι" : "",
-      a.smsSent ? "Ναι" : "",
+      a.waived ? t("csvYes") : "",
+      a.smsSent ? t("csvYes") : "",
     ])
   );
 

@@ -3,12 +3,15 @@
 import { useState } from "react";
 import { trpc } from "@/trpc/client";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import {
   Bell, FileWarning, CheckCircle2, CheckCheck, Clock, MessageSquare, ShieldAlert, UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AttachmentList } from "@/components/attachments/AttachmentLink";
+import { relativeTime } from "@/lib/relativeTime";
+import { fmtDisplayDateTime } from "@/lib/dates";
 
 const TYPE_ICON: Record<string, React.ReactNode> = {
   REFERRAL_CREATED: <FileWarning className="w-5 h-5 text-amber-500" />,
@@ -18,27 +21,30 @@ const TYPE_ICON: Record<string, React.ReactNode> = {
   GUARDIAN_LINK: <UserPlus className="w-5 h-5 text-sky-500" />,
 };
 
-function relativeTime(date: Date | string): string {
-  const d = typeof date === "string" ? new Date(date) : date;
-  const diff = Date.now() - d.getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "μόλις τώρα";
-  if (mins < 60) return `πριν ${mins} λεπτ.`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `πριν ${hours} ώρ.`;
-  const days = Math.floor(hours / 24);
-  return `πριν ${days} ημ.`;
-}
-
-function fmtDateTime(date: Date | string | null | undefined): string {
-  if (!date) return "";
-  const d = typeof date === "string" ? new Date(date) : date;
-  return d.toLocaleDateString("el-GR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
-}
-
 export function NotificationsBoard({ locale }: { locale: string }) {
+  const t = useTranslations("notifications");
+  const tCommon = useTranslations("common");
+  const tAuth = useTranslations("auth");
+
+  const timeAgo = (date: Date | string) => {
+    const r = relativeTime(date);
+    return r.unit === "now"
+      ? tCommon("timeAgoNow")
+      : r.unit === "minutes"
+        ? tCommon("timeAgoMinutes", { count: r.value })
+        : r.unit === "hours"
+          ? tCommon("timeAgoHours", { count: r.value })
+          : tCommon("timeAgoDays", { count: r.value });
+  };
   const router = useRouter();
   const [tab, setTab] = useState<"active" | "noticed">("active");
+
+  // The server's TRPCError message is developer-facing English. Only the
+  // deactivated-account case can realistically reach a parent, and it has a
+  // written translation already; anything else keeps the raw text so a real
+  // fault is not hidden behind a generic sentence.
+  const errorText = (e: { data?: { code?: string } | null; message: string }) =>
+    e.data?.code === "UNAUTHORIZED" ? tAuth("accountDisabled") : e.message;
 
   const { data, refetch, isLoading } = trpc.notifications.listPage.useQuery(undefined, {
     refetchInterval: 30_000,
@@ -46,15 +52,15 @@ export function NotificationsBoard({ locale }: { locale: string }) {
 
   const { mutate: markNoticed } = trpc.notifications.markNoticed.useMutation({
     onSuccess: () => refetch(),
-    onError: (e) => toast.error(e.message),
+    onError: (e) => toast.error(errorText(e)),
   });
 
   const { mutate: markAllNoticed, isPending: markingAll } = trpc.notifications.markAllNoticed.useMutation({
     onSuccess: () => {
-      toast.success("Όλες οι ειδοποιήσεις σημειώθηκαν");
+      toast.success(t("allMarkedNoticed"));
       refetch();
     },
-    onError: (e) => toast.error(e.message),
+    onError: (e) => toast.error(errorText(e)),
   });
 
   const handleNotificationClick = (id: string, linkUrl: string | null) => {
@@ -77,7 +83,7 @@ export function NotificationsBoard({ locale }: { locale: string }) {
               : "text-slate-500 hover:text-slate-700"
           )}
         >
-          Εκκρεμείς
+          {t("tabActive")}
           {active.length > 0 && (
             <span className="min-w-[20px] h-5 flex items-center justify-center rounded-full bg-amber-500 text-white text-[11px] font-bold px-1">
               {active.length}
@@ -93,7 +99,7 @@ export function NotificationsBoard({ locale }: { locale: string }) {
               : "text-slate-500 hover:text-slate-700"
           )}
         >
-          Ειδοποιήθηκαν
+          {t("tabNoticed")}
         </button>
       </div>
 
@@ -108,17 +114,17 @@ export function NotificationsBoard({ locale }: { locale: string }) {
                 className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
               >
                 <CheckCheck className="w-3.5 h-3.5" />
-                Σήμανση όλων ως ειδοποιημένων
+                {t("markAllNoticed")}
               </button>
             </div>
           )}
 
           {isLoading ? (
-            <div className="py-12 text-center text-slate-400 text-sm">Φόρτωση…</div>
+            <div className="py-12 text-center text-slate-400 text-sm">{tCommon("loading")}</div>
           ) : active.length === 0 ? (
             <div className="rounded-2xl border border-slate-100 bg-slate-50 py-16 text-center">
               <Bell className="w-10 h-10 mx-auto text-slate-300 mb-3" />
-              <p className="text-slate-400 text-sm">Δεν υπάρχουν εκκρεμείς ειδοποιήσεις</p>
+              <p className="text-slate-400 text-sm">{t("noActive")}</p>
             </div>
           ) : (
             <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden divide-y divide-slate-100">
@@ -143,7 +149,7 @@ export function NotificationsBoard({ locale }: { locale: string }) {
                     )}
                     <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
                       <Clock className="w-3 h-3" />
-                      {relativeTime(n.createdAt)}
+                      {timeAgo(n.createdAt)}
                     </p>
                   </div>
 
@@ -153,7 +159,7 @@ export function NotificationsBoard({ locale }: { locale: string }) {
                     className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 text-slate-500 text-xs font-medium transition-colors touch-manipulation"
                   >
                     <CheckCheck className="w-3.5 h-3.5" />
-                    Σημείωση
+                    {t("markNoticed")}
                   </button>
                 </div>
               ))}
@@ -166,11 +172,11 @@ export function NotificationsBoard({ locale }: { locale: string }) {
       {tab === "noticed" && (
         <div>
           {isLoading ? (
-            <div className="py-12 text-center text-slate-400 text-sm">Φόρτωση…</div>
+            <div className="py-12 text-center text-slate-400 text-sm">{tCommon("loading")}</div>
           ) : noticed.length === 0 ? (
             <div className="rounded-2xl border border-slate-100 bg-slate-50 py-16 text-center">
               <CheckCheck className="w-10 h-10 mx-auto text-slate-300 mb-3" />
-              <p className="text-slate-400 text-sm">Δεν υπάρχουν ειδοποιήσεις που έχουν σημειωθεί</p>
+              <p className="text-slate-400 text-sm">{t("noNoticed")}</p>
             </div>
           ) : (
             <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden divide-y divide-slate-100">
@@ -193,13 +199,13 @@ export function NotificationsBoard({ locale }: { locale: string }) {
                         <AttachmentList files={n.files} className="mt-2" />
                       </div>
                     )}
-                    <p className="text-xs text-slate-400 mt-1">{relativeTime(n.createdAt)}</p>
+                    <p className="text-xs text-slate-400 mt-1">{timeAgo(n.createdAt)}</p>
                   </div>
 
                   {/* Noticed date */}
                   <div className="flex-shrink-0 text-right">
-                    <p className="text-xs text-slate-400 font-medium">Σημειώθηκε</p>
-                    <p className="text-xs text-slate-500">{fmtDateTime(n.noticedAt)}</p>
+                    <p className="text-xs text-slate-400 font-medium">{t("noticedAt")}</p>
+                    <p className="text-xs text-slate-500">{n.noticedAt ? fmtDisplayDateTime(n.noticedAt) : ""}</p>
                   </div>
                 </div>
               ))}

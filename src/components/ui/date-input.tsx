@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { parseDisplayDate, displayDateText } from "@/lib/dateInput";
+import { useTranslations } from "next-intl";
 
 // Date field that always displays DD/MM/YY regardless of browser locale.
 // A native <input type="date"> renders in the BROWSER's locale (MM/DD/YYYY on
@@ -54,6 +55,7 @@ export function DateInput({
   title,
   className,
 }: Props) {
+  const t = useTranslations("common");
   const controlled = value !== undefined;
   const [internalIso, setInternalIso] = useState(defaultValue ?? "");
   const iso = controlled ? value : internalIso;
@@ -65,6 +67,13 @@ export function DateInput({
   const lastChange = useRef<string>(iso); // skip text resync for our own commits
   const lastCommit = useRef<string>(iso); // onCommit fires only on real changes
 
+  // Shown by the browser as the validation bubble, so it must be readable.
+  // Memoised because it closes over the translator and an effect below calls it.
+  const setValidity = useCallback(
+    (bad: boolean) => textRef.current?.setCustomValidity(bad ? t("datePattern") : ""),
+    [t],
+  );
+
   // External value change (controlled reset/cancel) → resync the text.
   useEffect(() => {
     if (!controlled || value === lastChange.current) return;
@@ -74,11 +83,7 @@ export function DateInput({
     setInvalid(false);
     setValidity(false);
     if (hiddenRef.current) hiddenRef.current.value = value;
-  }, [controlled, value]);
-
-  function setValidity(bad: boolean) {
-    textRef.current?.setCustomValidity(bad ? "ΗΗ/ΜΜ/ΕΕ" : "");
-  }
+  }, [controlled, value, setValidity]);
 
   function outOfRange(v: string) {
     return (!!min && v < min) || (!!max && v > max);
@@ -158,7 +163,7 @@ export function DateInput({
         inputMode="numeric"
         autoComplete="off"
         id={id}
-        placeholder="ΗΗ/ΜΜ/ΕΕ"
+        placeholder={t("datePattern")}
         size={10}
         value={text}
         onChange={(e) => handleText(e.target.value)}
@@ -178,7 +183,7 @@ export function DateInput({
         tabIndex={-1}
         disabled={disabled}
         onClick={openPicker}
-        aria-label="Ημερολόγιο"
+        aria-label={t("openCalendar")}
         className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 disabled:opacity-40"
       >
         <CalendarDays className="w-4 h-4" />

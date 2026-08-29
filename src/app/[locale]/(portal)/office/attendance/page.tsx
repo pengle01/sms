@@ -6,7 +6,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { ClipboardList, Download, CheckCircle2, AlertCircle, Search, Eraser, RotateCcw, CalendarDays } from "lucide-react";
-import { utcMidnight, localDateStr, toAppTimeline, fromAppTimeline } from "@/lib/dates";
+import { utcMidnight, localDateStr, toAppTimeline, fromAppTimeline, fmtDisplayDate } from "@/lib/dates";
 import { studentNameOrIdWhere } from "@/lib/studentSearch";
 import { substitutionKinds } from "@/server/attendanceReport";
 import { ReferralTabs } from "@/components/referrals/ReferralTabs";
@@ -25,6 +25,7 @@ export default async function OfficeAttendancePage({
   if (!session) redirect(`/${locale}/login/staff`);
 
   const t = await getTranslations("officeAttendance");
+  const tCommon = await getTranslations("common");
   const { date: dateStr, groupId, days: daysStr, sq, student: studentParam } = await searchParams;
 
   const todayStr = localDateStr();
@@ -132,7 +133,7 @@ export default async function OfficeAttendancePage({
       weekday: "long", day: "2-digit", month: "2-digit", year: "2-digit", timeZone: "UTC",
     });
   const fmtDateTime = (d: Date) =>
-    d.toLocaleString("el-GR", {
+    d.toLocaleString(locale === "en" ? "en-GB" : "el-GR", {
       day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Nicosia",
     });
 
@@ -431,9 +432,13 @@ export default async function OfficeAttendancePage({
             {eraseStudent.attendance.map((a) => (
               <div key={a.id} className={`flex items-center gap-3 px-4 py-2.5 text-sm ${a.waived ? "bg-slate-50/60" : ""}`}>
                 <span className={`w-20 text-xs text-slate-500 ${a.waived ? "line-through" : ""}`}>
-                  {a.date.toLocaleDateString("el-GR", { day: "2-digit", month: "2-digit", year: "2-digit", timeZone: "UTC" })}
+                  {fmtDisplayDate(a.date)}
                 </span>
-                <span className="w-8 text-xs text-slate-500">Π{a.timetableSlot?.period ?? a.intercalaryPeriod ?? "—"}</span>
+                <span className="w-8 text-xs text-slate-500">
+                  {a.timetableSlot?.period ?? a.intercalaryPeriod
+                    ? tCommon("periodShort", { period: a.timetableSlot?.period ?? a.intercalaryPeriod ?? 0 })
+                    : "—"}
+                </span>
                 <span className={`flex-1 min-w-0 truncate ${a.waived ? "text-slate-400 line-through" : "text-slate-700"}`}>
                   {a.timetableSlot?.course.name ?? "—"}
                 </span>

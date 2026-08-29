@@ -5,21 +5,24 @@ import { useRouter } from "next/navigation";
 import { Bell, CheckCheck, FileWarning, CheckCircle2, LockOpen, MessageSquare } from "lucide-react";
 import { trpc } from "@/trpc/client";
 import { cn } from "@/lib/utils";
-
-function relativeTime(date: Date | string): string {
-  const d = typeof date === "string" ? new Date(date) : date;
-  const diff = Date.now() - d.getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "μόλις τώρα";
-  if (mins < 60) return `${mins} λεπτ. πριν`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} ώρ. πριν`;
-  const days = Math.floor(hours / 24);
-  return `${days} ημ. πριν`;
-}
+import { useTranslations } from "next-intl";
+import { relativeTime } from "@/lib/relativeTime";
 
 export function NotificationBell({ locale }: { locale: string }) {
+  const t = useTranslations("notifications");
+  const tCommon = useTranslations("common");
   const router = useRouter();
+
+  const timeAgo = (date: Date | string) => {
+    const r = relativeTime(date);
+    return r.unit === "now"
+      ? tCommon("timeAgoNow")
+      : r.unit === "minutes"
+        ? tCommon("timeAgoMinutes", { count: r.value })
+        : r.unit === "hours"
+          ? tCommon("timeAgoHours", { count: r.value })
+          : tCommon("timeAgoDays", { count: r.value });
+  };
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -71,7 +74,7 @@ export function NotificationBell({ locale }: { locale: string }) {
           "relative flex items-center justify-center w-9 h-9 rounded-full transition-colors",
           open ? "bg-slate-100" : "hover:bg-slate-100"
         )}
-        aria-label="Ειδοποιήσεις"
+        aria-label={t("title")}
       >
         <Bell className="w-5 h-5 text-slate-500" />
         {unread > 0 && (
@@ -87,14 +90,14 @@ export function NotificationBell({ locale }: { locale: string }) {
         // anchor to the bell as before.
         <div className="fixed inset-x-3 top-14 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-1 sm:w-80 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100">
-            <span className="text-sm font-semibold text-slate-800">Ειδοποιήσεις</span>
+            <span className="text-sm font-semibold text-slate-800">{t("title")}</span>
             {unread > 0 && (
               <button
                 onClick={() => markAllRead()}
                 className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-700"
               >
                 <CheckCheck className="w-3.5 h-3.5" />
-                Όλες ως αναγνωσμένες
+                {t("markAllRead")}
               </button>
             )}
           </div>
@@ -102,7 +105,7 @@ export function NotificationBell({ locale }: { locale: string }) {
           <div className="max-h-80 overflow-y-auto divide-y divide-slate-50">
             {notifications.length === 0 ? (
               <p className="px-4 py-6 text-sm text-slate-400 text-center">
-                Δεν υπάρχουν ειδοποιήσεις
+                {t("noNotifications")}
               </p>
             ) : (
               notifications.map((n) => (
@@ -122,7 +125,7 @@ export function NotificationBell({ locale }: { locale: string }) {
                     {n.body && (
                       <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">{n.body}</p>
                     )}
-                    <p className="text-[10px] text-slate-300 mt-1">{relativeTime(n.createdAt)}</p>
+                    <p className="text-[10px] text-slate-300 mt-1">{timeAgo(n.createdAt)}</p>
                   </div>
                   {!n.read && (
                     <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-1.5" />
