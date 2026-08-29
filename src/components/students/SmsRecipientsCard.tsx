@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MessageSquare, AlertTriangle, Star, Plus } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { addSmsRecipient, setDefaultSmsRecipient, toggleSmsRecipientActive } from "./sms-actions";
 
 interface Contact {
@@ -15,7 +16,7 @@ interface Contact {
 // Shared SMS-recipient manager: shows the default + flag and lets office/admin
 // add recipients, set the default, and activate/deactivate. Used on both the
 // admin and office student pages.
-export function SmsRecipientsCard({
+export async function SmsRecipientsCard({
   studentId,
   contacts,
   flagged,
@@ -26,24 +27,35 @@ export function SmsRecipientsCard({
   flagged: boolean;
   flagReason: string | null;
 }) {
+  const t = await getTranslations("studentFile");
+  const tStudents = await getTranslations("adminStudents");
+
+  // The stored role is an enum; never render it raw — it reads "father".
+  const roleLabel: Record<string, string> = {
+    FATHER: t("contactFather"),
+    MOTHER: t("contactMother"),
+    GUARDIAN: t("contactGuardian"),
+    OTHER: t("contactOther"),
+  };
+
   return (
     <Card className={flagged ? "border-amber-300" : ""}>
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <MessageSquare className="w-4 h-4 text-slate-400" />
-          SMS recipients
+          {t("smsRecipients")}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {flagged && (
           <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
             <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-            <span>{flagReason ?? "Ο προεπιλεγμένος αριθμός SMS χρειάζεται έλεγχο."}</span>
+            <span>{flagReason ?? t("smsDefaultNeedsCheck")}</span>
           </div>
         )}
 
         {contacts.length === 0 ? (
-          <p className="text-sm text-slate-400">None on record</p>
+          <p className="text-sm text-slate-400">{t("noPhones")}</p>
         ) : (
           <div className="space-y-2">
             {contacts.map((c) => (
@@ -53,24 +65,24 @@ export function SmsRecipientsCard({
                     {c.name}
                     {c.isDefault && (
                       <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200 shrink-0">
-                        <Star className="w-2.5 h-2.5 mr-0.5" /> Default
+                        <Star className="w-2.5 h-2.5 mr-0.5" /> {t("smsDefaultBadge")}
                       </Badge>
                     )}
                     {!c.active && (
                       <Badge variant="outline" className="text-[10px] bg-slate-100 text-slate-500 border-slate-200 shrink-0">
-                        Inactive
+                        {tStudents("inactive")}
                       </Badge>
                     )}
                   </p>
                   <p className="text-slate-500 text-xs font-mono">{c.phone}</p>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <Badge variant="outline" className="text-xs capitalize">{c.role.toLowerCase()}</Badge>
+                  <Badge variant="outline" className="text-xs">{roleLabel[c.role] ?? t("contactOther")}</Badge>
                   {!c.isDefault && c.active && (
                     <form action={setDefaultSmsRecipient}>
                       <input type="hidden" name="studentId" value={studentId} />
                       <input type="hidden" name="contactId" value={c.id} />
-                      <button type="submit" className="text-xs text-slate-400 hover:text-emerald-600" title="Set as default">
+                      <button type="submit" className="text-xs text-slate-400 hover:text-emerald-600" title={t("smsSetDefault")}>
                         <Star className="w-3.5 h-3.5" />
                       </button>
                     </form>
@@ -78,7 +90,7 @@ export function SmsRecipientsCard({
                   <form action={toggleSmsRecipientActive}>
                     <input type="hidden" name="contactId" value={c.id} />
                     <button type="submit" className="text-xs text-slate-400 hover:text-slate-700">
-                      {c.active ? "Deactivate" : "Activate"}
+                      {c.active ? t("smsDeactivate") : t("smsActivate")}
                     </button>
                   </form>
                 </div>
@@ -90,18 +102,18 @@ export function SmsRecipientsCard({
         {/* Add another recipient */}
         <form action={addSmsRecipient} className="border-t border-slate-100 pt-3 space-y-2">
           <input type="hidden" name="studentId" value={studentId} />
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Add recipient</p>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("smsAddRecipient")}</p>
           <input
             name="name"
             required
-            placeholder="Name"
+            placeholder={tStudents("name")}
             className="w-full h-8 px-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
           <div className="flex gap-2">
             <input
               name="phone"
               required
-              placeholder="Phone"
+              placeholder={tStudents("phone")}
               className="flex-1 min-w-0 h-8 px-2 rounded-lg border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
             <select
@@ -109,17 +121,17 @@ export function SmsRecipientsCard({
               defaultValue="OTHER"
               className="h-8 px-2 rounded-lg border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
-              <option value="FATHER">Father</option>
-              <option value="MOTHER">Mother</option>
-              <option value="GUARDIAN">Guardian</option>
-              <option value="OTHER">Other</option>
+              <option value="FATHER">{t("contactFather")}</option>
+              <option value="MOTHER">{t("contactMother")}</option>
+              <option value="GUARDIAN">{t("contactGuardian")}</option>
+              <option value="OTHER">{t("contactOther")}</option>
             </select>
           </div>
           <button
             type="submit"
             className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700"
           >
-            <Plus className="w-3.5 h-3.5" /> Add
+            <Plus className="w-3.5 h-3.5" /> {t("smsAdd")}
           </button>
         </form>
       </CardContent>

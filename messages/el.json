@@ -19,6 +19,9 @@
     "today": "σήμερα",
     "clear": "Καθαρισμός",
     "close": "Κλείσιμο",
+    "openMenu": "Άνοιγμα μενού",
+    "userMenu": "Μενού χρήστη",
+    "closeMenu": "Κλείσιμο μενού",
     "previous": "Προηγούμενη",
     "next": "Επόμενη",
     "student": "Μαθητής",
@@ -829,6 +832,7 @@
     "selectConversation": "Επιλέξτε μια συνομιλία",
     "replyPlaceholder": "Απάντηση…",
     "send": "Αποστολή",
+    "sendFailed": "Το μήνυμα δεν στάλθηκε.",
     "cancel": "Άκυρο",
     "selectChild": "Επιλέξτε παιδί",
     "selectStaff": "Επιλέξτε παραλήπτη",
@@ -983,6 +987,13 @@
     "clearDate": "Καθαρισμός ημερομηνίας",
     "apply": "Αναζήτηση"
   },
+  "officeDashboard": {
+    "title": "Γραμματεία",
+    "absencesToday": "Απουσίες Σήμερα",
+    "unreadNotifications": "Μη Αναγνωσμένες Ειδοποιήσεις",
+    "quickAccess": "Γρήγορη Πρόσβαση",
+    "studentRecords": "Μητρώο Μαθητών"
+  },
   "investigate": {
     "title": "Τμήμα μου",
     "subtitle": "Έγκαιρος εντοπισμός μοτίβων προς διερεύνηση — απουσίες, παραπομπές, καθυστερήσεις, έξοδοι τουαλέτας, διαγωνίσματα.",
@@ -1055,6 +1066,14 @@
     "contactPhones": "Τηλέφωνα Επικοινωνίας",
     "noPhones": "Δεν υπάρχουν καταχωρημένα τηλέφωνα.",
     "smsPhone": "Τηλέφωνο sms",
+    "smsRecipients": "Παραλήπτες SMS",
+    "smsDefaultBadge": "Προεπιλογή",
+    "smsSetDefault": "Ορισμός ως προεπιλογή",
+    "smsActivate": "Ενεργοποίηση",
+    "smsDeactivate": "Απενεργοποίηση",
+    "smsAddRecipient": "Προσθήκη παραλήπτη",
+    "smsAdd": "Προσθήκη",
+    "smsDefaultNeedsCheck": "Ο προεπιλεγμένος αριθμός SMS χρειάζεται έλεγχο.",
     "referrals": "Καταγγελίες ({count})",
     "noReferrals": "Καμία καταγγελία.",
     "resolved": "Επιλύθηκε",
@@ -1118,6 +1137,20 @@
     "statusAbsent": "Απουσία",
     "statusLate": "Καθυστέρηση",
     "emptyMonth": "Καμία απουσία αυτόν τον μήνα"
+  },
+  "parentChildren": {
+    "title": "Τα Παιδιά Μου",
+    "enrolled": "{count, plural, one {# εγγεγραμμένο παιδί} other {# εγγεγραμμένα παιδιά}}",
+    "noneLinked": "Δεν υπάρχουν συνδεδεμένα παιδιά στον λογαριασμό σας",
+    "noneLinkedHint": "Επικοινωνήστε με τη γραμματεία του σχολείου",
+    "statusActive": "Ενεργός",
+    "statusInactive": "Ανενεργός",
+    "absencesThisMonth": "{count, plural, one {# απουσία αυτόν τον μήνα} other {# απουσίες αυτόν τον μήνα}}",
+    "exitPermitToday": "Άδεια εξόδου σήμερα",
+    "linkAttendance": "Απουσίες",
+    "linkGrades": "Βαθμολογία",
+    "linkTests": "Διαγωνίσματα",
+    "recentGrades": "Πρόσφατοι Βαθμοί"
   },
   "chaperoneActivities": {
     "title": "Οι Δραστηριότητές μου",

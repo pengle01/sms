@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { trpc } from "@/trpc/client";
+import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { fmtDisplayDateTime } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -228,7 +229,11 @@ function Composer({
     if (!studentId && recipients.length === 1) setStudentId(recipients[0]!.studentId);
   }, [recipients, studentId]);
 
-  const start = trpc.messages.start.useMutation({ onSuccess: (r) => onSent(r.conversationId) });
+  const start = trpc.messages.start.useMutation({
+    onSuccess: (r) => onSent(r.conversationId),
+    // Without this the form just went quiet when the server refused.
+    onError: () => toast.error(t("sendFailed")),
+  });
   const staffOptions = useMemo(
     () => recipients.find((r) => r.studentId === studentId)?.staff ?? [],
     [recipients, studentId]

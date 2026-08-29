@@ -33,6 +33,7 @@ const MENU_ID = "mobile-nav-toggle";
 export function Header({ userName, userImage, locale, pageTitle, role, portal, pendingClaimsCount, crossPortal, ddkCoordinator, specialEdAccess }: HeaderProps) {
   const t = useTranslations("auth");
   const tRoles = useTranslations("roles");
+  const tCommon = useTranslations("common");
   const router = useRouter();
   const profileRef = useRef<HTMLDivElement>(null);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -78,7 +79,7 @@ export function Header({ userName, userImage, locale, pageTitle, role, portal, p
           type="checkbox"
           id={MENU_ID}
           className="peer sr-only"
-          aria-label="Open menu"
+          aria-label={tCommon("openMenu")}
         />
       )}
 
@@ -115,7 +116,7 @@ export function Header({ userName, userImage, locale, pageTitle, role, portal, p
             <button
               onClick={() => setProfileOpen((v) => !v)}
               className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-white text-sm font-semibold touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 overflow-hidden"
-              aria-label="User menu"
+              aria-label={tCommon("userMenu")}
             >
               {userImage ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -155,14 +156,14 @@ export function Header({ userName, userImage, locale, pageTitle, role, portal, p
           {/* Backdrop — tapping it closes the drawer (label toggles the checkbox) */}
           <label
             htmlFor={MENU_ID}
-            aria-label="Close menu"
+            aria-label={tCommon("closeMenu")}
             className="fixed inset-0 z-[9998] bg-black/50"
           />
           {/* Panel */}
           <div className="fixed top-0 left-0 bottom-0 z-[9999] w-[min(18rem,85vw)]">
             <label
               htmlFor={MENU_ID}
-              aria-label="Close menu"
+              aria-label={tCommon("closeMenu")}
               className="absolute top-3 right-3 z-10 p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white touch-manipulation cursor-pointer"
             >
               <X className="w-4 h-4" />

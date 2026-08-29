@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/server/auth";
+import { getTranslations } from "next-intl/server";
 import { db } from "@/server/db";
 import { getNow, utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +14,8 @@ export default async function OfficeDashboardPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  const t = await getTranslations("officeDashboard");
+  const tAttendance = await getTranslations("attendance");
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login/staff`);
 
@@ -32,14 +35,14 @@ export default async function OfficeDashboardPage({
   ]);
 
   const stats = [
-    { title: "Absences Today",       value: absentsToday,   icon: UserX,         bg: "bg-red-50",     color: "text-red-600",     href: `/${locale}/office/attendance` },
-    { title: "Unread Notifications", value: unreadNotifications, icon: Bell,       bg: "bg-amber-50",   color: "text-amber-600",   href: `/${locale}/office/noticeboard` },
+    { title: t("absencesToday"),        value: absentsToday,         icon: UserX, bg: "bg-red-50",   color: "text-red-600",   href: `/${locale}/office/attendance` },
+    { title: t("unreadNotifications"),  value: unreadNotifications,  icon: Bell,  bg: "bg-amber-50", color: "text-amber-600", href: `/${locale}/office/noticeboard` },
   ];
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">Office</h2>
+        <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>
         <p className="text-slate-500 mt-1">{dateLabel}</p>
       </div>
 
@@ -66,7 +69,7 @@ export default async function OfficeDashboardPage({
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Quick Access</CardTitle>
+          <CardTitle className="text-base">{t("quickAccess")}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-3">
           <Link
@@ -74,14 +77,14 @@ export default async function OfficeDashboardPage({
             className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
           >
             <ClipboardList className="w-4 h-4" />
-            Today&apos;s Attendance
+            {tAttendance("markAttendance")}
           </Link>
           <Link
             href={`/${locale}/office/students`}
             className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50"
           >
             <GraduationCap className="w-4 h-4" />
-            Student Records
+            {t("studentRecords")}
           </Link>
         </CardContent>
       </Card>

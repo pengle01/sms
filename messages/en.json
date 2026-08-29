@@ -19,6 +19,9 @@
     "today": "today",
     "clear": "Clear",
     "close": "Close",
+    "openMenu": "Open menu",
+    "userMenu": "User menu",
+    "closeMenu": "Close menu",
     "previous": "Previous",
     "next": "Next",
     "student": "Student",
@@ -829,6 +832,7 @@
     "selectConversation": "Select a conversation",
     "replyPlaceholder": "Reply…",
     "send": "Send",
+    "sendFailed": "The message could not be sent.",
     "cancel": "Cancel",
     "selectChild": "Select child",
     "selectStaff": "Select recipient",
@@ -983,6 +987,13 @@
     "clearDate": "Clear date",
     "apply": "Search"
   },
+  "officeDashboard": {
+    "title": "Office",
+    "absencesToday": "Absences today",
+    "unreadNotifications": "Unread notifications",
+    "quickAccess": "Quick access",
+    "studentRecords": "Student records"
+  },
   "investigate": {
     "title": "My Homegroup",
     "subtitle": "Catch patterns worth investigating early — absences, referrals, delays, toilet breaks, tests.",
@@ -1055,6 +1066,14 @@
     "contactPhones": "Contact Phones",
     "noPhones": "No phone numbers on record.",
     "smsPhone": "SMS phone",
+    "smsRecipients": "SMS recipients",
+    "smsDefaultBadge": "Default",
+    "smsSetDefault": "Set as default",
+    "smsActivate": "Activate",
+    "smsDeactivate": "Deactivate",
+    "smsAddRecipient": "Add recipient",
+    "smsAdd": "Add",
+    "smsDefaultNeedsCheck": "The default SMS number needs checking.",
     "referrals": "Referrals ({count})",
     "noReferrals": "No referrals.",
     "resolved": "Resolved",
@@ -1118,6 +1137,20 @@
     "statusAbsent": "Absent",
     "statusLate": "Late",
     "emptyMonth": "No absences this month"
+  },
+  "parentChildren": {
+    "title": "My Children",
+    "enrolled": "{count, plural, one {# child enrolled} other {# children enrolled}}",
+    "noneLinked": "No children linked to your account",
+    "noneLinkedHint": "Contact the school administration",
+    "statusActive": "Active",
+    "statusInactive": "Inactive",
+    "absencesThisMonth": "{count, plural, one {# absence this month} other {# absences this month}}",
+    "exitPermitToday": "Exit permit today",
+    "linkAttendance": "Attendance",
+    "linkGrades": "Grades",
+    "linkTests": "Tests",
+    "recentGrades": "Recent grades"
   },
   "chaperoneActivities": {
     "title": "My Activities",
