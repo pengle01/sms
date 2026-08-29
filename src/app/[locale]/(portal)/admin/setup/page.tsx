@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { authOptions } from "@/server/auth";
 import { db } from "@/server/db";
+import { loadAvailableStaffNames } from "@/server/staffRoster";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -53,14 +54,7 @@ export default async function TeacherSetupPage({
     // Allow re-submission after rejection
   }
 
-  // Get distinct unclaimed staff names from timetable
-  const slots = await db.timetableSlot.findMany({
-    where: { staffId: null, staffName: { not: null } },
-    select: { staffName: true },
-    distinct: ["staffName"],
-    orderBy: { staffName: "asc" },
-  });
-  const staffNames = slots.map((s) => s.staffName!).filter(Boolean);
+  const staffNames = await loadAvailableStaffNames();
 
   return (
     <div className="max-w-xl mx-auto mt-16 space-y-6">

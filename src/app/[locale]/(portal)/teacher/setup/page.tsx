@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/server/auth";
 import type { Role } from "@/generated/prisma/client";
 import { db } from "@/server/db";
+import { loadAvailableStaffNames } from "@/server/staffRoster";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Clock, AlertCircle } from "lucide-react";
@@ -46,19 +47,7 @@ export default async function TeacherSetupPage({
     );
   }
 
-  const slots = await db.timetableSlot.findMany({
-    where: {
-      staffName: { not: null },
-      OR: [
-        { staffId: null },
-        { staff: { userId: null } },
-      ],
-    },
-    select: { staffName: true },
-    distinct: ["staffName"],
-    orderBy: { staffName: "asc" },
-  });
-  const staffNames = slots.map((s) => s.staffName!).filter(Boolean);
+  const staffNames = await loadAvailableStaffNames();
 
   return (
     <div className="max-w-xl mx-auto mt-16 space-y-6">

@@ -72,14 +72,16 @@ export async function importGroupAssignments(
     return { success: false, assigned: 0, skipped: [], errors: ["Could not find ΤΜΗΜΑ column"] };
   }
 
-  // Build staffName → staffProfileId lookup from timetable slots
-  const slots = await db.timetableSlot.findMany({
-    where: { staffName: { not: null }, staffId: { not: null } },
-    select: { staffName: true, staffId: true },
-    distinct: ["staffName"],
+  // Build staffName → staffProfileId lookup from the staff roster the timetable
+  // import writes. Resolving through claimed timetable slots instead would only
+  // ever find staff who both teach AND have already signed up — which the ΣΕΑ
+  // column can never satisfy, since a counselor has no lessons.
+  const profiles = await db.staffProfile.findMany({
+    where: { scheduleName: { not: null } },
+    select: { id: true, scheduleName: true },
   });
   const nameToId = new Map<string, string>(
-    slots.map((s) => [normalize(s.staffName!), s.staffId!]),
+    profiles.map((p) => [normalize(p.scheduleName!), p.id]),
   );
 
   // Fetch all groups for name → id lookup

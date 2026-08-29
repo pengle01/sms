@@ -6,6 +6,7 @@ import { db } from "@/server/db";
 import { Prisma } from "@/generated/prisma/client";
 import { slotLinkAssignments } from "@/lib/timetableLink";
 import { parseCourseCell } from "@/lib/timetableParse";
+import { splitTeacherBlocks, newStaffProfileNames } from "@/lib/timetableImport";
 import * as XLSX from "xlsx";
 
 export interface ScheduleImportResult {
@@ -13,10 +14,20 @@ export interface ScheduleImportResult {
   slotsCreated: number;
   slotsUpdated: number;
   slotsLinked: number;
+  staffProfilesCreated: number;
   coursesCreated: number;
   groupsCreated: number;
   errors: string[];
 }
+
+const EMPTY_RESULT = {
+  slotsCreated: 0,
+  slotsUpdated: 0,
+  slotsLinked: 0,
+  staffProfilesCreated: 0,
+  coursesCreated: 0,
+  groupsCreated: 0,
+} as const;
 
 // Column layout: cols 3-42 are the 5×8 timetable grid.
 // day  = floor((col - 3) / 8) + 1   → 1..5
@@ -48,12 +59,12 @@ export async function importSchedule(
 ): Promise<ScheduleImportResult> {
   const auth = await getSuperAdminAuth();
   if (!auth) {
-    return { success: false, slotsCreated: 0, slotsUpdated: 0, slotsLinked: 0, coursesCreated: 0, groupsCreated: 0, errors: ["Unauthorized"] };
+    return { success: false, ...EMPTY_RESULT, errors: ["Unauthorized"] };
   }
 
   const file = formData.get("file") as File | null;
   if (!file || file.size === 0) {
-    return { success: false, slotsCreated: 0, slotsUpdated: 0, slotsLinked: 0, coursesCreated: 0, groupsCreated: 0, errors: ["No file provided"] };
+    return { success: false, ...EMPTY_RESULT, errors: ["No file provided"] };
   }
 
   const buffer   = await file.arrayBuffer();
@@ -100,15 +111,18 @@ export async function importSchedule(
     return created.id;
   }
 
-  // Process rows in pairs: teacher row (name in col 0) + detail row (empty col 0).
-  let i = 2; // skip two header rows
-  while (i < rows.length) {
-    const teacherRow = rows[i]!;
-    const detailRow  = rows[i + 1] ?? [];
-    i += 2;
+  // Teacher row (name in col 0) + detail row, in pairs. splitTeacherBlocks owns
+  // the stride and reports rows where the two-row pairing has slipped.
+  const { blocks, desyncRows } = splitTeacherBlocks(rows);
+  for (const rowIndex of desyncRows) {
+    errors.push(
+      `Row ${rowIndex + 1}: expected a room/course row but found a teacher name — ` +
+      `the file's two-row blocks are out of step from here on, so lessons below ` +
+      `may be attributed to the wrong teacher.`,
+    );
+  }
 
-    const staffName = String(teacherRow[0] ?? "").trim();
-    if (!staffName) continue; // blank / summary row
+  for (const { teacherRow, detailRow, staffName } of blocks) {
     importedStaffNames.add(staffName);
 
     for (let col = SLOT_START; col <= SLOT_END; col++) {
@@ -165,6 +179,30 @@ export async function importSchedule(
     }
   }
 
+  // The Καθηγητής column is the school's staff roster, not just a label on a
+  // lesson. Someone with no teaching hours — a counselor — produces no slot, and
+  // a roster derived from slots loses them: they cannot claim their name at
+  // sign-up and cannot be named in the homegroup assignment sheet. Give every
+  // imported name a profile, whether or not it carried lessons.
+  //
+  // No `staffId` is stamped on their slots here: that stays the job of approval
+  // and of the re-link below, both of which deliberately require a live login.
+  const knownStaff = await db.staffProfile.findMany({
+    where: { scheduleName: { not: null } },
+    select: { scheduleName: true },
+  });
+  const rosterAdditions = newStaffProfileNames(
+    importedStaffNames,
+    knownStaff.map((p) => p.scheduleName),
+  );
+  let staffProfilesCreated = 0;
+  if (rosterAdditions.length > 0) {
+    const created = await db.staffProfile.createMany({
+      data: rosterAdditions.map((scheduleName) => ({ scheduleName })),
+    });
+    staffProfilesCreated = created.count;
+  }
+
   // Re-link freshly imported slots to teachers who were already approved.
   // Registration-approval links slots by staffName, but a lesson ADDED to an
   // existing teacher arrives with staffId=null and would otherwise stay invisible
@@ -209,5 +247,5 @@ export async function importSchedule(
   // import.
   revalidatePath("/", "layout");
 
-  return { success: true, slotsCreated, slotsUpdated, slotsLinked, coursesCreated, groupsCreated, errors };
+  return { success: true, slotsCreated, slotsUpdated, slotsLinked, staffProfilesCreated, coursesCreated, groupsCreated, errors };
 }

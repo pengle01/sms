@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { db } from "@/server/db";
+import { isStaffNameAvailable } from "@/server/staffRoster";
 import { allowRegistration } from "@/server/rateLimit";
 import { clientIp } from "@/server/audit";
 import { logger } from "@/server/logger";
@@ -50,11 +51,12 @@ export async function registerAction(formData: FormData) {
   const claimsTimetableName = SELF_REGISTER_EDUCATOR_ROLES.includes(role);
   if (claimsTimetableName) {
     if (!staffName) redirect(`${base}?error=errorStaffNameRequired`);
-    // Verify the name exists in the timetable and hasn't been claimed
-    const slot = await db.timetableSlot.findFirst({
-      where: { staffName, staffId: null },
-    });
-    if (!slot) redirect(`${base}?error=errorStaffNameNotFound`);
+    // Same list the picker was built from, so a name can never be offered here
+    // and refused there. The claim check below stays separate so "already taken"
+    // reads differently from "no such name".
+    if (!(await isStaffNameAvailable(staffName))) {
+      redirect(`${base}?error=errorStaffNameNotFound`);
+    }
     const existing = await db.teacherClaim.findFirst({
       where: { staffName, status: { not: "REJECTED" } },
     });

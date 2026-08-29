@@ -54,45 +54,62 @@ export default async function StaffProfilesPage({
   const linked = staffProfiles.filter((sp) => sp.userId !== null);
   const unlinked = staffProfiles.filter((sp) => sp.userId === null);
 
+  // Two very different things share "unlinked". A profile with a schedule name
+  // is a roster entry the timetable import created for someone who has not
+  // signed up yet — expected, and there are ~130 of them. A profile with no
+  // schedule name at all is orphaned and genuinely wants attention. Only the
+  // second is a warning; colouring both amber would make the alarm permanent.
+  const orphaned = unlinked.filter((sp) => !sp.scheduleName);
+  const awaitingSignup = unlinked.filter((sp) => sp.scheduleName);
+  const unlinkedOrdered = [...orphaned, ...awaitingSignup];
+  const tone = orphaned.length > 0
+    ? { card: "border-amber-200 bg-amber-50/40", title: "text-amber-800", headRow: "border-amber-100",
+        head: "text-amber-600", divide: "divide-amber-50", row: "hover:bg-amber-50/60" }
+    : { card: "border-slate-200 bg-slate-50/40", title: "text-slate-700", headRow: "border-slate-100",
+        head: "text-slate-500", divide: "divide-slate-50", row: "hover:bg-slate-50/60" };
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>
         <p className="text-slate-500 text-sm mt-1">
           {t("summary", { profiles: staffProfiles.length, linked: linked.length })}
-          {unlinked.length > 0 && (
-            <span className="text-amber-600 font-medium"> {t("unlinkedSummary", { count: unlinked.length })}</span>
+          {orphaned.length > 0 && (
+            <span className="text-amber-600 font-medium"> {t("unlinkedSummary", { count: orphaned.length })}</span>
+          )}
+          {awaitingSignup.length > 0 && (
+            <span className="text-slate-400"> {t("awaitingSignupSummary", { count: awaitingSignup.length })}</span>
           )}
         </p>
       </div>
 
-      {/* Unlinked profiles — prominent warning */}
-      {unlinked.length > 0 && (
-        <Card className="border-amber-200 bg-amber-50/40">
+      {/* Profiles with no user: orphans first, then the roster awaiting sign-up */}
+      {unlinkedOrdered.length > 0 && (
+        <Card className={tone.card}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2 text-amber-800">
-              <UserX className="w-4 h-4" />
-              {t("unlinkedCardTitle")}
+            <CardTitle className={`text-sm flex items-center gap-2 ${tone.title}`}>
+              {orphaned.length > 0 ? <UserX className="w-4 h-4" /> : <Users className="w-4 h-4" />}
+              {orphaned.length > 0 ? t("unlinkedCardTitle") : t("awaitingSignupCardTitle")}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-amber-100">
-                  <th className="text-left px-5 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">{t("thScheduleName")}</th>
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">{t("thSlots")}</th>
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">{t("thHomegroups")}</th>
-                  <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">{t("thLinkToUser")}</th>
+                <tr className={`border-b ${tone.headRow}`}>
+                  <th className={`text-left px-5 py-2.5 text-xs font-semibold ${tone.head} uppercase tracking-wide`}>{t("thScheduleName")}</th>
+                  <th className={`text-left px-4 py-2.5 text-xs font-semibold ${tone.head} uppercase tracking-wide`}>{t("thSlots")}</th>
+                  <th className={`text-left px-4 py-2.5 text-xs font-semibold ${tone.head} uppercase tracking-wide`}>{t("thHomegroups")}</th>
+                  <th className={`text-left px-4 py-2.5 text-xs font-semibold ${tone.head} uppercase tracking-wide`}>{t("thLinkToUser")}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-amber-50">
-                {unlinked.map((sp) => {
+              <tbody className={`divide-y ${tone.divide}`}>
+                {unlinkedOrdered.map((sp) => {
                   const homerooms = [
                     ...sp.homeroomGroups.map((g) => g.name),
                     ...sp.homeroomHeadGroups.map((g) => `${g.name} (B')`),
                   ];
                   return (
-                    <tr key={sp.id} className="hover:bg-amber-50/60">
+                    <tr key={sp.id} className={tone.row}>
                       <td className="px-5 py-3 font-medium text-slate-800">{sp.scheduleName ?? sp.id}</td>
                       <td className="px-4 py-3 text-slate-500">{sp._count.timetableSlots}</td>
                       <td className="px-4 py-3">

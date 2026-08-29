@@ -20,7 +20,10 @@ export type StaffProfilePlan =
  *    deletion → "adopt" it. Creating a second profile with the same name
  *    would split the person's history and make the name ambiguous, which
  *    the timetable re-link then refuses to touch.
- * 3. Otherwise → "create" a fresh profile.
+ * 3. Otherwise → "create" a fresh profile. Rare since the timetable import
+ *    started writing a profile for every name in the Καθηγητής column; it
+ *    still covers a name imported before that, or one dropped from a later
+ *    workbook. Not dead code.
  */
 export function staffProfilePlan(
   ownProfile: PlanProfile | null,

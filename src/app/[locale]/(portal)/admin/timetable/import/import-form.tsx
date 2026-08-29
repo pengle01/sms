@@ -9,6 +9,7 @@ const initial: ScheduleImportResult = {
   slotsCreated: 0,
   slotsUpdated: 0,
   slotsLinked: 0,
+  staffProfilesCreated: 0,
   coursesCreated: 0,
   groupsCreated: 0,
   errors: [],
@@ -66,10 +67,11 @@ export function ScheduleImportForm() {
           {result.success && (
             <div className="rounded-xl border border-green-200 bg-green-50 p-4">
               <p className="text-sm font-semibold text-green-800 mb-3">{t("importComplete")}</p>
-              <dl className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              <dl className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <Stat label={t("statSlotsCreated")}  value={result.slotsCreated} />
                 <Stat label={t("statSlotsUpdated")}  value={result.slotsUpdated} />
                 <Stat label={t("statSlotsLinked")} value={result.slotsLinked} />
+                <Stat label={t("statStaffCreated")} value={result.staffProfilesCreated} />
                 <Stat label={t("statCoursesCreated")}  value={result.coursesCreated} />
                 <Stat label={t("statGroupsCreated")}   value={result.groupsCreated} />
               </dl>

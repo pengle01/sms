@@ -124,6 +124,18 @@ export default async function UsersPage({
     }),
   ]);
 
+  // A profile with no user but WITH a schedule name is a roster entry the
+  // timetable import created for someone who has not signed up yet — expected,
+  // and there are ~130. Only a profile with neither is genuinely orphaned, so
+  // only that count earns the amber treatment; otherwise the alarm is permanent
+  // and stops meaning anything. Orphans sort first in the list.
+  const orphanedCount = unlinkedProfiles.filter((sp) => !sp.scheduleName).length;
+  const unlinkedOrdered = [...unlinkedProfiles].sort(
+    (a, b) =>
+      Number(!!a.scheduleName) - Number(!!b.scheduleName) ||
+      (a.scheduleName ?? "").localeCompare(b.scheduleName ?? "", "el"),
+  );
+
   const tabLabel =
     FILTER_TABS.find((tab) => tab.key === activeTab)?.label ??
     DESIGNATION_TABS.find((tab) => tab.key === activeTab)?.label ??
@@ -137,9 +149,14 @@ export default async function UsersPage({
           {showUnlinked
             ? t("unlinkedProfilesCount", { count: unlinkedProfiles.length })
             : `${users.length} ${tabLabel.toLowerCase()}`}
-          {!showUnlinked && unlinkedProfiles.length > 0 && (
+          {!showUnlinked && orphanedCount > 0 && (
             <Link href="?role=unlinked" className="ml-2 text-amber-600 font-medium hover:underline">
-              · {t("unlinkedProfilesCount", { count: unlinkedProfiles.length })}
+              · {t("unlinkedProfilesCount", { count: orphanedCount })}
+            </Link>
+          )}
+          {!showUnlinked && orphanedCount === 0 && unlinkedProfiles.length > 0 && (
+            <Link href="?role=unlinked" className="ml-2 text-slate-400 hover:underline">
+              · {t("awaitingSignupCount", { count: unlinkedProfiles.length })}
             </Link>
           )}
         </p>
@@ -153,7 +170,7 @@ export default async function UsersPage({
             href={key === "all" ? "?" : `?role=${key}`}
             className={cn(
               "h-9 px-4 rounded-lg text-sm font-medium border transition-colors",
-              key === "unlinked"
+              key === "unlinked" && orphanedCount > 0
                 ? activeTab === "unlinked"
                   ? "bg-amber-500 text-white border-amber-500"
                   : "bg-white text-amber-600 border-amber-200 hover:border-amber-400"
@@ -165,7 +182,9 @@ export default async function UsersPage({
             {label}
             {key === "unlinked" && unlinkedProfiles.length > 0 && (
               <span className={cn("ml-1.5 text-xs font-semibold",
-                activeTab === "unlinked" ? "text-amber-100" : "text-amber-500"
+                orphanedCount === 0
+                  ? activeTab === "unlinked" ? "text-slate-300" : "text-slate-400"
+                  : activeTab === "unlinked" ? "text-amber-100" : "text-amber-500"
               )}>
                 {unlinkedProfiles.length}
               </span>
@@ -216,7 +235,7 @@ export default async function UsersPage({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-amber-50">
-                  {unlinkedProfiles.map((sp) => {
+                  {unlinkedOrdered.map((sp) => {
                     const homerooms = [
                       ...sp.homeroomGroups.map((g) => g.name),
                       ...sp.homeroomHeadGroups.map((g) => `${g.name} (B')`),

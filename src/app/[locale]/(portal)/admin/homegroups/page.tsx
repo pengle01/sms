@@ -76,9 +76,35 @@ export default async function HomegroupsPage({
   const sortByLabel = (a: { name: string }, b: { name: string }) =>
     a.name.localeCompare(b.name, "el");
 
-  const teacherOptions    = teachers.map((t) => ({ id: t.id, name: staffLabel(t) })).sort(sortByLabel);
-  const headteacherOptions = headteachers.map((t) => ({ id: t.id, name: staffLabel(t) })).sort(sortByLabel);
-  const counselorOptions  = counselors.map((t) => ({ id: t.id, name: staffLabel(t) })).sort(sortByLabel);
+  // The three lists above hold profiles with a matching user role. The
+  // assignment spreadsheet can name anyone on the staff roster, including
+  // someone who has not signed up yet, so a group may point at a profile no
+  // list contains — and the <select> would then read as unassigned while the
+  // database says otherwise. Add whoever is actually assigned.
+  const withAssigned = (
+    options: { id: string; name: string }[],
+    assigned: (Parameters<typeof staffLabel>[0] | null)[],
+  ) => {
+    const known = new Set(options.map((o) => o.id));
+    const extra = new Map<string, { id: string; name: string }>();
+    for (const s of assigned) {
+      if (s && !known.has(s.id)) extra.set(s.id, { id: s.id, name: staffLabel(s) });
+    }
+    return extra.size === 0 ? options : [...options, ...extra.values()].sort(sortByLabel);
+  };
+
+  const teacherOptions    = withAssigned(
+    teachers.map((t) => ({ id: t.id, name: staffLabel(t) })).sort(sortByLabel),
+    groups.map((g) => g.homeroomTeacher),
+  );
+  const headteacherOptions = withAssigned(
+    headteachers.map((t) => ({ id: t.id, name: staffLabel(t) })).sort(sortByLabel),
+    groups.map((g) => g.homeroomHeadteacher),
+  );
+  const counselorOptions  = withAssigned(
+    counselors.map((t) => ({ id: t.id, name: staffLabel(t) })).sort(sortByLabel),
+    groups.map((g) => g.counselor),
+  );
 
   const byGrade = groups.reduce<Record<number, typeof groups>>((acc, g) => {
     (acc[g.grade] ??= []).push(g);

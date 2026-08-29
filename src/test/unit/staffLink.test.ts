@@ -34,6 +34,14 @@ describe("staffProfilePlan (approval: attach user to a StaffProfile)", () => {
     });
   });
 
+  it("adopts the roster profile the timetable import created — the normal path", () => {
+    // Since the import writes a profile for every name in the Καθηγητής column,
+    // an approving admin almost always finds one waiting. "create" is now the
+    // fallback for a name that predates the roster, not the usual case.
+    expect(staffProfilePlan(null, { id: "p_roster", scheduleName: "ΣΕΑ-ΜΙΧΑΗΛ Χ." }, "ΣΕΑ-ΜΙΧΑΗΛ Χ."))
+      .toEqual({ kind: "adopt", id: "p_roster" });
+  });
+
   it("creates a fresh profile when the user has none and the name is unclaimed", () => {
     expect(staffProfilePlan(null, null, NAME)).toEqual({ kind: "create" });
   });

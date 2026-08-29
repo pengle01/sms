@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/server/auth";
 import { getPortalForRole } from "@/lib/rbac";
-import { db } from "@/server/db";
+import { loadAvailableStaffNames } from "@/server/staffRoster";
 import type { Role } from "@/generated/prisma/client";
 import { RegisterForm } from "./RegisterForm";
 
@@ -22,23 +22,7 @@ export default async function RegisterPage({
     redirect(`/${locale}/${portal}`);
   }
 
-  // Fetch distinct unclaimed staff names for the teacher picker
-  const claimedNames = await db.teacherClaim
-    .findMany({ where: { status: { not: "REJECTED" } }, select: { staffName: true } })
-    .then((rows) => new Set(rows.map((r) => r.staffName)));
-
-  const staffNames = await db.timetableSlot
-    .findMany({
-      where: { staffName: { not: null }, staffId: null },
-      select: { staffName: true },
-      distinct: ["staffName"],
-      orderBy: { staffName: "asc" },
-    })
-    .then((rows) =>
-      rows
-        .map((r) => r.staffName!)
-        .filter((n) => !claimedNames.has(n))
-    );
+  const staffNames = await loadAvailableStaffNames();
 
   return (
     <div

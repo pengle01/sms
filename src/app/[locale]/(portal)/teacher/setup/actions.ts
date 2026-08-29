@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/server/auth";
 import { db } from "@/server/db";
+import { isStaffNameAvailable } from "@/server/staffRoster";
 
 export async function submitTeacherClaimAction(formData: FormData) {
   const session = await getServerSession(authOptions);
@@ -14,8 +15,9 @@ export async function submitTeacherClaimAction(formData: FormData) {
 
   if (!staffName) redirect(`/${locale}/teacher/setup?error=missing`);
 
-  const slot = await db.timetableSlot.findFirst({ where: { staffName, staffId: null } });
-  if (!slot) redirect(`/${locale}/teacher/setup?error=notfound`);
+  if (!(await isStaffNameAvailable(staffName))) {
+    redirect(`/${locale}/teacher/setup?error=notfound`);
+  }
 
   await db.teacherClaim.upsert({
     where: { userId: session.user.id },
