@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   specialtyPrefix,
   isPoolEligible,
+  isManagementName,
   lastPeriodFor,
   requestActiveOn,
   unavailableStaffIds,
@@ -73,11 +74,50 @@ describe("specialtyPrefix", () => {
   });
 });
 
+describe("isManagementName", () => {
+  it("recognises the headmaster, deputy A and deputy B markers", () => {
+    expect(isManagementName("Ξ-ΑΝΔΡΕΟΥ Ι. Δ")).toBe(true);      // Διευθυντής
+    expect(isManagementName("Β-ΚΥΡΙΑΚΟΥ Π. ΒΔΑ")).toBe(true);   // Βοηθός Διευθυντής Α
+    expect(isManagementName("ΗΥ-ΜΑΣΙΑ Μ. ΒΔ")).toBe(true);      // Βοηθός Διευθυντής
+  });
+  it("does not mistake a Δ initial for the headmaster", () => {
+    // Real names: the marker never carries a dot, an initial always does.
+    expect(isManagementName("Ε-ΛΑΜΠΡΟΥ Δ.")).toBe(false);
+    expect(isManagementName("Α-ΑΡΙΣΤΟΔΗΜΟΥ Δ.")).toBe(false);
+    expect(isManagementName("Α-ΑΡΙΣΤΟΔΗΜΟΥ Δ..")).toBe(false); // typo in the workbook
+  });
+  it("ignores surrounding and repeated whitespace", () => {
+    expect(isManagementName("  ΗΥ-ΜΑΣΙΑ Μ.   ΒΔ  ")).toBe(true);
+  });
+  it("is false for a plain teacher, an empty name and null", () => {
+    expect(isManagementName("ΗΥ-ΠΑΟΣ Μ.")).toBe(false);
+    expect(isManagementName("")).toBe(false);
+    expect(isManagementName(null)).toBe(false);
+  });
+});
+
 describe("isPoolEligible", () => {
   it("excludes deputies and the Ξ-/Σ- specialties", () => {
     expect(isPoolEligible("ΗΥ-ΜΑΣΙΑ Μ. ΒΔ", null)).toBe(false);
     expect(isPoolEligible("Ξ-ΞΕΝΟΥ Α.", null)).toBe(false);
     expect(isPoolEligible("Σ-ΣΤΗΡΙΞΗ Β.", null)).toBe(false);
+  });
+  it("excludes deputy A and the headmaster", () => {
+    // ΒΔΑ was slipping through endsWith("ΒΔ"); the headmaster was excluded only
+    // incidentally, by the Ξ- specialty blacklist.
+    expect(isPoolEligible("Β-ΚΥΡΙΑΚΟΥ Π. ΒΔΑ", null)).toBe(false);
+    expect(isPoolEligible("ΗΛ-ΕΛΛΗΝΑΣ Α. ΒΔΑ", null)).toBe(false);
+    expect(isPoolEligible("Ξ-ΑΝΔΡΕΟΥ Ι. Δ", null)).toBe(false);
+    expect(isPoolEligible("Μ-ΤΕΣΤ Ι. Δ", null)).toBe(false); // not just via the Ξ- prefix
+  });
+  it("keeps a teacher whose initial happens to be Δ", () => {
+    expect(isPoolEligible("Ε-ΛΑΜΠΡΟΥ Δ.", null)).toBe(true);
+  });
+  it("excludes the counselor, who has no lessons to be free from", () => {
+    expect(isPoolEligible("ΣΕΑ-ΜΙΧΑΗΛ Χ.", null)).toBe(false);
+  });
+  it("does not exclude other prefixes that merely start with Σ", () => {
+    expect(isPoolEligible("ΣΤ-ΤΕΣΤ Α.", null)).toBe(true);
   });
   it("excludes quota 0, allows null (unlimited) and positive quotas", () => {
     expect(isPoolEligible("ΗΥ-ΤΕΣΤ Α.", 0)).toBe(false);

@@ -90,9 +90,30 @@ export function specialtyPrefix(scheduleName: string | null | undefined): string
 }
 
 /**
+ * Management markers the timetable appends to a name: Δ headmaster,
+ * ΒΔΑ deputy A, ΒΔ deputy B.
+ */
+const MANAGEMENT_SUFFIXES = new Set(["Δ", "ΒΔΑ", "ΒΔ"]);
+
+/**
+ * Does this schedule name end in a management role marker?
+ *
+ * The marker is always the last whitespace-separated token, and it is matched
+ * whole rather than by suffix: an initial always carries a dot, so "Ε-ΛΑΜΠΡΟΥ Δ."
+ * is a teacher whose first name begins with Δ while "Ξ-ΑΝΔΡΕΟΥ Ι. Δ" is the
+ * headmaster. Suffix matching also missed ΒΔΑ entirely — "ΒΔΑ".endsWith("ΒΔ")
+ * is false — which put both deputy As in the substitute pool.
+ */
+export function isManagementName(scheduleName: string | null | undefined): boolean {
+  const parts = (scheduleName ?? "").trim().split(/\s+/);
+  return MANAGEMENT_SUFFIXES.has(parts[parts.length - 1] ?? "");
+}
+
+/**
  * May this teacher be picked as a substitute at all?
- * Deputies (ΒΔ suffix) and the Ξ-/Σ- specialties never substitute; quota 0
- * removes a teacher from the pool explicitly.
+ * Management (Δ / ΒΔΑ / ΒΔ) and the Ξ-/Σ-/ΣΕΑ- specialties never substitute;
+ * quota 0 removes a teacher from the pool explicitly. ΣΕΑ is the counselor, who
+ * has no lessons of their own and so would otherwise sit free in every period.
  */
 export function isPoolEligible(
   scheduleName: string | null | undefined,
@@ -100,9 +121,9 @@ export function isPoolEligible(
 ): boolean {
   const name = (scheduleName ?? "").trim();
   if (!name) return false;
-  if (name.endsWith("ΒΔ")) return false;
+  if (isManagementName(name)) return false;
   const prefix = specialtyPrefix(name);
-  if (prefix === "Ξ" || prefix === "Σ") return false;
+  if (prefix === "Ξ" || prefix === "Σ" || prefix === "ΣΕΑ") return false;
   if (maxSubstitutions === 0) return false;
   return true;
 }
