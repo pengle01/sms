@@ -34,13 +34,15 @@ export default async function AdminDashboardPage({
 
   const staff = await db.staffProfile.findUnique({ where: { userId: session.user.id } });
 
-  const [absentsToday, pendingReferrals, unreadNotices, totalStudents, allSlots, markedRaw] =
+  const [absentsToday, pendingReferrals, unreadNotifications, totalStudents, allSlots, markedRaw] =
     await Promise.all([
       db.attendance.count({
         where: { date: today, OR: [{ status: "ABSENT" }, { isAutoAbsent: true }] },
       }),
       db.referral.count({ where: { isDraft: false, students: { some: { status: "PENDING" } } } }),
-      db.notice.count({ where: { urgent: true } }),
+      // This reader's own unread notifications. It used to count urgent Notices —
+      // a different model, never marked read, so the number could only ever grow.
+      db.notification.count({ where: { userId: session.user.id, read: false } }),
       db.studentProfile.count(),
       staff && !isWeekend
         ? db.timetableSlot.findMany({
@@ -119,7 +121,7 @@ export default async function AdminDashboardPage({
   const stats = [
     { title: t("absentsToday"),     value: absentsToday,    icon: ClipboardList, color: "text-red-600",     bg: "bg-red-50"     },
     { title: t("pendingReferrals"), value: pendingReferrals, icon: AlertTriangle, color: "text-amber-600",   bg: "bg-amber-50"   },
-    { title: t("unreadNotices"),    value: unreadNotices,   icon: Bell,          color: "text-emerald-600", bg: "bg-emerald-50" },
+    { title: t("unreadNotifications"), value: unreadNotifications, icon: Bell,   color: "text-emerald-600", bg: "bg-emerald-50" },
     { title: t("totalStudents"),    value: totalStudents,   icon: Users,         color: "text-green-600",   bg: "bg-green-50"   },
   ];
 

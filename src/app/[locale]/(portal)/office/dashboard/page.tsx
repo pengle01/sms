@@ -21,16 +21,19 @@ export default async function OfficeDashboardPage({
   const now = getNow();
   const dateLabel = fmtDisplayDate(now);
 
-  const [absentsToday, unreadNotices] = await Promise.all([
+  const [absentsToday, unreadNotifications] = await Promise.all([
     db.attendance.count({
       where: { date: today, OR: [{ status: "ABSENT" }, { isAutoAbsent: true }] },
     }),
-    db.notice.count({ where: { urgent: true } }),
+    // This reader's own unread notifications — the same thing the card links to.
+    // It used to count urgent Notices, which are a different model, are never
+    // marked read, and are not shown on /office/noticeboard at all.
+    db.notification.count({ where: { userId: session.user.id, read: false } }),
   ]);
 
   const stats = [
     { title: "Absences Today",       value: absentsToday,   icon: UserX,         bg: "bg-red-50",     color: "text-red-600",     href: `/${locale}/office/attendance` },
-    { title: "Unread Notifications", value: unreadNotices,  icon: Bell,          bg: "bg-amber-50",   color: "text-amber-600",   href: `/${locale}/office/noticeboard` },
+    { title: "Unread Notifications", value: unreadNotifications, icon: Bell,       bg: "bg-amber-50",   color: "text-amber-600",   href: `/${locale}/office/noticeboard` },
   ];
 
   return (
