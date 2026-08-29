@@ -23,7 +23,7 @@ interface Props {
   onChange: (ids: string[]) => void;
 }
 
-const GRADE_LABEL: Record<number, string> = { 1: "Α΄ Λυκείου", 2: "Β΄ Λυκείου", 3: "Γ΄ Λυκείου" };
+const GRADE_LABEL: Record<number, string> = { 1: "Α΄ Έτος", 2: "Β΄ Έτος", 3: "Γ΄ Έτος" };
 
 export function StudentPicker({ groups, selectedIds, onChange }: Props) {
   const [activeGrade, setActiveGrade] = useState<number | null>(null);
