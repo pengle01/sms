@@ -15,16 +15,6 @@ const ACTION_LABEL: Record<string, string> = {
   OTHER: "Άλλο",
 };
 
-const REC_LABEL: Record<string, string> = {
-  NO_RECOMMENDATION: "Καμία εισήγηση",
-  EXPULSION: "Αποβολή",
-  STRICT_MEASURE: "Αυστηρό παιδαγωγικό μέτρο",
-  OBSERVATION: "Παρατήρηση",
-  STRICT_OBSERVATION: "Αυστηρή παρατήρηση",
-  NOTIFY_PARENTS: "Ενημέρωση γονέων",
-  OTHER_RECOMMENDATION: "Άλλη εισήγηση",
-};
-
 function fmt(date: Date | null | undefined): string {
   if (!date) return "—";
   return date.toLocaleDateString("el-GR", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -89,6 +79,18 @@ export default async function PrintResolutionPage({
   }
   if (!allowed) redirect(`/${locale}/teacher/referrals`);
 
+  // The measure is imposed by the headteacher who resolved the referral, so the
+  // document is signed by them — not by the teacher who filed it (already named
+  // under Στοιχεία Καταγγελίας). One referral can span groups whose headteachers
+  // decide separately, so collect every distinct decider rather than assuming one.
+  const deciders = [
+    ...new Set(
+      referral.students
+        .map((rs) => rs.resolution?.resolvedBy?.name)
+        .filter((n): n is string => Boolean(n)),
+    ),
+  ];
+
   const today = new Date().toLocaleDateString("el-GR", {
     day: "2-digit", month: "long", year: "numeric",
   });
@@ -116,7 +118,7 @@ export default async function PrintResolutionPage({
           {/* Header */}
           <div className="text-center mb-8 pb-6 border-b-2 border-slate-800">
             <p className="text-xs uppercase tracking-widest text-slate-500 mb-1">
-              Υπουργείο Παιδείας, Αθλητισμού και Νεολαίας
+              ΤΕΣΕΚ Μακάριος ΙΙΙ
             </p>
             <h1 className="text-xl font-bold text-slate-900 mt-2">
               ΑΠOΦΑΣΗ ΠΕΙΘΑΡΧΙΚΟY ΜEΤΡΟΥ
@@ -146,10 +148,6 @@ export default async function PrintResolutionPage({
                     <td className="py-1.5 text-slate-900">{referral.location}</td>
                   </tr>
                 )}
-                <tr className="border-b border-slate-100">
-                  <td className="py-1.5 font-medium text-slate-600 align-top">Εισήγηση εκπαιδ.</td>
-                  <td className="py-1.5 text-slate-900">{REC_LABEL[referral.recommendation] ?? referral.recommendation}</td>
-                </tr>
               </tbody>
             </table>
           </section>
@@ -245,7 +243,14 @@ export default async function PrintResolutionPage({
           {/* Signatures */}
           <section className="mt-12 grid grid-cols-3 gap-8 text-center text-xs text-slate-600">
             <div>
-              <div className="border-t border-slate-400 pt-2 mt-8">Ο/Η Καταγγέλλων</div>
+              <div className="border-t border-slate-400 pt-2 mt-8">
+                Ο/Η Βοηθός Διευθυντής/ρια
+                {deciders.length > 0 && (
+                  <div className="mt-0.5 font-medium text-slate-800">
+                    {deciders.join(" / ")}
+                  </div>
+                )}
+              </div>
             </div>
             <div>
               <div className="border-t border-slate-400 pt-2 mt-8">Ο/Η Διευθυντής/ρια</div>
