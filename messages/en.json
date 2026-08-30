@@ -1078,7 +1078,10 @@
     "noRecord": "No special-education record.",
     "frenchExempt": "Exempt from French",
     "otherExemptions": "Other exemptions",
-    "periodN": "P{n}"
+    "periodN": "P{n}",
+    "enableEditing": "Edit",
+    "doneEditing": "Done editing",
+    "editingBanner": "This record is unlocked for editing. Changes are saved when you press Save."
   },
   "studentFile": {
     "dow1": "Monday",
