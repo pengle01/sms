@@ -108,7 +108,8 @@
     "permits": "Exit Permits",
     "substitutions": "Substitutions",
     "reports": "Reports",
-    "notices": "Noticeboard"
+    "notices": "Noticeboard",
+    "smsLog": "Sent SMS"
   },
   "appearance": {
     "title": "Appearance",
@@ -1736,5 +1737,40 @@
     "attachErr_tooMany": "At most 5 files are allowed.",
     "attachErr_type": "That file type is not allowed.",
     "attachErr_failed": "The upload failed."
+  },
+  "smsLog": {
+    "title": "Sent SMS",
+    "messageCount": "{count, plural, one {# message} other {# messages}}",
+    "filtered": "(filtered)",
+    "failedCount": "{count, plural, one {# failed} other {# failed}}",
+    "from": "From",
+    "to": "To",
+    "all": "All",
+    "filterKind": "Kind",
+    "filterStatus": "Status",
+    "filterSearch": "Search",
+    "searchPlaceholder": "Student, registry no. or phone",
+    "apply": "Apply",
+    "clear": "Clear",
+    "colWhen": "Sent",
+    "colStudent": "Student",
+    "colPhone": "Number",
+    "colMessage": "Message",
+    "colKind": "Kind",
+    "colSender": "Sender",
+    "colStatus": "Status",
+    "kind_BROADCAST": "Broadcast",
+    "kind_ABSENCE": "1st-period absence",
+    "kind_REFERRAL": "Referral",
+    "status_SENT": "Sent",
+    "status_FAILED": "Failed",
+    "sentAutomatically": "Automatic · {name}",
+    "senderUnknown": "—",
+    "empty": "No SMS has been sent yet.",
+    "noMatches": "No message matches these filters.",
+    "pageOf": "Page {page} of {total}",
+    "previous": "Previous",
+    "next": "Next",
+    "kindUnknown": "unknown"
   }
 }

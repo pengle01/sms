@@ -143,6 +143,8 @@ export const smsRouter = createTRPCRouter({
         message: string;
         status: string;
         gatewayResponse: string | undefined;
+        sentById: string;
+        kind: "BROADCAST";
       }[] = [];
       let sent = 0;
       for (let i = 0; i < targets.length; i += BATCH) {
@@ -159,6 +161,8 @@ export const smsRouter = createTRPCRouter({
             message: input.message,
             status: r.success ? "SENT" : "FAILED",
             gatewayResponse: r.gatewayResponse ?? r.error,
+            sentById: ctx.session.user.id,
+            kind: "BROADCAST",
           });
         }
       }

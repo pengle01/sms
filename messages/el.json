@@ -108,7 +108,8 @@
     "permits": "Άδειες Εξόδου",
     "substitutions": "Αναπληρώσεις",
     "reports": "Αναφορές",
-    "notices": "Πίνακας Ανακοινώσεων"
+    "notices": "Πίνακας Ανακοινώσεων",
+    "smsLog": "Απεσταλμένα SMS"
   },
   "appearance": {
     "title": "Εμφάνιση",
@@ -1736,5 +1737,40 @@
     "attachErr_tooMany": "Επιτρέπονται έως 5 αρχεία.",
     "attachErr_type": "Μη επιτρεπτός τύπος αρχείου.",
     "attachErr_failed": "Η μεταφόρτωση του αρχείου απέτυχε."
+  },
+  "smsLog": {
+    "title": "Απεσταλμένα SMS",
+    "messageCount": "{count, plural, one {# μήνυμα} other {# μηνύματα}}",
+    "filtered": "(φιλτραρισμένα)",
+    "failedCount": "{count, plural, one {# απέτυχε} other {# απέτυχαν}}",
+    "from": "Από",
+    "to": "Έως",
+    "all": "Όλα",
+    "filterKind": "Είδος",
+    "filterStatus": "Κατάσταση",
+    "filterSearch": "Αναζήτηση",
+    "searchPlaceholder": "Μαθητής, αρ. μητρώου ή τηλέφωνο",
+    "apply": "Εφαρμογή",
+    "clear": "Καθαρισμός",
+    "colWhen": "Ημερομηνία",
+    "colStudent": "Μαθητής/τρια",
+    "colPhone": "Αριθμός",
+    "colMessage": "Μήνυμα",
+    "colKind": "Είδος",
+    "colSender": "Αποστολέας",
+    "colStatus": "Κατάσταση",
+    "kind_BROADCAST": "Μαζικό",
+    "kind_ABSENCE": "Απουσία 1ης",
+    "kind_REFERRAL": "Παραπομπή",
+    "status_SENT": "Απεστάλη",
+    "status_FAILED": "Απέτυχε",
+    "sentAutomatically": "Αυτόματα · {name}",
+    "senderUnknown": "—",
+    "empty": "Δεν έχει σταλεί κανένα SMS ακόμη.",
+    "noMatches": "Κανένα μήνυμα με αυτά τα φίλτρα.",
+    "pageOf": "Σελίδα {page} από {total}",
+    "previous": "Προηγούμενη",
+    "next": "Επόμενη",
+    "kindUnknown": "άγνωστο"
   }
 }

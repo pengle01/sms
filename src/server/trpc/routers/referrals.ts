@@ -608,6 +608,8 @@ export const referralsRouter = createTRPCRouter({
               message: input.message,
               status: result.success ? "SENT" : "FAILED",
               gatewayResponse: result.gatewayResponse ?? result.error,
+              sentById: ctx.session.user.id,
+              kind: "REFERRAL",
             },
           });
           results.push({

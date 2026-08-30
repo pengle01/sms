@@ -63,6 +63,13 @@ enum ResolutionAction {
   OTHER
 }
 
+// What caused an SMS to be sent — see SmsLog.kind.
+enum SmsKind {
+  BROADCAST // the management SMS console
+  ABSENCE   // automatic first-period absence notice
+  REFERRAL  // a referral resolution sent to the parents
+}
+
 enum ClaimStatus {
   PENDING
   APPROVED
@@ -191,6 +198,7 @@ model User {
   startedConversations       Conversation[]              @relation("ConversationStarter")
   authoredMessages           Message[]                   @relation("MessageAuthor")
   announcements              Announcement[]
+  sentSmsLogs                SmsLog[]                    @relation("SmsSender")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1054,7 +1062,24 @@ model SmsLog {
   status          String
   gatewayResponse String?
 
+  // Who is answerable for this message. Nullable because rows written before
+  // the sent-SMS log existed have no sender, and because a send can outlive the
+  // account that triggered it (onDelete: SetNull keeps the log row intact —
+  // deleting a teacher must never erase the record of a text to a parent).
+  sentById String?
+  sentBy   User?   @relation("SmsSender", fields: [sentById], references: [id], onDelete: SetNull)
+  // What produced it. ABSENCE is automatic — it fires when a teacher saves a
+  // first-period register — so without this the sender column would read as if
+  // they had chosen to text the parent. Nullable with NO default, for the same
+  // reason as sentById: a row written before this column existed has no known
+  // kind, and defaulting it to BROADCAST would put a confident wrong answer in
+  // a log whose only job is to be trusted. Every writer sets it explicitly.
+  kind     SmsKind?
+
   sentAt DateTime @default(now())
+
+  @@index([sentAt])
+  @@index([sentById])
 }
 
 // ─── External: Exam Auditing ─────────────────────────────────────────────────
