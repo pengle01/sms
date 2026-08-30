@@ -192,11 +192,6 @@ export default async function PrintSubstitutionPlanPage({
                 </tr>
               ))
             )}
-
-          <section className="mt-10 grid grid-cols-2 gap-10 text-center text-xs text-slate-600">
-            <div><div className="border-t border-slate-400 pt-2 mt-8">Ο/Η Συντονιστής/ρια Αναπληρώσεων</div></div>
-            <div><div className="border-t border-slate-400 pt-2 mt-8">Ο/Η Διευθυντής/ρια</div></div>
-          </section>
         </div>
       </div>
 
