@@ -110,7 +110,8 @@
     "reports": "Αναφορές",
     "notices": "Πίνακας Ανακοινώσεων",
     "smsLog": "Απεσταλμένα SMS",
-    "account": "Ο Λογαριασμός μου"
+    "account": "Ο Λογαριασμός μου",
+    "staffDirectory": "Κατάλογος Προσωπικού"
   },
   "appearance": {
     "title": "Εμφάνιση",
@@ -1806,5 +1807,24 @@
     "errNoPassword": "Ο λογαριασμός αυτός δεν έχει κωδικό πρόσβασης. Απευθυνθείτε στη διαχείριση.",
     "errRateLimited": "Πάρα πολλές προσπάθειες. Δοκιμάστε ξανά αργότερα.",
     "errUnknown": "Κάτι πήγε στραβά. Δοκιμάστε ξανά."
+  },
+  "staffDirectory": {
+    "title": "Κατάλογος Προσωπικού",
+    "summary": "{total} άτομα · {withPhone} με τηλέφωνο",
+    "showingCount": "{shown} από {total}",
+    "filterSpecialty": "Ειδικότητα",
+    "filterPhone": "Στοιχεία",
+    "phonePresent": "Με τηλέφωνο",
+    "phoneMissing": "Χωρίς τηλέφωνο",
+    "searchPlaceholder": "Όνομα ή κωδικός προγράμματος",
+    "clearFilters": "Καθαρισμός",
+    "colName": "Όνομα",
+    "colSpecialty": "Ειδικότητα",
+    "colHomegroup": "Τμήμα",
+    "colPhone": "Τηλέφωνο",
+    "colEmail": "Email",
+    "noPhoneYet": "—",
+    "empty": "Δεν υπάρχει καταχωρημένο προσωπικό.",
+    "noMatches": "Κανένα αποτέλεσμα με αυτά τα φίλτρα."
   }
 }

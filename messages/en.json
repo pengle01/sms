@@ -110,7 +110,8 @@
     "reports": "Reports",
     "notices": "Noticeboard",
     "smsLog": "Sent SMS",
-    "account": "My Account"
+    "account": "My Account",
+    "staffDirectory": "Staff Directory"
   },
   "appearance": {
     "title": "Appearance",
@@ -1806,5 +1807,24 @@
     "errNoPassword": "This account has no password set. Please contact an administrator.",
     "errRateLimited": "Too many attempts. Please try again later.",
     "errUnknown": "Something went wrong. Please try again."
+  },
+  "staffDirectory": {
+    "title": "Staff Directory",
+    "summary": "{total} people · {withPhone} with a phone number",
+    "showingCount": "{shown} of {total}",
+    "filterSpecialty": "Specialty",
+    "filterPhone": "Details",
+    "phonePresent": "Has a number",
+    "phoneMissing": "No number yet",
+    "searchPlaceholder": "Name or schedule code",
+    "clearFilters": "Clear",
+    "colName": "Name",
+    "colSpecialty": "Specialty",
+    "colHomegroup": "Homegroup",
+    "colPhone": "Phone",
+    "colEmail": "Email",
+    "noPhoneYet": "—",
+    "empty": "No staff on file.",
+    "noMatches": "No one matches these filters."
   }
 }

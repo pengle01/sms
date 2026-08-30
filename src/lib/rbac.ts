@@ -76,6 +76,25 @@ export function isStaff(role: Role): boolean {
 }
 
 /**
+ * Who may look up a colleague's phone number in the staff directory:
+ * management, the office and the system admin.
+ *
+ * Narrower than "any member of staff" on purpose. A teacher's number is their
+ * personal one, given to the school so it can reach them — the people whose job
+ * involves reaching them are the headmaster, the deputies and the secretariat.
+ * An ordinary teacher who needs a colleague has the staff-notification inbox and
+ * the timetable; a counselor's work is with students, not staffing. If the
+ * school later decides the whole staffroom should have the list, this is the one
+ * line to change.
+ *
+ * Takes effective roles so an admin-granted SUPER_ADMIN counts, for the same
+ * reason canAnyRoleViewAccessCode does.
+ */
+export function canViewStaffDirectory(roles: Role[]): boolean {
+  return roles.some((r) => isManagement(r) || isOfficeAdmin(r) || isAdminStaff(r));
+}
+
+/**
  * Who may view a student's access code: the system admin, the office admin,
  * and the student's own homeroom teacher or homeroom headteacher.
  * `group` is the student's homeroom (its homeroomTeacherId / homeroomHeadteacherId);
@@ -108,6 +127,23 @@ export function canAnyRoleViewAccessCode(
   group: { homeroomTeacherId: string | null; homeroomHeadteacherId: string | null } | null
 ): boolean {
   return roles.some((role) => canViewAccessCode(role, viewerStaffId, group));
+}
+
+/**
+ * Who may remove a notice: the person who posted it, or the system admin.
+ *
+ * Notices are school-wide and cannot be edited, so deletion is the only way to
+ * withdraw a mistake — but one staff member must not be able to take down
+ * another's. Takes effective roles, so an admin-granted SUPER_ADMIN counts like
+ * a primary one.
+ */
+export function canDeleteNotice(
+  roles: Role[],
+  authorId: string,
+  viewerId: string | null | undefined,
+): boolean {
+  if (!viewerId) return false;
+  return authorId === viewerId || roles.some(isAdminStaff);
 }
 
 // Only the system admin may generate or regenerate access codes;

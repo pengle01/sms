@@ -9,6 +9,7 @@ import {
   canManageClaims,
   canViewCounselorNotes,
   canViewAllReferrals,
+  canViewStaffDirectory,
   getPortalForRole,
   EDUCATOR_ROLES,
   SELF_REGISTER_EDUCATOR_ROLES,
@@ -246,6 +247,39 @@ describe("RBAC utilities", () => {
 
     it("refuses an empty role list", () => {
       expect(canAnyRoleViewAccessCode([], "sp_me", ownGroup)).toBe(false);
+    });
+  });
+
+  describe("canViewStaffDirectory", () => {
+    it("allows the three management roles", () => {
+      for (const role of ["HEADMASTER", "HEADTEACHER_A", "HEADTEACHER_B"] as const) {
+        expect(canViewStaffDirectory([role])).toBe(true);
+      }
+    });
+
+    it("allows the office and the system admin", () => {
+      expect(canViewStaffDirectory(["SCHOOL_ADMIN"])).toBe(true);
+      expect(canViewStaffDirectory(["SUPER_ADMIN"])).toBe(true);
+    });
+
+    it("refuses an ordinary teacher and the counselor", () => {
+      expect(canViewStaffDirectory(["TEACHER"])).toBe(false);
+      expect(canViewStaffDirectory(["STUDENT_COUNSELOR"])).toBe(false);
+    });
+
+    it("refuses everyone outside staff", () => {
+      for (const role of ["STUDENT", "PARENT", "CHAPERONE"] as const) {
+        expect(canViewStaffDirectory([role])).toBe(false);
+      }
+    });
+
+    it("honours an admin grant on top of a teacher's primary role", () => {
+      // effectiveRoles puts the grant in the list; the gate must see it.
+      expect(canViewStaffDirectory(["TEACHER", "SUPER_ADMIN"])).toBe(true);
+    });
+
+    it("refuses an empty role list", () => {
+      expect(canViewStaffDirectory([])).toBe(false);
     });
   });
 });
