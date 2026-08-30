@@ -1,6 +1,7 @@
 import { StaffNotificationsHub } from "@/components/notifications/StaffNotificationsHub";
 
-export default async function TeacherNotificationsPage({
+// Same hub the teacher portal renders — the office reaches it at its own path.
+export default async function OfficeNotificationsPage({
   params,
   searchParams,
 }: {
@@ -10,6 +11,6 @@ export default async function TeacherNotificationsPage({
   const { locale } = await params;
   const { error } = await searchParams;
   return (
-    <StaffNotificationsHub locale={locale} hub={`/${locale}/teacher/noticeboard`} error={error} />
+    <StaffNotificationsHub locale={locale} hub={`/${locale}/office/notifications`} error={error} />
   );
 }

@@ -7,10 +7,11 @@ import { getNow, utcMidnight, fmtDisplayDate } from "@/lib/dates";
 import { profileIncomplete } from "@/lib/profile";
 import { getSpecialDayForDate, getOnDutyDeputies } from "@/lib/calendar";
 import { getDayOverrides } from "@/server/substitutions";
-import { AttachmentList } from "@/components/attachments/AttachmentLink";
+import { getActiveAnnouncements } from "@/server/announcements";
+import { AnnouncementsCard } from "@/components/announcements/AnnouncementsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, AlertCircle, CalendarRange, Megaphone, ShieldCheck } from "lucide-react";
+import { CheckCircle2, AlertCircle, CalendarRange, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
@@ -188,14 +189,7 @@ export default async function TeacherDashboardPage({
   // composed under Ειδοποιήσεις, shown read-only here).
   const [onDuty, announcements] = await Promise.all([
     isWeekend ? Promise.resolve([]) : getOnDutyDeputies(today),
-    db.announcement.findMany({
-      where: { pinnedUntil: { gte: today } },
-      orderBy: { createdAt: "desc" },
-      include: {
-        author: { select: { name: true, staffProfile: { select: { scheduleName: true } } } },
-        files: true,
-      },
-    }),
+    getActiveAnnouncements(today),
   ]);
 
   return (
@@ -207,29 +201,7 @@ export default async function TeacherDashboardPage({
         <p className="text-slate-500 mt-1">{dateLabel}</p>
       </div>
 
-      {/* Today's announcements — pushed by management under Ειδοποιήσεις */}
-      {announcements.length > 0 && (
-        <Card className="border-amber-200 bg-amber-50/40">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2 text-amber-900">
-              <Megaphone className="w-4 h-4" />
-              {t("announcements")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {announcements.map((a) => (
-              <div key={a.id} className="rounded-lg border border-amber-100 bg-white/70 px-3 py-2">
-                {a.title && <p className="text-sm font-semibold text-slate-900">{a.title}</p>}
-                <p className="text-sm text-slate-700 whitespace-pre-wrap">{a.body}</p>
-                <AttachmentList files={a.files} className="mt-2" />
-                <p className="text-xs text-slate-400 mt-1">
-                  {a.author?.staffProfile?.scheduleName ?? a.author?.name} · {fmtDisplayDate(a.createdAt)}
-                </p>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
+      <AnnouncementsCard announcements={announcements} />
 
       {allSlots.length === 0 ? (
         <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">

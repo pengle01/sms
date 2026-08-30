@@ -1,6 +1,6 @@
 import { StaffComposePanel } from "@/components/notifications/StaffComposePanel";
 
-export default async function TeacherComposeNotificationPage({
+export default async function OfficeComposeNotificationPage({
   params,
   searchParams,
 }: {
@@ -12,7 +12,7 @@ export default async function TeacherComposeNotificationPage({
   return (
     <StaffComposePanel
       locale={locale}
-      hub={`/${locale}/teacher/noticeboard`}
+      hub={`/${locale}/office/notifications`}
       sent={sent}
       error={error}
     />

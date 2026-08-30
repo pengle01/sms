@@ -3,22 +3,30 @@
 import { redirect } from "next/navigation";
 import { db } from "@/server/db";
 import { getActiveAuth } from "@/server/authz";
-import { isManagement, EDUCATOR_ROLES } from "@/lib/rbac";
-import { writeAudit } from "@/server/audit";
+import { EDUCATOR_ROLES } from "@/lib/rbac";
+import { canSendStaffNotifications } from "@/lib/staffNotifications";
+import { writeAudit, requestMeta } from "@/server/audit";
 import { ATTACHMENT_MAX_COUNT } from "@/lib/attachments";
 
-export async function sendStaffNotification(locale: string, formData: FormData) {
+/**
+ * Send an ad-hoc notification to the teaching staff.
+ *
+ * `backTo` is the composer to return to — management composes from the teacher
+ * noticeboard, the office from its own notifications page, and a secretary must
+ * not be redirected into a portal her layout refuses.
+ */
+export async function sendStaffNotification(locale: string, backTo: string, formData: FormData) {
   const auth = await getActiveAuth();
   if (!auth) redirect(`/${locale}/login/staff`);
-  // Fresh role check — only management (headmaster / headteachers) may compose
-  if (!auth.roles.some((r) => isManagement(r))) redirect(`/${locale}/teacher/noticeboard`);
+  // Fresh role check — management and the school office may compose
+  if (!canSendStaffNotifications(auth.roles)) redirect(backTo);
 
   const title = (formData.get("title") as string | null)?.trim() ?? "";
   const body = (formData.get("body") as string | null)?.trim() ?? "";
   const mode = formData.get("mode") as string | null;
   const picked = formData.getAll("to").map(String);
 
-  const back = `/${locale}/teacher/noticeboard/compose`;
+  const back = backTo;
   if (!title) redirect(`${back}?error=title`);
   if (!body) redirect(`${back}?error=body`);
   if (mode !== "all" && picked.length === 0) redirect(`${back}?error=recipients`);
@@ -77,6 +85,7 @@ export async function sendStaffNotification(locale: string, formData: FormData) 
   );
 
   await writeAudit({
+    ...(await requestMeta()),
     userId: auth.userId,
     action: "notification.staffSend",
     resource: "Notification",

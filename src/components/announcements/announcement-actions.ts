@@ -12,15 +12,22 @@ import { ATTACHMENT_MAX_COUNT } from "@/lib/attachments";
 
 const MAX_LEN = 1000;
 
-/** Post a daily announcement, surfaced on every educator's dashboard. */
-export async function postAnnouncement(locale: string, formData: FormData) {
+/**
+ * Post a daily announcement, surfaced on every educator's dashboard.
+ *
+ * `backTo` is the page to return to. It is bound by the caller because both the
+ * teacher noticeboard and the office notifications page compose announcements,
+ * and sending a secretary back into /teacher/… would bounce off that portal's
+ * own gate.
+ */
+export async function postAnnouncement(locale: string, backTo: string, formData: FormData) {
   const auth = await getActiveAuth();
   if (!auth) redirect(`/${locale}/login/staff`);
-  if (!canManageAnnouncements(auth.roles)) redirect(`/${locale}/teacher/noticeboard`);
+  if (!canManageAnnouncements(auth.roles)) redirect(backTo);
 
   const title = (formData.get("title") as string | null)?.trim() || null;
   const body = (formData.get("body") as string | null)?.trim() ?? "";
-  if (!body) redirect(`/${locale}/teacher/noticeboard?error=body`);
+  if (!body) redirect(`${backTo}?error=body`);
 
   const pinnedUntil = resolvePinnedUntil(formData.get("pinnedUntil") as string | null, utcMidnight());
 
@@ -32,7 +39,7 @@ export async function postAnnouncement(locale: string, formData: FormData) {
       where: { id: { in: fileIds }, uploadedById: auth.userId },
     });
     if (fileIds.length > ATTACHMENT_MAX_COUNT || owned !== fileIds.length) {
-      redirect(`/${locale}/teacher/noticeboard?error=attachment`);
+      redirect(`${backTo}?error=attachment`);
     }
   }
 
@@ -54,15 +61,17 @@ export async function postAnnouncement(locale: string, formData: FormData) {
     details: { pinnedUntil: pinnedUntil.toISOString().slice(0, 10) },
   });
 
+  // Both dashboards render the active announcements.
   revalidatePath(`/${locale}/teacher/dashboard`);
-  redirect(`/${locale}/teacher/noticeboard`);
+  revalidatePath(`/${locale}/office/dashboard`);
+  redirect(backTo);
 }
 
-/** Remove an announcement (management only — peers may clear any). */
-export async function deleteAnnouncement(locale: string, formData: FormData) {
+/** Remove an announcement (a poster may clear any — see canManageAnnouncements). */
+export async function deleteAnnouncement(locale: string, backTo: string, formData: FormData) {
   const auth = await getActiveAuth();
   if (!auth) redirect(`/${locale}/login/staff`);
-  if (!canManageAnnouncements(auth.roles)) redirect(`/${locale}/teacher/noticeboard`);
+  if (!canManageAnnouncements(auth.roles)) redirect(backTo);
 
   const id = (formData.get("id") as string | null)?.trim();
   if (id) {
@@ -102,6 +111,8 @@ export async function deleteAnnouncement(locale: string, formData: FormData) {
     });
   }
 
+  // Both dashboards render the active announcements.
   revalidatePath(`/${locale}/teacher/dashboard`);
-  redirect(`/${locale}/teacher/noticeboard`);
+  revalidatePath(`/${locale}/office/dashboard`);
+  redirect(backTo);
 }

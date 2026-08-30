@@ -14,10 +14,7 @@ type Recipient = {
   homeroomGrades: number[];
 };
 
-const GRADE_LABELS: Record<number, string> = { 1: "Α΄", 2: "Β΄", 3: "Γ΄", 4: "Δ΄" };
-const gradeLabel = (g: number) => GRADE_LABELS[g] ?? String(g);
-
-export function ComposeForm({
+export function StaffNotificationForm({
   recipients,
   action,
 }: {
@@ -156,7 +153,7 @@ export function ComposeForm({
               {chip(t("homeroomChip"), chipSet((r) => r.homeroomGrades.length > 0))}
               {homeroomYears.map((g) =>
                 chip(
-                  t("homeroomGradeChip", { grade: gradeLabel(g) }),
+                  t("homeroomGradeChip", { n: g }),
                   chipSet((r) => r.homeroomGrades.includes(g))
                 )
               )}
