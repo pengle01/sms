@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
+import { pickQueryString } from "@/lib/listFilters";
 import {
+  LOCATE_KEYS,
+  initialLocateTab,
   locateHref,
   parseLocateTab,
   studentNameOrIdWhere,
@@ -80,5 +83,40 @@ describe("locateHref", () => {
 
   it("omits empty values entirely", () => {
     expect(locateHref({ tab: "group", q: "" }, {})).toBe("?tab=group");
+  });
+});
+describe("initialLocateTab", () => {
+  it("honours an explicit tab whatever the query says", () => {
+    expect(initialLocateTab("name", undefined)).toBe("name");
+    expect(initialLocateTab("id", "x")).toBe("id");
+    expect(initialLocateTab("group", "x")).toBe("group");
+  });
+
+  it("opens on the name tab for a bare ?q= link", () => {
+    // An office bookmark from before the tabs existed: land on its results,
+    // not on an empty group tab with the search hidden.
+    expect(initialLocateTab(undefined, "Παπαδόπουλος")).toBe("name");
+  });
+
+  it("opens on the group tab when there is no query", () => {
+    expect(initialLocateTab(undefined, undefined)).toBe("group");
+    expect(initialLocateTab(undefined, "")).toBe("group");
+    expect(initialLocateTab(undefined, "   ")).toBe("group");
+  });
+
+  it("does not let a query rescue an unknown tab", () => {
+    expect(initialLocateTab("bogus", "x")).toBe("group");
+  });
+});
+
+describe("LOCATE_KEYS", () => {
+  it("is the set locateHref serialises", () => {
+    expect([...LOCATE_KEYS]).toEqual(["tab", "grade", "groupId", "q"]);
+  });
+
+  it("round-trips the same string a locate href produces", () => {
+    // The row link and the back link must agree, or filters die on the return trip.
+    const current = { tab: "name", grade: "2", groupId: "g1", q: "παπ" };
+    expect(pickQueryString(current, LOCATE_KEYS)).toBe(locateHref(current, {}));
   });
 });

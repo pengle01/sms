@@ -37,6 +37,13 @@ export function studentNameOrIdWhere(q: string) {
   };
 }
 
+/**
+ * The params a locator carries. One list so the row links (via pickQueryString)
+ * and the filter links (via locateHref) can never serialise different sets and
+ * drop each other's state on the way back from a detail page.
+ */
+export const LOCATE_KEYS = ["tab", "grade", "groupId", "q"] as const;
+
 export interface LocateParams {
   tab?: string;
   grade?: string;
@@ -52,9 +59,23 @@ export interface LocateParams {
 export function locateHref(current: LocateParams, overrides: Partial<LocateParams>): string {
   const merged = { ...current, ...overrides };
   const sp = new URLSearchParams();
-  for (const key of ["tab", "grade", "groupId", "q"] as const) {
+  for (const key of LOCATE_KEYS) {
     const v = merged[key];
     if (v) sp.set(key, v);
   }
   return `?${sp.toString()}`;
+}
+/**
+ * Which tab a locator opens on.
+ *
+ * A bare `?q=…` link predates the tabs — an office bookmark, or a shared URL —
+ * and would otherwise land on the empty group tab with the search it carries
+ * invisible. Treat a query with no tab as a name search.
+ */
+export function initialLocateTab(
+  tab: string | undefined | null,
+  q: string | undefined | null,
+): LocateTab {
+  if (!tab && q?.trim()) return "name";
+  return parseLocateTab(tab);
 }

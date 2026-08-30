@@ -82,7 +82,6 @@
     "allGroups": "All Groups",
     "checks": "Data Checks",
     "profile": "My Profile",
-    "staff": "Staff Profiles",
     "audit": "Audit Log",
     "settings": "Settings",
     "database": "Database",
@@ -109,7 +108,8 @@
     "permits": "Exit Permits",
     "substitutions": "Substitutions",
     "reports": "Reports",
-    "notices": "Noticeboard"
+    "notices": "Noticeboard",
+    "staff": "Staff Profiles"
   },
   "appearance": {
     "title": "Appearance",
@@ -140,7 +140,6 @@
     "clear": "Clear",
     "selectGroup": "Select a class",
     "selectGrade": "Select a year",
-    "gradeOption": "Year {grade}",
     "studentsN": "{n} students",
     "schoolNote": "Sends to every student in the school ({n}). Use with care.",
     "previewCounts": "{students} students · {recipients} numbers",
@@ -157,7 +156,8 @@
     "sentOk": "Sent {sent} messages.",
     "sentPartial": "Sent {sent}, failed {failed}.",
     "historyTitle": "Recent sends",
-    "noHistory": "No sends yet."
+    "noHistory": "No sends yet.",
+    "gradeOption": "Year {grade}"
   },
   "duty": {
     "notOnDuty": "You are not on duty today",
@@ -604,9 +604,6 @@
   },
   "groups": {
     "title": "Homeroom Groups",
-    "year1": "Year 1",
-    "year2": "Year 2",
-    "year3": "Year 3",
     "teachers": "Teachers",
     "headteachersB": "Headteachers B",
     "counselors": "Counselors",
@@ -637,15 +634,18 @@
     "directoryTitle": "All Groups",
     "groupsCount": "{count, plural, one {# group} other {# groups}}",
     "searchPlaceholder": "Search by name…",
-    "allYears": "All years",
     "typeAll": "All types",
     "typeHomegroup": "Homegroup",
     "typeSubject": "Subject group",
     "colName": "Name",
-    "colYear": "Year",
     "colType": "Type",
     "colStudents": "Students",
-    "colEnrolled": "Enrolled"
+    "colEnrolled": "Enrolled",
+    "year1": "Year 1",
+    "year3": "Year 3",
+    "allYears": "All years",
+    "year2": "Year 2",
+    "colYear": "Year"
   },
   "users": {
     "title": "User Management",
@@ -964,14 +964,14 @@
     "colStudents": "Students",
     "colAbsences": "Absences",
     "colLate": "Lates",
-    "colExcused": "Excused",
     "colPermit": "Exit Permit",
     "colStudent": "Student",
     "colId": "Registry No.",
     "colDays": "Days",
     "colAuto": "Auto",
     "noData": "No entries in this range.",
-    "colWaived": "Erased"
+    "colWaived": "Erased",
+    "colExcused": "Excused"
   },
   "officeAttendance": {
     "title": "Absences",
@@ -1086,7 +1086,6 @@
     "genderFemale": "Female",
     "absenceAbsent": "Absent",
     "absenceLate": "Late",
-    "absenceExcused": "Excused",
     "contactFather": "Father",
     "contactMother": "Mother",
     "contactGuardian": "Guardian",
@@ -1139,7 +1138,8 @@
     "testBig": "Big · 45 min",
     "testSmall": "Small · 20 min",
     "weeklyTimetable": "Weekly Timetable",
-    "room": "Room {room}"
+    "room": "Room {room}",
+    "absenceExcused": "Excused"
   },
   "setup": {
     "pendingTitle": "Claim pending approval",
@@ -1199,32 +1199,12 @@
   },
   "adminUsers": {
     "title": "Staff",
-    "tabAll": "All Staff",
-    "tabHeadteachersA": "Deputies A",
-    "tabHeadteachersB": "Deputies B",
-    "tabCounselors": "Counselors",
-    "tabTeachers": "Teachers",
-    "tabSchoolAdmins": "Office Admins",
-    "tabSuperAdmins": "Super Admins",
-    "tabUnlinked": "Unlinked Profiles",
-    "desigExtraAdmin": "+Admin (granted)",
-    "desigSpecialEd": "Special Education",
-    "desigDdk": "ΔΔΚ Coordinator",
-    "desigSubCoord": "Substitutions Coord.",
-    "unlinkedProfilesCount": "{count, plural, one {# unlinked profile} other {# unlinked profiles}}",
-    "awaitingSignupCount": "{count, plural, one {# awaiting sign-up} other {# awaiting sign-up}}",
-    "addedRoles": "Added roles",
-    "unlinkedCardTitle": "Unlinked Profiles — schedule records with no user account attached",
-    "allProfilesLinked": "All profiles are linked.",
-    "thProfileId": "Profile ID",
     "thSlots": "Slots",
     "thHomegroups": "Homegroups",
-    "thLinkToUser": "Link to user",
     "thName": "Name",
     "thRole": "Role",
     "thEmail": "Email",
     "thPhone": "Phone",
-    "thProfile": "Profile",
     "noUsersFound": "No users found.",
     "inactive": "Inactive",
     "badgeExtraAdmin": "+Admin",
@@ -1297,40 +1277,34 @@
     "passwordPlaceholder": "At least 8 characters",
     "hide": "Hide",
     "show": "Show",
-    "setPassword": "Set password"
-  },
-  "adminStaff": {
-    "title": "Teacher Profiles",
-    "summary": "{profiles} profiles · {linked} linked",
-    "unlinkedSummary": "· {count} unlinked",
-    "awaitingSignupSummary": "· {count} awaiting sign-up",
-    "unlinkedCardTitle": "Unlinked Profiles — no user account attached",
-    "awaitingSignupCardTitle": "Schedule names awaiting sign-up — no user account linked yet",
-    "thScheduleName": "Schedule Name",
-    "thSlots": "Slots",
-    "thHomegroups": "Homegroups",
+    "setPassword": "Set password",
+    "unlinkedProfilesCount": "{count, plural, one {# unlinked profile} other {# unlinked profiles}}",
+    "addedRoles": "Added roles",
+    "tabTeachers": "Teachers",
+    "tabSchoolAdmins": "Office Admins",
+    "desigSubCoord": "Substitutions Coord.",
+    "tabSuperAdmins": "Super Admins",
+    "tabUnlinked": "Unlinked Profiles",
+    "desigDdk": "ΔΔΚ Coordinator",
+    "desigExtraAdmin": "+Admin (granted)",
+    "thProfile": "Profile",
+    "thProfileId": "Profile ID",
+    "tabHeadteachersA": "Deputies A",
+    "tabCounselors": "Counselors",
+    "awaitingSignupCount": "{count, plural, one {# awaiting sign-up} other {# awaiting sign-up}}",
+    "desigSpecialEd": "Special Education",
     "thLinkToUser": "Link to user",
-    "linkedProfiles": "Linked Profiles ({count})",
-    "thName": "Name",
-    "thRole": "Role",
-    "thEmail": "Email",
-    "thLinkedUser": "Linked user",
-    "unlinkTitle": "Unlink user from this profile",
-    "unlink": "Unlink",
-    "selectUser": "— Select user —",
-    "linkUser": "Link user",
-    "unlinked": "Unlinked"
+    "unlinkedCardTitle": "Unlinked Profiles — schedule records with no user account attached",
+    "allProfilesLinked": "All profiles are linked.",
+    "tabHeadteachersB": "Deputies B",
+    "tabAll": "All Staff"
   },
   "adminStudents": {
     "title": "Students",
     "enrolledCount": "{count, plural, one {# student enrolled} other {# students enrolled}}",
     "importStudents": "Import students",
     "importEnrollment": "Import enrollment",
-    "yearLabel": "Year",
     "allSchool": "All school",
-    "grade1": "Year 1",
-    "grade2": "Year 2",
-    "grade3": "Year 3",
     "homegroupLabel": "Homegroup",
     "searchPlaceholder": "Search by name…",
     "clear": "Clear",
@@ -1438,7 +1412,11 @@
     "errorCount": "{count, plural, one {# error} other {# errors}}",
     "flaggedCount": "{count, plural, one {# student to review (SMS)} other {# students to review (SMS)}}",
     "importFlaggedNote": "Fix these from the student page (set a default SMS recipient or add a number). They’re also listed under Admin → Checks.",
-    "alsoGuardianOf": "Also guardian of"
+    "alsoGuardianOf": "Also guardian of",
+    "grade2": "Year 2",
+    "grade3": "Year 3",
+    "yearLabel": "Year",
+    "grade1": "Year 1"
   },
   "adminAttendance": {
     "title": "Attendance",
@@ -1484,7 +1462,6 @@
     "noSlots": "No slots for this selection.",
     "roomShort": "Rm {room}",
     "totals": "{slots} total slots across {groups} groups",
-    "gradeLabel": "{grade, select, 1 {Year 1} 2 {Year 2} 3 {Year 3} other {Year {grade}}}",
     "go": "Go",
     "backToTimetable": "Back to timetable",
     "importTitle": "Import schedule",
@@ -1508,7 +1485,8 @@
     "statCoursesCreated": "Courses added",
     "statGroupsCreated": "Groups added",
     "warningsCount": "{count, plural, one {# warning} other {# warnings}}",
-    "importFailed": "Import failed with no details. Check server logs."
+    "importFailed": "Import failed with no details. Check server logs.",
+    "gradeLabel": "{grade, select, 1 {Year 1} 2 {Year 2} 3 {Year 3} other {Year {grade}}}"
   },
   "adminAudit": {
     "title": "Audit Log",
@@ -1558,7 +1536,6 @@
   },
   "adminGroupDetail": {
     "back": "Groups",
-    "gradeLabel": "{grade, select, 1 {Year 1} 2 {Year 2} 3 {Year 3} other {Year {grade}}}",
     "homeroomCount": "{count, plural, one {# homeroom student} other {# homeroom students}}",
     "enrolledCount": "{count, plural, one {# enrolled} other {# enrolled}}",
     "absentToday": "Absent today",
@@ -1572,7 +1549,8 @@
     "enrolledStudents": "Enrolled students ({count})",
     "weeklyTimetable": "Weekly Timetable",
     "roomShort": "Rm {room}",
-    "noTimetable": "No timetable assigned"
+    "noTimetable": "No timetable assigned",
+    "gradeLabel": "{grade, select, 1 {Year 1} 2 {Year 2} 3 {Year 3} other {Year {grade}}}"
   },
   "adminSettings": {
     "title": "Settings",
@@ -1729,5 +1707,27 @@
     "attachErr_tooMany": "At most 5 files are allowed.",
     "attachErr_type": "That file type is not allowed.",
     "attachErr_failed": "The upload failed."
+  },
+  "adminStaff": {
+    "awaitingSignupCardTitle": "Schedule names awaiting sign-up — no user account linked yet",
+    "unlink": "Unlink",
+    "selectUser": "— Select user —",
+    "thLinkedUser": "Linked user",
+    "awaitingSignupSummary": "· {count} awaiting sign-up",
+    "thHomegroups": "Homegroups",
+    "unlinked": "Unlinked",
+    "linkUser": "Link user",
+    "unlinkedSummary": "· {count} unlinked",
+    "thRole": "Role",
+    "thLinkToUser": "Link to user",
+    "unlinkedCardTitle": "Unlinked Profiles — no user account attached",
+    "summary": "{profiles} profiles · {linked} linked",
+    "unlinkTitle": "Unlink user from this profile",
+    "thEmail": "Email",
+    "thScheduleName": "Schedule Name",
+    "title": "Teacher Profiles",
+    "thSlots": "Slots",
+    "thName": "Name",
+    "linkedProfiles": "Linked Profiles ({count})"
   }
 }

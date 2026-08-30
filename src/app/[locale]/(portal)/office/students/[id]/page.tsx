@@ -6,13 +6,21 @@ import { ChevronLeft, MapPin } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { AccessCodeCard } from "@/components/access/AccessCodeCard";
 import { SmsRecipientsCard } from "@/components/students/SmsRecipientsCard";
+import { pickQueryString } from "@/lib/listFilters";
+import { LOCATE_KEYS } from "@/lib/studentSearch";
 
 export default async function OfficeStudentDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; id: string }>;
+  searchParams: Promise<{ tab?: string; grade?: string; groupId?: string; q?: string }>;
 }) {
   const { locale, id } = await params;
+
+  // The list forwards its filters on every row link, so "back" returns to the
+  // same pills and search rather than to a bare list.
+  const backHref = `/${locale}/office/students${pickQueryString(await searchParams, LOCATE_KEYS)}`;
 
   const student = await db.studentProfile.findUnique({
     where: { id },
@@ -30,7 +38,7 @@ export default async function OfficeStudentDetailPage({
     <div className="space-y-6">
       <div>
         <Link
-          href={`/${locale}/office/students`}
+          href={backHref}
           className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 mb-3"
         >
           <ChevronLeft className="w-4 h-4" />

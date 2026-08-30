@@ -82,7 +82,6 @@
     "allGroups": "Όλες οι Ομάδες",
     "checks": "Έλεγχοι Δεδομένων",
     "profile": "Το Προφίλ Μου",
-    "staff": "Προφίλ Εκπαιδευτικών",
     "audit": "Αρχείο Ενεργειών",
     "settings": "Ρυθμίσεις",
     "database": "Βάση Δεδομένων",
@@ -109,7 +108,8 @@
     "permits": "Άδειες Εξόδου",
     "substitutions": "Αναπληρώσεις",
     "reports": "Αναφορές",
-    "notices": "Πίνακας Ανακοινώσεων"
+    "notices": "Πίνακας Ανακοινώσεων",
+    "staff": "Προφίλ Εκπαιδευτικών"
   },
   "appearance": {
     "title": "Εμφάνιση",
@@ -140,7 +140,6 @@
     "clear": "Καθαρισμός",
     "selectGroup": "Επιλέξτε τμήμα",
     "selectGrade": "Επιλέξτε έτος",
-    "gradeOption": "Έτος {grade}",
     "studentsN": "{n} μαθητές",
     "schoolNote": "Αποστολή σε όλους τους μαθητές του σχολείου ({n}). Χρησιμοποιήστε το με προσοχή.",
     "previewCounts": "{students} μαθητές · {recipients} αριθμοί",
@@ -157,7 +156,8 @@
     "sentOk": "Στάλθηκαν {sent} μηνύματα.",
     "sentPartial": "Στάλθηκαν {sent}, απέτυχαν {failed}.",
     "historyTitle": "Πρόσφατες αποστολές",
-    "noHistory": "Καμία αποστολή ακόμη."
+    "noHistory": "Καμία αποστολή ακόμη.",
+    "gradeOption": "Έτος {grade}"
   },
   "duty": {
     "notOnDuty": "Δεν έχετε εφημερία σήμερα",
@@ -604,9 +604,6 @@
   },
   "groups": {
     "title": "Τμήματα",
-    "year1": "Α΄ Λυκείου",
-    "year2": "Β΄ Λυκείου",
-    "year3": "Γ΄ Λυκείου",
     "teachers": "Υπεύθυνοι Καθηγητές",
     "headteachersB": "Κηδεμόνες ΒΔ",
     "counselors": "ΣΕΑ",
@@ -637,15 +634,18 @@
     "directoryTitle": "Όλες οι Ομάδες",
     "groupsCount": "{count, plural, one {# ομάδα} other {# ομάδες}}",
     "searchPlaceholder": "Αναζήτηση με όνομα…",
-    "allYears": "Όλες οι τάξεις",
     "typeAll": "Όλοι οι τύποι",
     "typeHomegroup": "Τμήμα",
     "typeSubject": "Ομάδα μαθήματος",
     "colName": "Όνομα",
-    "colYear": "Τάξη",
     "colType": "Τύπος",
     "colStudents": "Μαθητές",
-    "colEnrolled": "Εγγεγραμμένοι"
+    "colEnrolled": "Εγγεγραμμένοι",
+    "year1": "Α΄ Λυκείου",
+    "year3": "Γ΄ Λυκείου",
+    "allYears": "Όλες οι τάξεις",
+    "year2": "Β΄ Λυκείου",
+    "colYear": "Τάξη"
   },
   "users": {
     "title": "Διαχείριση Χρηστών",
@@ -964,14 +964,14 @@
     "colStudents": "Μαθητές",
     "colAbsences": "Απουσίες",
     "colLate": "Καθυστερήσεις",
-    "colExcused": "Δικαιολογημένες",
     "colPermit": "Άδεια Εξόδου",
     "colStudent": "Μαθητής",
     "colId": "Αρ. Μητρώου",
     "colDays": "Ημέρες",
     "colAuto": "Αυτόματες",
     "noData": "Δεν υπάρχουν καταχωρήσεις στο διάστημα.",
-    "colWaived": "Διεγραμμένες"
+    "colWaived": "Διεγραμμένες",
+    "colExcused": "Δικαιολογημένες"
   },
   "officeAttendance": {
     "title": "Απουσίες",
@@ -1086,7 +1086,6 @@
     "genderFemale": "Θήλυ",
     "absenceAbsent": "Απουσία",
     "absenceLate": "Καθυστέρηση",
-    "absenceExcused": "Δικαιολογημένη",
     "contactFather": "Πατέρας",
     "contactMother": "Μητέρα",
     "contactGuardian": "Κηδεμόνας",
@@ -1139,7 +1138,8 @@
     "testBig": "Μεγάλο · 45 λεπ",
     "testSmall": "Μικρό · 20 λεπ",
     "weeklyTimetable": "Εβδομαδιαίο Πρόγραμμα",
-    "room": "Αίθ. {room}"
+    "room": "Αίθ. {room}",
+    "absenceExcused": "Δικαιολογημένη"
   },
   "setup": {
     "pendingTitle": "Αίτημα σε αναμονή έγκρισης",
@@ -1199,32 +1199,12 @@
   },
   "adminUsers": {
     "title": "Προσωπικό",
-    "tabAll": "Όλο το Προσωπικό",
-    "tabHeadteachersA": "Βοηθοί Διευθυντές Α",
-    "tabHeadteachersB": "Βοηθοί Διευθυντές",
-    "tabCounselors": "Σύμβουλοι Σπουδών",
-    "tabTeachers": "Εκπαιδευτικοί",
-    "tabSchoolAdmins": "Διοικητικοί",
-    "tabSuperAdmins": "Υπερδιαχειριστές",
-    "tabUnlinked": "Μη Συνδεδεμένα Προφίλ",
-    "desigExtraAdmin": "+Διαχειριστής (παραχωρημένο)",
-    "desigSpecialEd": "Ειδική Αγωγή",
-    "desigDdk": "Συντονιστής ΔΔΚ",
-    "desigSubCoord": "Συντ. Αναπληρώσεων",
-    "unlinkedProfilesCount": "{count, plural, one {# μη συνδεδεμένο προφίλ} other {# μη συνδεδεμένα προφίλ}}",
-    "awaitingSignupCount": "{count, plural, one {# σε αναμονή εγγραφής} other {# σε αναμονή εγγραφής}}",
-    "addedRoles": "Πρόσθετοι ρόλοι",
-    "unlinkedCardTitle": "Μη συνδεδεμένα προφίλ — εγγραφές προγράμματος χωρίς συνδεδεμένο λογαριασμό χρήστη",
-    "allProfilesLinked": "Όλα τα προφίλ είναι συνδεδεμένα.",
-    "thProfileId": "ID Προφίλ",
     "thSlots": "Ώρες",
     "thHomegroups": "Τμήματα",
-    "thLinkToUser": "Σύνδεση με χρήστη",
     "thName": "Όνομα",
     "thRole": "Ρόλος",
     "thEmail": "Email",
     "thPhone": "Τηλέφωνο",
-    "thProfile": "Προφίλ",
     "noUsersFound": "Δεν βρέθηκαν χρήστες.",
     "inactive": "Ανενεργός",
     "badgeExtraAdmin": "+Διαχειριστής",
@@ -1297,40 +1277,34 @@
     "passwordPlaceholder": "Τουλάχιστον 8 χαρακτήρες",
     "hide": "Απόκρυψη",
     "show": "Εμφάνιση",
-    "setPassword": "Ορισμός κωδικού"
-  },
-  "adminStaff": {
-    "title": "Προφίλ Εκπαιδευτικών",
-    "summary": "{profiles} προφίλ · {linked} συνδεδεμένα",
-    "unlinkedSummary": "· {count} μη συνδεδεμένα",
-    "awaitingSignupSummary": "· {count} σε αναμονή εγγραφής",
-    "unlinkedCardTitle": "Μη συνδεδεμένα προφίλ — χωρίς συνδεδεμένο λογαριασμό χρήστη",
-    "awaitingSignupCardTitle": "Ονόματα προγράμματος σε αναμονή εγγραφής — δεν έχει συνδεθεί ακόμη λογαριασμός",
-    "thScheduleName": "Όνομα Προγράμματος",
-    "thSlots": "Ώρες",
-    "thHomegroups": "Τμήματα",
+    "setPassword": "Ορισμός κωδικού",
+    "unlinkedProfilesCount": "{count, plural, one {# μη συνδεδεμένο προφίλ} other {# μη συνδεδεμένα προφίλ}}",
+    "addedRoles": "Πρόσθετοι ρόλοι",
+    "tabTeachers": "Εκπαιδευτικοί",
+    "tabSchoolAdmins": "Διοικητικοί",
+    "desigSubCoord": "Συντ. Αναπληρώσεων",
+    "tabSuperAdmins": "Υπερδιαχειριστές",
+    "tabUnlinked": "Μη Συνδεδεμένα Προφίλ",
+    "desigDdk": "Συντονιστής ΔΔΚ",
+    "desigExtraAdmin": "+Διαχειριστής (παραχωρημένο)",
+    "thProfile": "Προφίλ",
+    "thProfileId": "ID Προφίλ",
+    "tabHeadteachersA": "Βοηθοί Διευθυντές Α",
+    "tabCounselors": "Σύμβουλοι Σπουδών",
+    "awaitingSignupCount": "{count, plural, one {# σε αναμονή εγγραφής} other {# σε αναμονή εγγραφής}}",
+    "desigSpecialEd": "Ειδική Αγωγή",
     "thLinkToUser": "Σύνδεση με χρήστη",
-    "linkedProfiles": "Συνδεδεμένα προφίλ ({count})",
-    "thName": "Όνομα",
-    "thRole": "Ρόλος",
-    "thEmail": "Email",
-    "thLinkedUser": "Συνδεδεμένος χρήστης",
-    "unlinkTitle": "Αποσύνδεση χρήστη από αυτό το προφίλ",
-    "unlink": "Αποσύνδεση",
-    "selectUser": "— Επιλογή χρήστη —",
-    "linkUser": "Σύνδεση χρήστη",
-    "unlinked": "Μη συνδεδεμένο"
+    "unlinkedCardTitle": "Μη συνδεδεμένα προφίλ — εγγραφές προγράμματος χωρίς συνδεδεμένο λογαριασμό χρήστη",
+    "allProfilesLinked": "Όλα τα προφίλ είναι συνδεδεμένα.",
+    "tabHeadteachersB": "Βοηθοί Διευθυντές",
+    "tabAll": "Όλο το Προσωπικό"
   },
   "adminStudents": {
     "title": "Μαθητές",
     "enrolledCount": "{count, plural, one {# εγγεγραμμένος μαθητής} other {# εγγεγραμμένοι μαθητές}}",
     "importStudents": "Εισαγωγή μαθητών",
     "importEnrollment": "Εισαγωγή κατανομής",
-    "yearLabel": "Τάξη",
     "allSchool": "Όλο το σχολείο",
-    "grade1": "Α΄ Τάξη",
-    "grade2": "Β΄ Τάξη",
-    "grade3": "Γ΄ Τάξη",
     "homegroupLabel": "Τμήμα",
     "searchPlaceholder": "Αναζήτηση με όνομα…",
     "clear": "Καθαρισμός",
@@ -1438,7 +1412,11 @@
     "errorCount": "{count, plural, one {# σφάλμα} other {# σφάλματα}}",
     "flaggedCount": "{count, plural, one {# μαθητής προς έλεγχο (SMS)} other {# μαθητές προς έλεγχο (SMS)}}",
     "importFlaggedNote": "Διορθώστε τα από τη σελίδα του μαθητή (ορίστε προεπιλεγμένο παραλήπτη SMS ή προσθέστε αριθμό). Εμφανίζονται επίσης στο Διαχείριση → Έλεγχοι.",
-    "alsoGuardianOf": "Κηδεμόνας επίσης για"
+    "alsoGuardianOf": "Κηδεμόνας επίσης για",
+    "grade2": "Β΄ Τάξη",
+    "grade3": "Γ΄ Τάξη",
+    "yearLabel": "Τάξη",
+    "grade1": "Α΄ Τάξη"
   },
   "adminAttendance": {
     "title": "Απουσίες",
@@ -1484,7 +1462,6 @@
     "noSlots": "Δεν υπάρχουν ώρες για αυτή την επιλογή.",
     "roomShort": "Αίθ. {room}",
     "totals": "{slots} συνολικές ώρες σε {groups} τμήματα",
-    "gradeLabel": "{grade, select, 1 {Τάξη Α΄} 2 {Τάξη Β΄} 3 {Τάξη Γ΄} other {Τάξη {grade}}}",
     "go": "Μετάβαση",
     "backToTimetable": "Πίσω στο πρόγραμμα",
     "importTitle": "Εισαγωγή προγράμματος",
@@ -1508,7 +1485,8 @@
     "statCoursesCreated": "Νέα μαθήματα",
     "statGroupsCreated": "Νέα τμήματα",
     "warningsCount": "{count, plural, one {# προειδοποίηση} other {# προειδοποιήσεις}}",
-    "importFailed": "Η εισαγωγή απέτυχε χωρίς λεπτομέρειες. Ελέγξτε τα αρχεία καταγραφής του διακομιστή."
+    "importFailed": "Η εισαγωγή απέτυχε χωρίς λεπτομέρειες. Ελέγξτε τα αρχεία καταγραφής του διακομιστή.",
+    "gradeLabel": "{grade, select, 1 {Τάξη Α΄} 2 {Τάξη Β΄} 3 {Τάξη Γ΄} other {Τάξη {grade}}}"
   },
   "adminAudit": {
     "title": "Αρχείο Καταγραφής",
@@ -1558,7 +1536,6 @@
   },
   "adminGroupDetail": {
     "back": "Τμήματα",
-    "gradeLabel": "{grade, select, 1 {Τάξη Α΄} 2 {Τάξη Β΄} 3 {Τάξη Γ΄} other {Τάξη {grade}}}",
     "homeroomCount": "{count, plural, one {# μαθητής τμήματος} other {# μαθητές τμήματος}}",
     "enrolledCount": "{count, plural, one {# εγγεγραμμένος} other {# εγγεγραμμένοι}}",
     "absentToday": "Απόντες σήμερα",
@@ -1572,7 +1549,8 @@
     "enrolledStudents": "Εγγεγραμμένοι μαθητές ({count})",
     "weeklyTimetable": "Εβδομαδιαίο Πρόγραμμα",
     "roomShort": "Αίθ. {room}",
-    "noTimetable": "Δεν έχει ανατεθεί πρόγραμμα"
+    "noTimetable": "Δεν έχει ανατεθεί πρόγραμμα",
+    "gradeLabel": "{grade, select, 1 {Τάξη Α΄} 2 {Τάξη Β΄} 3 {Τάξη Γ΄} other {Τάξη {grade}}}"
   },
   "adminSettings": {
     "title": "Ρυθμίσεις",
@@ -1729,5 +1707,27 @@
     "attachErr_tooMany": "Επιτρέπονται έως 5 αρχεία.",
     "attachErr_type": "Μη επιτρεπτός τύπος αρχείου.",
     "attachErr_failed": "Η μεταφόρτωση του αρχείου απέτυχε."
+  },
+  "adminStaff": {
+    "awaitingSignupCardTitle": "Ονόματα προγράμματος σε αναμονή εγγραφής — δεν έχει συνδεθεί ακόμη λογαριασμός",
+    "unlink": "Αποσύνδεση",
+    "selectUser": "— Επιλογή χρήστη —",
+    "thLinkedUser": "Συνδεδεμένος χρήστης",
+    "awaitingSignupSummary": "· {count} σε αναμονή εγγραφής",
+    "thHomegroups": "Τμήματα",
+    "unlinked": "Μη συνδεδεμένο",
+    "linkUser": "Σύνδεση χρήστη",
+    "unlinkedSummary": "· {count} μη συνδεδεμένα",
+    "thRole": "Ρόλος",
+    "thLinkToUser": "Σύνδεση με χρήστη",
+    "unlinkedCardTitle": "Μη συνδεδεμένα προφίλ — χωρίς συνδεδεμένο λογαριασμό χρήστη",
+    "summary": "{profiles} προφίλ · {linked} συνδεδεμένα",
+    "unlinkTitle": "Αποσύνδεση χρήστη από αυτό το προφίλ",
+    "thEmail": "Email",
+    "thScheduleName": "Όνομα Προγράμματος",
+    "title": "Προφίλ Εκπαιδευτικών",
+    "thSlots": "Ώρες",
+    "thName": "Όνομα",
+    "linkedProfiles": "Συνδεδεμένα προφίλ ({count})"
   }
 }
