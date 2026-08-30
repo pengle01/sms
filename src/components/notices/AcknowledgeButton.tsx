@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { trpc } from "@/trpc/client";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Check } from "lucide-react";
 
 export function AcknowledgeButton({ noticeId, acknowledged: initial }: { noticeId: string; acknowledged: boolean }) {
+  const t = useTranslations("adminNoticeboard");
   const [acknowledged, setAcknowledged] = useState(initial);
 
   const { mutate, isPending } = trpc.notices.acknowledge.useMutation({
@@ -17,7 +19,7 @@ export function AcknowledgeButton({ noticeId, acknowledged: initial }: { noticeI
     return (
       <span className="inline-flex items-center gap-1.5 text-xs text-green-600 font-medium">
         <Check className="w-3.5 h-3.5" />
-        Acknowledged
+        {t("acknowledged")}
       </span>
     );
   }
@@ -28,7 +30,7 @@ export function AcknowledgeButton({ noticeId, acknowledged: initial }: { noticeI
       disabled={isPending}
       className="text-xs text-emerald-600 hover:text-emerald-700 font-medium disabled:opacity-50"
     >
-      Mark as read
+      {t("markAsRead")}
     </button>
   );
 }

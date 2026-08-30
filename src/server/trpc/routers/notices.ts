@@ -2,7 +2,9 @@ import { z } from "zod";
 import { createTRPCRouter, staffProcedure, protectedProcedure } from "../init";
 import { TRPCError } from "@trpc/server";
 import type { Role } from "@/generated/prisma/client";
-import { isStaff } from "@/lib/rbac";
+import { isStaff, canDeleteNotice } from "@/lib/rbac";
+import { writeAudit } from "@/server/audit";
+import { removeUpload } from "@/server/uploads";
 import { ATTACHMENT_MAX_COUNT } from "@/lib/attachments";
 
 export const noticesRouter = createTRPCRouter({
@@ -70,7 +72,7 @@ export const noticesRouter = createTRPCRouter({
         }
       }
 
-      return ctx.db.notice.create({
+      const notice = await ctx.db.notice.create({
         data: {
           ...rest,
           uploadedById: ctx.session.user.id,
@@ -81,6 +83,69 @@ export const noticesRouter = createTRPCRouter({
         },
         include: { tags: true, files: true },
       });
+
+      await writeAudit({
+        userId: ctx.session.user.id,
+        action: "notice.create",
+        resource: "Notice",
+        resourceId: notice.id,
+        details: { urgent: notice.urgent, staffOnly: notice.staffOnly },
+      });
+
+      return notice;
+    }),
+
+  /**
+   * Withdraw a notice. There is no edit, so this is the only way to take back a
+   * mistake — and a notice is school-wide, so it is limited to the author and
+   * the system admin (canDeleteNotice states that rule once, for both this gate
+   * and the button that calls it).
+   */
+  delete: staffProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const notice = await ctx.db.notice.findUnique({
+        where: { id: input.id },
+        select: { id: true, uploadedById: true, files: { select: { id: true } } },
+      });
+      if (!notice) throw new TRPCError({ code: "NOT_FOUND" });
+
+      if (!canDeleteNotice(ctx.effectiveRoles, notice.uploadedById, ctx.session.user.id)) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      // Tags and acknowledgments cascade, and Prisma clears the file join rows.
+      await ctx.db.notice.delete({ where: { id: notice.id } });
+
+      // Drop each attachment that nothing else still points at, or every
+      // deletion leaves an unreachable file on disk. Same rule as announcements.
+      for (const { id: fileId } of notice.files) {
+        const file = await ctx.db.storedFile.findUnique({
+          where: { id: fileId },
+          select: {
+            path: true,
+            _count: { select: { notices: true, announcements: true, notifications: true } },
+          },
+        });
+        if (
+          file &&
+          file._count.notices === 0 &&
+          file._count.announcements === 0 &&
+          file._count.notifications === 0
+        ) {
+          await ctx.db.storedFile.delete({ where: { id: fileId } });
+          await removeUpload(file.path);
+        }
+      }
+
+      await writeAudit({
+        userId: ctx.session.user.id,
+        action: "notice.delete",
+        resource: "Notice",
+        resourceId: notice.id,
+      });
+
+      return { success: true };
     }),
 
   acknowledge: protectedProcedure

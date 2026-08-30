@@ -9,7 +9,7 @@ import { Plus, Loader2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AttachmentPicker, uploadAttachments } from "@/components/attachments/AttachmentPicker";
 
-export function NewNoticeDialog({ locale }: { locale: string }) {
+export function NewNoticeDialog() {
   const t = useTranslations("adminNoticeboard");
   const ta = useTranslations("attachments");
   const router = useRouter();

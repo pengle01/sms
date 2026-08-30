@@ -1681,7 +1681,14 @@
     "tagsPlaceholder": "e.g. exam, holiday, meeting",
     "markUrgent": "Mark as urgent",
     "post": "Post",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "acknowledged": "Acknowledged",
+    "markAsRead": "Mark as read",
+    "delete": "Delete",
+    "deleteNotice": "Delete notice",
+    "deleteConfirmTitle": "Delete this notice?",
+    "deleteConfirmBody": "“{title}” will be permanently removed for everyone, along with its attachments. This cannot be undone.",
+    "deleted": "Notice deleted"
   },
   "attachments": {
     "attachmentLabel": "Attachments (optional)",
