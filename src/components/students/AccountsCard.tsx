@@ -11,6 +11,7 @@ import {
   unlinkGuardian,
   type AccountActionResult,
 } from "./account-actions";
+import { PASSWORD_MIN_LENGTH } from "@/lib/password";
 
 export type StudentAccount = {
   userId: string;
@@ -156,7 +157,7 @@ export function AccountsCard({
                 </div>
                 <button
                   type="button"
-                  disabled={pending || pw.length < 8}
+                  disabled={pending || pw.length < PASSWORD_MIN_LENGTH}
                   onClick={() => run(() => setAccountPassword(a.userId, pw), "Password set", () => { setPwFor(null); setPw(""); })}
                   className="h-9 px-4 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
                 >

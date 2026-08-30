@@ -10,8 +10,8 @@ import { composeFullName } from "@/lib/profile";
 import { sendEmail, sendOtpEmail } from "@/lib/email";
 import { clientIp, writeAudit } from "@/server/audit";
 import { logger, errInfo } from "@/server/logger";
+import { PASSWORD_MIN_LENGTH as MIN_PASSWORD_LENGTH } from "@/lib/password";
 
-const MIN_PASSWORD_LENGTH = 8;
 const OTP_TTL_MS = 15 * 60 * 1000;
 const MAX_OTP_ATTEMPTS = 5;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

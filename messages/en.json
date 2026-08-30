@@ -109,7 +109,8 @@
     "substitutions": "Substitutions",
     "reports": "Reports",
     "notices": "Noticeboard",
-    "smsLog": "Sent SMS"
+    "smsLog": "Sent SMS",
+    "account": "My Account"
   },
   "appearance": {
     "title": "Appearance",
@@ -1784,5 +1785,26 @@
     "previous": "Previous",
     "next": "Next",
     "kindUnknown": "unknown"
+  },
+  "account": {
+    "title": "My Account",
+    "subtitle": "Your sign-in details and password.",
+    "changePassword": "Change password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "minChars": "At least {n} characters",
+    "show": "Show",
+    "hide": "Hide",
+    "passwordChanged": "Your password has been changed.",
+    "otherDevicesNote": "Sessions already open on other devices stay signed in until they expire. The old password no longer works for a new sign-in.",
+    "errCurrentRequired": "Enter your current password.",
+    "errTooShort": "The new password is too short.",
+    "errMismatch": "The two new passwords do not match.",
+    "errSameAsCurrent": "The new password is the same as the current one.",
+    "errCurrentWrong": "That is not your current password.",
+    "errNoPassword": "This account has no password set. Please contact an administrator.",
+    "errRateLimited": "Too many attempts. Please try again later.",
+    "errUnknown": "Something went wrong. Please try again."
   }
 }

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { KeyRound, Loader2, Eye, EyeOff } from "lucide-react";
 import { setUserPassword } from "./actions";
+import { PASSWORD_MIN_LENGTH } from "@/lib/password";
 
 /** Lets a SUPER_ADMIN set/reset a user's email+password sign-in credential. */
 export function SetPasswordForm({ userId }: { userId: string }) {
@@ -52,7 +53,7 @@ export function SetPasswordForm({ userId }: { userId: string }) {
       </div>
       <button
         type="submit"
-        disabled={pending || password.length < 8}
+        disabled={pending || password.length < PASSWORD_MIN_LENGTH}
         className="inline-flex items-center justify-center gap-2 h-10 px-5 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
       >
         {pending ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}

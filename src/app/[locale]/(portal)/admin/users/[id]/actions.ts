@@ -6,6 +6,7 @@ import { db } from "@/server/db";
 import { getSuperAdminAuth } from "@/server/authz";
 import { writeAudit, requestMeta } from "@/server/audit";
 import { validateAdminGrant, validateAdminRevoke, validateUserDelete } from "@/lib/roleAssignment";
+import { PASSWORD_MIN_LENGTH as MIN_PASSWORD_LENGTH } from "@/lib/password";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -19,7 +20,6 @@ function isForeignKeyError(e: unknown): boolean {
   );
 }
 
-const MIN_PASSWORD_LENGTH = 8;
 
 function revalidateUsers() {
   revalidatePath("/[locale]/(portal)/admin/users", "page");

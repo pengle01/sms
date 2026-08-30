@@ -1,8 +1,8 @@
 import bcrypt from "bcryptjs";
 import { db } from "@/server/db";
 import { logger, errInfo } from "@/server/logger";
+import { PASSWORD_MIN_LENGTH as MIN_PASSWORD_LENGTH } from "@/lib/password";
 
-const MIN_PASSWORD_LENGTH = 8;
 
 /**
  * Admin password bootstrap, run once at server startup.

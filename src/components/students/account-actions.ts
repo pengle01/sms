@@ -5,10 +5,10 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/server/db";
 import { getSuperAdminAuth } from "@/server/authz";
 import { writeAudit, requestMeta } from "@/server/audit";
+import { PASSWORD_MIN_LENGTH as MIN_PASSWORD_LENGTH } from "@/lib/password";
 
 export type AccountActionResult = { ok: true } | { ok: false; error: string };
 
-const MIN_PASSWORD_LENGTH = 8;
 
 function revalidateStudent() {
   revalidatePath("/[locale]/(portal)/admin/students/[id]", "page");

@@ -10,6 +10,7 @@ import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { registerAction } from "./actions";
 import { SELF_REGISTER_EDUCATOR_ROLES } from "@/lib/rbac";
 import { useTranslations } from "next-intl";
+import { PASSWORD_MIN_LENGTH } from "@/lib/password";
 
 interface RegisterFormProps {
   locale: string;
@@ -112,7 +113,7 @@ export function RegisterForm({ locale, error, success, staffNames }: RegisterFor
           <div className="space-y-1.5">
             <Label htmlFor="password" className="text-lime-200 text-sm">{t("password")}</Label>
             <Input
-              id="password" name="password" type="password" required autoComplete="new-password" minLength={8}
+              id="password" name="password" type="password" required autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH}
               className="bg-white/10 border-white/20 text-white placeholder:text-lime-300/40 focus-visible:ring-emerald-400"
             />
           </div>
