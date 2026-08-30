@@ -156,8 +156,7 @@
     "sentOk": "Sent {sent} messages.",
     "sentPartial": "Sent {sent}, failed {failed}.",
     "historyTitle": "Recent sends",
-    "noHistory": "No sends yet.",
-    "gradeOption": "Year {grade}"
+    "noHistory": "No sends yet."
   },
   "duty": {
     "notOnDuty": "You are not on duty today",
@@ -640,12 +639,7 @@
     "colName": "Name",
     "colType": "Type",
     "colStudents": "Students",
-    "colEnrolled": "Enrolled",
-    "year1": "Year 1",
-    "year3": "Year 3",
-    "allYears": "All years",
-    "year2": "Year 2",
-    "colYear": "Year"
+    "colEnrolled": "Enrolled"
   },
   "users": {
     "title": "User Management",
@@ -834,7 +828,8 @@
     "activity": "Activity",
     "room": "Room {room}",
     "fullWeek": "Full week schedule",
-    "noStudentsInGroup": "No students in this group"
+    "noStudentsInGroup": "No students in this group",
+    "allYears": "All years"
   },
   "notifications": {
     "title": "Notifications",
@@ -1412,11 +1407,7 @@
     "errorCount": "{count, plural, one {# error} other {# errors}}",
     "flaggedCount": "{count, plural, one {# student to review (SMS)} other {# students to review (SMS)}}",
     "importFlaggedNote": "Fix these from the student page (set a default SMS recipient or add a number). They’re also listed under Admin → Checks.",
-    "alsoGuardianOf": "Also guardian of",
-    "grade2": "Year 2",
-    "grade3": "Year 3",
-    "yearLabel": "Year",
-    "grade1": "Year 1"
+    "alsoGuardianOf": "Also guardian of"
   },
   "adminAttendance": {
     "title": "Attendance",
@@ -1485,8 +1476,7 @@
     "statCoursesCreated": "Courses added",
     "statGroupsCreated": "Groups added",
     "warningsCount": "{count, plural, one {# warning} other {# warnings}}",
-    "importFailed": "Import failed with no details. Check server logs.",
-    "gradeLabel": "{grade, select, 1 {Year 1} 2 {Year 2} 3 {Year 3} other {Year {grade}}}"
+    "importFailed": "Import failed with no details. Check server logs."
   },
   "adminAudit": {
     "title": "Audit Log",
@@ -1549,8 +1539,7 @@
     "enrolledStudents": "Enrolled students ({count})",
     "weeklyTimetable": "Weekly Timetable",
     "roomShort": "Rm {room}",
-    "noTimetable": "No timetable assigned",
-    "gradeLabel": "{grade, select, 1 {Year 1} 2 {Year 2} 3 {Year 3} other {Year {grade}}}"
+    "noTimetable": "No timetable assigned"
   },
   "adminSettings": {
     "title": "Settings",

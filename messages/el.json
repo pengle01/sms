@@ -156,8 +156,7 @@
     "sentOk": "Στάλθηκαν {sent} μηνύματα.",
     "sentPartial": "Στάλθηκαν {sent}, απέτυχαν {failed}.",
     "historyTitle": "Πρόσφατες αποστολές",
-    "noHistory": "Καμία αποστολή ακόμη.",
-    "gradeOption": "Έτος {grade}"
+    "noHistory": "Καμία αποστολή ακόμη."
   },
   "duty": {
     "notOnDuty": "Δεν έχετε εφημερία σήμερα",
@@ -640,12 +639,7 @@
     "colName": "Όνομα",
     "colType": "Τύπος",
     "colStudents": "Μαθητές",
-    "colEnrolled": "Εγγεγραμμένοι",
-    "year1": "Α΄ Λυκείου",
-    "year3": "Γ΄ Λυκείου",
-    "allYears": "Όλες οι τάξεις",
-    "year2": "Β΄ Λυκείου",
-    "colYear": "Τάξη"
+    "colEnrolled": "Εγγεγραμμένοι"
   },
   "users": {
     "title": "Διαχείριση Χρηστών",
@@ -816,7 +810,7 @@
     "title": "Εντοπισμός Μαθητή",
     "currentPeriod": "Ώρα {period} · {time}",
     "year": "Έτος",
-    "yearN": "Έτος {n}",
+    "yearN": "{n, select, 1 {Α΄ Έτος} 2 {Β΄ Έτος} 3 {Γ΄ Έτος} other {Έτος {n}}}",
     "homegroup": "Τμήμα",
     "selectYear": "Επιλέξτε έτος για να ξεκινήσετε.",
     "noHomegroups": "Δεν βρέθηκαν τμήματα για Έτος {n}.",
@@ -834,7 +828,8 @@
     "activity": "Δραστηριότητα",
     "room": "Αίθουσα {room}",
     "fullWeek": "Πλήρες εβδομαδιαίο πρόγραμμα",
-    "noStudentsInGroup": "Δεν υπάρχουν μαθητές σε αυτό το τμήμα."
+    "noStudentsInGroup": "Δεν υπάρχουν μαθητές σε αυτό το τμήμα.",
+    "allYears": "Όλα τα έτη"
   },
   "notifications": {
     "title": "Ειδοποιήσεις",
@@ -1412,11 +1407,7 @@
     "errorCount": "{count, plural, one {# σφάλμα} other {# σφάλματα}}",
     "flaggedCount": "{count, plural, one {# μαθητής προς έλεγχο (SMS)} other {# μαθητές προς έλεγχο (SMS)}}",
     "importFlaggedNote": "Διορθώστε τα από τη σελίδα του μαθητή (ορίστε προεπιλεγμένο παραλήπτη SMS ή προσθέστε αριθμό). Εμφανίζονται επίσης στο Διαχείριση → Έλεγχοι.",
-    "alsoGuardianOf": "Κηδεμόνας επίσης για",
-    "grade2": "Β΄ Τάξη",
-    "grade3": "Γ΄ Τάξη",
-    "yearLabel": "Τάξη",
-    "grade1": "Α΄ Τάξη"
+    "alsoGuardianOf": "Κηδεμόνας επίσης για"
   },
   "adminAttendance": {
     "title": "Απουσίες",
@@ -1485,8 +1476,7 @@
     "statCoursesCreated": "Νέα μαθήματα",
     "statGroupsCreated": "Νέα τμήματα",
     "warningsCount": "{count, plural, one {# προειδοποίηση} other {# προειδοποιήσεις}}",
-    "importFailed": "Η εισαγωγή απέτυχε χωρίς λεπτομέρειες. Ελέγξτε τα αρχεία καταγραφής του διακομιστή.",
-    "gradeLabel": "{grade, select, 1 {Τάξη Α΄} 2 {Τάξη Β΄} 3 {Τάξη Γ΄} other {Τάξη {grade}}}"
+    "importFailed": "Η εισαγωγή απέτυχε χωρίς λεπτομέρειες. Ελέγξτε τα αρχεία καταγραφής του διακομιστή."
   },
   "adminAudit": {
     "title": "Αρχείο Καταγραφής",
@@ -1549,8 +1539,7 @@
     "enrolledStudents": "Εγγεγραμμένοι μαθητές ({count})",
     "weeklyTimetable": "Εβδομαδιαίο Πρόγραμμα",
     "roomShort": "Αίθ. {room}",
-    "noTimetable": "Δεν έχει ανατεθεί πρόγραμμα",
-    "gradeLabel": "{grade, select, 1 {Τάξη Α΄} 2 {Τάξη Β΄} 3 {Τάξη Γ΄} other {Τάξη {grade}}}"
+    "noTimetable": "Δεν έχει ανατεθεί πρόγραμμα"
   },
   "adminSettings": {
     "title": "Ρυθμίσεις",

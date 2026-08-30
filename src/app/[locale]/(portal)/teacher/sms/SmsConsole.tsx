@@ -28,6 +28,7 @@ const inputCls =
 
 export function SmsConsole() {
   const t = useTranslations("sms");
+  const tLocate = useTranslations("locate");
   const utils = trpc.useUtils();
 
   const [mode, setMode] = useState<Mode>("students");
@@ -244,7 +245,7 @@ export function SmsConsole() {
               <option value="">{t("selectGrade")}</option>
               {audiences.data?.grades.map((g) => (
                 <option key={g} value={g}>
-                  {t("gradeOption", { grade: g })}
+                  {tLocate("yearN", { n: g })}
                 </option>
               ))}
             </select>

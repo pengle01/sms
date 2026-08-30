@@ -19,12 +19,14 @@ export default async function StudentsPage({
   params: Promise<{ locale: string }>;
   searchParams: Promise<{ search?: string; grade?: string; groupId?: string; page?: string }>;
 }) {
-  const [{ locale }, { search, grade, groupId, page: pageStr }, adminAuth, t] = await Promise.all([
-    params,
-    searchParams,
-    getSuperAdminAuth(),
-    getTranslations("adminStudents"),
-  ]);
+  const [{ locale }, { search, grade, groupId, page: pageStr }, adminAuth, t, tLocate] =
+    await Promise.all([
+      params,
+      searchParams,
+      getSuperAdminAuth(),
+      getTranslations("adminStudents"),
+      getTranslations("locate"),
+    ]);
 
   const gradeNum = grade ? parseInt(grade) : undefined;
   const page = Math.max(1, parseInt(pageStr ?? "1"));
@@ -126,7 +128,7 @@ export default async function StudentsPage({
 
       {/* Year selector */}
       <div className="space-y-1.5">
-        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("yearLabel")}</p>
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{tLocate("year")}</p>
         <div className="flex gap-2 flex-wrap">
           <Link
             href={buildHref({ grade: undefined, groupId: undefined, page: undefined })}
@@ -150,7 +152,7 @@ export default async function StudentsPage({
                   : "bg-white text-slate-600 border-slate-200 hover:border-emerald-400 hover:text-emerald-700"
               )}
             >
-              {t(`grade${g as 1 | 2 | 3}`)}
+              {tLocate("yearN", { n: g })}
             </Link>
           ))}
         </div>

@@ -25,6 +25,7 @@ export default async function GroupsDirectoryPage({
 
   const t = await getTranslations("groups");
   const tCommon = await getTranslations("common");
+  const tLocate = await getTranslations("locate");
 
   const { search, grade, type, page: pageStr } = await searchParams;
   const gradeNum = grade ? parseInt(grade) : undefined;
@@ -99,10 +100,10 @@ export default async function GroupsDirectoryPage({
           defaultValue={grade ?? ""}
           className="h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
         >
-          <option value="">{t("allYears")}</option>
-          <option value="1">{t("year1")}</option>
-          <option value="2">{t("year2")}</option>
-          <option value="3">{t("year3")}</option>
+          <option value="">{tLocate("allYears")}</option>
+          <option value="1">{tLocate("yearN", { n: 1 })}</option>
+          <option value="2">{tLocate("yearN", { n: 2 })}</option>
+          <option value="3">{tLocate("yearN", { n: 3 })}</option>
         </AutoSubmitSelect>
         <AutoSubmitSelect
           name="type"
@@ -129,7 +130,7 @@ export default async function GroupsDirectoryPage({
             <thead>
               <tr className="border-b border-slate-100">
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colName")}</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colYear")}</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{tLocate("year")}</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colType")}</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colStudents")}</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colEnrolled")}</th>

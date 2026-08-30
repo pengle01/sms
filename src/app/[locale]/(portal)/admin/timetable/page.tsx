@@ -26,6 +26,7 @@ export default async function TimetablePage({
 
   const t = await getTranslations("adminTimetable");
   const tTests = await getTranslations("tests");
+  const tLocate = await getTranslations("locate");
   // Reuse the shared Sun-first day-name array; keep Mon–Fri.
   const DAYS = (tTests.raw("dow") as string[]).slice(1, 6);
 
@@ -129,7 +130,7 @@ export default async function TimetablePage({
 
             {/* Selector */}
             {view === "group" ? (
-              <GroupSelector groups={groups} selected={selectedGroupId} locale={locale} view={view} teacher={selectedTeacher} t={t} />
+              <GroupSelector groups={groups} selected={selectedGroupId} locale={locale} view={view} teacher={selectedTeacher} t={t} tLocate={tLocate} />
             ) : (
               <TeacherSelector teachers={teacherNames.map(tn => tn.staffName!)} selected={selectedTeacher} locale={locale} view={view} group={selectedGroupId} t={t} />
             )}
@@ -194,7 +195,7 @@ export default async function TimetablePage({
 // ── Selector components (server, use <form> + GET for zero-JS navigation) ────
 
 function GroupSelector({
-  groups, selected, locale, view, teacher, t,
+  groups, selected, locale, view, teacher, t, tLocate,
 }: {
   groups: { id: string; name: string; grade: number }[];
   selected: string | null;
@@ -202,6 +203,7 @@ function GroupSelector({
   view: string;
   teacher: string | null;
   t: Translator;
+  tLocate: Translator;
 }) {
   return (
     <form method="get" action={`/${locale}/admin/timetable`} className="flex items-center gap-2">
@@ -215,7 +217,7 @@ function GroupSelector({
       >
         {groups.map((g) => (
           <option key={g.id} value={g.id}>
-            {g.name} — {t("gradeLabel", { grade: String(g.grade) })}
+            {g.name} — {tLocate("yearN", { n: g.grade })}
           </option>
         ))}
       </select>

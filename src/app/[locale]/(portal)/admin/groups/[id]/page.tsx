@@ -60,6 +60,7 @@ export default async function GroupDetailPage({
 
   const t = await getTranslations("adminGroupDetail");
   const tTests = await getTranslations("tests");
+  const tLocate = await getTranslations("locate");
   // Reuse the shared Sun-first day-name array; index 1–5 = Mon–Fri.
   const DAY_NAMES = tTests.raw("dow") as string[];
 
@@ -84,7 +85,7 @@ export default async function GroupDetailPage({
         <div>
           <h2 className="text-2xl font-bold text-slate-900">{group.name}</h2>
           <p className="text-slate-500 text-sm mt-1">
-            {t("gradeLabel", { grade: String(group.grade) })}
+            {tLocate("yearN", { n: group.grade })}
             {group.students.length > 0 && ` · ${t("homeroomCount", { count: group.students.length })}`}
             {group.studentGroups.length > 0 && ` · ${t("enrolledCount", { count: group.studentGroups.length })}`}
             {group.homeroomTeacher && ` · ${staffDisplayName(group.homeroomTeacher)}`}

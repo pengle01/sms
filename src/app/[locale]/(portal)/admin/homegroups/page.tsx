@@ -33,6 +33,7 @@ export default async function HomegroupsPage({
 
   const t = await getTranslations("groups");
   const tCommon = await getTranslations("common");
+  const tLocate = await getTranslations("locate");
 
   const { teacher, headteacher, counselor, missing: missingRaw } = await searchParams;
   const missing = parseMissingFilter(missingRaw);
@@ -112,9 +113,9 @@ export default async function HomegroupsPage({
   }, {});
 
   const gradeLabel: Record<number, string> = {
-    1: t("year1"),
-    2: t("year2"),
-    3: t("year3"),
+    1: tLocate("yearN", { n: 1 }),
+    2: tLocate("yearN", { n: 2 }),
+    3: tLocate("yearN", { n: 3 }),
   };
 
   const assignedTeacher    = groups.filter((g) => g.homeroomTeacherId).length;
