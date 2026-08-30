@@ -1057,6 +1057,14 @@
   },
   "specialEd": {
     "title": "Special Education",
+    "filterProblem": "Problem code",
+    "allProblems": "All codes",
+    "filterAccommodation": "Accommodation",
+    "allAccommodations": "All accommodations",
+    "searchPlaceholder": "Search by name or registry no.…",
+    "noMatches": "No student matches these filters.",
+    "showingCount": "{shown} of {total} students",
+    "clearFilters": "Clear",
     "codesHint": "Confidential. Click to reveal this student's codes.",
     "reveal": "Reveal codes",
     "problemCodes": "Problem codes",
@@ -1066,6 +1074,8 @@
     "supportAtomic": "Individual",
     "supportGroup": "Group",
     "remarks": "Remarks",
+    "fileNo": "File no.",
+    "noRecord": "No special-education record.",
     "frenchExempt": "Exempt from French",
     "otherExemptions": "Other exemptions",
     "periodN": "P{n}"

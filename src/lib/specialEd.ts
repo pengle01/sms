@@ -1,6 +1,7 @@
 // Special-education catalog + pure helpers (unit-tested; no DB).
 import type { Role } from "@/generated/prisma/client";
-import { canViewCounselorNotes } from "@/lib/rbac";
+import { matchesSearch } from "@/lib/textSearch";
+import { canViewCounselorNotes, isAdminStaff } from "@/lib/rbac";
 
 export type CodeEntry = { code: string; label: string };
 
@@ -129,4 +130,73 @@ export function parseSupportGroup(name: string): { kind: SupportKind; subjectCod
 export function canViewSpecialEdFull(roles: Role[], isSpecialEdDeputy: boolean): boolean {
   if (isSpecialEdDeputy) return true;
   return roles.some(canViewCounselorNotes);
+}
+
+/**
+ * Who owns the special-ed register: adding a student to it, and the bulk import.
+ *
+ * Narrower than canViewSpecialEdFull on purpose. The counselor reads the whole
+ * dossier as part of their job, but deciding who is IN the cohort belongs to the
+ * deputy responsible for special education — and an import rewrites problem
+ * codes for everyone at once. The headmaster and the system admin keep it as a
+ * fallback so the register is never unreachable if the designation is unset.
+ */
+export function canManageSpecialEdRegister(roles: Role[], isSpecialEdDeputy: boolean): boolean {
+  if (isSpecialEdDeputy) return true;
+  return roles.some((r) => r === "HEADMASTER" || isAdminStaff(r));
+}
+
+/** The fields the cohort list filters on. */
+export interface CohortRow {
+  name: string;
+  registryNo: string;
+  grade: number | null;
+  group: string | null;
+  problemCodes: string[];
+  accommodationCodes: string[];
+}
+
+export interface CohortFilter {
+  /** Year 1-3, or undefined for all. */
+  grade?: number;
+  /** A single problem code, or undefined for all. */
+  code?: string;
+  /** A single accommodation code (διευκόλυνση), or undefined for all. */
+  accommodation?: string;
+  /** Free text over the name and the registry number. */
+  q?: string;
+}
+
+/**
+ * Narrow the special-ed cohort.
+ *
+ * Filtering happens in memory rather than in the query: the cohort is one row
+ * per student with a record — dozens, not thousands — and it is already loaded
+ * whole to build the code legend. Keeping it pure also makes the awkward part
+ * testable, which is the accent-insensitive name match: a Greek name typed
+ * without accents, or with a final ς where the record has σ, must still hit.
+ */
+export function filterCohort<T extends CohortRow>(rows: T[], f: CohortFilter): T[] {
+  const q = (f.q ?? "").trim();
+  return rows.filter((r) => {
+    if (f.grade != null && r.grade !== f.grade) return false;
+    if (f.code && !r.problemCodes.includes(f.code)) return false;
+    if (f.accommodation && !r.accommodationCodes.includes(f.accommodation)) return false;
+    if (q && !matchesSearch(r.name, q) && !matchesSearch(r.registryNo, q)) return false;
+    return true;
+  });
+}
+
+/** Problem codes actually present in a cohort, sorted — the filter's options. */
+export function cohortCodes(rows: CohortRow[]): string[] {
+  return [...new Set(rows.flatMap((r) => r.problemCodes))].sort((a, b) => a.localeCompare(b, "el"));
+}
+
+/**
+ * Accommodation codes present in a cohort. Sorted numerically, not
+ * lexically — they are "1".."18", so a string sort would put 10 before 2.
+ * Same rule specialEdLegend uses.
+ */
+export function cohortAccommodations(rows: CohortRow[]): string[] {
+  return [...new Set(rows.flatMap((r) => r.accommodationCodes))].sort((a, b) => Number(a) - Number(b));
 }

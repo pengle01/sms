@@ -5,18 +5,36 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ShieldAlert, Upload, Download, UserPlus, BookOpen } from "lucide-react";
-import { canViewSpecialEdFull } from "@/lib/specialEd";
+import {
+  canViewSpecialEdFull,
+  canManageSpecialEdRegister,
+  filterCohort,
+  cohortCodes,
+  cohortAccommodations,
+} from "@/lib/specialEd";
+import { getTranslations } from "next-intl/server";
+import { cn } from "@/lib/utils";
+import { suggestionList } from "@/lib/textSearch";
+import { SuggestInput } from "@/components/SuggestInput";
+import { pickQueryString } from "@/lib/listFilters";
+import { Search } from "lucide-react";
 import { listSpecialEdStudents, listSpecialEdForTeacher, specialEdLegend, type TeacherSpecialEdStudent } from "@/server/specialEd";
 
 // The special-ed coordinator's desk: the cohort roster. Adding a student lives
 // on its own page (./add) behind the header button. Full-access only
 // (deputy/counselor/headmaster).
+/** Filters carried on every row link so the record's back button returns here. */
+const COHORT_KEYS = ["grade", "code", "acc", "q"] as const;
+
 export default async function SpecialEdDeskPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ grade?: string; code?: string; acc?: string; q?: string }>;
 }) {
   const { locale } = await params;
+  const { grade, code, acc, q } = await searchParams;
 
   const auth = await getActiveAuth();
   if (!auth) redirect(`/${locale}/login/staff`);
@@ -25,6 +43,8 @@ export default async function SpecialEdDeskPage({
     select: { id: true, specialEducation: true },
   });
   const full = canViewSpecialEdFull(auth.roles, !!staff?.specialEducation);
+  // Reading the dossier and owning the register are different things.
+  const canManageRegister = canManageSpecialEdRegister(auth.roles, !!staff?.specialEducation);
 
   // ── Regular teacher: read-only view of the students THEY teach, with codes,
   // accommodations and a legend. Scoped to their own groups (same boundary as
@@ -38,7 +58,22 @@ export default async function SpecialEdDeskPage({
     return <TeacherSpecialEdView students={myStudents} legend={legend} />;
   }
 
-  const cohort = await listSpecialEdStudents();
+  const t = await getTranslations("specialEd");
+  const tLocate = await getTranslations("locate");
+  const everyone = await listSpecialEdStudents();
+
+  const gradeNum = grade ? parseInt(grade) : undefined;
+  const query = (q ?? "").trim();
+  const cohort = filterCohort(everyone, { grade: gradeNum, code, accommodation: acc, q: query });
+  const codes = cohortCodes(everyone);
+  const accommodations = cohortAccommodations(everyone);
+  const suggestions = suggestionList(everyone.map((s) => s.name));
+  const filtered = cohort.length !== everyone.length;
+
+  const current = { grade, code, acc, q: query };
+  const rowFilters = pickQueryString(current, COHORT_KEYS);
+  const hrefWith = (over: Partial<Record<(typeof COHORT_KEYS)[number], string | undefined>>) =>
+    pickQueryString({ ...current, ...over }, COHORT_KEYS) || "?";
 
   return (
     <div className="space-y-6">
@@ -48,16 +83,22 @@ export default async function SpecialEdDeskPage({
             <ShieldAlert className="w-6 h-6 text-amber-600" />
             Ειδική Αγωγή
           </h2>
-          <p className="text-slate-500 text-sm mt-1">{cohort.length} μαθητές/τριες</p>
+          <p className="text-slate-500 text-sm mt-1">
+            {filtered
+              ? t("showingCount", { shown: cohort.length, total: everyone.length })
+              : `${everyone.length} μαθητές/τριες`}
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <Link
-            href={`/${locale}/teacher/special-ed/add`}
-            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
-          >
-            <UserPlus className="w-4 h-4" />
-            Προσθήκη μαθητή
-          </Link>
+          {canManageRegister && (
+            <Link
+              href={`/${locale}/teacher/special-ed/add`}
+              className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
+            >
+              <UserPlus className="w-4 h-4" />
+              Προσθήκη μαθητή
+            </Link>
+          )}
           <Link
             href={`/${locale}/teacher/special-ed/export`}
             prefetch={false}
@@ -66,14 +107,140 @@ export default async function SpecialEdDeskPage({
             <Download className="w-4 h-4" />
             Εξαγωγή
           </Link>
-          <Link
-            href={`/${locale}/teacher/special-ed/import`}
-            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50"
-          >
-            <Upload className="w-4 h-4" />
-            Εισαγωγή
-          </Link>
+          {canManageRegister && (
+            <Link
+              href={`/${locale}/teacher/special-ed/import`}
+              className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50"
+            >
+              <Upload className="w-4 h-4" />
+              Εισαγωγή
+            </Link>
+          )}
         </div>
+      </div>
+
+      {/* Filters — year, problem code, free text over name and registry number */}
+      <div className="flex flex-wrap items-end gap-4">
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{tLocate("year")}</p>
+          <div className="flex gap-2 flex-wrap">
+            <Link
+              href={hrefWith({ grade: undefined })}
+              className={cn(
+                "h-9 px-4 rounded-xl text-sm font-medium border transition-colors",
+                !gradeNum
+                  ? "bg-emerald-600 text-white border-emerald-600"
+                  : "bg-white text-slate-600 border-slate-200 hover:border-emerald-400 hover:text-emerald-700",
+              )}
+            >
+              {tLocate("allYears")}
+            </Link>
+            {[1, 2, 3].map((g) => (
+              <Link
+                key={g}
+                href={hrefWith({ grade: String(g) })}
+                className={cn(
+                  "h-9 px-4 rounded-xl text-sm font-medium border transition-colors",
+                  gradeNum === g
+                    ? "bg-emerald-600 text-white border-emerald-600"
+                    : "bg-white text-slate-600 border-slate-200 hover:border-emerald-400 hover:text-emerald-700",
+                )}
+              >
+                {tLocate("yearN", { n: g })}
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {codes.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("filterProblem")}</p>
+            <div className="flex gap-2 flex-wrap">
+              <Link
+                href={hrefWith({ code: undefined })}
+                className={cn(
+                  "h-9 px-4 rounded-xl text-sm font-medium border transition-colors",
+                  !code
+                    ? "bg-slate-800 text-white border-slate-800"
+                    : "bg-white text-slate-600 border-slate-200 hover:border-slate-400 hover:text-slate-800",
+                )}
+              >
+                {t("allProblems")}
+              </Link>
+              {codes.map((c) => (
+                <Link
+                  key={c}
+                  href={hrefWith({ code: c === code ? undefined : c })}
+                  className={cn(
+                    "h-9 px-3 rounded-xl text-sm font-semibold border transition-colors",
+                    code === c
+                      ? "bg-slate-800 text-white border-slate-800"
+                      : "bg-white text-slate-600 border-slate-200 hover:border-slate-400 hover:text-slate-800",
+                  )}
+                >
+                  {c}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {accommodations.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("filterAccommodation")}</p>
+            <div className="flex gap-2 flex-wrap">
+              <Link
+                href={hrefWith({ acc: undefined })}
+                className={cn(
+                  "h-9 px-4 rounded-xl text-sm font-medium border transition-colors",
+                  !acc
+                    ? "bg-sky-700 text-white border-sky-700"
+                    : "bg-white text-slate-600 border-slate-200 hover:border-sky-400 hover:text-sky-700",
+                )}
+              >
+                {t("allAccommodations")}
+              </Link>
+              {accommodations.map((a) => (
+                <Link
+                  key={a}
+                  href={hrefWith({ acc: a === acc ? undefined : a })}
+                  className={cn(
+                    "h-9 px-3 rounded-xl text-sm font-semibold border transition-colors",
+                    acc === a
+                      ? "bg-sky-700 text-white border-sky-700"
+                      : "bg-white text-slate-600 border-slate-200 hover:border-sky-400 hover:text-sky-700",
+                  )}
+                >
+                  {a}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <form method="GET" className="flex items-end gap-2">
+          {grade && <input type="hidden" name="grade" value={grade} />}
+          {code && <input type="hidden" name="code" value={code} />}
+          {acc && <input type="hidden" name="acc" value={acc} />}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <SuggestInput
+              name="q"
+              defaultValue={query}
+              placeholder={t("searchPlaceholder")}
+              suggestions={suggestions}
+              className="h-9 w-64 pl-9 pr-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+          {filtered && (
+            <Link
+              href="?"
+              className="h-9 px-3 rounded-lg border border-slate-200 text-sm text-slate-400 hover:text-slate-700 flex items-center"
+            >
+              {t("clearFilters")}
+            </Link>
+          )}
+        </form>
       </div>
 
       {/* Cohort roster */}
@@ -90,12 +257,14 @@ export default async function SpecialEdDeskPage({
             </thead>
             <tbody className="divide-y divide-slate-50">
               {cohort.length === 0 ? (
-                <tr><td colSpan={4} className="px-5 py-10 text-center text-slate-400">Κανένας μαθητής ακόμη.</td></tr>
+                <tr><td colSpan={4} className="px-5 py-10 text-center text-slate-400">
+                  {everyone.length === 0 ? "Κανένας μαθητής ακόμη." : t("noMatches")}
+                </td></tr>
               ) : (
                 cohort.map((s) => (
                   <tr key={s.studentId} className="hover:bg-slate-50">
                     <td className="px-5 py-3">
-                      <Link href={`/${locale}/teacher/special-ed/${s.studentId}`} className="font-medium text-slate-900 hover:text-emerald-700">
+                      <Link href={`/${locale}/teacher/special-ed/${s.studentId}${rowFilters}`} className="font-medium text-slate-900 hover:text-emerald-700">
                         {s.name}
                       </Link>
                       <span className="ml-2 font-mono text-[11px] text-slate-400">{s.registryNo}</span>

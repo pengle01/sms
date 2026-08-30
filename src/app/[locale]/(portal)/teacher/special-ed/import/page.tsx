@@ -3,7 +3,7 @@ import { getActiveAuth } from "@/server/authz";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
-import { canViewSpecialEdFull } from "@/lib/specialEd";
+import { canManageSpecialEdRegister } from "@/lib/specialEd";
 import { SpecialEdImportForm } from "./SpecialEdImportForm";
 
 export default async function SpecialEdImportPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -14,8 +14,10 @@ export default async function SpecialEdImportPage({ params }: { params: Promise<
     where: { userId: auth.userId },
     select: { specialEducation: true },
   });
-  if (!canViewSpecialEdFull(auth.roles, !!staff?.specialEducation)) {
-    redirect(`/${locale}/teacher/dashboard`);
+  // Narrower than viewing: the counselor reads the dossier but does not own
+  // the register, and an import rewrites the whole cohort's codes.
+  if (!canManageSpecialEdRegister(auth.roles, !!staff?.specialEducation)) {
+    redirect(`/${locale}/teacher/special-ed`);
   }
 
   return (

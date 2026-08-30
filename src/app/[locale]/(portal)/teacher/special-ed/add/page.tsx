@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, Search, UserPlus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { canViewSpecialEdFull } from "@/lib/specialEd";
+import { canManageSpecialEdRegister } from "@/lib/specialEd";
 import { getSpecialEdCatalog } from "@/server/specialEd";
 import { parseLocateTab, locateHref, studentSearchWhere, type LocateParams, type LocateTab } from "@/lib/studentSearch";
 import { suggestionList } from "@/lib/textSearch";
@@ -33,7 +33,9 @@ export default async function SpecialEdAddPage({
     where: { userId: auth.userId },
     select: { specialEducation: true },
   });
-  if (!canViewSpecialEdFull(auth.roles, !!staff?.specialEducation)) {
+  // Deciding who is IN the cohort belongs to the deputy responsible for special
+  // education. The counselor reads and edits records but does not add students.
+  if (!canManageSpecialEdRegister(auth.roles, !!staff?.specialEducation)) {
     redirect(`/${locale}/teacher/special-ed`);
   }
 

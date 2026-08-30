@@ -5,22 +5,27 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/server/db";
 import { getActiveAuth } from "@/server/authz";
-import { canViewSpecialEdFull, specialEdCodesSeeded, splitKnownCodes } from "@/lib/specialEd";
+import { canManageSpecialEdRegister, specialEdCodesSeeded, splitKnownCodes } from "@/lib/specialEd";
 import { stripDiacritics } from "@/lib/textSearch";
 import { teacherUserIdsForStudent, ensureSpecialEdCodesSeeded } from "@/server/specialEd";
 import { writeAudit, requestMeta } from "@/server/audit";
 import { logger, errInfo } from "@/server/logger";
 
-// Full special-ed access (deputy / counselor / headmaster / super-admin). Every
-// mutation in here is gated on this — the session decides, never the client.
-async function requireFullAccess() {
+/**
+ * Every mutation in here belongs to the owner of the register — the deputy
+ * responsible for special education, with the headmaster and system admin as a
+ * fallback. The counselor reads the whole dossier but changes none of it.
+ *
+ * The session decides, never the client.
+ */
+async function requireRegisterAccess() {
   const auth = await getActiveAuth();
   if (!auth) redirect("/");
   const staff = await db.staffProfile.findUnique({
     where: { userId: auth.userId },
     select: { specialEducation: true },
   });
-  if (!canViewSpecialEdFull(auth.roles, !!staff?.specialEducation)) redirect("/");
+  if (!canManageSpecialEdRegister(auth.roles, !!staff?.specialEducation)) redirect("/");
   return auth;
 }
 
@@ -51,7 +56,7 @@ export async function updateSpecialEdRecord(input: {
   frenchExempt: boolean;
   otherExemptions: string;
 }): Promise<UpdateResult> {
-  const auth = await requireFullAccess();
+  const auth = await requireRegisterAccess();
 
   const student = await db.studentProfile.findUnique({
     where: { id: input.studentId },
@@ -155,7 +160,7 @@ export async function updateSpecialEdRecord(input: {
 }
 
 export async function removeSpecialEdRecord(studentId: string): Promise<UpdateResult> {
-  const auth = await requireFullAccess();
+  const auth = await requireRegisterAccess();
   await db.specialEdRecord.deleteMany({ where: { studentId } });
   const meta = await requestMeta();
   await writeAudit({ userId: auth.userId, action: "specialEd.remove", resource: "StudentProfile", resourceId: studentId, ...meta });
@@ -183,7 +188,7 @@ const truthy = (v: unknown) => {
 };
 
 export async function importSpecialEd(_prev: ImportResult | null, formData: FormData): Promise<ImportResult> {
-  const auth = await requireFullAccess();
+  const auth = await requireRegisterAccess();
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return { ok: false, error: "Επιλέξτε ένα αρχείο Excel." };

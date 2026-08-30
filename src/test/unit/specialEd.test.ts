@@ -1,5 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { parseSupportGroup, canViewSpecialEdFull, specialEdCodesSeeded, splitKnownCodes, parseSpecialEdCodeInput } from "@/lib/specialEd";
+import {
+  canManageSpecialEdRegister,
+  canViewSpecialEdFull,
+  cohortAccommodations,
+  cohortCodes,
+  filterCohort,
+  parseSpecialEdCodeInput,
+  parseSupportGroup,
+  specialEdCodesSeeded,
+  splitKnownCodes,
+} from "@/lib/specialEd";
 import { specialEdLegend } from "@/server/specialEd";
 import type { Role } from "@/generated/prisma/client";
 
@@ -124,5 +134,142 @@ describe("parseSpecialEdCodeInput", () => {
   it("rejects empty or overlong labels", () => {
     expect(parseSpecialEdCodeInput("ΔΞ", "   ")).toEqual({ ok: false, error: "label" });
     expect(parseSpecialEdCodeInput("ΔΞ", "α".repeat(501))).toEqual({ ok: false, error: "label" });
+  });
+});
+
+describe("canManageSpecialEdRegister", () => {
+  it("allows the deputy responsible for special education", () => {
+    expect(canManageSpecialEdRegister(["HEADTEACHER_B"], true)).toBe(true);
+  });
+
+  it("allows the headmaster and the system admin as a fallback", () => {
+    expect(canManageSpecialEdRegister(["HEADMASTER"], false)).toBe(true);
+    expect(canManageSpecialEdRegister(["SUPER_ADMIN"], false)).toBe(true);
+  });
+
+  it("does NOT allow the counselor, who may read the whole dossier", () => {
+    // The register belongs to the deputy: an import rewrites codes for the
+    // entire cohort, and reading it is not the same as owning it.
+    expect(canViewSpecialEdFull(["STUDENT_COUNSELOR"], false)).toBe(true);
+    expect(canManageSpecialEdRegister(["STUDENT_COUNSELOR"], false)).toBe(false);
+  });
+
+  it("does not allow a deputy without the designation, or a plain teacher", () => {
+    expect(canManageSpecialEdRegister(["HEADTEACHER_B"], false)).toBe(false);
+    expect(canManageSpecialEdRegister(["HEADTEACHER_A"], false)).toBe(false);
+    expect(canManageSpecialEdRegister(["TEACHER"], false)).toBe(false);
+    expect(canManageSpecialEdRegister([], false)).toBe(false);
+  });
+});
+
+describe("filterCohort", () => {
+  const rows = [
+    { name: "Ανδρέου Μαρία", registryNo: "1001", grade: 1, group: "ΕΓ1", problemCodes: ["ΔΑΦ", "ΓΜΔ"], accommodationCodes: ["1", "10"] },
+    { name: "Γεωργίου Νίκος", registryNo: "1002", grade: 2, group: "ΘΒΣ2", problemCodes: ["ΔΕΠ/Υ"], accommodationCodes: ["2"] },
+    { name: "Παπαδόπουλος Ηλίας", registryNo: "1003", grade: 1, group: "ΕΔ1", problemCodes: [], accommodationCodes: [] },
+  ];
+
+  it("returns everything when nothing is set", () => {
+    expect(filterCohort(rows, {})).toHaveLength(3);
+  });
+
+  it("filters by year", () => {
+    expect(filterCohort(rows, { grade: 1 }).map((r) => r.registryNo)).toEqual(["1001", "1003"]);
+    expect(filterCohort(rows, { grade: 3 })).toEqual([]);
+  });
+
+  it("filters by problem code, and a student with none never matches one", () => {
+    expect(filterCohort(rows, { code: "ΔΑΦ" }).map((r) => r.registryNo)).toEqual(["1001"]);
+    expect(filterCohort(rows, { code: "ΓΜΔ" }).map((r) => r.registryNo)).toEqual(["1001"]);
+    expect(filterCohort(rows, { code: "ΔΕΠ/Υ" }).map((r) => r.registryNo)).toEqual(["1002"]);
+  });
+
+  it("searches the name accent- and case-insensitively", () => {
+    expect(filterCohort(rows, { q: "ανδρεου" }).map((r) => r.registryNo)).toEqual(["1001"]);
+    expect(filterCohort(rows, { q: "ΜΑΡΙΑ" }).map((r) => r.registryNo)).toEqual(["1001"]);
+  });
+
+  it("searches the registry number too", () => {
+    expect(filterCohort(rows, { q: "1002" }).map((r) => r.name)).toEqual(["Γεωργίου Νίκος"]);
+  });
+
+  it("filters by accommodation (διευκόλυνση)", () => {
+    expect(filterCohort(rows, { accommodation: "10" }).map((r) => r.registryNo)).toEqual(["1001"]);
+    expect(filterCohort(rows, { accommodation: "2" }).map((r) => r.registryNo)).toEqual(["1002"]);
+    expect(filterCohort(rows, { accommodation: "18" })).toEqual([]);
+  });
+
+  it("does not confuse accommodation 1 with 10", () => {
+    // Codes are strings "1".."18"; a prefix match would fold these together.
+    expect(filterCohort(rows, { accommodation: "1" }).map((r) => r.registryNo)).toEqual(["1001"]);
+    expect(filterCohort([rows[1]!], { accommodation: "1" })).toEqual([]);
+  });
+
+  it("combines filters", () => {
+    expect(filterCohort(rows, { grade: 1, code: "ΔΑΦ" }).map((r) => r.registryNo)).toEqual(["1001"]);
+    expect(filterCohort(rows, { grade: 2, code: "ΔΑΦ" })).toEqual([]);
+    expect(filterCohort(rows, { code: "ΔΑΦ", accommodation: "10" }).map((r) => r.registryNo)).toEqual(["1001"]);
+    expect(filterCohort(rows, { code: "ΔΕΠ/Υ", accommodation: "10" })).toEqual([]);
+  });
+
+  it("ignores a blank or whitespace-only search", () => {
+    expect(filterCohort(rows, { q: "   " })).toHaveLength(3);
+    expect(filterCohort(rows, { q: "" })).toHaveLength(3);
+  });
+});
+
+describe("cohortCodes", () => {
+  it("lists the distinct codes present, sorted", () => {
+    expect(
+      cohortCodes([
+        { name: "a", registryNo: "1", grade: 1, group: null, problemCodes: ["ΔΑΦ", "ΓΜΔ"], accommodationCodes: [] },
+        { name: "b", registryNo: "2", grade: 1, group: null, problemCodes: ["ΓΜΔ"], accommodationCodes: [] },
+        { name: "c", registryNo: "3", grade: 1, group: null, problemCodes: [], accommodationCodes: [] },
+      ]),
+    ).toEqual(["ΓΜΔ", "ΔΑΦ"]);
+  });
+
+  it("is empty for an empty cohort", () => {
+    expect(cohortCodes([])).toEqual([]);
+  });
+});
+
+describe("cohortAccommodations", () => {
+  const row = (codes: string[]) => ({
+    name: "x", registryNo: "1", grade: 1, group: null, problemCodes: [], accommodationCodes: codes,
+  });
+
+  it("sorts numerically, not lexically", () => {
+    // "10" must not come before "2".
+    expect(cohortAccommodations([row(["10", "2"]), row(["1"])])).toEqual(["1", "2", "10"]);
+  });
+
+  it("lists each code once and copes with an empty cohort", () => {
+    expect(cohortAccommodations([row(["3"]), row(["3"])])).toEqual(["3"]);
+    expect(cohortAccommodations([])).toEqual([]);
+  });
+});
+
+describe("special-ed read vs write, in one place", () => {
+  // The counselor reads the whole dossier and changes none of it. These two
+  // predicates are the entire boundary, so pin them against each other.
+  const cases: { who: string; roles: Role[]; deputy: boolean; view: boolean; write: boolean }[] = [
+    { who: "special-ed deputy",      roles: ["HEADTEACHER_B"],     deputy: true,  view: true,  write: true },
+    { who: "counselor",              roles: ["STUDENT_COUNSELOR"], deputy: false, view: true,  write: false },
+    { who: "headmaster",             roles: ["HEADMASTER"],        deputy: false, view: true,  write: true },
+    { who: "system admin",           roles: ["SUPER_ADMIN"],       deputy: false, view: true,  write: true },
+    { who: "deputy without the flag", roles: ["HEADTEACHER_B"],    deputy: false, view: false, write: false },
+    { who: "plain teacher",          roles: ["TEACHER"],           deputy: false, view: false, write: false },
+  ];
+
+  for (const c of cases) {
+    it(`${c.who}: view=${c.view} write=${c.write}`, () => {
+      expect(canViewSpecialEdFull(c.roles, c.deputy)).toBe(c.view);
+      expect(canManageSpecialEdRegister(c.roles, c.deputy)).toBe(c.write);
+    });
+  }
+
+  it("never grants write without read", () => {
+    for (const c of cases) if (c.write) expect(c.view).toBe(true);
   });
 });

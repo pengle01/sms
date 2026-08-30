@@ -1057,6 +1057,14 @@
   },
   "specialEd": {
     "title": "Ειδική Αγωγή",
+    "filterProblem": "Κωδικός προβλήματος",
+    "allProblems": "Όλοι οι κωδικοί",
+    "filterAccommodation": "Διευκόλυνση",
+    "allAccommodations": "Όλες οι διευκολύνσεις",
+    "searchPlaceholder": "Αναζήτηση με όνομα ή αρ. μητρώου…",
+    "noMatches": "Κανένας μαθητής δεν ταιριάζει με τα φίλτρα.",
+    "showingCount": "{shown} από {total} μαθητές/τριες",
+    "clearFilters": "Καθαρισμός",
     "codesHint": "Εμπιστευτικά στοιχεία. Πατήστε για προβολή των κωδικών του/της μαθητή/τριας.",
     "reveal": "Προβολή κωδικών",
     "problemCodes": "Κωδικοί προβλημάτων",
@@ -1066,6 +1074,8 @@
     "supportAtomic": "Ατομική",
     "supportGroup": "Ομαδική",
     "remarks": "Παρατηρήσεις",
+    "fileNo": "Αρ. φακέλου",
+    "noRecord": "Δεν υπάρχει καταχώρηση ειδικής αγωγής.",
     "frenchExempt": "Απαλλαγή Γαλλικών",
     "otherExemptions": "Άλλες απαλλαγές",
     "periodN": "{n}η"
