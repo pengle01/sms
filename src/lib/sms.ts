@@ -48,6 +48,16 @@ function apiRoot(raw: string): string {
   return trimmed || DEFAULT_ROOT;
 }
 
+/**
+ * How long to wait on the gateway before giving up.
+ *
+ * The absence SMS runs on the request path when a teacher saves a register, so
+ * an unresponsive gateway must not hold their save open indefinitely. Every
+ * caller benefits: a timeout returns the same { success: false } shape as any
+ * other failure.
+ */
+const SMS_TIMEOUT_MS = 10_000;
+
 export async function sendSms(
   to: string,
   message: string,
@@ -76,6 +86,7 @@ export async function sendSms(
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: body.toString(),
+      signal: AbortSignal.timeout(SMS_TIMEOUT_MS),
     });
 
     const text = await res.text();
@@ -93,8 +104,12 @@ export async function sendSms(
     }
     return { success: true, gatewayResponse: text, batchId: json.batchId, credits: json.credits };
   } catch (err) {
-    logger.error({ event: "sms.sendError", err: errInfo(err) }, "SMS send failed");
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
+    const timedOut = err instanceof Error && err.name === "TimeoutError";
+    logger.error({ event: "sms.sendError", timedOut, err: errInfo(err) }, "SMS send failed");
+    return {
+      success: false,
+      error: timedOut ? `SMS gateway timed out after ${SMS_TIMEOUT_MS}ms` : err instanceof Error ? err.message : String(err),
+    };
   }
 }
 

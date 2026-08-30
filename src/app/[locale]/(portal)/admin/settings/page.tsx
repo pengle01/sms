@@ -6,6 +6,7 @@ import { staffDisplayName } from "@/lib/staffName";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY, getMaxTestsPerWeek, DEFAULT_MAX_TESTS_PER_WEEK, getMaxGuardiansPerStudent, DEFAULT_MAX_GUARDIANS_PER_STUDENT, getSchoolYear, getTermDatesConfig, getSchoolName, getGradesUnlocked, getAttendanceLockConfig } from "@/lib/schoolConfig";
 import { getSmsConfig } from "@/lib/sms";
+import { getAbsenceSmsConfig } from "@/lib/schoolConfig";
 import { getEmailConfig } from "@/lib/email";
 import { getRooms } from "@/server/rooms";
 import { getSpecialEdCodeTables } from "@/server/specialEd";
@@ -26,6 +27,7 @@ export default async function AdminSettingsPage({
   const { MaxTestsForm } = await import("./MaxTestsForm");
   const { MaxGuardiansForm } = await import("./MaxGuardiansForm");
   const { SmsSettingsForm } = await import("./SmsSettingsForm");
+  const { AbsenceSmsForm } = await import("./AbsenceSmsForm");
   const { EmailSettingsForm } = await import("./EmailSettingsForm");
   const { TermDatesForm } = await import("./TermDatesForm");
   const { SchoolNameForm } = await import("./SchoolNameForm");
@@ -34,7 +36,7 @@ export default async function AdminSettingsPage({
   const { AttendanceLockForm } = await import("./AttendanceLockForm");
   const { RoomsForm } = await import("./RoomsForm");
   const { SpecialEdCodesForm } = await import("./SpecialEdCodesForm");
-  const [periodsPerDay, maxTestsPerWeek, maxGuardians, smsConfig, emailConfig, termConfig, schoolYear, schoolName, gradesUnlocked, attendanceLock, dutyEntries, dutyDeputies, rooms, specialEdCodes] = await Promise.all([
+  const [periodsPerDay, maxTestsPerWeek, maxGuardians, smsConfig, emailConfig, termConfig, schoolYear, schoolName, gradesUnlocked, attendanceLock, dutyEntries, dutyDeputies, rooms, specialEdCodes, absenceSms, longestName] = await Promise.all([
     getPeriodsPerDay(),
     getMaxTestsPerWeek(),
     getMaxGuardiansPerStudent(),
@@ -53,6 +55,14 @@ export default async function AdminSettingsPage({
     }),
     getRooms(),
     getSpecialEdCodeTables(),
+    getAbsenceSmsConfig(),
+    // The worst case for the SMS cost readout: a template that fits the average
+    // name but not the longest one would quietly cost double on those students.
+    db.studentProfile.findFirst({
+      where: { user: { is: { isActive: true } } },
+      select: { user: { select: { name: true } } },
+      orderBy: { user: { name: "desc" } },
+    }),
   ]);
   const initial = { ...DEFAULT_PERIODS_PER_DAY, ...periodsPerDay };
   const maxTestsInitial = maxTestsPerWeek ?? DEFAULT_MAX_TESTS_PER_WEEK;
@@ -196,6 +206,18 @@ export default async function AdminSettingsPage({
         </CardHeader>
         <CardContent>
           <SmsSettingsForm initial={smsConfig} />
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-xl">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">{t("absenceSms")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AbsenceSmsForm
+            initial={absenceSms}
+            longestStudentName={longestName?.user?.name ?? "ΟΝΟΜΑΤΕΠΩΝΥΜΟ ΜΑΘΗΤΗ"}
+          />
         </CardContent>
       </Card>
 

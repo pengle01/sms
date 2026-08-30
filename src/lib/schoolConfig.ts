@@ -3,6 +3,7 @@ import { MAX_GUARDIAN_CLAIMS } from "@/lib/accessCode";
 import { DEFAULT_PERIODS_PER_DAY, type PeriodsPerDay } from "@/lib/periods";
 import { GRADES_UNLOCKED_KEY, parseGradesUnlocked, type GradesUnlocked } from "@/lib/grades";
 import { ATTENDANCE_LOCK_KEY, parseAttendanceLock, type AttendanceLockConfig } from "@/lib/attendanceLock";
+import { ABSENCE_SMS_KEY, parseAbsenceSms, type AbsenceSmsConfig } from "@/lib/absenceSms";
 import { getNow } from "@/lib/dates";
 import {
   activeTermFor,
@@ -45,6 +46,12 @@ export async function getAttendanceLockConfig(): Promise<AttendanceLockConfig> {
 }
 
 export const DEFAULT_MAX_TESTS_PER_WEEK = 4;
+
+/** Absence-SMS switch, cutoff and wording. Defaults to off. */
+export async function getAbsenceSmsConfig(): Promise<AbsenceSmsConfig> {
+  const setting = await db.globalSetting.findUnique({ where: { key: ABSENCE_SMS_KEY } });
+  return parseAbsenceSms(setting?.value);
+}
 
 export async function getMaxTestsPerWeek(): Promise<number> {
   const setting = await db.globalSetting.findUnique({ where: { key: "maxTestsPerWeek" } });

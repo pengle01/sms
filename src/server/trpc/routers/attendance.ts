@@ -7,6 +7,7 @@ import { writeAudit } from "@/server/audit";
 import { getAttendanceLockConfig, getSchoolYear } from "@/lib/schoolConfig";
 import { isWithinSchoolYear } from "@/lib/schoolYear";
 import { getPendingAttendance, type PendingLesson } from "@/server/attendanceLock";
+import { sendAbsenceSms } from "@/server/absenceSms";
 
 const OUT_OF_YEAR_MSG = "Η ημερομηνία είναι εκτός των ορίων του σχολικού έτους.";
 
@@ -136,24 +137,10 @@ export const attendanceRouter = createTRPCRouter({
         })
       );
 
-      // Trigger SMS for period-1 absences (fire-and-forget; handled by a separate service call)
+      // Notify parents of a first-period absence. Never allowed to fail the
+      // save: a register must record even when the gateway is unreachable.
       if (slot?.period === 1) {
-        // IDs of students newly marked absent in period 1
-        const absentIds = upserted
-          .filter((r: (typeof upserted)[number]) => r.status === "ABSENT" && !r.smsSent)
-          .map((r: (typeof upserted)[number]) => r.studentId);
-
-        if (absentIds.length > 0) {
-          // Queue SMS — actual sending is done by the SMS service router
-          await ctx.db.attendance.updateMany({
-            where: {
-              studentId: { in: absentIds },
-              timetableSlotId: input.records[0]?.timetableSlotId,
-              date,
-            },
-            data: { smsSent: true },
-          });
-        }
+        await sendAbsenceSms(upserted, ctx.session.user.id);
       }
 
       return upserted;

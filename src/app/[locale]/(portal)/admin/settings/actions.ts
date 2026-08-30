@@ -6,6 +6,12 @@ import { getSuperAdminAuth } from "@/server/authz";
 import { writeAudit, requestMeta } from "@/server/audit";
 import { DUTY_ELIGIBLE_ROLES } from "@/lib/dutyRoster";
 import { GRADES_UNLOCKED_KEY, GRADE_PERIODS, type GradesUnlocked } from "@/lib/grades";
+import {
+  ABSENCE_SMS_KEY,
+  ABSENCE_SMS_TEMPLATE_MAX,
+  isValidCutoff,
+  type AbsenceSmsConfig,
+} from "@/lib/absenceSms";
 import { ATTENDANCE_LOCK_KEY, ATTENDANCE_LOCK_WINDOWS, type AttendanceLockConfig } from "@/lib/attendanceLock";
 import { parseRoomInput } from "@/lib/rooms";
 import { parseSpecialEdCodeInput } from "@/lib/specialEd";
@@ -152,6 +158,43 @@ export async function removeRoom(id: string): Promise<SaveRosterResult> {
  * When on, a teacher with unmarked past lessons is blocked from the rest of
  * the teacher portal until they record them.
  */
+/**
+ * Automatic SMS for a first-period absence: the switch, the time after which
+ * nothing goes out, and the wording the school sends.
+ */
+export async function saveAbsenceSms(config: AbsenceSmsConfig): Promise<SaveRosterResult> {
+  const auth = await getSuperAdminAuth();
+  if (!auth) return { ok: false, error: "Forbidden" };
+
+  const template = (config.template ?? "").trim();
+  if (!template) return { ok: false, error: "EMPTY_TEMPLATE" };
+  if (template.length > ABSENCE_SMS_TEMPLATE_MAX) return { ok: false, error: "TEMPLATE_TOO_LONG" };
+  if (!isValidCutoff(config.cutoff)) return { ok: false, error: "BAD_CUTOFF" };
+
+  const value: AbsenceSmsConfig = {
+    enabled: config.enabled === true,
+    cutoff: config.cutoff,
+    template,
+  };
+
+  await db.globalSetting.upsert({
+    where: { key: ABSENCE_SMS_KEY },
+    create: { key: ABSENCE_SMS_KEY, value: JSON.stringify(value) },
+    update: { value: JSON.stringify(value) },
+  });
+
+  await writeAudit({
+    userId: auth.userId,
+    action: "settings.absenceSms",
+    resource: "GlobalSetting",
+    resourceId: ABSENCE_SMS_KEY,
+    details: value,
+    ...(await requestMeta()),
+  });
+  revalidatePath("/[locale]/(portal)/admin/settings", "page");
+  return { ok: true };
+}
+
 export async function saveAttendanceLock(config: AttendanceLockConfig): Promise<SaveRosterResult> {
   const auth = await getSuperAdminAuth();
   if (!auth) return { ok: false, error: "Forbidden" };
