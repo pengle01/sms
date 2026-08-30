@@ -10,6 +10,8 @@ import { getTranslations } from "next-intl/server";
 import { RolesCard } from "./RolesCard";
 import { SetPasswordForm } from "./SetPasswordForm";
 import { DeleteUserCard } from "./DeleteUserCard";
+import { pickQueryString } from "@/lib/listFilters";
+import { STAFF_KEYS } from "@/lib/staffFilter";
 
 const ROLE_COLOR: Record<string, string> = {
   SUPER_ADMIN:       "bg-purple-100 text-purple-700 border-purple-200",
@@ -24,10 +26,15 @@ const ROLE_COLOR: Record<string, string> = {
 
 export default async function UserDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; id: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const { locale, id } = await params;
+  // Carry the roster's filters back, so returning from a record does not dump
+  // the admin at the top of an unfiltered list of 140.
+  const backHref = `/${locale}/admin/users${pickQueryString(await searchParams, STAFF_KEYS)}`;
   const auth = await getSuperAdminAuth();
   if (!auth) redirect(`/${locale}/login/staff`);
 
@@ -93,7 +100,7 @@ export default async function UserDetailPage({
     <div className="space-y-5">
       <div>
         <Link
-          href={`/${locale}/admin/users`}
+          href={backHref}
           className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 mb-3"
         >
           <ChevronLeft className="w-4 h-4" />

@@ -24,7 +24,7 @@ export async function unlinkStaffUser(staffProfileId: string) {
     resourceId: staffProfileId,
     ...(await requestMeta()),
   });
-  revalidatePath("/[locale]/admin/staff", "page");
+  revalidatePath("/[locale]/(portal)/admin/users", "page");
 }
 
 export async function linkStaffUser(staffProfileId: string, userId: string) {
@@ -46,5 +46,5 @@ export async function linkStaffUser(staffProfileId: string, userId: string) {
     details: { linkedUserId: userId },
     ...(await requestMeta()),
   });
-  revalidatePath("/[locale]/admin/staff", "page");
+  revalidatePath("/[locale]/(portal)/admin/users", "page");
 }

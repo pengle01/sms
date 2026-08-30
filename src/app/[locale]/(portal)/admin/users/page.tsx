@@ -3,12 +3,29 @@ import { getSuperAdminAuth } from "@/server/authz";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { UserX } from "lucide-react";
-import type { Role, Prisma } from "@/generated/prisma/client";
+import { Search } from "lucide-react";
+import type { Role } from "@/generated/prisma/client";
 import { getTranslations } from "next-intl/server";
-import { StaffLinkControls } from "../staff/StaffLinkControls";
+import { StaffLinkControls } from "@/components/staff/StaffLinkControls";
+import { SuggestInput } from "@/components/SuggestInput";
+import { suggestionList } from "@/lib/textSearch";
+import { pickQueryString } from "@/lib/listFilters";
+import { STAFF_ROLES } from "@/lib/rbac";
+import {
+  type StaffRow,
+  STAFF_KEYS,
+  filterStaff,
+  sortStaff,
+  staffSpecialties,
+  staffStatus,
+  isManagementRow,
+  staffRowLabel,
+  lessonsByName,
+  migrateLegacyRole,
+} from "@/lib/staffFilter";
+import { isManagementName } from "@/lib/substitutions";
 
 const ROLE_COLOR: Record<string, string> = {
   SUPER_ADMIN:       "bg-purple-100 text-purple-700 border-purple-200",
@@ -21,360 +38,453 @@ const ROLE_COLOR: Record<string, string> = {
   CHAPERONE:         "bg-orange-100 text-orange-700 border-orange-200",
 };
 
-const STAFF_ROLES: Role[] = [
-  "HEADMASTER", "HEADTEACHER_A", "HEADTEACHER_B", "STUDENT_COUNSELOR",
-  "TEACHER", "SCHOOL_ADMIN", "SUPER_ADMIN",
+// Roles offered as pills, in seniority order. Only those actually present on
+// the roster are rendered — a pill that can only ever return nothing is noise.
+const ROLE_PILLS: Role[] = [
+  "HEADMASTER",
+  "HEADTEACHER_A",
+  "HEADTEACHER_B",
+  "STUDENT_COUNSELOR",
+  "TEACHER",
+  "SCHOOL_ADMIN",
+  "SUPER_ADMIN",
 ];
 
-// Filter by "added roles" — admin-granted extra roles + designations (which sit
-// on top of the primary role). Each maps to a user-level where clause.
-const DESIGNATION_WHERE: Record<string, Prisma.UserWhereInput> = {
-  extraAdmin: { extraRoles: { has: "SUPER_ADMIN" } },
-  specialEd:  { staffProfile: { specialEducation: true } },
-  ddk:        { staffProfile: { ddkCoordinator: true } },
-  subCoord:   { staffProfile: { substitutionCoordinator: true } },
-};
+const POST_PILLS = ["specialEd", "ddk", "subCoord", "homeroom", "extraAdmin"] as const;
 
+/**
+ * The admin staff roster.
+ *
+ * One list of everyone, not two. Before, the page showed only the ~16 people
+ * with a login and hid the ~124 roster entries the timetable import created
+ * behind a separate tab and a separate table — so an admin looking for a named
+ * teacher had to guess which of the two they were in, with no search box in
+ * either. Here every filter runs over the whole roster at once.
+ */
 export default async function UsersPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ role?: string }>;
+  searchParams: Promise<{
+    status?: string;
+    sp?: string;
+    role?: string;
+    post?: string;
+    q?: string;
+  }>;
 }) {
   const { locale } = await params;
-  const { role: roleParam } = await searchParams;
+  const raw = await searchParams;
   const auth = await getSuperAdminAuth();
   if (!auth) redirect(`/${locale}/login/staff`);
 
   const t = await getTranslations("adminUsers");
   const tRoles = await getTranslations("roles");
 
-  const FILTER_TABS: { key: string; label: string }[] = [
-    { key: "all",              label: t("tabAll") },
-    { key: "HEADMASTER",       label: tRoles("HEADMASTER") },
-    { key: "HEADTEACHER_A",    label: t("tabHeadteachersA") },
-    { key: "HEADTEACHER_B",    label: t("tabHeadteachersB") },
-    { key: "STUDENT_COUNSELOR",label: t("tabCounselors") },
-    { key: "TEACHER",          label: t("tabTeachers") },
-    { key: "SCHOOL_ADMIN",     label: t("tabSchoolAdmins") },
-    { key: "SUPER_ADMIN",      label: t("tabSuperAdmins") },
-    { key: "unlinked",         label: t("tabUnlinked") },
-  ];
+  // `?role=` used to mean three different things at once. Translate the old
+  // values so a bookmark or a still-open tab lands somewhere sensible.
+  const legacy = migrateLegacyRole(raw.role);
+  const current = {
+    status: raw.status ?? legacy.status,
+    sp: raw.sp,
+    role: legacy.role,
+    post: raw.post ?? legacy.post,
+    q: (raw.q ?? "").trim(),
+  };
 
-  const DESIGNATION_TABS: { key: string; label: string }[] = [
-    { key: "extraAdmin", label: t("desigExtraAdmin") },
-    { key: "specialEd",  label: t("desigSpecialEd") },
-    { key: "ddk",        label: t("desigDdk") },
-    { key: "subCoord",   label: t("desigSubCoord") },
-  ];
-
-  const knownTab =
-    FILTER_TABS.find((t) => t.key === roleParam)?.key ??
-    DESIGNATION_TABS.find((t) => t.key === roleParam)?.key;
-  const activeTab = knownTab ?? "all";
-  const showUnlinked = activeTab === "unlinked";
-  const designationWhere = DESIGNATION_WHERE[activeTab];
-
-  // Added-role/designation filters narrow within staff; plain role tabs match the
-  // primary role; "all" lists every staff member.
-  const userWhere: Prisma.UserWhereInput = designationWhere
-    ? { role: { in: STAFF_ROLES }, ...designationWhere }
-    : activeTab === "all"
-      ? { role: { in: STAFF_ROLES } }
-      : { role: { equals: activeTab as Role } };
-
-  const [users, unlinkedProfiles, linkableUsers] = await Promise.all([
-    showUnlinked
-      ? Promise.resolve([])
-      : db.user.findMany({
-          where: userWhere,
-          include: {
-            staffProfile: {
-              select: {
-                id: true,
-                scheduleName: true,
-                phone: true,
-                department: true,
-                specialEducation: true,
-                homeroomGroups: { select: { name: true } },
-                homeroomHeadGroups: { select: { name: true } },
-                _count: { select: { timetableSlots: true } },
-              },
-            },
-          },
-          orderBy: [{ role: "asc" }, { name: "asc" }],
-        }),
+  const [profiles, accountsWithoutProfile, slotCounts] = await Promise.all([
     db.staffProfile.findMany({
-      where: { userId: null },
       include: {
+        user: {
+          select: {
+            id: true, name: true, nameEl: true, email: true,
+            role: true, isActive: true, extraRoles: true,
+          },
+        },
         homeroomGroups: { select: { name: true } },
         homeroomHeadGroups: { select: { name: true } },
-        _count: { select: { timetableSlots: true } },
       },
     }),
+    // Staff who never appear in the schedule and so have no profile — the
+    // secretary and the system admin. Also the pool of accounts a roster entry
+    // can be linked to, once the inactive ones are dropped.
     db.user.findMany({
-      where: {
-        role: { in: STAFF_ROLES },
-        isActive: true,
-        staffProfile: null,
+      where: { role: { in: STAFF_ROLES }, staffProfile: null },
+      select: {
+        id: true, name: true, nameEl: true, email: true,
+        role: true, isActive: true, extraRoles: true,
       },
-      select: { id: true, name: true, email: true },
       orderBy: { name: "asc" },
     }),
+    // Lesson load by name. NOT by staffId: that is only stamped at claim
+    // approval, so a relation count reads 0 for everyone who has not signed up.
+    db.timetableSlot.groupBy({ by: ["staffName"], _count: true }),
   ]);
 
-  // A profile with no user but WITH a schedule name is a roster entry the
-  // timetable import created for someone who has not signed up yet — expected,
-  // and there are ~130. Only a profile with neither is genuinely orphaned, so
-  // only that count earns the amber treatment; otherwise the alarm is permanent
-  // and stops meaning anything. Orphans sort first in the list.
-  const orphanedCount = unlinkedProfiles.filter((sp) => !sp.scheduleName).length;
-  const unlinkedOrdered = [...unlinkedProfiles].sort(
-    (a, b) =>
-      Number(!!a.scheduleName) - Number(!!b.scheduleName) ||
-      (a.scheduleName ?? "").localeCompare(b.scheduleName ?? "", "el"),
-  );
+  const lessons = lessonsByName(slotCounts);
 
-  const tabLabel =
-    FILTER_TABS.find((tab) => tab.key === activeTab)?.label ??
-    DESIGNATION_TABS.find((tab) => tab.key === activeTab)?.label ??
-    t("title");
+  const roster: StaffRow[] = [
+    ...profiles.map((sp) => ({
+      userId: sp.userId,
+      staffProfileId: sp.id,
+      scheduleName: sp.scheduleName,
+      name: sp.user?.name ?? null,
+      nameEl: sp.user?.nameEl ?? null,
+      email: sp.user?.email ?? null,
+      phone: sp.phone,
+      role: sp.user?.role ?? null,
+      isActive: sp.user?.isActive ?? true,
+      extraAdmin: sp.user?.extraRoles.includes("SUPER_ADMIN") ?? false,
+      specialEducation: sp.specialEducation,
+      ddkCoordinator: sp.ddkCoordinator,
+      substitutionCoordinator: sp.substitutionCoordinator,
+      homerooms: [
+        ...sp.homeroomGroups.map((g) => g.name),
+        ...sp.homeroomHeadGroups.map((g) => `${g.name} (B')`),
+      ],
+      lessons: lessons.get(sp.scheduleName ?? "") ?? 0,
+    })),
+    ...accountsWithoutProfile.map((u) => ({
+      userId: u.id,
+      staffProfileId: null,
+      scheduleName: null,
+      name: u.name,
+      nameEl: u.nameEl,
+      email: u.email,
+      phone: null,
+      role: u.role,
+      isActive: u.isActive,
+      extraAdmin: u.extraRoles.includes("SUPER_ADMIN"),
+      specialEducation: false,
+      ddkCoordinator: false,
+      substitutionCoordinator: false,
+      homerooms: [],
+      lessons: 0,
+    })),
+  ];
+
+  const everyone = sortStaff(roster);
+  const rows = filterStaff(everyone, {
+    status: current.status,
+    specialty: current.sp,
+    role: current.role,
+    post: current.post,
+    q: current.q,
+  });
+  const filtered = rows.length !== everyone.length;
+
+  const linkableUsers = accountsWithoutProfile
+    .filter((u) => u.isActive)
+    .map((u) => ({ id: u.id, name: u.name, email: u.email }));
+
+  // Every option count comes from the UNFILTERED roster, so a pill never
+  // disappears because of what is currently selected.
+  const count = (p: (r: StaffRow) => boolean) => everyone.filter(p).length;
+  const statusPills = [
+    { key: "linked",   label: t("statusLinked"),   n: count((r) => staffStatus(r) === "linked") },
+    { key: "awaiting", label: t("statusAwaiting"), n: count((r) => staffStatus(r) === "awaiting") },
+    { key: "orphaned", label: t("statusOrphaned"), n: count((r) => staffStatus(r) === "orphaned") },
+  ].filter((p) => p.n > 0);
+  const specialties = staffSpecialties(everyone);
+  const rolePills = [
+    { key: "management", label: t("roleManagement"), n: count(isManagementRow) },
+    ...ROLE_PILLS.map((r) => ({ key: r as string, label: tRoles(r), n: count((x) => x.role === r) })),
+  ].filter((p) => p.n > 0);
+  const postPills = POST_PILLS.map((key) => ({
+    key,
+    label: t(`post_${key}`),
+    n: filterStaff(everyone, { post: key }).length,
+  })).filter((p) => p.n > 0);
+
+  const hrefWith = (
+    over: Partial<Record<(typeof STAFF_KEYS)[number], string | undefined>>,
+  ) => pickQueryString({ ...current, ...over }, STAFF_KEYS) || "?";
+
+  // Carried onto every row link so the record's back button returns to this view.
+  const listFilters = pickQueryString(current, STAFF_KEYS);
+
+  const suggestions = suggestionList([
+    ...everyone.map((r) => r.scheduleName),
+    ...everyone.map((r) => r.name),
+  ]);
+
+  const pill = (active: boolean, tone: "emerald" | "slate" | "sky" | "purple") =>
+    cn(
+      "h-9 px-3 rounded-xl text-sm font-medium transition-colors border",
+      active
+        ? {
+            emerald: "bg-emerald-600 text-white border-emerald-600",
+            slate:   "bg-slate-800 text-white border-slate-800",
+            sky:     "bg-sky-700 text-white border-sky-700",
+            purple:  "bg-purple-600 text-white border-purple-600",
+          }[tone]
+        : {
+            emerald: "bg-white text-slate-600 border-slate-200 hover:border-emerald-400 hover:text-emerald-700",
+            slate:   "bg-white text-slate-600 border-slate-200 hover:border-slate-400 hover:text-slate-800",
+            sky:     "bg-white text-slate-600 border-slate-200 hover:border-sky-400 hover:text-sky-700",
+            purple:  "bg-white text-purple-700 border-purple-200 hover:border-purple-400",
+          }[tone],
+    );
+
+  const caption = "text-xs font-semibold text-slate-400 uppercase tracking-wide";
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>
         <p className="text-slate-500 text-sm mt-1">
-          {showUnlinked
-            ? t("unlinkedProfilesCount", { count: unlinkedProfiles.length })
-            : `${users.length} ${tabLabel.toLowerCase()}`}
-          {!showUnlinked && orphanedCount > 0 && (
-            <Link href="?role=unlinked" className="ml-2 text-amber-600 font-medium hover:underline">
-              · {t("unlinkedProfilesCount", { count: orphanedCount })}
-            </Link>
-          )}
-          {!showUnlinked && orphanedCount === 0 && unlinkedProfiles.length > 0 && (
-            <Link href="?role=unlinked" className="ml-2 text-slate-400 hover:underline">
-              · {t("awaitingSignupCount", { count: unlinkedProfiles.length })}
-            </Link>
-          )}
+          {filtered
+            ? t("showingCount", { shown: rows.length, total: everyone.length })
+            : t("rosterSummary", {
+                total: everyone.length,
+                linked: count((r) => staffStatus(r) === "linked"),
+              })}
         </p>
       </div>
 
-      {/* Filter tabs */}
-      <div className="flex flex-wrap gap-2">
-        {FILTER_TABS.map(({ key, label }) => (
-          <Link
-            key={key}
-            href={key === "all" ? "?" : `?role=${key}`}
-            className={cn(
-              "h-9 px-4 rounded-lg text-sm font-medium border transition-colors",
-              key === "unlinked" && orphanedCount > 0
-                ? activeTab === "unlinked"
-                  ? "bg-amber-500 text-white border-amber-500"
-                  : "bg-white text-amber-600 border-amber-200 hover:border-amber-400"
-                : activeTab === key
-                  ? "bg-slate-800 text-white border-slate-800"
-                  : "bg-white text-slate-600 border-slate-200 hover:border-slate-400 hover:text-slate-800"
-            )}
-          >
-            {label}
-            {key === "unlinked" && unlinkedProfiles.length > 0 && (
-              <span className={cn("ml-1.5 text-xs font-semibold",
-                orphanedCount === 0
-                  ? activeTab === "unlinked" ? "text-slate-300" : "text-slate-400"
-                  : activeTab === "unlinked" ? "text-amber-100" : "text-amber-500"
-              )}>
-                {unlinkedProfiles.length}
-              </span>
-            )}
-          </Link>
-        ))}
+      {/* Filter bar */}
+      <div className="flex flex-wrap items-end gap-4">
+        <div className="space-y-1.5">
+          <p className={caption}>{t("filterStatus")}</p>
+          <div className="flex gap-2 flex-wrap">
+            <Link href={hrefWith({ status: undefined })} className={pill(!current.status, "emerald")}>
+              {t("statusAll")}
+              <span className="ml-1.5 text-xs opacity-70">{everyone.length}</span>
+            </Link>
+            {statusPills.map((p) => (
+              <Link
+                key={p.key}
+                href={hrefWith({ status: p.key === current.status ? undefined : p.key })}
+                className={cn(
+                  pill(current.status === p.key, "emerald"),
+                  // Orphans are the only genuinely wrong state — a profile whose
+                  // user was deleted. The 124 awaiting sign-up are expected, and
+                  // painting them amber would make the alarm permanent.
+                  p.key === "orphaned" &&
+                    current.status !== p.key &&
+                    "text-amber-600 border-amber-200 hover:border-amber-400",
+                )}
+              >
+                {p.label}
+                <span className="ml-1.5 text-xs opacity-70">{p.n}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {specialties.length > 0 && (
+          <div className="space-y-1.5">
+            <p className={caption}>{t("filterSpecialty")}</p>
+            <div className="flex gap-2 flex-wrap">
+              {specialties.map((s) => (
+                <Link
+                  key={s.code}
+                  href={hrefWith({ sp: s.code === current.sp ? undefined : s.code })}
+                  className={cn(pill(current.sp === s.code, "slate"), "font-semibold")}
+                >
+                  {s.code}
+                  <span className="ml-1.5 text-xs font-normal opacity-70">{s.count}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {rolePills.length > 0 && (
+          <div className="space-y-1.5">
+            <p className={caption}>{t("filterRole")}</p>
+            <div className="flex gap-2 flex-wrap">
+              {rolePills.map((p) => (
+                <Link
+                  key={p.key}
+                  href={hrefWith({ role: p.key === current.role ? undefined : p.key })}
+                  className={pill(current.role === p.key, "sky")}
+                >
+                  {p.label}
+                  <span className="ml-1.5 text-xs opacity-70">{p.n}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {postPills.length > 0 && (
+          <div className="space-y-1.5">
+            <p className={caption}>{t("filterPost")}</p>
+            <div className="flex gap-2 flex-wrap">
+              {postPills.map((p) => (
+                <Link
+                  key={p.key}
+                  href={hrefWith({ post: p.key === current.post ? undefined : p.key })}
+                  className={pill(current.post === p.key, "purple")}
+                >
+                  {p.label}
+                  <span className="ml-1.5 text-xs opacity-70">{p.n}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <form method="GET" className="flex items-end gap-2">
+          {/* Keep the pill selection alive when the box is submitted with Enter */}
+          {current.status && <input type="hidden" name="status" value={current.status} />}
+          {current.sp && <input type="hidden" name="sp" value={current.sp} />}
+          {current.role && <input type="hidden" name="role" value={current.role} />}
+          {current.post && <input type="hidden" name="post" value={current.post} />}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <SuggestInput
+              name="q"
+              defaultValue={current.q}
+              placeholder={t("searchPlaceholder")}
+              suggestions={suggestions}
+              className="h-9 w-64 pl-9 pr-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+          {filtered && (
+            <Link href="?" className="h-9 px-3 inline-flex items-center text-sm text-slate-500 hover:text-slate-800">
+              {t("clearFilters")}
+            </Link>
+          )}
+        </form>
       </div>
 
-      {/* Added roles & designations */}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide mr-1">{t("addedRoles")}</span>
-        {DESIGNATION_TABS.map(({ key, label }) => (
-          <Link
-            key={key}
-            href={`?role=${key}`}
-            className={cn(
-              "h-8 px-3 rounded-lg text-xs font-medium border transition-colors",
-              activeTab === key
-                ? "bg-purple-600 text-white border-purple-600"
-                : "bg-white text-purple-700 border-purple-200 hover:border-purple-400",
-            )}
-          >
-            {label}
-          </Link>
-        ))}
-      </div>
-
-      {/* Unlinked profiles view */}
-      {showUnlinked && (
-        <Card className="border-amber-200 bg-amber-50/40">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2 text-amber-800">
-              <UserX className="w-4 h-4" />
-              {t("unlinkedCardTitle")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {unlinkedProfiles.length === 0 ? (
-              <p className="px-5 py-8 text-center text-sm text-slate-400">{t("allProfilesLinked")}</p>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-amber-100">
-                    <th className="text-left px-5 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">{t("thProfileId")}</th>
-                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">{t("thSlots")}</th>
-                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">{t("thHomegroups")}</th>
-                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-amber-600 uppercase tracking-wide">{t("thLinkToUser")}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-amber-50">
-                  {unlinkedOrdered.map((sp) => {
-                    const homerooms = [
-                      ...sp.homeroomGroups.map((g) => g.name),
-                      ...sp.homeroomHeadGroups.map((g) => `${g.name} (B')`),
-                    ];
-                    return (
-                      <tr key={sp.id} className="hover:bg-amber-50/60">
-                        <td className="px-5 py-3 font-mono text-xs text-slate-600">{sp.scheduleName ?? sp.id}</td>
-                        <td className="px-4 py-3 text-slate-500">{sp._count.timetableSlots}</td>
-                        <td className="px-4 py-3">
-                          {homerooms.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {homerooms.map((n) => (
-                                <Badge key={n} variant="outline" className="text-xs">{n}</Badge>
-                              ))}
-                            </div>
-                          ) : <span className="text-slate-300 text-xs">—</span>}
-                        </td>
-                        <td className="px-4 py-3">
-                          <StaffLinkControls
-                            staffProfileId={sp.id}
-                            linkedUserId={null}
-                            linkedUserName={null}
-                            availableUsers={linkableUsers}
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Staff user table */}
-      {!showUnlinked && (
-        <Card>
-          <CardContent className="p-0 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("thName")}</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("thRole")}</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("thEmail")}</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("thPhone")}</th>
-                  <th className="text-center px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("thSlots")}</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("thHomegroups")}</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("thProfile")}</th>
+      <Card>
+        <CardContent className="p-0 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100">
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("thName")}</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("thRole")}</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("thEmail")}</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("thPhone")}</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("thSlots")}</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("thHomegroups")}</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("thAccount")}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-5 py-10 text-center text-slate-400">
+                    {everyone.length === 0 ? t("noUsersFound") : t("noMatches")}
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {users.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-5 py-10 text-center text-slate-400">{t("noUsersFound")}</td>
-                  </tr>
-                ) : (
-                  users.map((u) => {
-                    const roleColor = ROLE_COLOR[u.role];
-                    const sp = u.staffProfile;
-                    const homerooms = [
-                      ...(sp?.homeroomGroups.map((g) => g.name) ?? []),
-                      ...(sp?.homeroomHeadGroups.map((g) => `${g.name} (B')`) ?? []),
-                    ];
-                    return (
-                      <tr key={u.id} className={cn("hover:bg-slate-50", !u.isActive && "opacity-50")}>
-                        <td className="px-5 py-3">
+              ) : (
+                rows.map((r) => {
+                  const status = staffStatus(r);
+                  const label = staffRowLabel(r) || "—";
+                  // The schedule marker is the only clue to a deputy who has not
+                  // signed up yet, but it is the timetable's word, not a granted
+                  // role — so it is badged separately and labelled as such.
+                  const scheduleMarker =
+                    !r.role && isManagementName(r.scheduleName)
+                      ? r.scheduleName!.trim().split(/\s+/).pop()!
+                      : null;
+                  return (
+                    <tr
+                      key={r.userId ?? r.staffProfileId}
+                      className={cn("hover:bg-slate-50", r.userId && !r.isActive && "opacity-50")}
+                    >
+                      <td className="px-5 py-3">
+                        {r.userId ? (
                           <Link
-                            href={`/${locale}/admin/users/${u.id}`}
+                            href={`/${locale}/admin/users/${r.userId}${listFilters}`}
                             className="font-medium text-slate-900 hover:text-emerald-700"
                           >
-                            {sp?.scheduleName ?? u.name ?? "—"}
+                            {label}
                           </Link>
-                          {sp?.scheduleName && u.name && sp.scheduleName !== u.name && (
-                            <p className="text-xs text-slate-400 mt-0.5">{u.name}</p>
+                        ) : (
+                          <span className="font-medium text-slate-700">{label}</span>
+                        )}
+                        {r.scheduleName && r.name && r.scheduleName !== r.name && (
+                          <p className="text-xs text-slate-400 mt-0.5">{r.name}</p>
+                        )}
+                        {r.nameEl && r.nameEl !== r.name && (
+                          <p className="text-xs text-slate-400 mt-0.5">{r.nameEl}</p>
+                        )}
+                        {r.userId && !r.isActive && (
+                          <span className="text-[11px] text-slate-400">{t("inactive")}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {r.role && ROLE_COLOR[r.role] && (
+                            <Badge variant="outline" className={cn("text-xs font-medium", ROLE_COLOR[r.role])}>
+                              {tRoles(r.role)}
+                            </Badge>
                           )}
-                          {u.nameEl && u.nameEl !== u.name && (
-                            <p className="text-xs text-slate-400 mt-0.5">{u.nameEl}</p>
+                          {scheduleMarker && (
+                            <Badge
+                              variant="outline"
+                              title={t("badgeScheduleMarkerHint")}
+                              className="text-xs bg-slate-50 text-slate-500 border-slate-200"
+                            >
+                              {t("badgeScheduleMarker", { marker: scheduleMarker })}
+                            </Badge>
                           )}
-                          {!u.isActive && (
-                            <span className="text-[11px] text-slate-400">{t("inactive")}</span>
+                          {r.extraAdmin && (
+                            <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                              {t("badgeExtraAdmin")}
+                            </Badge>
                           )}
-                        </td>
-                        <td className="px-4 py-3">
+                          {r.specialEducation && (
+                            <Badge variant="outline" className="text-xs bg-rose-50 text-rose-700 border-rose-200">
+                              {t("badgeSpecialEdShort")}
+                            </Badge>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-slate-500 text-xs">
+                        {r.email ?? <span className="text-slate-300">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-slate-500 text-xs">
+                        {r.phone ?? <span className="text-slate-300">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-center text-slate-500 text-xs">
+                        {r.lessons > 0 ? r.lessons : <span className="text-slate-300">—</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        {r.homerooms.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
-                            {roleColor && (
-                              <Badge variant="outline" className={cn("text-xs font-medium", roleColor)}>
-                                {tRoles(u.role)}
-                              </Badge>
+                            {r.homerooms.map((n) => (
+                              <Badge key={n} variant="outline" className="text-xs text-slate-600">{n}</Badge>
+                            ))}
+                          </div>
+                        ) : <span className="text-slate-300 text-xs">—</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        {!r.staffProfileId && (
+                          <span className="text-xs text-slate-400">{t("noProfile")}</span>
+                        )}
+                        {r.staffProfileId && (
+                          <div className="flex items-center gap-2">
+                            <StaffLinkControls
+                              staffProfileId={r.staffProfileId}
+                              linkedUserId={r.userId}
+                              linkedUserName={r.name}
+                              availableUsers={linkableUsers}
+                              showUnlinkedLabel={false}
+                            />
+                            {status === "awaiting" && (
+                              <span className="text-xs text-slate-400">{t("accountAwaiting")}</span>
                             )}
-                            {u.extraRoles.includes("SUPER_ADMIN") && (
-                              <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
-                                {t("badgeExtraAdmin")}
-                              </Badge>
-                            )}
-                            {sp?.specialEducation && (
-                              <Badge variant="outline" className="text-xs bg-rose-50 text-rose-700 border-rose-200">
-                                {t("badgeSpecialEdShort")}
-                              </Badge>
+                            {status === "orphaned" && (
+                              <span className="text-xs text-amber-600 font-medium">{t("accountOrphaned")}</span>
                             )}
                           </div>
-                        </td>
-                        <td className="px-4 py-3 text-slate-500 text-xs">{u.email}</td>
-                        <td className="px-4 py-3 text-slate-500 text-xs">
-                          {sp?.phone ?? <span className="text-slate-300">—</span>}
-                        </td>
-                        <td className="px-4 py-3 text-center text-slate-500 text-xs">
-                          {sp ? sp._count.timetableSlots : <span className="text-slate-300">—</span>}
-                        </td>
-                        <td className="px-4 py-3">
-                          {homerooms.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {homerooms.map((n) => (
-                                <Badge key={n} variant="outline" className="text-xs text-slate-600">{n}</Badge>
-                              ))}
-                            </div>
-                          ) : <span className="text-slate-300 text-xs">—</span>}
-                        </td>
-                        <td className="px-4 py-3">
-                          {sp ? (
-                            <StaffLinkControls
-                              staffProfileId={sp.id}
-                              linkedUserId={u.id}
-                              linkedUserName={u.name}
-                              availableUsers={linkableUsers}
-                            />
-                          ) : (
-                            <span className="text-xs text-slate-400">{t("noProfile")}</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
-      )}
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useTransition, useState } from "react";
 import { useTranslations } from "next-intl";
-import { unlinkStaffUser, linkStaffUser } from "./actions";
+import { unlinkStaffUser, linkStaffUser } from "./staff-link-actions";
 import { Loader2, Check, Unlink, Link2 } from "lucide-react";
 
 interface UserOption {
@@ -16,6 +16,15 @@ interface Props {
   linkedUserId: string | null;
   linkedUserName: string | null | undefined;
   availableUsers: UserOption[];
+  /**
+   * Show the amber "Μη συνδεδεμένο" flag beside the control.
+   *
+   * Off for the merged roster, where ~124 of 138 rows are simply waiting for
+   * their teacher to sign up: an amber warning on almost every line is an alarm
+   * that stops meaning anything. That list states the account state in its own
+   * column instead, and keeps amber for the genuinely orphaned.
+   */
+  showUnlinkedLabel?: boolean;
 }
 
 export function StaffLinkControls({
@@ -23,8 +32,9 @@ export function StaffLinkControls({
   linkedUserId,
   linkedUserName,
   availableUsers,
+  showUnlinkedLabel = true,
 }: Props) {
-  const t = useTranslations("adminStaff");
+  const t = useTranslations("adminUsers");
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
   const [showLink, setShowLink] = useState(false);
@@ -92,7 +102,9 @@ export function StaffLinkControls({
               {t("linkUser")}
             </button>
           )}
-          <span className="text-xs text-amber-500 font-medium">{t("unlinked")}</span>
+          {showUnlinkedLabel && (
+            <span className="text-xs text-amber-500 font-medium">{t("unlinked")}</span>
+          )}
         </>
       )}
       <div className="w-4 flex-shrink-0">
