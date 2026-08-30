@@ -1,6 +1,7 @@
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import type { NextAuthOptions, Session } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { passwordLoginDenial, mayPasswordLogin } from "@/lib/authPolicy";
 import bcrypt from "bcryptjs";
 import { SESSION_COOKIE, USE_SECURE_COOKIES } from "@/lib/sessionCookie";
 import { db } from "@/server/db";
@@ -31,15 +32,20 @@ export const authOptions: NextAuthOptions = {
     },
   },
   pages: {
-    // Only the Entra ID (staff) OAuth flow bounces through NextAuth's own
-    // sign-in/error pages — families use the custom /login form directly.
+    // Kept pointing at the staff form: NextAuth's own sign-in/error pages are
+    // only reached if an OAuth provider is ever enabled (see below). Families
+    // use the custom /login form directly.
     signIn: "/el/login/staff",
     error: "/el/login/staff",
   },
   providers: [
-    // Microsoft Entra ID (Azure AD) SSO — the "Sign in with Microsoft" button on
-    // the login page points here. Enable once Azure credentials are configured.
-    // Everyone signs in with a password until then (no email-only bypass).
+    // Microsoft Entra ID (Azure AD) SSO — DEFERRED, not pending: the Ministry
+    // tenant never materialised, the app is hosted on-site, and staff create
+    // their own email+password accounts at /register. There is no
+    // "Sign in with Microsoft" button anywhere in the UI. Turning this back on
+    // is not a matter of uncommenting — see the onboarding design it needs
+    // (role for adapter-created users, timetable-name claim over SSO, and
+    // OAuthAccountNotLinked for the accounts that already have a password).
     // AzureADProvider({
     //   clientId: process.env.AZURE_AD_CLIENT_ID!,
     //   clientSecret: process.env.AZURE_AD_CLIENT_SECRET!,
@@ -67,14 +73,13 @@ export const authOptions: NextAuthOptions = {
 
         const user = await db.user.findUnique({ where: { email } });
 
-        if (!user || !user.passwordHash || !user.isActive) {
-          logger.warn({ event: "auth.loginFailed", method: "credentials", reason: "unknown_or_inactive" }, "Login failed");
-          return null;
-        }
-        // Staff authenticate via Entra SSO; students, parents and chaperones use
-        // email + password (set up through the access-code activation flow).
-        if (!IS_DEV && user.role !== "PARENT" && user.role !== "CHAPERONE" && user.role !== "STUDENT") {
-          logger.warn({ event: "auth.loginFailed", method: "credentials", reason: "role_not_allowed", userId: user.id }, "Login failed");
+        // One policy for every role — see passwordLoginDenial for why staff are
+        // no longer excluded outside development.
+        if (!mayPasswordLogin(user)) {
+          logger.warn(
+            { event: "auth.loginFailed", method: "credentials", reason: passwordLoginDenial(user) },
+            "Login failed",
+          );
           return null;
         }
 
