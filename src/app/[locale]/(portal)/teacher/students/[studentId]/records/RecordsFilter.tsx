@@ -18,7 +18,6 @@ const STATUSES = [
   { key: "all", label: "Όλες" },
   { key: "ABSENT", label: "Απουσία" },
   { key: "LATE", label: "Καθυστέρηση" },
-  { key: "EXCUSED", label: "Δικαιολογημένη" },
 ] as const;
 
 export function RecordsFilter({

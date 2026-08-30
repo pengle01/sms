@@ -17,9 +17,8 @@ import type { Role } from "@/generated/prisma/client";
 const ABSENCE_BADGE: Record<string, { label: string; cls: string }> = {
   ABSENT: { label: "Απουσία", cls: "text-red-700 bg-red-50 border-red-200" },
   LATE: { label: "Καθυστέρηση", cls: "text-amber-700 bg-amber-50 border-amber-200" },
-  EXCUSED: { label: "Δικαιολογημένη", cls: "text-slate-600 bg-slate-100 border-slate-200" },
 };
-const ABS_STATUSES = ["ABSENT", "LATE", "EXCUSED"] as const;
+const ABS_STATUSES = ["ABSENT", "LATE"] as const;
 type AbsStatus = (typeof ABS_STATUSES)[number];
 
 type Cat = "all" | "absences" | "referrals" | "toilet" | "tests";

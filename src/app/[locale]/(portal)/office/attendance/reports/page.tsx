@@ -53,11 +53,15 @@ export default async function OfficeAttendanceReportsPage({
   const distribution = periodDistribution(rows);
   const maxDistCount = Math.max(1, ...distribution.map((d) => d.count));
 
+  // Erased rows are excluded here exactly as summarizeByStudent/ByGroup exclude
+  // them. Counting them in the tiles made the headline disagree with the table
+  // directly beneath it every time the office erased an absence.
+  const counted = rows.filter((r) => !r.waived);
   const totals = {
-    absences: rows.filter((r) => r.status === "ABSENT").length,
-    late: rows.filter((r) => r.status === "LATE").length,
-    students: new Set(rows.map((r) => r.studentProfileId)).size,
-    withPermit: rows.filter((r) => r.hasExitPermit).length,
+    absences: counted.filter((r) => r.status === "ABSENT").length,
+    late: counted.filter((r) => r.status === "LATE").length,
+    students: new Set(counted.map((r) => r.studentProfileId)).size,
+    withPermit: counted.filter((r) => r.hasExitPermit).length,
   };
 
   const qs = new URLSearchParams({ from: fromStr, to: toStr, ...(groupId ? { groupId } : {}) });
@@ -182,7 +186,6 @@ export default async function OfficeAttendanceReportsPage({
                   {th(t("colStudents"))}
                   {th(t("colAbsences"))}
                   {th(t("colLate"))}
-                  {th(t("colExcused"))}
                   {th(t("colPermit"))}
                 </tr>
               </thead>
@@ -204,7 +207,6 @@ export default async function OfficeAttendanceReportsPage({
                     <td className="px-4 py-2.5 text-right">{g.students}</td>
                     <td className="px-4 py-2.5 text-right font-semibold text-red-600">{g.absences}</td>
                     <td className="px-4 py-2.5 text-right text-amber-600">{g.late}</td>
-                    <td className="px-4 py-2.5 text-right text-slate-500">{g.excused}</td>
                     <td className="px-4 py-2.5 text-right text-yellow-600">{g.withPermit}</td>
                   </tr>
                 ))}
@@ -237,7 +239,6 @@ export default async function OfficeAttendanceReportsPage({
                   {th(t("colAbsences"))}
                   {th(t("colAuto"))}
                   {th(t("colLate"))}
-                  {th(t("colExcused"))}
                   {th(t("colPermit"))}
                   {th(t("colWaived"))}
                 </tr>
@@ -251,7 +252,6 @@ export default async function OfficeAttendanceReportsPage({
                     <td className="px-4 py-2.5 text-right font-semibold text-red-600">{s.absences}</td>
                     <td className="px-4 py-2.5 text-right text-slate-500">{s.autoAbsent}</td>
                     <td className="px-4 py-2.5 text-right text-amber-600">{s.late}</td>
-                    <td className="px-4 py-2.5 text-right text-slate-500">{s.excused}</td>
                     <td className="px-4 py-2.5 text-right text-yellow-600">{s.withPermit}</td>
                     <td className="px-4 py-2.5 text-right text-slate-400">{s.waived}</td>
                   </tr>

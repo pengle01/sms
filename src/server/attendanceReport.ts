@@ -12,7 +12,7 @@ export async function loadReportRows(
   const rows = await db.attendance.findMany({
     where: {
       date: { gte: utcMidnight(fromStr), lte: utcMidnight(toStr) },
-      status: { in: ["ABSENT", "LATE", "EXCUSED"] },
+      status: { in: ["ABSENT", "LATE"] },
       ...(groupId ? { student: { groupId } } : {}),
     },
     select: {

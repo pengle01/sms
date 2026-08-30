@@ -969,8 +969,7 @@
     "colDays": "Days",
     "colAuto": "Auto",
     "noData": "No entries in this range.",
-    "colWaived": "Erased",
-    "colExcused": "Excused"
+    "colWaived": "Erased"
   },
   "officeAttendance": {
     "title": "Absences",
@@ -996,6 +995,17 @@
     "smsSent": "Sent",
     "tabLog": "Daily Log",
     "tabErase": "Erase Absences",
+    "tabDaily": "Daily",
+    "dailyFor": "Absences {date}",
+    "colPeriods": "Periods",
+    "colTotal": "Total",
+    "wholeDay": "Whole day",
+    "dailySummary": "{students} students · {periods} periods · {whole} whole-day · {waived} erased",
+    "dailyEmpty": "No absences on this day.",
+    "print": "Print",
+    "printTitle": "Daily Absence Sheet",
+    "signature": "Office signature",
+    "ofPeriods": "{absent}/{total}",
     "colTeacher": "Teacher",
     "subTeacher": "Substitution",
     "subHeadteacher": "Study hall",
@@ -1150,8 +1160,7 @@
     "testBig": "Big · 45 min",
     "testSmall": "Small · 20 min",
     "weeklyTimetable": "Weekly Timetable",
-    "room": "Room {room}",
-    "absenceExcused": "Excused"
+    "room": "Room {room}"
   },
   "setup": {
     "pendingTitle": "Claim pending approval",

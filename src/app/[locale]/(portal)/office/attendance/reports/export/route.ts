@@ -31,7 +31,7 @@ export async function GET(
   const csv = toCsv(
     [
       t("colId"), t("colStudent"), t("colGroup"), t("colDays"), t("colAbsences"),
-      t("colAuto"), t("colLate"), t("colExcused"), t("colPermit"), t("colWaived"),
+      t("colAuto"), t("colLate"), t("colPermit"), t("colWaived"),
     ],
     students.map((s) => [
       s.studentId,
@@ -41,7 +41,6 @@ export async function GET(
       s.absences,
       s.autoAbsent,
       s.late,
-      s.excused,
       s.withPermit,
       s.waived,
     ])

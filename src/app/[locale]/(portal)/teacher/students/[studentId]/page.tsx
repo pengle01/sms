@@ -49,7 +49,6 @@ export default async function StudentSchedulePage({
   const absenceBadge: Record<string, { label: string; cls: string }> = {
     ABSENT: { label: t("absenceAbsent"), cls: "text-red-700 bg-red-50 border-red-200" },
     LATE: { label: t("absenceLate"), cls: "text-amber-700 bg-amber-50 border-amber-200" },
-    EXCUSED: { label: t("absenceExcused"), cls: "text-slate-600 bg-slate-100 border-slate-200" },
   };
   const contactRoleLabel: Record<string, string> = {
     FATHER: t("contactFather"),
@@ -165,7 +164,7 @@ export default async function StudentSchedulePage({
           where: {
             studentId,
             waived: false,
-            status: { in: ["ABSENT", "LATE", "EXCUSED"] },
+            status: { in: ["ABSENT", "LATE"] },
             date: { gte: yearRanges.yearStart },
           },
           select: {

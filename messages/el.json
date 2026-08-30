@@ -969,8 +969,7 @@
     "colDays": "Ημέρες",
     "colAuto": "Αυτόματες",
     "noData": "Δεν υπάρχουν καταχωρήσεις στο διάστημα.",
-    "colWaived": "Διεγραμμένες",
-    "colExcused": "Δικαιολογημένες"
+    "colWaived": "Διεγραμμένες"
   },
   "officeAttendance": {
     "title": "Απουσίες",
@@ -996,6 +995,17 @@
     "smsSent": "Εστάλη",
     "tabLog": "Ημερολόγιο",
     "tabErase": "Διαγραφή Απουσιών",
+    "tabDaily": "Ημερήσιο",
+    "dailyFor": "Απουσίες {date}",
+    "colPeriods": "Περίοδοι",
+    "colTotal": "Σύνολο",
+    "wholeDay": "Ολοήμερη",
+    "dailySummary": "{students} μαθητές · {periods} περίοδοι · {whole} ολοήμερες · {waived} διεγραμμένες",
+    "dailyEmpty": "Καμία απουσία αυτή την ημέρα.",
+    "print": "Εκτύπωση",
+    "printTitle": "Ημερήσιο Δελτίο Απουσιών",
+    "signature": "Υπογραφή Γραμματείας",
+    "ofPeriods": "{absent}/{total}",
     "colTeacher": "Καθηγητής",
     "subTeacher": "Αναπλήρωση",
     "subHeadteacher": "Φ/δι ΒΔ",
@@ -1150,8 +1160,7 @@
     "testBig": "Μεγάλο · 45 λεπ",
     "testSmall": "Μικρό · 20 λεπ",
     "weeklyTimetable": "Εβδομαδιαίο Πρόγραμμα",
-    "room": "Αίθ. {room}",
-    "absenceExcused": "Δικαιολογημένη"
+    "room": "Αίθ. {room}"
   },
   "setup": {
     "pendingTitle": "Αίτημα σε αναμονή έγκρισης",

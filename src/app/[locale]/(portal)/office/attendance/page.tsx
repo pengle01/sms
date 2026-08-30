@@ -10,6 +10,9 @@ import { utcMidnight, localDateStr, toAppTimeline, fromAppTimeline, fmtDisplayDa
 import { studentNameOrIdWhere } from "@/lib/studentSearch";
 import { substitutionKinds } from "@/server/attendanceReport";
 import { ReferralTabs } from "@/components/referrals/ReferralTabs";
+import { DailyRollCall } from "./DailyRollCall";
+import { rollCall } from "@/lib/attendanceReport";
+import { getPeriodsPerDay, periodsForDow } from "@/lib/schoolConfig";
 import { toggleWaivedAction } from "./actions";
 import { AttendanceFilters } from "./Filters";
 
@@ -234,6 +237,78 @@ export default async function OfficeAttendancePage({
           ))}
         </tbody>
       </table>
+    </div>
+  );
+
+  // ── The roll-call: one line per absent student, for ONE day ───────────────
+  // Keyed on the ABSENCE date, not the filing day: a register filled in late
+  // belongs under the day it is about, and this way the query can use the
+  // @@index([date]) that the log's createdAt filter cannot.
+  const rollDateStr = dateStr ?? todayStr;
+  const rollDate = utcMidnight(rollDateStr);
+  const rollDow = rollDate.getUTCDay();
+
+  const [rollRows, periodsCfg] = await Promise.all([
+    db.attendance.findMany({
+      where: {
+        date: rollDate,
+        OR: [{ status: "ABSENT" }, { status: "LATE" }, { isAutoAbsent: true }],
+        ...(groupId ? { student: { groupId } } : {}),
+      },
+      include: {
+        student: { include: { user: { select: { name: true } }, group: true } },
+        timetableSlot: { select: { period: true } },
+      },
+    }),
+    getPeriodsPerDay(),
+  ]);
+
+  // How many lessons each group actually had that weekday — the denominator for
+  // "whole day", so a timetable with a free period does not look like a partial
+  // absence.
+  const scheduledRaw = await db.timetableSlot.groupBy({
+    by: ["groupId"],
+    where: {
+      dayOfWeek: rollDow,
+      ...(groupId ? { groupId } : {}),
+    },
+    _count: { _all: true },
+  });
+  const scheduledByGroup = new Map(scheduledRaw.map((g) => [g.groupId, g._count._all]));
+
+  const rollStudents = rollCall(
+    rollRows.map((a) => ({
+      studentProfileId: a.studentId,
+      studentName: a.student.user?.name ?? "—",
+      studentId: a.student.studentId,
+      groupId: a.student.groupId,
+      groupName: a.student.group?.name ?? null,
+      date: rollDateStr,
+      period: a.timetableSlot?.period ?? a.intercalaryPeriod ?? null,
+      status: a.status,
+      isAutoAbsent: a.isAutoAbsent,
+      hasExitPermit: !!a.exitPermitId,
+      waived: a.waived,
+      smsSent: a.smsSent,
+    })),
+    scheduledByGroup,
+  );
+
+  const dailyContent = (
+    <div className="space-y-5">
+      <AttendanceFilters
+        groups={groups.map((g) => ({ id: g.id, name: g.name }))}
+        date={dateStr}
+        groupId={groupId}
+        todayStr={todayStr}
+      />
+      <DailyRollCall
+        locale={locale}
+        dateLabel={dayLabel(rollDateStr)}
+        students={rollStudents}
+        dayPeriods={periodsForDow(periodsCfg, rollDow).length}
+        printHref={`/${locale}/office/attendance/print?date=${rollDateStr}${groupId ? `&groupId=${groupId}` : ""}`}
+      />
     </div>
   );
 
@@ -489,8 +564,9 @@ export default async function OfficeAttendancePage({
       </div>
 
       <ReferralTabs
-        initialKey={sq || studentParam ? "erase" : "log"}
+        initialKey={sq || studentParam ? "erase" : "daily"}
         tabs={[
+          { key: "daily", label: t("tabDaily"), content: dailyContent },
           { key: "log", label: t("tabLog"), content: logContent },
           { key: "erase", label: t("tabErase"), content: eraseContent },
         ]}
