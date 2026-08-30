@@ -1206,8 +1206,7 @@
     "exitPermitToday": "Exit permit today",
     "linkAttendance": "Attendance",
     "linkGrades": "Grades",
-    "linkTests": "Tests",
-    "recentGrades": "Recent grades"
+    "linkTests": "Tests"
   },
   "chaperoneActivities": {
     "title": "My Activities",

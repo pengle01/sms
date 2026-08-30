@@ -7,7 +7,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { GraduationCap, BookOpen, ClipboardList, FileText, LogOut } from "lucide-react";
 import { utcMidnight, monthStart, localDateStr } from "@/lib/dates";
-import { isPassing } from "@/lib/grades";
 import Link from "next/link";
 
 export default async function ParentChildrenPage({
@@ -51,7 +50,7 @@ export default async function ParentChildrenPage({
   const [curYear, curMonth] = localDateStr().split("-").map(Number) as [number, number];
   const thisMonthStart = monthStart(curYear, curMonth);
 
-  const [absencesThisMonth, recentGrades, permitsToday] = await Promise.all([
+  const [absencesThisMonth, permitsToday] = await Promise.all([
     db.attendance.groupBy({
       by: ["studentId"],
       where: {
@@ -60,12 +59,6 @@ export default async function ParentChildrenPage({
         OR: [{ status: "ABSENT" }, { isAutoAbsent: true }],
       },
       _count: true,
-    }),
-    db.grade.findMany({
-      where: { studentId: { in: childIds } },
-      include: { course: true },
-      orderBy: { updatedAt: "desc" },
-      take: 10,
     }),
     db.exitPermit.findMany({
       where: { studentId: { in: childIds }, date: utcMidnight(), active: true },
@@ -153,28 +146,6 @@ export default async function ParentChildrenPage({
           );
         })}
       </div>
-
-      {/* Recent grades across all children */}
-      {recentGrades.length > 0 && (
-        <Card>
-          <CardContent className="p-5">
-            <h3 className="font-medium text-slate-900 mb-3">{t("recentGrades")}</h3>
-            <div className="space-y-2">
-              {recentGrades.map((g) => (
-                <div key={g.id} className="flex items-center justify-between">
-                  <div>
-                    <span className="text-sm font-medium text-slate-900">{g.course.name}</span>
-                    <span className="text-xs text-slate-400 ml-2">{g.period}</span>
-                  </div>
-                  <span className={`text-lg font-bold ${isPassing(Number(g.value)) ? "text-green-700" : "text-red-700"}`}>
-                    {Number(g.value).toFixed(1)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

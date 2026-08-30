@@ -1206,8 +1206,7 @@
     "exitPermitToday": "Άδεια εξόδου σήμερα",
     "linkAttendance": "Απουσίες",
     "linkGrades": "Βαθμολογία",
-    "linkTests": "Διαγωνίσματα",
-    "recentGrades": "Πρόσφατοι Βαθμοί"
+    "linkTests": "Διαγωνίσματα"
   },
   "chaperoneActivities": {
     "title": "Οι Δραστηριότητές μου",
