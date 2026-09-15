@@ -9,6 +9,8 @@ import {
   parseSupportGroup,
   specialEdCodesSeeded,
   splitKnownCodes,
+  cohortSupportDays,
+  cohortSupportPeriods,
 } from "@/lib/specialEd";
 import { specialEdLegend } from "@/server/specialEd";
 import type { Role } from "@/generated/prisma/client";
@@ -164,9 +166,12 @@ describe("canManageSpecialEdRegister", () => {
 
 describe("filterCohort", () => {
   const rows = [
-    { name: "Ανδρέου Μαρία", registryNo: "1001", grade: 1, group: "ΕΓ1", problemCodes: ["ΔΑΦ", "ΓΜΔ"], accommodationCodes: ["1", "10"] },
-    { name: "Γεωργίου Νίκος", registryNo: "1002", grade: 2, group: "ΘΒΣ2", problemCodes: ["ΔΕΠ/Υ"], accommodationCodes: ["2"] },
-    { name: "Παπαδόπουλος Ηλίας", registryNo: "1003", grade: 1, group: "ΕΔ1", problemCodes: [], accommodationCodes: [] },
+    { name: "Ανδρέου Μαρία", registryNo: "1001", grade: 1, group: "ΕΓ1", problemCodes: ["ΔΑΦ", "ΓΜΔ"], accommodationCodes: ["1", "10"],
+      supportSlots: [{ dayOfWeek: 3, period: 3 }, { dayOfWeek: 3, period: 4 }] },
+    { name: "Γεωργίου Νίκος", registryNo: "1002", grade: 2, group: "ΘΒΣ2", problemCodes: ["ΔΕΠ/Υ"], accommodationCodes: ["2"],
+      supportSlots: [{ dayOfWeek: 2, period: 6 }, { dayOfWeek: 3, period: 3 }] },
+    { name: "Παπαδόπουλος Ηλίας", registryNo: "1003", grade: 1, group: "ΕΔ1", problemCodes: [], accommodationCodes: [],
+      supportSlots: [] },
   ];
 
   it("returns everything when nothing is set", () => {
@@ -222,9 +227,9 @@ describe("cohortCodes", () => {
   it("lists the distinct codes present, sorted", () => {
     expect(
       cohortCodes([
-        { name: "a", registryNo: "1", grade: 1, group: null, problemCodes: ["ΔΑΦ", "ΓΜΔ"], accommodationCodes: [] },
-        { name: "b", registryNo: "2", grade: 1, group: null, problemCodes: ["ΓΜΔ"], accommodationCodes: [] },
-        { name: "c", registryNo: "3", grade: 1, group: null, problemCodes: [], accommodationCodes: [] },
+        { name: "a", registryNo: "1", grade: 1, group: null, problemCodes: ["ΔΑΦ", "ΓΜΔ"], accommodationCodes: [], supportSlots: [] },
+        { name: "b", registryNo: "2", grade: 1, group: null, problemCodes: ["ΓΜΔ"], accommodationCodes: [], supportSlots: [] },
+        { name: "c", registryNo: "3", grade: 1, group: null, problemCodes: [], accommodationCodes: [], supportSlots: [] },
       ]),
     ).toEqual(["ΓΜΔ", "ΔΑΦ"]);
   });
@@ -236,7 +241,7 @@ describe("cohortCodes", () => {
 
 describe("cohortAccommodations", () => {
   const row = (codes: string[]) => ({
-    name: "x", registryNo: "1", grade: 1, group: null, problemCodes: [], accommodationCodes: codes,
+    name: "x", registryNo: "1", grade: 1, group: null, problemCodes: [], accommodationCodes: codes, supportSlots: [],
   });
 
   it("sorts numerically, not lexically", () => {
@@ -271,5 +276,120 @@ describe("special-ed read vs write, in one place", () => {
 
   it("never grants write without read", () => {
     for (const c of cases) if (c.write) expect(c.view).toBe(true);
+  });
+});
+
+describe("filterCohort — support day and period", () => {
+  const rows = [
+    { name: "Α", registryNo: "1", grade: 1, group: "ΕΓ1", problemCodes: [], accommodationCodes: [],
+      supportSlots: [{ dayOfWeek: 3, period: 3 }, { dayOfWeek: 3, period: 4 }] },   // Wed twice
+    { name: "Β", registryNo: "2", grade: 1, group: "ΕΓ1", problemCodes: [], accommodationCodes: [],
+      supportSlots: [{ dayOfWeek: 2, period: 6 }, { dayOfWeek: 3, period: 3 }] },   // Tue + Wed
+    { name: "Γ", registryNo: "3", grade: 2, group: "ΕΓ2", problemCodes: [], accommodationCodes: [],
+      supportSlots: [] },                                                            // none
+  ];
+
+  it("filters by day", () => {
+    expect(filterCohort(rows, { day: 3 }).map((r) => r.registryNo)).toEqual(["1", "2"]);
+    expect(filterCohort(rows, { day: 2 }).map((r) => r.registryNo)).toEqual(["2"]);
+    expect(filterCohort(rows, { day: 5 })).toEqual([]);
+  });
+
+  it("lists a student once however many lessons they have that day", () => {
+    expect(filterCohort(rows, { day: 3 }).filter((r) => r.registryNo === "1")).toHaveLength(1);
+  });
+
+  it("matches a student on every day they have support", () => {
+    expect(filterCohort(rows, { day: 2 }).map((r) => r.registryNo)).toContain("2");
+    expect(filterCohort(rows, { day: 3 }).map((r) => r.registryNo)).toContain("2");
+  });
+
+  it("narrows to one period within the day", () => {
+    expect(filterCohort(rows, { day: 3, period: 4 }).map((r) => r.registryNo)).toEqual(["1"]);
+    expect(filterCohort(rows, { day: 3, period: 3 }).map((r) => r.registryNo)).toEqual(["1", "2"]);
+  });
+
+  it("does not match the same period on a different day", () => {
+    // Β has period 6 on Tuesday only.
+    expect(filterCohort(rows, { day: 3, period: 6 })).toEqual([]);
+  });
+
+  it("ignores a period with no day — the number means nothing on its own", () => {
+    expect(filterCohort(rows, { period: 3 })).toHaveLength(3);
+  });
+
+  it("never matches a student with no support", () => {
+    for (const day of [1, 2, 3, 4, 5]) {
+      expect(filterCohort(rows, { day }).map((r) => r.registryNo)).not.toContain("3");
+    }
+  });
+
+  it("combines with the other facets", () => {
+    expect(filterCohort(rows, { day: 3, grade: 1 }).map((r) => r.registryNo)).toEqual(["1", "2"]);
+    expect(filterCohort(rows, { day: 3, grade: 2 })).toEqual([]);
+  });
+});
+
+describe("cohortSupportDays", () => {
+  const rows = [
+    { name: "Α", registryNo: "1", grade: 1, group: null, problemCodes: [], accommodationCodes: [],
+      supportSlots: [{ dayOfWeek: 3, period: 3 }, { dayOfWeek: 3, period: 4 }] },
+    { name: "Β", registryNo: "2", grade: 1, group: null, problemCodes: [], accommodationCodes: [],
+      supportSlots: [{ dayOfWeek: 2, period: 6 }, { dayOfWeek: 3, period: 3 }] },
+    { name: "Γ", registryNo: "3", grade: 1, group: null, problemCodes: [], accommodationCodes: [],
+      supportSlots: [] },
+  ];
+
+  it("counts students, not lessons — two Wednesday periods is one student", () => {
+    expect(cohortSupportDays(rows)).toEqual([
+      { day: 2, count: 1 },
+      { day: 3, count: 2 },
+    ]);
+  });
+
+  it("omits days nobody has support on", () => {
+    expect(cohortSupportDays(rows).map((d) => d.day)).not.toContain(1);
+  });
+
+  it("sorts Monday first", () => {
+    const shuffled = [
+      { name: "Α", registryNo: "1", grade: 1, group: null, problemCodes: [], accommodationCodes: [],
+        supportSlots: [{ dayOfWeek: 5, period: 1 }, { dayOfWeek: 1, period: 1 }] },
+    ];
+    expect(cohortSupportDays(shuffled).map((d) => d.day)).toEqual([1, 5]);
+  });
+
+  it("is empty when nobody has support", () => {
+    expect(cohortSupportDays([rows[2]!])).toEqual([]);
+    expect(cohortSupportDays([])).toEqual([]);
+  });
+});
+
+describe("cohortSupportPeriods", () => {
+  const rows = [
+    { name: "Α", registryNo: "1", grade: 1, group: null, problemCodes: [], accommodationCodes: [],
+      supportSlots: [{ dayOfWeek: 3, period: 3 }, { dayOfWeek: 3, period: 4 }] },
+    { name: "Β", registryNo: "2", grade: 1, group: null, problemCodes: [], accommodationCodes: [],
+      supportSlots: [{ dayOfWeek: 2, period: 6 }, { dayOfWeek: 3, period: 3 }] },
+  ];
+
+  it("offers only the periods that carry support on that day", () => {
+    expect(cohortSupportPeriods(rows, 3)).toEqual([
+      { period: 3, count: 2 },
+      { period: 4, count: 1 },
+    ]);
+    expect(cohortSupportPeriods(rows, 2)).toEqual([{ period: 6, count: 1 }]);
+  });
+
+  it("is empty for a day with no support", () => {
+    expect(cohortSupportPeriods(rows, 1)).toEqual([]);
+  });
+
+  it("sorts numerically, so period 10 does not precede period 2", () => {
+    const late = [
+      { name: "Α", registryNo: "1", grade: 1, group: null, problemCodes: [], accommodationCodes: [],
+        supportSlots: [{ dayOfWeek: 1, period: 10 }, { dayOfWeek: 1, period: 2 }] },
+    ];
+    expect(cohortSupportPeriods(late, 1).map((p) => p.period)).toEqual([2, 10]);
   });
 });

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ChevronLeft, Pencil, Check } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { canViewSpecialEdFull, canManageSpecialEdRegister } from "@/lib/specialEd";
+import { canViewSpecialEdFull, canManageSpecialEdRegister, COHORT_KEYS } from "@/lib/specialEd";
 import { getTranslations } from "next-intl/server";
 import { getSpecialEdCatalog, getStudentSupport } from "@/server/specialEd";
 import { EditSpecialEdForm } from "./EditSpecialEdForm";
@@ -19,14 +19,14 @@ export default async function EditSpecialEdPage({
   searchParams,
 }: {
   params: Promise<{ locale: string; studentId: string }>;
-  searchParams: Promise<{ grade?: string; code?: string; acc?: string; q?: string; edit?: string }>;
+  searchParams: Promise<{ grade?: string; code?: string; acc?: string; day?: string; period?: string; q?: string; edit?: string }>;
 }) {
   const { locale, studentId } = await params;
   const sp = await searchParams;
 
   // The roster forwards its filters on each row link, so "back" returns to the
   // same year/code/search rather than to the unfiltered cohort.
-  const filters = pickQueryString(sp, ["grade", "code", "acc", "q"]);
+  const filters = pickQueryString(sp, COHORT_KEYS);
   const backHref = `/${locale}/teacher/special-ed${filters}`;
   const recordHref = `/${locale}/teacher/special-ed/${studentId}${filters}`;
   const editHref = `${recordHref}${filters ? "&" : "?"}edit=1`;

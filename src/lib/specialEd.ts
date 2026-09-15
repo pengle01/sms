@@ -147,6 +147,12 @@ export function canManageSpecialEdRegister(roles: Role[], isSpecialEdDeputy: boo
 }
 
 /** The fields the cohort list filters on. */
+/** A timetable coordinate of one support lesson. dayOfWeek is 1 (Mon) – 5 (Fri). */
+export interface SupportSlot {
+  dayOfWeek: number;
+  period: number;
+}
+
 export interface CohortRow {
   name: string;
   registryNo: string;
@@ -154,6 +160,8 @@ export interface CohortRow {
   group: string | null;
   problemCodes: string[];
   accommodationCodes: string[];
+  /** When this student is in support. Empty when the timetable gives them none. */
+  supportSlots: SupportSlot[];
 }
 
 export interface CohortFilter {
@@ -163,6 +171,10 @@ export interface CohortFilter {
   code?: string;
   /** A single accommodation code (διευκόλυνση), or undefined for all. */
   accommodation?: string;
+  /** Weekday 1-5 (1 = Monday), matching TimetableSlot.dayOfWeek. */
+  day?: number;
+  /** A period within `day`. Ignored on its own — see filterCohort. */
+  period?: number;
   /** Free text over the name and the registry number. */
   q?: string;
 }
@@ -182,6 +194,15 @@ export function filterCohort<T extends CohortRow>(rows: T[], f: CohortFilter): T
     if (f.grade != null && r.grade !== f.grade) return false;
     if (f.code && !r.problemCodes.includes(f.code)) return false;
     if (f.accommodation && !r.accommodationCodes.includes(f.accommodation)) return false;
+    // A period only means something inside a day: the same period number falls on
+    // a different lesson each weekday, so `?period=3` alone is ignored rather
+    // than guessed at. The UI only offers periods once a day is chosen.
+    if (f.day != null) {
+      const hit = r.supportSlots.some(
+        (s) => s.dayOfWeek === f.day && (f.period == null || s.period === f.period),
+      );
+      if (!hit) return false;
+    }
     if (q && !matchesSearch(r.name, q) && !matchesSearch(r.registryNo, q)) return false;
     return true;
   });
@@ -200,3 +221,51 @@ export function cohortCodes(rows: CohortRow[]): string[] {
 export function cohortAccommodations(rows: CohortRow[]): string[] {
   return [...new Set(rows.flatMap((r) => r.accommodationCodes))].sort((a, b) => Number(a) - Number(b));
 }
+
+/**
+ * Weekdays on which anyone in the cohort has support — the day pills.
+ *
+ * Counts STUDENTS, not lessons: a student with two Wednesday periods is one
+ * Wednesday student, because the pill filters people. Feed it the unfiltered
+ * cohort so a day never disappears because of the current selection.
+ */
+export function cohortSupportDays(rows: CohortRow[]): { day: number; count: number }[] {
+  const counts = new Map<number, number>();
+  for (const r of rows) {
+    for (const day of new Set(r.supportSlots.map((s) => s.dayOfWeek))) {
+      counts.set(day, (counts.get(day) ?? 0) + 1);
+    }
+  }
+  return [...counts]
+    .map(([day, count]) => ({ day, count }))
+    .sort((a, b) => a.day - b.day);
+}
+
+/**
+ * Periods that actually carry support on one weekday — the period pills.
+ * Offering a period with nothing in it would be a dead end, and the periods in
+ * the timetable run past the configured length of the school day, so the
+ * options come from the slots rather than from periodsForDow.
+ */
+export function cohortSupportPeriods(
+  rows: CohortRow[],
+  day: number,
+): { period: number; count: number }[] {
+  const counts = new Map<number, number>();
+  for (const r of rows) {
+    const periods = new Set(
+      r.supportSlots.filter((s) => s.dayOfWeek === day).map((s) => s.period),
+    );
+    for (const p of periods) counts.set(p, (counts.get(p) ?? 0) + 1);
+  }
+  return [...counts]
+    .map(([period, count]) => ({ period, count }))
+    .sort((a, b) => a.period - b.period);
+}
+
+/**
+ * The roster's URL keys — carried by the filter pills and by every row link, so
+ * a record's back button returns to the list you came from. One list, because
+ * the page and the record page both serialise it and could otherwise drift.
+ */
+export const COHORT_KEYS = ["grade", "code", "acc", "day", "period", "q"] as const;

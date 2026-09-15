@@ -1,5 +1,19 @@
 import { db } from "@/server/db";
+import type { Prisma } from "@/generated/prisma/client";
 import { parseSupportGroup, SPECIAL_ED_ACCOMMODATIONS, SPECIAL_ED_PROBLEM_CODES, type SupportKind } from "@/lib/specialEd";
+
+/**
+ * The prefixes that mark a timetable group as support, as a Prisma filter.
+ *
+ * One definition. parseSupportGroup() in @/lib/specialEd is the pure classifier
+ * and owns the same two prefixes; keeping the query's copy here rather than
+ * inlining it at each call site means a third reader cannot quietly disagree
+ * about what a support group is — which is exactly what happened to the
+ * substitutions engine.
+ */
+export const SUPPORT_GROUP_WHERE: Prisma.StudentGroupWhereInput = {
+  OR: [{ group: { name: { startsWith: "ΣΤ_" } } }, { group: { name: { startsWith: "ΑΣΤ_" } } }],
+};
 
 export type SupportEntry = {
   kind: SupportKind;
@@ -18,10 +32,7 @@ export type SupportEntry = {
  */
 export async function getStudentSupport(studentId: string): Promise<SupportEntry[]> {
   const enrolments = await db.studentGroup.findMany({
-    where: {
-      studentProfileId: studentId,
-      OR: [{ group: { name: { startsWith: "ΣΤ_" } } }, { group: { name: { startsWith: "ΑΣΤ_" } } }],
-    },
+    where: { studentProfileId: studentId, ...SUPPORT_GROUP_WHERE },
     select: {
       group: {
         select: {
@@ -104,6 +115,42 @@ export async function getSpecialEdRecord(studentId: string) {
   // Accommodation codes are numeric strings — sort numerically for display.
   record.accommodations.sort((a, b) => Number(a.code) - Number(b.code));
   return record;
+}
+
+/**
+ * When each of these students is in support, keyed by StudentProfile id.
+ *
+ * The roster filters on the day and period of a support lesson, which means it
+ * needs this for the whole cohort at once. getStudentSupport() answers the same
+ * question for one student and would cost a round-trip each; this is one query
+ * however many students the register holds.
+ *
+ * Only the slot coordinates, deliberately: the roster shows when, the record
+ * page shows what and with whom.
+ */
+export async function supportSlotsByStudent(
+  studentIds: string[],
+): Promise<Map<string, { dayOfWeek: number; period: number }[]>> {
+  const byStudent = new Map<string, { dayOfWeek: number; period: number }[]>();
+  if (studentIds.length === 0) return byStudent;
+
+  const enrolments = await db.studentGroup.findMany({
+    where: { studentProfileId: { in: studentIds }, ...SUPPORT_GROUP_WHERE },
+    select: {
+      studentProfileId: true,
+      group: { select: { timetableSlots: { select: { dayOfWeek: true, period: true } } } },
+    },
+  });
+
+  for (const e of enrolments) {
+    const list = byStudent.get(e.studentProfileId) ?? [];
+    for (const s of e.group.timetableSlots) list.push({ dayOfWeek: s.dayOfWeek, period: s.period });
+    byStudent.set(e.studentProfileId, list);
+  }
+  for (const list of byStudent.values()) {
+    list.sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.period - b.period);
+  }
+  return byStudent;
 }
 
 /** The special-ed cohort (students with a record) — for the coordinator desk. */

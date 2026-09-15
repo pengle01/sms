@@ -1093,7 +1093,13 @@
     "periodN": "P{n}",
     "enableEditing": "Edit",
     "doneEditing": "Done editing",
-    "editingBanner": "This record is unlocked for editing. Changes are saved when you press Save."
+    "editingBanner": "This record is unlocked for editing. Changes are saved when you press Save.",
+    "filterSupportDay": "Support day",
+    "filterSupportPeriod": "Period",
+    "allDays": "All",
+    "allPeriods": "All",
+    "colSupport": "Support",
+    "noSupportShort": "—"
   },
   "studentFile": {
     "dow1": "Monday",
