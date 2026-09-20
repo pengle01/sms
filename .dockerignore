@@ -1,0 +1,30 @@
+# Keep the build context small and, above all, free of secrets and personal data.
+
+# Secrets: next build and dotenv would read a .env straight into the image.
+.env*
+
+# Personal / test data: baseline.sql carries the admin password hash.
+test-data
+docs
+*.xlsx
+*.pdf
+*.dump
+
+# Generated or runtime state
+.git
+node_modules
+.next
+src/generated
+coverage
+*.tsbuildinfo
+next-env.d.ts
+logs
+uploads
+backups
+
+# Local-only ops files and the Docker files themselves
+ops/caddy/Caddyfile
+ops/systemd
+ops/RUNBOOK.md
+Dockerfile
+compose*.yaml

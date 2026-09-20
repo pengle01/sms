@@ -1,0 +1,42 @@
+# HTTPS in front of the app. Settings come from .env via compose.yaml:
+#   SMS_DOMAIN    the site address
+#   TLS_MODE      cloudflare (real certificate via DNS-01) | internal (self-signed, laptop tests)
+#   CF_API_TOKEN  Cloudflare token for DNS-01 (cloudflare mode only)
+#
+# DNS-01 needs no inbound connection, so it works while the server is reachable
+# only from the school wifi.
+
+{
+	# Only TCP 443 is published: no port-80 redirect, no HTTP/3 over UDP.
+	auto_https disable_redirects
+	servers {
+		protocols h1 h2
+	}
+}
+
+(tls_cloudflare) {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+		# Check propagation against a public resolver, not the school's.
+		resolvers 1.1.1.1
+	}
+}
+
+(tls_internal) {
+	tls internal
+}
+
+{$SMS_DOMAIN} {
+	import tls_{$TLS_MODE}
+	encode gzip
+	# Attachments are capped at 20 MB per request by the app; leave headroom so
+	# the app, not Caddy, explains an oversized upload.
+	request_body {
+		max_size 25MB
+	}
+	reverse_proxy app:3000
+	log {
+		output stdout
+		format json
+	}
+}
