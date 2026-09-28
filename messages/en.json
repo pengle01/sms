@@ -1336,7 +1336,19 @@
     "unlink": "Unlink",
     "selectUser": "— Select user —",
     "linkUser": "Link user",
-    "unlinked": "Unlinked"
+    "unlinked": "Unlinked",
+    "itOn": "IT maintenance",
+    "itOff": "Set as IT maintenance",
+    "rowIt": "IT maintenance",
+    "rowItHint": "Handles equipment faults in the rooms assigned to them.",
+    "post_itMaint": "IT maintenance",
+    "roomsTitle": "Maintained rooms",
+    "roomsHint": "Choose the rooms this person looks after. Requests for rooms with no maintainer are shown to every IT maintainer.",
+    "roomAlsoMaintainedBy": "Also maintained by: {names}",
+    "roomsSelected": "{count, plural, one {# room} other {# rooms}}",
+    "roomsTakenLegend": "already has another maintainer",
+    "saveRooms": "Save rooms",
+    "roomsSaved": "Rooms saved"
   },
   "adminStudents": {
     "title": "Students",

@@ -15,9 +15,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ShieldCheck, ShieldOff, HeartHandshake, ArrowLeftRight, Award, Loader2 } from "lucide-react";
+import { ShieldCheck, ShieldOff, HeartHandshake, ArrowLeftRight, Award, Wrench, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { grantSuperAdmin, revokeSuperAdmin, setSpecialEducation, setSubstitutionCoordinator, setDdkCoordinator } from "./actions";
+import { grantSuperAdmin, revokeSuperAdmin, setSpecialEducation, setSubstitutionCoordinator, setDdkCoordinator, setItMaintenance } from "./actions";
 
 interface Props {
   userId: string;
@@ -35,6 +35,7 @@ interface Props {
   specialEducation: boolean;
   substitutionCoordinator: boolean;
   ddkCoordinator: boolean;
+  itMaintenance: boolean;
 }
 
 export function RolesCard({
@@ -48,6 +49,7 @@ export function RolesCard({
   specialEducation,
   substitutionCoordinator,
   ddkCoordinator,
+  itMaintenance,
 }: Props) {
   const t = useTranslations("adminUsers");
   const router = useRouter();
@@ -220,6 +222,29 @@ export function RolesCard({
     </button>
   );
 
+  // ── IT maintenance designation ────────────────────────────────────────────
+  const itControl = !hasStaffProfile ? (
+    <span className="text-xs text-slate-400">{t("noStaffProfile")}</span>
+  ) : (
+    <button
+      disabled={pending}
+      onClick={() =>
+        run(
+          () => setItMaintenance(userId, !itMaintenance),
+          itMaintenance ? t("designationRemoved") : t("designationSet")
+        )
+      }
+      className={
+        itMaintenance
+          ? "inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-violet-600 text-white text-xs font-medium hover:bg-violet-700 disabled:opacity-50"
+          : "inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-slate-200 text-slate-600 text-xs font-medium hover:bg-slate-50 disabled:opacity-50"
+      }
+    >
+      <Wrench className="w-3.5 h-3.5" />
+      {itMaintenance ? t("itOn") : t("itOff")}
+    </button>
+  );
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -233,6 +258,7 @@ export function RolesCard({
         {row(t("rowSpecialEd"), specialEdControl, t("rowSpecialEdHint"))}
         {row(t("rowSubCoord"), coordinatorControl, t("rowSubCoordHint"))}
         {row(t("rowDdk"), ddkControl, t("rowDdkHint"))}
+        {row(t("rowIt"), itControl, t("rowItHint"))}
       </CardContent>
     </Card>
   );

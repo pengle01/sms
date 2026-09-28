@@ -322,3 +322,76 @@ export async function setDdkCoordinator(
   revalidateUsers();
   return { ok: true };
 }
+
+/** Toggle the "IT maintenance" designation. Their rooms are kept if it is removed. */
+export async function setItMaintenance(
+  targetUserId: string,
+  value: boolean
+): Promise<ActionResult> {
+  const auth = await getSuperAdminAuth();
+  if (!auth) return { ok: false, error: "Δεν επιτρέπεται" };
+
+  const target = await db.user.findUnique({
+    where: { id: targetUserId },
+    select: { staffProfile: { select: { id: true } } },
+  });
+  if (!target?.staffProfile) return { ok: false, error: "Δεν υπάρχει συνδεδεμένο προφίλ προσωπικού" };
+
+  await db.staffProfile.update({
+    where: { id: target.staffProfile.id },
+    data: { itMaintenance: value },
+  });
+  await writeAudit({
+    userId: auth.userId,
+    action: "staff.itMaintenance",
+    resource: "StaffProfile",
+    resourceId: target.staffProfile.id,
+    details: { value },
+    ...(await requestMeta()),
+  });
+  revalidateUsers();
+  return { ok: true };
+}
+
+/**
+ * Replace the set of rooms an IT maintainer looks after. Unknown room ids are
+ * ignored, so a room deleted meanwhile cannot fail the save.
+ */
+export async function setMaintainedRooms(
+  targetUserId: string,
+  roomIds: string[]
+): Promise<ActionResult> {
+  const auth = await getSuperAdminAuth();
+  if (!auth) return { ok: false, error: "Δεν επιτρέπεται" };
+
+  const target = await db.user.findUnique({
+    where: { id: targetUserId },
+    select: { staffProfile: { select: { id: true } } },
+  });
+  if (!target?.staffProfile) return { ok: false, error: "Δεν υπάρχει συνδεδεμένο προφίλ προσωπικού" };
+  const staffProfileId = target.staffProfile.id;
+
+  const rooms = await db.room.findMany({
+    where: { id: { in: [...new Set(roomIds)] } },
+    select: { id: true, name: true },
+  });
+  await db.$transaction([
+    db.roomMaintainer.deleteMany({ where: { staffProfileId } }),
+    db.roomMaintainer.createMany({
+      data: rooms.map((r) => ({ roomId: r.id, staffProfileId })),
+    }),
+  ]);
+  await writeAudit({
+    userId: auth.userId,
+    action: "staff.maintainedRooms",
+    resource: "StaffProfile",
+    resourceId: staffProfileId,
+    details: { rooms: rooms.map((r) => r.name) },
+    ...(await requestMeta()),
+  });
+  revalidateUsers();
+  for (const portal of ["teacher", "office", "admin"]) {
+    revalidatePath(`/[locale]/(portal)/${portal}/maintenance`, "page");
+  }
+  return { ok: true };
+}

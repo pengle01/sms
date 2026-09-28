@@ -10,6 +10,9 @@ import { getTranslations } from "next-intl/server";
 import { RolesCard } from "./RolesCard";
 import { SetPasswordForm } from "./SetPasswordForm";
 import { DeleteUserCard } from "./DeleteUserCard";
+import { MaintainedRoomsCard } from "./MaintainedRoomsCard";
+import { getRooms } from "@/server/rooms";
+import { personName } from "@/server/maintenance";
 import { pickQueryString } from "@/lib/listFilters";
 import { STAFF_KEYS } from "@/lib/staffFilter";
 
@@ -202,7 +205,10 @@ export default async function UserDetailPage({
         specialEducation={sp?.specialEducation ?? false}
         substitutionCoordinator={sp?.substitutionCoordinator ?? false}
         ddkCoordinator={sp?.ddkCoordinator ?? false}
+        itMaintenance={sp?.itMaintenance ?? false}
       />
+
+      {sp?.itMaintenance && (await maintainedRoomsCard(user.id, sp.id))}
 
       <Card>
         <CardHeader className="pb-2">
@@ -235,5 +241,41 @@ export default async function UserDetailPage({
         }
       />
     </div>
+  );
+}
+
+/** The room picker for an IT maintainer, with every room's other maintainers. */
+async function maintainedRoomsCard(userId: string, staffProfileId: string) {
+  const [rooms, assignments] = await Promise.all([
+    getRooms(),
+    db.roomMaintainer.findMany({
+      where: { staffProfile: { itMaintenance: true } },
+      select: {
+        roomId: true,
+        staffProfileId: true,
+        staffProfile: { select: { scheduleName: true, user: { select: { name: true } } } },
+      },
+    }),
+  ]);
+  const selected: string[] = [];
+  const others: Record<string, string[]> = {};
+  for (const a of assignments) {
+    if (a.staffProfileId === staffProfileId) {
+      selected.push(a.roomId);
+    } else {
+      const name = personName({
+        name: a.staffProfile.user?.name ?? null,
+        staffProfile: { scheduleName: a.staffProfile.scheduleName },
+      }) ?? "—";
+      (others[a.roomId] ??= []).push(name);
+    }
+  }
+  return (
+    <MaintainedRoomsCard
+      userId={userId}
+      rooms={rooms.map((r) => ({ id: r.id, name: r.name }))}
+      selected={selected}
+      others={others}
+    />
   );
 }

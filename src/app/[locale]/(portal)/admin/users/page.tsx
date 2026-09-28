@@ -50,7 +50,7 @@ const ROLE_PILLS: Role[] = [
   "SUPER_ADMIN",
 ];
 
-const POST_PILLS = ["specialEd", "ddk", "subCoord", "homeroom", "extraAdmin"] as const;
+const POST_PILLS = ["specialEd", "ddk", "subCoord", "itMaint", "homeroom", "extraAdmin"] as const;
 
 /**
  * The admin staff roster.
@@ -139,6 +139,7 @@ export default async function UsersPage({
       specialEducation: sp.specialEducation,
       ddkCoordinator: sp.ddkCoordinator,
       substitutionCoordinator: sp.substitutionCoordinator,
+      itMaintenance: sp.itMaintenance,
       homerooms: [
         ...sp.homeroomGroups.map((g) => g.name),
         ...sp.homeroomHeadGroups.map((g) => `${g.name} (B')`),
@@ -159,6 +160,7 @@ export default async function UsersPage({
       specialEducation: false,
       ddkCoordinator: false,
       substitutionCoordinator: false,
+      itMaintenance: false,
       homerooms: [],
       lessons: 0,
     })),
