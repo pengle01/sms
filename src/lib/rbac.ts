@@ -146,6 +146,15 @@ export function canDeleteNotice(
   return authorId === viewerId || roles.some(isAdminStaff);
 }
 
+/**
+ * Who may delete or deactivate a student record: the secretariat and the system
+ * admin, nobody else. Takes effective roles, so an admin-granted SUPER_ADMIN on
+ * a teacher counts; a headmaster or teacher on their own does not.
+ */
+export function canDeleteStudent(roles: Role[]): boolean {
+  return roles.some((r) => isOfficeAdmin(r) || isAdminStaff(r));
+}
+
 // Only the system admin may generate or regenerate access codes;
 // everyone else with access can merely view them.
 export function canGenerateAccessCode(role: Role): boolean {

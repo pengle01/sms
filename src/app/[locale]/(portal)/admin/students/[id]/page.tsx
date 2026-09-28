@@ -10,6 +10,9 @@ import {
 } from "lucide-react";
 import { SmsRecipientsCard } from "@/components/students/SmsRecipientsCard";
 import { AccountsCard, type StudentAccount } from "@/components/students/AccountsCard";
+import { DeleteStudentCard } from "@/components/students/DeleteStudentCard";
+import { historyBlockers } from "@/lib/studentDelete";
+import { loadStudentHistory } from "@/server/studentDelete";
 import { pickQueryString } from "@/lib/listFilters";
 import { AccessCodeCard } from "@/components/access/AccessCodeCard";
 import { getPeriodsPerDay, getMaxGuardiansPerStudent } from "@/lib/schoolConfig";
@@ -83,6 +86,8 @@ export default async function StudentDetailPage({
   });
 
   if (!student) notFound();
+
+  const history = await loadStudentHistory(id);
 
   const { user, group, subjectGroups, parents, smsContacts, grades, attendance } = student;
 
@@ -475,6 +480,15 @@ export default async function StudentDetailPage({
           />
         </div>
       </div>
+
+      <DeleteStudentCard
+        studentProfileId={student.id}
+        studentName={student.user?.name ?? student.studentId}
+        registryNumber={student.studentId}
+        isActive={student.user?.isActive ?? false}
+        blockers={history ? historyBlockers(history) : []}
+        listHref={`/${locale}/admin/students`}
+      />
     </div>
   );
 }

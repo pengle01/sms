@@ -6,8 +6,11 @@ import { ChevronLeft, MapPin } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { AccessCodeCard } from "@/components/access/AccessCodeCard";
 import { SmsRecipientsCard } from "@/components/students/SmsRecipientsCard";
+import { DeleteStudentCard } from "@/components/students/DeleteStudentCard";
 import { pickQueryString } from "@/lib/listFilters";
 import { LOCATE_KEYS } from "@/lib/studentSearch";
+import { historyBlockers } from "@/lib/studentDelete";
+import { loadStudentHistory } from "@/server/studentDelete";
 
 export default async function OfficeStudentDetailPage({
   params,
@@ -25,12 +28,14 @@ export default async function OfficeStudentDetailPage({
   const student = await db.studentProfile.findUnique({
     where: { id },
     include: {
-      user: { select: { name: true } },
+      user: { select: { name: true, isActive: true } },
       group: { select: { name: true } },
       smsContacts: { orderBy: [{ isDefault: "desc" }, { active: "desc" }, { role: "asc" }] },
     },
   });
   if (!student) notFound();
+
+  const history = await loadStudentHistory(id);
 
   const tNav = await getTranslations("nav");
 
@@ -66,6 +71,15 @@ export default async function OfficeStudentDetailPage({
         contacts={student.smsContacts}
         flagged={student.smsFlagged}
         flagReason={student.smsFlagReason}
+      />
+
+      <DeleteStudentCard
+        studentProfileId={id}
+        studentName={student.user?.name ?? student.studentId}
+        registryNumber={student.studentId}
+        isActive={student.user?.isActive ?? false}
+        blockers={history ? historyBlockers(history) : []}
+        listHref={`/${locale}/office/students`}
       />
     </div>
   );
