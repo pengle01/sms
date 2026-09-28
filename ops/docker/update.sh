@@ -55,6 +55,12 @@ case "${HTTPS_BIND:-0.0.0.0}" in
   *)          CHECK_ADDR="$HTTPS_BIND" ;;
 esac
 
+TEST_DATE="$(env_get NEXT_PUBLIC_TEST_DATE)"
+if [ -n "$TEST_DATE" ]; then
+  log "WARNING: NEXT_PUBLIC_TEST_DATE=$TEST_DATE - this deployment fakes \"today\" as that date."
+  log "         Comment it out in .env and rebuild to use the real clock."
+fi
+
 PREV_SHA="$(git rev-parse HEAD)"
 log "running:  $(git log -1 --format='%h %s' HEAD)"
 

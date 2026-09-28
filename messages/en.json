@@ -46,7 +46,8 @@
     "dowShort4": "Thu",
     "dowShort5": "Fri",
     "periodShort": "P{period}",
-    "periodRange": "P{from}–{to}"
+    "periodRange": "P{from}–{to}",
+    "testDateBanner": "TEST DATE — the app is running as if today were {date}"
   },
   "auth": {
     "login": "Sign In",

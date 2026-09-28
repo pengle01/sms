@@ -11,12 +11,24 @@ export function normalizeIsoDate(value: string | undefined | null): string | nul
   return isNaN(new Date(iso + "T00:00:00.000Z").getTime()) ? null : iso;
 }
 
-// Returns the current date/time. When NEXT_PUBLIC_TEST_DATE is set (dev only),
-// returns that date at the current local time so day-of-week logic still works.
+/**
+ * The faked "today", or null when the app is on the real clock.
+ *
+ * One source of truth for the three places that care: getNow, the startup log
+ * and the banner every portal shows while an override is active. Deliberately
+ * NOT gated on NODE_ENV — a production build fakes the date exactly like dev,
+ * which is what the UAT server needs and exactly why the banner exists.
+ */
+export function testDateOverride(): string | null {
+  return normalizeIsoDate(process.env.NEXT_PUBLIC_TEST_DATE);
+}
+
+// Returns the current date/time. When NEXT_PUBLIC_TEST_DATE is set, returns that
+// date at the current local time so day-of-week logic still works.
 // A malformed override falls back to the real date instead of poisoning every
 // date-based query with Invalid Date.
 export function getNow(): Date {
-  const override = normalizeIsoDate(process.env.NEXT_PUBLIC_TEST_DATE);
+  const override = testDateOverride();
   if (!override) return new Date();
   const real = new Date();
   const base = new Date(override + "T00:00:00");

@@ -4,7 +4,18 @@ import type { Instrumentation } from "next";
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     const { logger } = await import("@/server/logger");
-    logger.info({ event: "server.start" }, "SMS server started");
+    // A faked "today" must never be a silent property of a deployment: it shows
+    // in the log as well as on every page (TestDateBanner).
+    const { testDateOverride } = await import("@/lib/dates");
+    const testDate = testDateOverride();
+    if (testDate) {
+      logger.warn(
+        { event: "server.start", testDate },
+        `SMS server started with a FAKED date (${testDate}) — NEXT_PUBLIC_TEST_DATE is set`,
+      );
+    } else {
+      logger.info({ event: "server.start" }, "SMS server started");
+    }
     // Optional one-time admin password seed (ADMIN_BOOTSTRAP_EMAIL/PASSWORD).
     const { bootstrapAdminPassword } = await import("@/server/adminBootstrap");
     await bootstrapAdminPassword();

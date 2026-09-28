@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { localDateStr, utcMidnight, monthStart, monthEnd, normalizeIsoDate, toAppTimeline, fromAppTimeline } from "@/lib/dates";
+import { localDateStr, utcMidnight, monthStart, monthEnd, normalizeIsoDate, toAppTimeline, fromAppTimeline, getNow, testDateOverride } from "@/lib/dates";
 
 describe("localDateStr", () => {
   it("formats a known date as YYYY-MM-DD", () => {
@@ -119,5 +119,50 @@ describe("App timeline shift (NEXT_PUBLIC_TEST_DATE)", () => {
     process.env.NEXT_PUBLIC_TEST_DATE = "2026-03-16";
     const d = new Date("2026-06-05T08:30:00Z");
     expect(fromAppTimeline(toAppTimeline(d)).getTime()).toBe(d.getTime());
+  });
+});
+
+describe("getNow / testDateOverride", () => {
+  const ORIG = process.env.NEXT_PUBLIC_TEST_DATE;
+  afterEach(() => {
+    if (ORIG === undefined) delete process.env.NEXT_PUBLIC_TEST_DATE;
+    else process.env.NEXT_PUBLIC_TEST_DATE = ORIG;
+  });
+
+  it("returns the real date when no override is set", () => {
+    delete process.env.NEXT_PUBLIC_TEST_DATE;
+    expect(testDateOverride()).toBeNull();
+    expect(localDateStr(getNow())).toBe(new Date().toLocaleDateString("en-CA"));
+  });
+
+  it("returns the faked calendar day when an override is set", () => {
+    process.env.NEXT_PUBLIC_TEST_DATE = "2026-03-16";
+    expect(testDateOverride()).toBe("2026-03-16");
+    expect(localDateStr(getNow())).toBe("2026-03-16");
+  });
+
+  // The faked day carries the REAL time of day, so "is it past period 3" and
+  // day-of-week logic keep working while the date is pinned.
+  it("keeps the real time of day on the faked date", () => {
+    process.env.NEXT_PUBLIC_TEST_DATE = "2026-03-16";
+    const real = new Date();
+    const now = getNow();
+    expect(now.getHours()).toBe(real.getHours());
+    expect(now.getDay()).toBe(1); // 2026-03-16 is a Monday
+  });
+
+  it("normalizes a single-digit override", () => {
+    process.env.NEXT_PUBLIC_TEST_DATE = "2026-3-9";
+    expect(testDateOverride()).toBe("2026-03-09");
+    expect(localDateStr(getNow())).toBe("2026-03-09");
+  });
+
+  it("falls back to the real date on a malformed or empty override", () => {
+    const realKey = new Date().toLocaleDateString("en-CA");
+    for (const bad of ["", "   ", "not a date", "16-03-2026", "2026-13-40"]) {
+      process.env.NEXT_PUBLIC_TEST_DATE = bad;
+      expect(testDateOverride()).toBeNull();
+      expect(localDateStr(getNow())).toBe(realKey);
+    }
   });
 });

@@ -46,7 +46,8 @@
     "dowShort4": "Πεμ",
     "dowShort5": "Παρ",
     "periodShort": "Π{period}",
-    "periodRange": "Π{from}–{to}"
+    "periodRange": "Π{from}–{to}",
+    "testDateBanner": "ΔΟΚΙΜΑΣΤΙΚΗ ΗΜΕΡΟΜΗΝΙΑ — η εφαρμογή λειτουργεί σαν να είναι {date}"
   },
   "auth": {
     "login": "Σύνδεση",
