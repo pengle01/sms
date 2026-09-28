@@ -11,7 +11,7 @@ import {
   Calendar, CalendarRange, FileText, Bell, Users, Settings, Shield,
   Search, GraduationCap, Home, Backpack, Plus, BookMarked, ShieldAlert,
   CircleUser, BellRing, LogOut, ArrowLeftRight, BarChart3, Award, MessageSquare,
-  ScrollText, Send, Database, Megaphone,
+  ScrollText, Send, Database, Megaphone, Wrench,
 } from "lucide-react";
 import { MessagesNavBadge } from "./MessagesNavBadge";
 
@@ -35,6 +35,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "messages",     href: "messages",          icon: MessageSquare,   roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "activities",   href: "activities",        icon: CalendarRange,   roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "substitutions", href: "substitutions",    icon: ArrowLeftRight,  roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
+  { key: "maintenance",  href: "maintenance",       icon: Wrench,          roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "duty",         href: "duty",              icon: BellRing,        roles: ["HEADTEACHER_A","HEADTEACHER_B"] },
   { key: "sms",          href: "sms",               icon: Send,            roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B"] },
   { key: "profile",      href: "profile",           icon: CircleUser,      roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
@@ -45,6 +46,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "reports",      href: "attendance/reports", icon: BarChart3,      roles: ["SCHOOL_ADMIN"] },
   { key: "students",     href: "students",          icon: GraduationCap,   roles: ["SCHOOL_ADMIN"] },
   { key: "noticeboard",  href: "noticeboard",       icon: Bell,            roles: ["SCHOOL_ADMIN"] },
+  { key: "maintenance",  href: "maintenance",       icon: Wrench,          roles: ["SCHOOL_ADMIN"] },
 
   // ── Admin portal (/admin) — registrations & system ───────────────────
   { key: "dashboard",    href: "dashboard",         icon: LayoutDashboard, roles: ["SUPER_ADMIN"] },
@@ -59,6 +61,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "permits",      href: "permits",           icon: LogOut,          roles: ["SUPER_ADMIN"] },
   { key: "noticeboard",  href: "notifications",     icon: Bell,            roles: ["SUPER_ADMIN"] },
   { key: "notices",      href: "noticeboard",       icon: Megaphone,       roles: ["SUPER_ADMIN"] },
+  { key: "maintenance",  href: "maintenance",       icon: Wrench,          roles: ["SUPER_ADMIN"] },
   { key: "calendar",     href: "calendar",          icon: CalendarRange,   roles: ["SUPER_ADMIN"] },
   { key: "audit",        href: "audit",             icon: ScrollText,      roles: ["SUPER_ADMIN"] },
   { key: "settings",     href: "settings",          icon: Settings,        roles: ["SUPER_ADMIN"] },

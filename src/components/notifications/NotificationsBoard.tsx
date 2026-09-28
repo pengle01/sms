@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import {
-  Bell, FileWarning, CheckCircle2, CheckCheck, Clock, MessageSquare, ShieldAlert, UserPlus,
+  Bell, FileWarning, CheckCircle2, CheckCheck, Clock, MessageSquare, ShieldAlert, UserPlus, Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AttachmentList } from "@/components/attachments/AttachmentLink";
@@ -19,6 +19,8 @@ const TYPE_ICON: Record<string, React.ReactNode> = {
   STAFF_MESSAGE: <MessageSquare className="w-5 h-5 text-emerald-500" />,
   SPECIAL_ED_UPDATE: <ShieldAlert className="w-5 h-5 text-amber-500" />,
   GUARDIAN_LINK: <UserPlus className="w-5 h-5 text-sky-500" />,
+  MAINTENANCE_CREATED: <Wrench className="w-5 h-5 text-violet-500" />,
+  MAINTENANCE_RESOLVED: <CheckCircle2 className="w-5 h-5 text-emerald-500" />,
 };
 
 export function NotificationsBoard({ locale }: { locale: string }) {

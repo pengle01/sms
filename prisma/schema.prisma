@@ -66,8 +66,8 @@ enum ResolutionAction {
 // What caused an SMS to be sent — see SmsLog.kind.
 enum SmsKind {
   BROADCAST // the management SMS console
-  ABSENCE   // automatic first-period absence notice
-  REFERRAL  // a referral resolution sent to the parents
+  ABSENCE // automatic first-period absence notice
+  REFERRAL // a referral resolution sent to the parents
 }
 
 enum ClaimStatus {
@@ -199,6 +199,8 @@ model User {
   authoredMessages           Message[]                   @relation("MessageAuthor")
   announcements              Announcement[]
   sentSmsLogs                SmsLog[]                    @relation("SmsSender")
+  maintenanceRequests        MaintenanceRequest[]        @relation("MaintenanceRequests")
+  maintenanceEvents          MaintenanceEvent[]          @relation("MaintenanceEvents")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -220,6 +222,9 @@ model StaffProfile {
   substitutionCoordinator Boolean @default(false)
   // Designation: the headteacher responsible for ΔΔΚ (set by admin)
   ddkCoordinator          Boolean @default(false)
+  // Designation: IT maintenance — handles equipment faults in the rooms assigned
+  // to them (RoomMaintainer), set by admin
+  itMaintenance           Boolean @default(false)
   // Substitution quota: null = unlimited, 0 = never picked
   maxSubstitutions        Int?
 
@@ -241,6 +246,7 @@ model StaffProfile {
   toiletBreaks            ToiletBreak[]
   ddkAwards               DdkAward[]              @relation("DdkAwarder")
   conversations           Conversation[]
+  roomsMaintained         RoomMaintainer[]
 }
 
 model StudentProfile {
@@ -1067,7 +1073,7 @@ model SmsLog {
   // account that triggered it (onDelete: SetNull keeps the log row intact —
   // deleting a teacher must never erase the record of a text to a parent).
   sentById String?
-  sentBy   User?   @relation("SmsSender", fields: [sentById], references: [id], onDelete: SetNull)
+  sentBy   User?    @relation("SmsSender", fields: [sentById], references: [id], onDelete: SetNull)
   // What produced it. ABSENCE is automatic — it fires when a teacher saves a
   // first-period register — so without this the sender column would read as if
   // they had chosen to text the parent. Nullable with NO default, for the same
@@ -1157,6 +1163,8 @@ model Room {
   id       String @id @default(cuid())
   name     String @unique
   capacity Int
+
+  maintainers RoomMaintainer[]
 }
 
 // ─── Self-service access (students & parents) ─────────────────────────────────
@@ -1244,4 +1252,81 @@ model AuditLog {
   @@index([userId])
   @@index([resource, resourceId])
   @@index([createdAt])
+}
+
+// ─── IT maintenance requests ──────────────────────────────────────────────────
+// A staff member reports an equipment fault in a room; the IT maintainers of that
+// room (RoomMaintainer) handle it. A room nobody maintains is visible to every
+// IT maintainer, so no request is lost while assignments are incomplete.
+
+enum MaintenanceEquipment {
+  LAPTOP
+  COMPUTER
+  PROJECTOR
+  TV
+  INTERACTIVE_BOARD
+  NETWORK
+  OTHER
+}
+
+enum MaintenanceStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum MaintenanceEventKind {
+  CREATED
+  COMMENT
+  STATUS_CHANGE
+}
+
+model MaintenanceRequest {
+  id          String               @id @default(cuid())
+  // Room.name at filing time. Rooms are strings app-wide (TimetableSlot.room),
+  // and keying on the name means removing a room never breaks its requests.
+  room        String
+  equipment   MaintenanceEquipment
+  description String
+  status      MaintenanceStatus    @default(OPEN)
+  // SetNull: deleting a user must neither erase nor block the request history.
+  createdById String?
+  createdBy   User?                @relation("MaintenanceRequests", fields: [createdById], references: [id], onDelete: SetNull)
+  resolvedAt  DateTime?
+  events      MaintenanceEvent[]
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([room])
+  @@index([status])
+  @@index([createdById])
+}
+
+// The request's timeline: its creation, every comment and every status change.
+model MaintenanceEvent {
+  id         String               @id @default(cuid())
+  requestId  String
+  request    MaintenanceRequest   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  authorId   String?
+  author     User?                @relation("MaintenanceEvents", fields: [authorId], references: [id], onDelete: SetNull)
+  kind       MaintenanceEventKind
+  fromStatus MaintenanceStatus?
+  toStatus   MaintenanceStatus?
+  body       String?
+  createdAt  DateTime             @default(now())
+
+  @@index([requestId, createdAt])
+}
+
+// Which IT maintainer looks after which room. Many-to-many: a room may have
+// more than one maintainer, and each maintainer usually has several rooms.
+model RoomMaintainer {
+  roomId         String
+  room           Room         @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  staffProfileId String
+  staffProfile   StaffProfile @relation(fields: [staffProfileId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@id([roomId, staffProfileId])
+  @@index([staffProfileId])
 }
