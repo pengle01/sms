@@ -64,7 +64,10 @@ services:
       - uploads:/data/uploads
       - logs:/data/logs
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/el/login',{redirect:'manual'}).then(r=>process.exit(r.status===200?0:1)).catch(()=>process.exit(1))"]
+      # Read the whole body before exiting. Exiting on the status line alone cuts
+      # Next's streamed render mid-flight, which logs a request.error
+      # ("controller[kState].transformAlgorithm is not a function") on every check.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/el/login',{redirect:'manual'}).then(r=>r.text().then(()=>process.exit(r.status===200?0:1))).catch(()=>process.exit(1))"]
       interval: 15s
       timeout: 5s
       retries: 5
