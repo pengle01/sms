@@ -4,6 +4,8 @@ import { canManageClaims, REGISTRATION_ROLES } from "@/lib/rbac";
 import { db } from "@/server/db";
 import type { Role } from "@/generated/prisma/client";
 import { RequestsList } from "./RequestsList";
+import { normalizeStaffName } from "@/lib/staffLink";
+import { roleNeededFor } from "@/lib/homegroupStaff";
 import type { PendingUser, PendingClaim, PendingChaperone } from "./RequestsList";
 
 export default async function ClaimsPage({
@@ -43,6 +45,28 @@ export default async function ClaimsPage({
     }),
   ]);
 
+  // Homegroup posts already assigned to a sign-up's timetable name (before they
+  // had an account): shown so the admin approves the role those posts need.
+  const unclaimedProfiles = await db.staffProfile.findMany({
+    where: { userId: null, scheduleName: { not: null } },
+    select: {
+      scheduleName: true,
+      homeroomGroups: { select: { name: true } },
+      homeroomHeadGroups: { select: { name: true } },
+      homeroomCounselorGroups: { select: { name: true } },
+    },
+  });
+  const postsByName = new Map(
+    unclaimedProfiles.map((p) => [
+      normalizeStaffName(p.scheduleName!),
+      {
+        teacherOf: p.homeroomGroups.map((g) => g.name),
+        headteacherOf: p.homeroomHeadGroups.map((g) => g.name),
+        counselorOf: p.homeroomCounselorGroups.map((g) => g.name),
+      },
+    ]),
+  );
+
   const registrations: PendingUser[] = rawUsers.map((u) => ({
     id: u.id,
     name: u.name ?? "",
@@ -50,6 +74,12 @@ export default async function ClaimsPage({
     role: u.role as Role,
     staffName: u.teacherClaim?.staffName,
     createdAt: u.createdAt.toISOString(),
+    ...(() => {
+      const posts = u.teacherClaim ? postsByName.get(normalizeStaffName(u.teacherClaim.staffName)) : undefined;
+      if (!posts) return {};
+      const needed = roleNeededFor(posts);
+      return { posts, roleMismatch: needed !== null && needed !== u.role ? needed : undefined };
+    })(),
   }));
 
   const teacherClaims: PendingClaim[] = rawClaims.map((c) => ({

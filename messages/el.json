@@ -1770,7 +1770,11 @@
     "reject": "Απόρριψη",
     "undo": "Αναίρεση",
     "approvedName": "Εγκρίθηκε: {name}",
-    "rejectedName": "Απορρίφθηκε: {name}"
+    "rejectedName": "Απορρίφθηκε: {name}",
+    "postTeacher": "Υπεύθυνος/η τμήματος: {groups}",
+    "postHeadteacher": "Υπεύθυνος/η ΒΔ: {groups}",
+    "postCounselor": "Σύμβουλος (ΣΕΑ): {groups}",
+    "roleMismatch": "Οι θέσεις αυτές χρειάζονται ρόλο «{role}» — ο χρήστης δήλωσε άλλον ρόλο. Αν εγκριθεί έτσι, η ανάθεση μένει αλλά χωρίς τα αντίστοιχα δικαιώματα."
   },
   "adminNoticeboard": {
     "title": "Πίνακας Ανακοινώσεων",

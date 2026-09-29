@@ -24,6 +24,10 @@ export interface PendingUser {
   role: Role;
   staffName?: string;
   createdAt: string;
+  /** Homegroup posts already assigned to this timetable name. */
+  posts?: { teacherOf: string[]; headteacherOf: string[]; counselorOf: string[] };
+  /** The role those posts need, when it differs from the one they signed up with. */
+  roleMismatch?: Role;
 }
 
 export interface PendingClaim {
@@ -200,6 +204,20 @@ export function RequestsList({ registrations: initRegs, teacherClaims: initClaim
                         )}
                         <span className="text-xs text-slate-400">{fmtDisplayDate(new Date(item.createdAt))}</span>
                       </div>
+                      {item.posts && (item.posts.teacherOf.length + item.posts.headteacherOf.length + item.posts.counselorOf.length) > 0 && (
+                        <p className="text-xs text-slate-600 mt-1.5">
+                          {[
+                            item.posts.teacherOf.length ? t("postTeacher", { groups: item.posts.teacherOf.join(", ") }) : null,
+                            item.posts.headteacherOf.length ? t("postHeadteacher", { groups: item.posts.headteacherOf.join(", ") }) : null,
+                            item.posts.counselorOf.length ? t("postCounselor", { groups: item.posts.counselorOf.join(", ") }) : null,
+                          ].filter(Boolean).join(" · ")}
+                        </p>
+                      )}
+                      {item.roleMismatch && (
+                        <p className="text-xs font-medium text-amber-700 mt-1">
+                          {t("roleMismatch", { role: tRoles.has(item.roleMismatch) ? tRoles(item.roleMismatch) : item.roleMismatch })}
+                        </p>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <Button size="sm" onClick={() => approveReg(item)} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5">

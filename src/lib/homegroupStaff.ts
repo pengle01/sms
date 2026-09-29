@@ -55,3 +55,21 @@ export function homegroupCandidates(profiles: HomegroupProfile[]): {
   }
   return { teachers, headteachers, counselors };
 }
+
+export interface HomegroupAssignments {
+  teacherOf: string[];
+  headteacherOf: string[];
+  counselorOf: string[];
+}
+
+/**
+ * The account role a sign-up needs for the homegroup posts already assigned to
+ * their profile, or null when any educator role will do. Access follows the
+ * approved role, so a counselor approved as TEACHER keeps the assignment but
+ * gets no counselor access.
+ */
+export function roleNeededFor(a: HomegroupAssignments): Role | null {
+  if (a.counselorOf.length > 0) return "STUDENT_COUNSELOR";
+  if (a.headteacherOf.length > 0) return "HEADTEACHER_B";
+  return null;
+}

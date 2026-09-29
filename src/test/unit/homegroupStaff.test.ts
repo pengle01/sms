@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { homegroupCandidates, type HomegroupProfile } from "@/lib/homegroupStaff";
+import { homegroupCandidates, roleNeededFor, type HomegroupProfile } from "@/lib/homegroupStaff";
 
 const p = (id: string, scheduleName: string | null, role: HomegroupProfile["role"] = null, leftTimetable = false): HomegroupProfile =>
   ({ id, scheduleName, role, leftTimetable });
@@ -41,5 +41,17 @@ describe("homegroupCandidates", () => {
   it("skips profiles that left the timetable or have no name", () => {
     const r = homegroupCandidates([p("x", "Μ-ΠΑΛΙΟΣ Α.", null, true), p("y", null)]);
     expect(r.teachers).toEqual([]);
+  });
+});
+
+describe("roleNeededFor", () => {
+  it("asks for the counselor or deputy-B role when such posts are assigned", () => {
+    expect(roleNeededFor({ teacherOf: [], headteacherOf: [], counselorOf: ["Α1"] })).toBe("STUDENT_COUNSELOR");
+    expect(roleNeededFor({ teacherOf: [], headteacherOf: ["Β2"], counselorOf: [] })).toBe("HEADTEACHER_B");
+  });
+
+  it("needs no particular role for a homeroom teacher or no posts", () => {
+    expect(roleNeededFor({ teacherOf: ["Α1"], headteacherOf: [], counselorOf: [] })).toBeNull();
+    expect(roleNeededFor({ teacherOf: [], headteacherOf: [], counselorOf: [] })).toBeNull();
   });
 });

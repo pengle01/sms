@@ -1770,7 +1770,11 @@
     "reject": "Reject",
     "undo": "Undo",
     "approvedName": "Approved {name}",
-    "rejectedName": "Rejected {name}"
+    "rejectedName": "Rejected {name}",
+    "postTeacher": "Homeroom teacher: {groups}",
+    "postHeadteacher": "Homeroom deputy (ΒΔ): {groups}",
+    "postCounselor": "Counselor (ΣΕΑ): {groups}",
+    "roleMismatch": "These posts need the “{role}” role — the user signed up with another. If approved as is, the assignment stays but without that role's access."
   },
   "adminNoticeboard": {
     "title": "Noticeboard",
