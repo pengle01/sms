@@ -24,7 +24,7 @@ export default async function TeacherGradesPage({
   if (!staff) {
     return (
       <div className="space-y-4">
-        <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>
+        <h2 className="text-2xl font-bold text-slate-900">{t("termTitle")}</h2>
         <p className="text-slate-400 text-sm">{t("noLessons")}</p>
       </div>
     );
@@ -70,7 +70,7 @@ export default async function TeacherGradesPage({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>
+        <h2 className="text-2xl font-bold text-slate-900">{t("termTitle")}</h2>
         <p className="text-slate-500 text-sm mt-1">{t("subtitle")}</p>
       </div>
 

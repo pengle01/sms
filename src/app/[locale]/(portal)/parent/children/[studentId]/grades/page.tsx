@@ -41,7 +41,7 @@ export default async function ParentChildGradesPage({
   return (
     <GradeReport
       heading={student.user?.name ?? t("title")}
-      subheading={`${t("title")} · ${student.group?.name ?? ""} · ${t("scale")}`}
+      subheading={`${t("title")} · ${student.group?.name ?? ""}`}
       grades={grades}
       testGrades={[]}
       labels={{

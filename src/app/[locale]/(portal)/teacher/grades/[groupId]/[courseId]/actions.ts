@@ -5,7 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { revalidatePath } from "next/cache";
 import { isManagement } from "@/lib/rbac";
-import { parseGradeInput, isGradePeriod } from "@/lib/grades";
+import { parseGradeInput, isGradePeriod, TERM_GRADE_MIN } from "@/lib/grades";
 import { getGradesUnlocked } from "@/lib/schoolConfig";
 import { writeAudit, requestMeta } from "@/server/audit";
 import type { Role } from "@/generated/prisma/client";
@@ -57,7 +57,7 @@ export async function saveGrades(input: {
   const parsed: { studentId: string; value: number | null }[] = [];
   for (const g of input.grades) {
     if (!allowed.has(g.studentId)) continue;
-    const r = parseGradeInput(g.value);
+    const r = parseGradeInput(g.value, TERM_GRADE_MIN);
     if (!r.ok) return { success: false, message: `Invalid grade value: ${g.value}` };
     parsed.push({ studentId: g.studentId, value: r.value });
   }

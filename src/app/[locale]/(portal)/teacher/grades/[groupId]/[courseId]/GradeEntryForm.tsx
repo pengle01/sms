@@ -3,7 +3,7 @@
 import { useTransition, useState } from "react";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import { parseGradeInput, GRADE_MIN, GRADE_MAX, type GradePeriod } from "@/lib/grades";
+import { parseGradeInput, TERM_GRADE_MIN, GRADE_MAX, type GradePeriod } from "@/lib/grades";
 import { saveGrades } from "./actions";
 
 type Student = {
@@ -41,7 +41,7 @@ export function GradeEntryForm({
 
   function handleSave() {
     for (const s of students) {
-      if (!parseGradeInput(values[s.id] ?? "").ok) {
+      if (!parseGradeInput(values[s.id] ?? "", TERM_GRADE_MIN).ok) {
         toast.error(labels.invalidGrade, { description: `${s.name}: ${values[s.id]}` });
         return;
       }
@@ -83,7 +83,7 @@ export function GradeEntryForm({
                 <td className="px-5 py-3">
                   <input
                     type="number"
-                    min={GRADE_MIN}
+                    min={TERM_GRADE_MIN}
                     max={GRADE_MAX}
                     step={0.5}
                     placeholder="—"

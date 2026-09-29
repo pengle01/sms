@@ -14,13 +14,16 @@ export function parseGradePeriod(v: string | undefined | null): GradePeriod {
   return isGradePeriod(v) ? v : "TERM1";
 }
 
+/** Test grades: 0–20. */
 export const GRADE_MIN = 0;
 export const GRADE_MAX = 20;
-/** Pass mark on the 0–20 scale (the single source of truth). */
+/** Term grades (Βαθμολογίες Τετραμήνων) start at 1: the scale is 1–20. */
+export const TERM_GRADE_MIN = 1;
+/** Pass mark on the 20-point scale (the single source of truth). */
 export const GRADE_PASS = 10;
 
-export function isValidGradeValue(n: number): boolean {
-  return Number.isFinite(n) && n >= GRADE_MIN && n <= GRADE_MAX;
+export function isValidGradeValue(n: number, min: number = GRADE_MIN): boolean {
+  return Number.isFinite(n) && n >= min && n <= GRADE_MAX;
 }
 
 /** A grade is passing at or above the pass mark. */
@@ -31,19 +34,20 @@ export function isPassing(v: number): boolean {
 /**
  * Parse a raw grade input string. Empty/whitespace means "clear the grade"
  * (returns value: null). Returns ok:false for anything that isn't a number in
- * the 0–20 range.
+ * the min–20 range — 0–20 for tests, 1–20 for term grades (TERM_GRADE_MIN).
  */
 export function parseGradeInput(
-  raw: string
+  raw: string,
+  min: number = GRADE_MIN
 ): { ok: true; value: number | null } | { ok: false } {
   const trimmed = raw.trim();
   if (trimmed === "") return { ok: true, value: null };
   const n = Number(trimmed);
-  if (!isValidGradeValue(n)) return { ok: false };
+  if (!isValidGradeValue(n, min)) return { ok: false };
   return { ok: true, value: n };
 }
 
-/** Tailwind text-colour class for a 0–20 grade. */
+/** Tailwind text-colour class for a grade on the 20-point scale. */
 export function gradeColorClass(v: number): string {
   if (v >= 17) return "text-green-700";
   if (v >= 13) return "text-emerald-700";

@@ -89,7 +89,7 @@ export default async function LessonGradesPage({
         <div className="flex flex-wrap items-start gap-3">
           <div>
             <h2 className="text-2xl font-bold text-slate-900">{course.name}</h2>
-            <p className="text-slate-500 text-sm mt-1">{group.name} · {t("scale")}</p>
+            <p className="text-slate-500 text-sm mt-1">{group.name} · {t("termScale")}</p>
           </div>
           <Badge variant="outline" className="text-xs mt-1">{group.name}</Badge>
         </div>

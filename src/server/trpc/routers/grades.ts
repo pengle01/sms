@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, staffProcedure, protectedProcedure } from "../init";
 import { TRPCError } from "@trpc/server";
-import { GRADES_UNLOCKED_KEY, parseGradesUnlocked, GRADE_MIN, GRADE_MAX } from "@/lib/grades";
+import { GRADES_UNLOCKED_KEY, parseGradesUnlocked, TERM_GRADE_MIN, GRADE_MAX } from "@/lib/grades";
 import type { Role } from "@/generated/prisma/client";
 
 export const gradesRouter = createTRPCRouter({
@@ -12,7 +12,7 @@ export const gradesRouter = createTRPCRouter({
         studentId: z.string(),
         courseId: z.string(),
         period: z.enum(["TERM1", "TERM2"]),
-        value: z.number().min(GRADE_MIN).max(GRADE_MAX),
+        value: z.number().min(TERM_GRADE_MIN).max(GRADE_MAX),
         notes: z.string().optional(),
       })
     )

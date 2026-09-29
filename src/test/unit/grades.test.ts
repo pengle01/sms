@@ -7,6 +7,7 @@ import {
   gradeColorClass,
   GRADE_PERIODS,
   parseGradesUnlocked,
+  TERM_GRADE_MIN,
 } from "@/lib/grades";
 
 describe("grade periods", () => {
@@ -54,6 +55,24 @@ describe("parseGradeInput", () => {
     expect(parseGradeInput("21")).toEqual({ ok: false });
     expect(parseGradeInput("-2")).toEqual({ ok: false });
     expect(parseGradeInput("abc")).toEqual({ ok: false });
+  });
+});
+
+describe("term grades (1–20)", () => {
+  it("rejects 0 but accepts 1 and 20", () => {
+    expect(isValidGradeValue(0, TERM_GRADE_MIN)).toBe(false);
+    expect(isValidGradeValue(0.5, TERM_GRADE_MIN)).toBe(false);
+    expect(isValidGradeValue(1, TERM_GRADE_MIN)).toBe(true);
+    expect(isValidGradeValue(20, TERM_GRADE_MIN)).toBe(true);
+  });
+  it("parses term grade input on the 1–20 scale", () => {
+    expect(parseGradeInput("0", TERM_GRADE_MIN)).toEqual({ ok: false });
+    expect(parseGradeInput("1", TERM_GRADE_MIN)).toEqual({ ok: true, value: 1 });
+    expect(parseGradeInput("", TERM_GRADE_MIN)).toEqual({ ok: true, value: null });
+    expect(parseGradeInput("21", TERM_GRADE_MIN)).toEqual({ ok: false });
+  });
+  it("leaves test grades on 0–20", () => {
+    expect(parseGradeInput("0")).toEqual({ ok: true, value: 0 });
   });
 });
 

@@ -42,7 +42,7 @@ export default async function StudentGradesPage({
   return (
     <GradeReport
       heading={t("myGrades")}
-      subheading={`${student.group?.name ?? ""} · ${t("scale")}`}
+      subheading={student.group?.name ?? ""}
       toolbar={
         <form method="GET" className="flex gap-2 flex-wrap">
           <div className="relative flex-1 min-w-48 max-w-sm">
