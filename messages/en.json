@@ -648,7 +648,8 @@
     "colName": "Name",
     "colType": "Type",
     "colStudents": "Students",
-    "colEnrolled": "Enrolled"
+    "colEnrolled": "Enrolled",
+    "noAccountSuffix": "(no account)"
   },
   "users": {
     "title": "User Management",

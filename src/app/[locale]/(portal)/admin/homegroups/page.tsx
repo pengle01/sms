@@ -1,5 +1,6 @@
 import { db } from "@/server/db";
 import { staffDisplayName } from "@/lib/staffName";
+import { homegroupCandidates } from "@/lib/homegroupStaff";
 import { getSuperAdminAuth } from "@/server/authz";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -43,7 +44,7 @@ export default async function HomegroupsPage({
     AND: [isHomegroupWhere(), homegroupWhere({ teacher, headteacher, counselor, missing })],
   };
 
-  const [groups, teachers, headteachers, counselors] = await Promise.all([
+  const [groups, profiles] = await Promise.all([
     db.group.findMany({
       where,
       include: {
@@ -54,22 +55,21 @@ export default async function HomegroupsPage({
       },
       orderBy: [{ grade: "asc" }, { name: "asc" }],
     }),
+    // Everyone on the staff roster, with or without an account: a homegroup can
+    // be assigned before the person signs up (see homegroupCandidates).
     db.staffProfile.findMany({
-      where: { user: { role: "TEACHER" } },
-      include: { user: { select: { name: true } } },
-      orderBy: { user: { name: "asc" } },
-    }),
-    db.staffProfile.findMany({
-      where: { user: { role: "HEADTEACHER_B" } },
-      include: { user: { select: { name: true } } },
-      orderBy: { user: { name: "asc" } },
-    }),
-    db.staffProfile.findMany({
-      where: { user: { role: "STUDENT_COUNSELOR" } },
-      include: { user: { select: { name: true } } },
-      orderBy: { user: { name: "asc" } },
+      select: { id: true, scheduleName: true, leftTimetableAt: true, user: { select: { name: true, role: true } } },
     }),
   ]);
+  const byId = new Map(profiles.map((p) => [p.id, p]));
+  const candidates = homegroupCandidates(
+    profiles.map((p) => ({ id: p.id, scheduleName: p.scheduleName, role: p.user?.role ?? null, leftTimetable: p.leftTimetableAt !== null })),
+  );
+  const noAccount = t("noAccountSuffix");
+  const candidateOption = (c: { id: string; hasAccount: boolean }) => {
+    const label = staffLabel(byId.get(c.id)!);
+    return { id: c.id, name: c.hasAccount ? label : `${label} ${noAccount}` };
+  };
 
   // Schedule coding (e.g. "ΗΥ-ΜΑΣΙΑ Μ. ΒΔ") is the canonical staff label.
   const staffLabel = (s: { id: string; scheduleName: string | null; user: { name: string | null } | null }) =>
@@ -95,15 +95,15 @@ export default async function HomegroupsPage({
   };
 
   const teacherOptions    = withAssigned(
-    teachers.map((t) => ({ id: t.id, name: staffLabel(t) })).sort(sortByLabel),
+    candidates.teachers.map(candidateOption).sort(sortByLabel),
     groups.map((g) => g.homeroomTeacher),
   );
   const headteacherOptions = withAssigned(
-    headteachers.map((t) => ({ id: t.id, name: staffLabel(t) })).sort(sortByLabel),
+    candidates.headteachers.map(candidateOption).sort(sortByLabel),
     groups.map((g) => g.homeroomHeadteacher),
   );
   const counselorOptions  = withAssigned(
-    counselors.map((t) => ({ id: t.id, name: staffLabel(t) })).sort(sortByLabel),
+    candidates.counselors.map(candidateOption).sort(sortByLabel),
     groups.map((g) => g.counselor),
   );
 

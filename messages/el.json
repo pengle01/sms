@@ -648,7 +648,8 @@
     "colName": "Όνομα",
     "colType": "Τύπος",
     "colStudents": "Μαθητές",
-    "colEnrolled": "Εγγεγραμμένοι"
+    "colEnrolled": "Εγγεγραμμένοι",
+    "noAccountSuffix": "(χωρίς λογαριασμό)"
   },
   "users": {
     "title": "Διαχείριση Χρηστών",
