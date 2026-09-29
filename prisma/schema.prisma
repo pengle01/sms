@@ -225,6 +225,9 @@ model StaffProfile {
   // Designation: IT maintenance — handles equipment faults in the rooms assigned
   // to them (RoomMaintainer), set by admin
   itMaintenance           Boolean @default(false)
+  // Parents may message this staff member (set by admin, off by default). While
+  // off, existing threads stay readable but nobody can reply or start one.
+  parentMessaging         Boolean @default(false)
   // Substitution quota: null = unlimited, 0 = never picked
   maxSubstitutions        Int?
 

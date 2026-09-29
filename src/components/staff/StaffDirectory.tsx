@@ -71,6 +71,7 @@ export async function StaffDirectory({ params }: { params: StaffDirectoryParams 
       ddkCoordinator: false,
       substitutionCoordinator: false,
       itMaintenance: false,
+      parentMessaging: false,
       homerooms: [
         ...p.homeroomGroups.map((g) => g.name),
         ...p.homeroomHeadGroups.map((g) => `${g.name} (B')`),

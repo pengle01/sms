@@ -206,6 +206,7 @@ export default async function UserDetailPage({
         substitutionCoordinator={sp?.substitutionCoordinator ?? false}
         ddkCoordinator={sp?.ddkCoordinator ?? false}
         itMaintenance={sp?.itMaintenance ?? false}
+        parentMessaging={sp?.parentMessaging ?? false}
       />
 
       {sp?.itMaintenance && (await maintainedRoomsCard(user.id, sp.id))}

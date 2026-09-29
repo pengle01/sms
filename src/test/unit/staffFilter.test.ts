@@ -30,6 +30,7 @@ function row(over: Partial<StaffRow> = {}): StaffRow {
     ddkCoordinator: false,
     substitutionCoordinator: false,
     itMaintenance: false,
+    parentMessaging: false,
     homerooms: [],
     lessons: 0,
     ...over,
@@ -159,6 +160,8 @@ describe("filterStaff", () => {
   it("filters by the IT-maintenance designation", () => {
     const withIt = [...roster, row({ staffProfileId: "it", itMaintenance: true })];
     expect(filterStaff(withIt, { post: "itMaint" }).map((r) => r.staffProfileId)).toEqual(["it"]);
+    const withMsg = [...roster, row({ staffProfileId: "msg", parentMessaging: true })];
+    expect(filterStaff(withMsg, { post: "parentMsg" }).map((r) => r.staffProfileId)).toEqual(["msg"]);
   });
 
   it("ignores an unknown designation rather than emptying the list", () => {
@@ -283,6 +286,7 @@ describe("isStaffPost", () => {
     expect(isStaffPost("specialEd")).toBe(true);
     expect(isStaffPost("homeroom")).toBe(true);
     expect(isStaffPost("itMaint")).toBe(true);
+    expect(isStaffPost("parentMsg")).toBe(true);
   });
 
   it("rejects anything else", () => {

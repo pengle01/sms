@@ -97,18 +97,22 @@ interface SidebarContentProps {
   ddkCoordinator?: boolean;
   /** Shows the special-ed desk nav item (full-access viewers). */
   specialEdAccess?: boolean;
+  /** false hides the Messages item (parent messaging off for this teacher and no history). */
+  messagesAccess?: boolean;
 }
 
 const DDK_NAV_ITEM: NavItem = { key: "ddk", href: "ddk", icon: Award, roles: [] };
 const SPECIAL_ED_NAV_ITEM: NavItem = { key: "specialEd", href: "special-ed", icon: ShieldAlert, roles: [] };
 
-export function SidebarContent({ role, locale, portal, userName, onNavigate, pendingClaimsCount, crossPortal, ddkCoordinator, specialEdAccess }: SidebarContentProps) {
+export function SidebarContent({ role, locale, portal, userName, onNavigate, pendingClaimsCount, crossPortal, ddkCoordinator, specialEdAccess, messagesAccess }: SidebarContentProps) {
   const t = useTranslations("nav");
   const tCommon = useTranslations("common");
   const tRoles = useTranslations("roles");
   const schoolName = useSchoolName();
   const pathname = usePathname();
-  const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(role));
+  const visibleItems = NAV_ITEMS.filter(
+    (item) => item.roles.includes(role) && !(item.key === "messages" && messagesAccess === false),
+  );
   // The ΔΔΚ desk is gated by a designation, not a role — inject it for the
   // coordinator in the educator portal (placed right after Activities).
   if (ddkCoordinator && portal === "teacher") {

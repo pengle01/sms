@@ -2,16 +2,25 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import type { Context } from "../context";
-import { reachableStaffIds, isUnreadForStaff, isUnreadForFamily } from "@/lib/messaging";
+import {
+  reachableStaffIds,
+  messageableStaffIds,
+  canReplyInThread,
+  isUnreadForStaff,
+  isUnreadForFamily,
+} from "@/lib/messaging";
 import { staffDisplayName } from "@/lib/staffName";
 import { logger, errInfo } from "@/server/logger";
 
 type Db = Context["db"];
 
+const THREAD_CLOSED_MSG = "Τα μηνύματα γονέων δεν είναι ενεργά για αυτόν τον εκπαιδευτικό.";
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-// The staff (with linked accounts) a student may message: subject teachers +
-// homegroup teacher/headteacher/counselor.
+// The staff a student's parents may message: subject teachers + homegroup
+// teacher/headteacher/counselor, narrowed to those with a linked account and
+// parent messaging enabled by the admin (off by default).
 async function reachableStaffSet(db: Db, studentId: string): Promise<Set<string>> {
   const student = await db.studentProfile.findUnique({
     where: { id: studentId },
@@ -35,12 +44,11 @@ async function reachableStaffSet(db: Db, studentId: string): Promise<Set<string>
     counselorId: student.group?.counselorId,
   });
   if (ids.length === 0) return new Set();
-  // Only staff with a linked user account can take part.
-  const linked = await db.staffProfile.findMany({
-    where: { id: { in: ids }, userId: { not: null } },
-    select: { id: true },
+  const profiles = await db.staffProfile.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, userId: true, parentMessaging: true },
   });
-  return new Set(linked.map((s) => s.id));
+  return new Set(messageableStaffIds(profiles));
 }
 
 async function reachableStaffList(db: Db, studentId: string) {
@@ -171,7 +179,7 @@ export const messagesRouter = createTRPCRouter({
         select: {
           id: true,
           starterId: true,
-          staff: { select: { userId: true } },
+          staff: { select: { userId: true, parentMessaging: true } },
           starter: { select: { role: true } },
         },
       });
@@ -180,6 +188,10 @@ export const messagesRouter = createTRPCRouter({
       const isStarter = conv.starterId === ctx.session.user.id;
       const isStaffParticipant = conv.staff.userId === ctx.session.user.id;
       if (!isStarter && !isStaffParticipant) throw new TRPCError({ code: "FORBIDDEN" });
+      // Messaging disabled for this staff member → the thread is history only.
+      if (!canReplyInThread(conv.staff)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: THREAD_CLOSED_MSG });
+      }
 
       const now = new Date();
       await ctx.db.$transaction([
@@ -288,7 +300,9 @@ export const messagesRouter = createTRPCRouter({
           starterId: true,
           starter: { select: { name: true } },
           student: { select: { user: { select: { name: true } } } },
-          staff: { select: { id: true, userId: true, scheduleName: true, user: { select: { name: true } } } },
+          staff: {
+            select: { id: true, userId: true, scheduleName: true, parentMessaging: true, user: { select: { name: true } } },
+          },
           messages: {
             orderBy: { createdAt: "asc" },
             select: { id: true, body: true, createdAt: true, authorId: true, author: { select: { name: true } } },
@@ -312,7 +326,7 @@ export const messagesRouter = createTRPCRouter({
         student: conv.student.user?.name ?? "—",
         staffName: staffDisplayName(conv.staff),
         starterName: conv.starter.name ?? "—",
-        canReply: true,
+        canReply: canReplyInThread(conv.staff),
         messages: conv.messages.map((m) => ({
           id: m.id,
           body: m.body,

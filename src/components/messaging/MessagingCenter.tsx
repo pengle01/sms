@@ -46,6 +46,11 @@ export function MessagingCenter({ mode }: { mode: "family" | "staff" }) {
       utils.messages.list.invalidate();
       utils.messages.unreadCount.invalidate();
     },
+    onError: () => {
+      toast.error(t("sendFailed"));
+      // Messaging may have been turned off meanwhile — refetch to show read-only.
+      utils.messages.thread.invalidate();
+    },
   });
 
   const openThread = (id: string) => {
@@ -176,6 +181,11 @@ export function MessagingCenter({ mode }: { mode: "family" | "staff" }) {
                 ))}
               </div>
 
+              {!thread.data.canReply ? (
+                <p className="p-3 border-t border-slate-100 text-sm text-slate-500 bg-slate-50">
+                  {t(mode === "staff" ? "closedStaff" : "closedFamily")}
+                </p>
+              ) : (
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -199,6 +209,7 @@ export function MessagingCenter({ mode }: { mode: "family" | "staff" }) {
                   {t("send")}
                 </button>
               </form>
+              )}
             </>
           )}
         </div>
@@ -242,6 +253,13 @@ function Composer({
   if (loading) return <Loading />;
   if (recipients.length === 0)
     return <div className="flex-1 flex items-center justify-center text-sm text-slate-400">{t("noRecipients")}</div>;
+  // Parent messaging is enabled per teacher by the admin, off by default.
+  if (recipients.every((r) => r.staff.length === 0))
+    return (
+      <div className="flex-1 flex items-center justify-center p-6 text-center text-sm text-slate-400">
+        {t("noEnabledStaff")}
+      </div>
+    );
 
   return (
     <form

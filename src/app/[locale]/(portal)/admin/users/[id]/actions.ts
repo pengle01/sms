@@ -354,6 +354,39 @@ export async function setItMaintenance(
 }
 
 /**
+ * Toggle parent messaging for a staff member (off by default). Turning it off
+ * keeps their threads readable but closes them to replies on both sides.
+ */
+export async function setParentMessaging(
+  targetUserId: string,
+  value: boolean
+): Promise<ActionResult> {
+  const auth = await getSuperAdminAuth();
+  if (!auth) return { ok: false, error: "Δεν επιτρέπεται" };
+
+  const target = await db.user.findUnique({
+    where: { id: targetUserId },
+    select: { staffProfile: { select: { id: true } } },
+  });
+  if (!target?.staffProfile) return { ok: false, error: "Δεν υπάρχει συνδεδεμένο προφίλ προσωπικού" };
+
+  await db.staffProfile.update({
+    where: { id: target.staffProfile.id },
+    data: { parentMessaging: value },
+  });
+  await writeAudit({
+    userId: auth.userId,
+    action: "staff.parentMessaging",
+    resource: "StaffProfile",
+    resourceId: target.staffProfile.id,
+    details: { value },
+    ...(await requestMeta()),
+  });
+  revalidateUsers();
+  return { ok: true };
+}
+
+/**
  * Replace the set of rooms an IT maintainer looks after. Unknown room ids are
  * ignored, so a room deleted meanwhile cannot fail the save.
  */

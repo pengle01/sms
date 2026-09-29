@@ -21,6 +21,7 @@ interface HeaderProps {
   crossPortal?: "admin" | "teacher";
   ddkCoordinator?: boolean;
   specialEdAccess?: boolean;
+  messagesAccess?: boolean;
 }
 
 // Stable id linking the hamburger <label> to its checkbox. The mobile drawer is
@@ -30,7 +31,7 @@ interface HeaderProps {
 // pure-CSS toggle removes that dependency entirely.
 const MENU_ID = "mobile-nav-toggle";
 
-export function Header({ userName, userImage, locale, pageTitle, role, portal, pendingClaimsCount, crossPortal, ddkCoordinator, specialEdAccess }: HeaderProps) {
+export function Header({ userName, userImage, locale, pageTitle, role, portal, pendingClaimsCount, crossPortal, ddkCoordinator, specialEdAccess, messagesAccess }: HeaderProps) {
   const t = useTranslations("auth");
   const tRoles = useTranslations("roles");
   const tCommon = useTranslations("common");
@@ -178,6 +179,7 @@ export function Header({ userName, userImage, locale, pageTitle, role, portal, p
               crossPortal={crossPortal}
               ddkCoordinator={ddkCoordinator}
               specialEdAccess={specialEdAccess}
+              messagesAccess={messagesAccess}
             />
           </div>
         </div>

@@ -15,9 +15,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ShieldCheck, ShieldOff, HeartHandshake, ArrowLeftRight, Award, Wrench, Loader2 } from "lucide-react";
+import { ShieldCheck, ShieldOff, HeartHandshake, ArrowLeftRight, Award, Wrench, MessageSquare, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { grantSuperAdmin, revokeSuperAdmin, setSpecialEducation, setSubstitutionCoordinator, setDdkCoordinator, setItMaintenance } from "./actions";
+import { grantSuperAdmin, revokeSuperAdmin, setSpecialEducation, setSubstitutionCoordinator, setDdkCoordinator, setItMaintenance, setParentMessaging } from "./actions";
 
 interface Props {
   userId: string;
@@ -36,6 +36,7 @@ interface Props {
   substitutionCoordinator: boolean;
   ddkCoordinator: boolean;
   itMaintenance: boolean;
+  parentMessaging: boolean;
 }
 
 export function RolesCard({
@@ -50,6 +51,7 @@ export function RolesCard({
   substitutionCoordinator,
   ddkCoordinator,
   itMaintenance,
+  parentMessaging,
 }: Props) {
   const t = useTranslations("adminUsers");
   const router = useRouter();
@@ -245,6 +247,29 @@ export function RolesCard({
     </button>
   );
 
+  // ── Parent messaging (off by default) ────────────────────────────────────
+  const messagingControl = !hasStaffProfile ? (
+    <span className="text-xs text-slate-400">{t("noStaffProfile")}</span>
+  ) : (
+    <button
+      disabled={pending}
+      onClick={() =>
+        run(
+          () => setParentMessaging(userId, !parentMessaging),
+          parentMessaging ? t("parentMsgDisabled") : t("parentMsgEnabled")
+        )
+      }
+      className={
+        parentMessaging
+          ? "inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 disabled:opacity-50"
+          : "inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-slate-200 text-slate-600 text-xs font-medium hover:bg-slate-50 disabled:opacity-50"
+      }
+    >
+      <MessageSquare className="w-3.5 h-3.5" />
+      {parentMessaging ? t("parentMsgOn") : t("parentMsgOff")}
+    </button>
+  );
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -259,6 +284,7 @@ export function RolesCard({
         {row(t("rowSubCoord"), coordinatorControl, t("rowSubCoordHint"))}
         {row(t("rowDdk"), ddkControl, t("rowDdkHint"))}
         {row(t("rowIt"), itControl, t("rowItHint"))}
+        {row(t("rowParentMsg"), messagingControl, t("rowParentMsgHint"))}
       </CardContent>
     </Card>
   );

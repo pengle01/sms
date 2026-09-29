@@ -867,7 +867,12 @@
     "selectStaff": "Select recipient",
     "subjectPlaceholder": "Subject (optional)",
     "messagePlaceholder": "Write your message…",
-    "noRecipients": "No recipients available."
+    "noRecipients": "No recipients available.",
+    "closedFamily": "This teacher no longer accepts messages — you can only read the history.",
+    "closedStaff": "Parent messaging isn't enabled for you — you can only read the history.",
+    "noEnabledStaff": "No teacher is accepting messages at the moment.",
+    "disabledTitle": "Parent messaging isn't enabled for you",
+    "disabledHint": "Parents can't message you. The administrator turns it on. Your earlier conversations are shown read-only."
   },
   "substitutions": {
     "title": "Substitutions",
@@ -1345,6 +1350,13 @@
     "rowIt": "IT maintenance",
     "rowItHint": "Handles equipment faults in the rooms assigned to them.",
     "post_itMaint": "IT maintenance",
+    "rowParentMsg": "Parent messaging",
+    "rowParentMsgHint": "Parents can message this teacher. Off by default; when turned off, earlier conversations stay read-only.",
+    "parentMsgOn": "On",
+    "parentMsgOff": "Turn on",
+    "parentMsgEnabled": "Parent messaging turned on",
+    "parentMsgDisabled": "Parent messaging turned off",
+    "post_parentMsg": "Parent messaging",
     "roomsTitle": "Maintained rooms",
     "roomsHint": "Choose the rooms this person looks after. Requests for rooms with no maintainer are shown to every IT maintainer.",
     "roomAlsoMaintainedBy": "Also maintained by: {names}",

@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   reachableStaffIds,
+  messageableStaffIds,
+  canReplyInThread,
   oversightStaffIds,
   isUnreadForStaff,
   isUnreadForFamily,
@@ -57,5 +59,40 @@ describe("unread computation", () => {
   it("is read when last read is at or after the last message", () => {
     expect(isUnreadForStaff({ lastMessageAt: older, staffReadAt: older })).toBe(false);
     expect(isUnreadForFamily({ lastMessageAt: older, familyReadAt: newer })).toBe(false);
+  });
+});
+
+describe("messageableStaffIds", () => {
+  it("keeps only staff with a login and messaging enabled", () => {
+    expect(
+      messageableStaffIds([
+        { id: "on", userId: "u1", parentMessaging: true },
+        { id: "off", userId: "u2", parentMessaging: false },
+        { id: "noLogin", userId: null, parentMessaging: true },
+      ])
+    ).toEqual(["on"]);
+  });
+
+  it("is empty when nobody is enabled — messaging is off by default", () => {
+    expect(
+      messageableStaffIds([
+        { id: "homeroom", userId: "u1", parentMessaging: false },
+        { id: "counselor", userId: "u2", parentMessaging: false },
+      ])
+    ).toEqual([]);
+  });
+
+  it("handles no candidates", () => {
+    expect(messageableStaffIds([])).toEqual([]);
+  });
+});
+
+describe("canReplyInThread", () => {
+  it("allows replies while the staff member is enabled", () => {
+    expect(canReplyInThread({ parentMessaging: true })).toBe(true);
+  });
+
+  it("makes the thread read-only once disabled", () => {
+    expect(canReplyInThread({ parentMessaging: false })).toBe(false);
   });
 });

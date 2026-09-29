@@ -20,6 +20,21 @@ export function reachableStaffIds(
   return [...set];
 }
 
+/** Of the candidate staff, those parents can actually message: a linked login
+ *  and parent messaging enabled for them by the admin. Applies to every role —
+ *  homegroup teacher, headteacher and counselor included. */
+export function messageableStaffIds(
+  profiles: { id: string; userId: string | null; parentMessaging: boolean }[]
+): string[] {
+  return profiles.filter((p) => p.userId && p.parentMessaging).map((p) => p.id);
+}
+
+/** A thread takes replies — from either side — only while its staff member has
+ *  parent messaging enabled. Otherwise it stays readable as history. */
+export function canReplyInThread(staff: { parentMessaging: boolean }): boolean {
+  return staff.parentMessaging;
+}
+
 /** Staff who may read (oversee) a student's threads for safeguarding: the
  *  homegroup teacher, headteacher and counselor. (Super-admin is handled by role.) */
 export function oversightStaffIds(params: HomeroomRoles): string[] {

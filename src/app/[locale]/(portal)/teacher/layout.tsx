@@ -30,7 +30,7 @@ export default async function TeacherPortalLayout({
   // Display name follows the timetable's coding (e.g. "ΗΥ-ΜΑΣΙΑ Μ. ΒΔ").
   const staff = await db.staffProfile.findUnique({
     where: { userId: auth.userId },
-    select: { id: true, scheduleName: true, ddkCoordinator: true, specialEducation: true },
+    select: { id: true, scheduleName: true, ddkCoordinator: true, specialEducation: true, parentMessaging: true },
   });
   const displayName = staff?.scheduleName ?? session.user?.name ?? undefined;
   // The ΔΔΚ coordinator (a headteacher designation) gets the ΔΔΚ desk in the nav.
@@ -41,6 +41,9 @@ export default async function TeacherPortalLayout({
   // variant; this flag only controls nav visibility.
   const specialEdFull = canViewSpecialEdFull(auth.roles, !!staff?.specialEducation);
   const specialEdAccess = specialEdFull || (staff ? await teachesAnySpecialEd(staff.id) : false);
+  // Messages: parent messaging enabled by the admin, or earlier threads to read.
+  const messagesAccess =
+    !!staff?.parentMessaging || (staff ? (await db.conversation.count({ where: { staffId: staff.id } })) > 0 : false);
 
   // NOTE: the attendance-completion lock is enforced by the client-side
   // <AttendanceLockGuard/> below — neither a layout nor a template re-renders on
@@ -49,7 +52,7 @@ export default async function TeacherPortalLayout({
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
-      <Sidebar role={role} locale={locale} portal="teacher" userName={displayName} crossPortal={adminLink ? "admin" : undefined} ddkCoordinator={ddkCoordinator} specialEdAccess={specialEdAccess} />
+      <Sidebar role={role} locale={locale} portal="teacher" userName={displayName} crossPortal={adminLink ? "admin" : undefined} ddkCoordinator={ddkCoordinator} specialEdAccess={specialEdAccess} messagesAccess={messagesAccess} />
       <div className="flex-1 flex flex-col min-w-0">
         <Header
           userName={displayName}
@@ -60,6 +63,7 @@ export default async function TeacherPortalLayout({
           crossPortal={adminLink ? "admin" : undefined}
           ddkCoordinator={ddkCoordinator}
           specialEdAccess={specialEdAccess}
+          messagesAccess={messagesAccess}
         />
         <main className="flex-1 overflow-y-auto p-4 md:p-6 print:p-0 print:overflow-visible">
           {children}
