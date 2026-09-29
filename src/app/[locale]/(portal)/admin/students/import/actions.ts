@@ -5,6 +5,16 @@ import { db } from "@/server/db";
 import * as XLSX from "xlsx";
 import { Gender, ParentRole, Role } from "@/generated/prisma/enums";
 import { normalizePhone, evaluateDefaultSms, SMS_FLAG_REASON_EL } from "@/lib/smsContacts";
+import { revalidatePath } from "next/cache";
+import { writeAudit, requestMeta } from "@/server/audit";
+import { normRegistry } from "@/lib/studentImportSync";
+import {
+  findMissingStudents,
+  countActiveStudents,
+  deactivateStudents,
+  reactivateImportedStudents,
+  type MissingStudent,
+} from "@/server/studentImportSync";
 
 export interface ImportResult {
   success: boolean;
@@ -16,7 +26,16 @@ export interface ImportResult {
   flagged: { studentId: string; name: string; reason: string }[];
   skipped: number;
   errors: string[];
+  /** Students the import had deactivated earlier, back in the file and so reactivated. */
+  studentsReactivated: number;
+  /** Active students not in this file — shown for the admin to confirm their deactivation. */
+  missing: MissingStudent[];
+  /** Distinct students in the file, and active students after the import (partial-file warning). */
+  fileCount: number;
+  activeCount: number;
 }
+
+const EMPTY = { studentsCreated: 0, studentsUpdated: 0, groupsCreated: 0, smsContactsCreated: 0, flaggedStudents: 0, flagged: [], skipped: 0, studentsReactivated: 0, missing: [], fileCount: 0, activeCount: 0 };
 
 const COLS = {
   group:             "Τμήμα",
@@ -63,12 +82,12 @@ function parseGender(val: string): Gender | undefined {
 export async function importStudents(_prev: ImportResult | null, formData: FormData): Promise<ImportResult> {
   const auth = await getSuperAdminAuth();
   if (!auth) {
-    return { success: false, studentsCreated: 0, studentsUpdated: 0, groupsCreated: 0, smsContactsCreated: 0, flaggedStudents: 0, flagged: [], skipped: 0, errors: ["Χωρίς εξουσιοδότηση"] };
+    return { success: false, ...EMPTY, errors: ["Χωρίς εξουσιοδότηση"] };
   }
 
   const file = formData.get("file") as File | null;
   if (!file || file.size === 0) {
-    return { success: false, studentsCreated: 0, studentsUpdated: 0, groupsCreated: 0, smsContactsCreated: 0, flaggedStudents: 0, flagged: [], skipped: 0, errors: ["Δεν επιλέχθηκε αρχείο"] };
+    return { success: false, ...EMPTY, errors: ["Δεν επιλέχθηκε αρχείο"] };
   }
 
   const buffer = await file.arrayBuffer();
@@ -86,6 +105,15 @@ export async function importStudents(_prev: ImportResult | null, formData: FormD
   const errors: string[] = [];
 
   const groupCache = new Map<string, string>();
+  // Every registry number in the file — students not among them are offered for
+  // deactivation. Collected before any write, so a row that fails still counts
+  // as present (its student must not be offered for removal).
+  const fileRegistries = new Set<string>();
+  for (const row of rows) {
+    const reg = normRegistry(row[COLS.registryId]);
+    if (reg) fileRegistries.add(reg);
+  }
+  const presentProfileIds: string[] = [];
 
   for (const [rowIndex, row] of rows.entries()) {
     const groupName  = str(row, COLS.group);
@@ -171,6 +199,7 @@ export async function importStudents(_prev: ImportResult | null, formData: FormD
       const student = await db.studentProfile.findUnique({ where: { studentId: registryId }, select: { id: true } });
       if (!student) continue;
       const studentId2 = student.id;
+      presentProfileIds.push(studentId2);
 
       // ── Parent SMS contacts ─────────────────────────────────────────────
       // Parents are NOT given login accounts at import. A parent account
@@ -274,5 +303,53 @@ export async function importStudents(_prev: ImportResult | null, formData: FormD
     }
   }
 
-  return { success: true, studentsCreated, studentsUpdated, groupsCreated, smsContactsCreated, flaggedStudents, flagged: flaggedList, skipped, errors };
+  const studentsReactivated = await reactivateImportedStudents(presentProfileIds);
+  const [missing, activeCount] = await Promise.all([findMissingStudents(fileRegistries), countActiveStudents()]);
+
+  return {
+    success: true, studentsCreated, studentsUpdated, groupsCreated, smsContactsCreated, flaggedStudents,
+    flagged: flaggedList, skipped, errors,
+    studentsReactivated, missing, fileCount: fileRegistries.size, activeCount,
+  };
+}
+
+export type DeactivateMissingResult =
+  | { ok: true; students: number; parents: number }
+  | { ok: false; error: string };
+
+/**
+ * The admin confirmed the preview: deactivate the chosen students missing from
+ * the file, and parents left with no active child. Deactivation keeps every
+ * record and is reversible (a later import with the student brings them back).
+ */
+export async function deactivateMissingStudents(profileIds: string[]): Promise<DeactivateMissingResult> {
+  const auth = await getSuperAdminAuth();
+  if (!auth) return { ok: false, error: "Χωρίς εξουσιοδότηση" };
+  const ids = [...new Set(profileIds.filter((id) => typeof id === "string" && id))];
+  if (ids.length === 0) return { ok: true, students: 0, parents: 0 };
+
+  const { students, parentUserIds } = await deactivateStudents(ids);
+  const meta = await requestMeta();
+  for (const st of students) {
+    await writeAudit({
+      userId: auth.userId,
+      action: "student.deactivate",
+      resource: "StudentProfile",
+      resourceId: st.id,
+      details: { studentId: st.studentId, source: "import" },
+      ...meta,
+    });
+  }
+  if (parentUserIds.length > 0) {
+    await writeAudit({
+      userId: auth.userId,
+      action: "parent.deactivate",
+      resource: "User",
+      details: { parentUserIds, source: "import" },
+      ...meta,
+    });
+  }
+  revalidatePath("/[locale]/(portal)/admin/students", "page");
+  revalidatePath("/[locale]/(portal)/office/students", "page");
+  return { ok: true, students: students.length, parents: parentUserIds.length };
 }

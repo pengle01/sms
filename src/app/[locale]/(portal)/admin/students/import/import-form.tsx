@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { importStudents, type ImportResult } from "./actions";
 import { Upload, FileSpreadsheet, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { looksPartial } from "@/lib/studentImportSync";
+import { MissingStudentsCard } from "./MissingStudentsCard";
 
 const initial: ImportResult | null = null;
 
@@ -63,6 +65,7 @@ export function ImportForm() {
                   <Stat label={t("statSmsContacts")}     value={result.smsContactsCreated} />
                   <Stat label={t("statFlaggedSms")}      value={result.flaggedStudents} />
                   <Stat label={t("statRowsSkipped")}     value={result.skipped} />
+                  <Stat label={t("statReactivated")}     value={result.studentsReactivated} />
                 </dl>
               </>
             ) : (
@@ -70,6 +73,17 @@ export function ImportForm() {
                 <AlertCircle className="w-5 h-5" />
                 {t("importFailed")}
               </div>
+            )}
+
+            {result.success && result.missing.length > 0 && (
+              <MissingStudentsCard
+                // A new upload is a new preview — reset the ticks.
+                key={result.missing.map((m) => m.profileId).join(",")}
+                missing={result.missing}
+                partial={looksPartial(result.fileCount, result.activeCount) || result.errors.length > 0 || result.skipped > 0}
+                fileCount={result.fileCount}
+                activeCount={result.activeCount}
+              />
             )}
 
             {result.errors.length > 0 && (

@@ -169,6 +169,10 @@ model User {
   extraRoles   Role[]  @default([])
   entraId      String? @unique
   isActive     Boolean @default(true)
+  // Set when a student-file import deactivated this account (a student missing
+  // from the new file, or a parent left with no active child). Only these are
+  // brought back by a later import; a manual deactivation is never undone.
+  deactivatedByImport DateTime?
   // Per-account appearance preferences
   colorTheme   String  @default("emerald") // emerald | ocean | violet | rose | amber
   fontSize     String  @default("small") // small | medium | large

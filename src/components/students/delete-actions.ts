@@ -8,6 +8,7 @@ import { logger, errInfo } from "@/server/logger";
 import { eraseStudentRecord } from "@/server/studentDelete";
 import { canDeleteStudent } from "@/lib/rbac";
 import { confirmsDeletion } from "@/lib/studentDelete";
+import { reactivateWithParents } from "@/server/studentImportSync";
 
 // Error values are keys in the "studentDelete" message namespace, so the card
 // can show them in either language.
@@ -112,7 +113,13 @@ export async function setStudentActive(
   });
   if (!student) return { ok: false, error: "errNotFound" };
 
-  await db.user.update({ where: { id: student.userId }, data: { isActive: active } });
+  if (active) {
+    // Also brings back parents a student-file import deactivated with them.
+    await reactivateWithParents([studentProfileId], [student.userId]);
+  } else {
+    // A manual deactivation is the office's decision — a later import must not undo it.
+    await db.user.update({ where: { id: student.userId }, data: { isActive: false, deactivatedByImport: null } });
+  }
   await writeAudit({
     userId: auth.userId,
     action: active ? "student.reactivate" : "student.deactivate",
