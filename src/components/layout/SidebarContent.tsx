@@ -11,7 +11,7 @@ import {
   Calendar, CalendarRange, FileText, Bell, Users, Settings, Shield,
   Search, GraduationCap, Home, Backpack, Plus, BookMarked, ShieldAlert,
   CircleUser, BellRing, LogOut, ArrowLeftRight, BarChart3, Award, MessageSquare,
-  ScrollText, Send, Database, Megaphone, Wrench,
+  ScrollText, Send, Database, Megaphone, Wrench, MapPin,
 } from "lucide-react";
 import { MessagesNavBadge } from "./MessagesNavBadge";
 
@@ -28,6 +28,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "homegroup",    href: "homegroup",           icon: BookMarked,      roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "timetable",    href: "attendance/schedule", icon: Calendar,        roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "locate",       href: "attendance/locate",   icon: Search,          roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
+  { key: "whereabouts",  href: "whereabouts",         icon: MapPin,          roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "referrals",    href: "referrals",           icon: AlertTriangle,   roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "grades",       href: "grades",              icon: BookOpen,        roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","TEACHER"] },
   { key: "tests",        href: "tests",               icon: FileText,        roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","TEACHER"] },
@@ -45,6 +46,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "attendance",   href: "attendance",        icon: ClipboardList,   roles: ["SCHOOL_ADMIN"] },
   { key: "reports",      href: "attendance/reports", icon: BarChart3,      roles: ["SCHOOL_ADMIN"] },
   { key: "students",     href: "students",          icon: GraduationCap,   roles: ["SCHOOL_ADMIN"] },
+  { key: "whereabouts",  href: "whereabouts",       icon: MapPin,          roles: ["SCHOOL_ADMIN"] },
   { key: "noticeboard",  href: "noticeboard",       icon: Bell,            roles: ["SCHOOL_ADMIN"] },
   { key: "maintenance",  href: "maintenance",       icon: Wrench,          roles: ["SCHOOL_ADMIN"] },
 
@@ -54,6 +56,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "users",        href: "users",             icon: Users,           roles: ["SUPER_ADMIN"] },
   { key: "students",     href: "students",          icon: GraduationCap,   roles: ["SUPER_ADMIN"] },
   { key: "timetable",    href: "timetable",         icon: Calendar,        roles: ["SUPER_ADMIN"] },
+  { key: "whereabouts",  href: "whereabouts",       icon: MapPin,          roles: ["SUPER_ADMIN"] },
   { key: "homegroups",   href: "homegroups",        icon: Home,            roles: ["SUPER_ADMIN"] },
   { key: "allGroups",    href: "groups",            icon: BookMarked,      roles: ["SUPER_ADMIN"] },
   { key: "checks",       href: "checks",            icon: ShieldAlert,     roles: ["SUPER_ADMIN"] },

@@ -87,6 +87,7 @@
     "settings": "Settings",
     "database": "Database",
     "locate": "Locate Student",
+    "whereabouts": "Teachers & rooms",
     "myAttendance": "My Attendance",
     "myGrades": "My Grades",
     "mySchedule": "My Schedule",
@@ -2015,5 +2016,25 @@
     "err_tooLarge": "The file is too large for a one-day export.",
     "err_notAllowed": "Only the substitution coordinator can import a plan.",
     "warn_noLogin": "«{name}» has no account — they won't be notified of the cover."
+  },
+  "whereabouts": {
+    "title": "Teachers & rooms",
+    "subtitle": "Where a teacher is and which rooms are free, from the weekly timetable.",
+    "tabTeachers": "Teachers",
+    "tabRooms": "Rooms",
+    "searchPlaceholder": "Teacher name…",
+    "searchHint": "Type a teacher's name to see their weekly timetable.",
+    "noTeacher": "No teacher found for “{query}”.",
+    "pickOne": "{count, plural, one {# teacher found} other {# teachers found}} — choose one:",
+    "noPhone": "no phone",
+    "freePeriod": "free",
+    "roomLabel": "Room {room}",
+    "allRooms": "Free rooms (all)",
+    "freeRoomsHint": "Rooms with no lesson in each period.",
+    "roomWeekHint": "The weekly timetable of room {room}.",
+    "roomFree": "Free",
+    "freeCount": "{count, plural, =0 {None free} one {# free} other {# free}}",
+    "unknownRooms": "Timetable rooms missing from the room list (Settings): {rooms}",
+    "regularWeekNote": "Shows the regular weekly timetable; the day's changes (covers, room changes) are on the substitution plan."
   }
 }
