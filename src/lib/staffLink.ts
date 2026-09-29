@@ -38,3 +38,18 @@ export function staffProfilePlan(
   if (unclaimedSameName) return { kind: "adopt", id: unclaimedSameName.id };
   return { kind: "create" };
 }
+
+/** Timetable names compared the way the assignment import does: trimmed, spaces collapsed. */
+export function normalizeStaffName(name: string): string {
+  return name.trim().replace(/\s+/g, " ");
+}
+
+/**
+ * The unclaimed profile carrying this name, ignoring stray spaces. An exact
+ * match used to miss "Μ-ΑΛΦΑ  Α." vs "Μ-ΑΛΦΑ Α.", so approval created a second
+ * profile and homegroup assignments made before sign-up stayed on the first.
+ */
+export function findUnclaimedByName<T extends PlanProfile>(unclaimed: T[], staffName: string): T | null {
+  const want = normalizeStaffName(staffName);
+  return unclaimed.find((p) => p.scheduleName !== null && normalizeStaffName(p.scheduleName) === want) ?? null;
+}

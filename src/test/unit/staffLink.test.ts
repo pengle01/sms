@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { staffProfilePlan } from "@/lib/staffLink";
+import { staffProfilePlan, findUnclaimedByName, normalizeStaffName } from "@/lib/staffLink";
 
 describe("staffProfilePlan (approval: attach user to a StaffProfile)", () => {
   const NAME = "ΗΥ-ΑΝΔΡΕΟΥ Α. ΒΔ";
@@ -44,5 +44,22 @@ describe("staffProfilePlan (approval: attach user to a StaffProfile)", () => {
 
   it("creates a fresh profile when the user has none and the name is unclaimed", () => {
     expect(staffProfilePlan(null, null, NAME)).toEqual({ kind: "create" });
+  });
+});
+
+describe("findUnclaimedByName", () => {
+  const profiles = [
+    { id: "a", scheduleName: "Μ-ΑΛΦΑ  Α. " },
+    { id: "b", scheduleName: "Φ-ΒΗΤΑ Β." },
+    { id: "n", scheduleName: null },
+  ];
+
+  it("matches ignoring stray and doubled spaces", () => {
+    expect(findUnclaimedByName(profiles, "Μ-ΑΛΦΑ Α.")?.id).toBe("a");
+    expect(normalizeStaffName("  Μ-ΑΛΦΑ   Α. ")).toBe("Μ-ΑΛΦΑ Α.");
+  });
+
+  it("returns null when no unclaimed profile carries the name", () => {
+    expect(findUnclaimedByName(profiles, "Χ-ΓΑΜΜΑ Γ.")).toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 import type { Prisma } from "@/generated/prisma/client";
-import { staffProfilePlan } from "@/lib/staffLink";
+import { staffProfilePlan, findUnclaimedByName } from "@/lib/staffLink";
 
 type Db = Prisma.TransactionClient;
 
@@ -11,16 +11,18 @@ type Db = Prisma.TransactionClient;
  * by user deletion) instead of creating a duplicate. See staffProfilePlan.
  */
 export async function linkStaffProfile(tx: Db, userId: string, staffName: string) {
-  const [own, unclaimed] = await Promise.all([
+  const [own, unclaimedProfiles] = await Promise.all([
     tx.staffProfile.findUnique({
       where: { userId },
       select: { id: true, scheduleName: true },
     }),
-    tx.staffProfile.findFirst({
-      where: { scheduleName: staffName, userId: null },
+    // Unclaimed profiles, matched below ignoring stray spaces (see findUnclaimedByName).
+    tx.staffProfile.findMany({
+      where: { userId: null, scheduleName: { not: null } },
       select: { id: true, scheduleName: true },
     }),
   ]);
+  const unclaimed = findUnclaimedByName(unclaimedProfiles, staffName);
 
   const plan = staffProfilePlan(own, unclaimed, staffName);
   const profile =
