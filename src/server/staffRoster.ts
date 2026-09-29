@@ -10,7 +10,7 @@ export async function loadAvailableStaffNames(): Promise<string[]> {
   const [profiles, slots, claims] = await Promise.all([
     db.staffProfile.findMany({
       where: { scheduleName: { not: null } },
-      select: { scheduleName: true, userId: true },
+      select: { scheduleName: true, userId: true, leftTimetableAt: true },
     }),
     db.timetableSlot.findMany({
       where: { staffName: { not: null }, staffId: null },
@@ -24,7 +24,7 @@ export async function loadAvailableStaffNames(): Promise<string[]> {
   ]);
 
   return availableStaffNames({
-    profiles,
+    profiles: profiles.map((p) => ({ ...p, leftTimetable: p.leftTimetableAt !== null })),
     slotNames: slots.map((s) => s.staffName),
     claimedNames: claims.map((c) => c.staffName),
   });

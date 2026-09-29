@@ -232,6 +232,10 @@ model StaffProfile {
   // Parents may message this staff member (set by admin, off by default). While
   // off, existing threads stay readable but nobody can reply or start one.
   parentMessaging         Boolean @default(false)
+  // Set when a timetable import no longer lists this name in the Καθηγητής
+  // column (the teacher left); cleared when a later import lists it again. Such
+  // profiles are no longer offered at sign-up or in the teacher search.
+  leftTimetableAt         DateTime?
   // Substitution quota: null = unlimited, 0 = never picked
   maxSubstitutions        Int?
 

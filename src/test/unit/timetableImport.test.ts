@@ -4,6 +4,7 @@ import {
   newStaffProfileNames,
   planRemovals,
   removalGuard,
+  rosterChanges,
   splitTeacherBlocks,
 } from "@/lib/timetableImport";
 
@@ -157,5 +158,26 @@ describe("planRemovals", () => {
 
   it("handles an empty timetable", () => {
     expect(planRemovals([], new Set())).toEqual({ deleteIds: [], hideIds: [] });
+  });
+});
+
+describe("rosterChanges", () => {
+  const profiles = [
+    { scheduleName: "Μ-ΜΕΝΕΙ Α.", leftTimetable: false },
+    { scheduleName: "Φ-ΦΕΥΓΕΙ Β.", leftTimetable: false },
+    { scheduleName: "Χ-ΕΠΙΣΤΡΕΦΕΙ Γ.", leftTimetable: true },
+    { scheduleName: "Ζ-ΗΔΗ ΕΦΥΓΕ Δ.", leftTimetable: true },
+    { scheduleName: null, leftTimetable: false },
+  ];
+
+  it("marks names missing from the file as left and returning names as back", () => {
+    expect(rosterChanges(profiles, [" Μ-ΜΕΝΕΙ Α. ", "Χ-ΕΠΙΣΤΡΕΦΕΙ Γ."])).toEqual({
+      left: ["Φ-ΦΕΥΓΕΙ Β."],
+      back: ["Χ-ΕΠΙΣΤΡΕΦΕΙ Γ."],
+    });
+  });
+
+  it("leaves profiles already in the right state alone", () => {
+    expect(rosterChanges(profiles, ["Μ-ΜΕΝΕΙ Α.", "Φ-ΦΕΥΓΕΙ Β."])).toEqual({ left: [], back: [] });
   });
 });

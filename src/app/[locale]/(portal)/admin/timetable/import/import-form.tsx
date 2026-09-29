@@ -15,6 +15,7 @@ const initial: ScheduleImportResult = {
   slotsRemoved: 0,
   slotsRetired: 0,
   removalSkipped: null,
+  staffLeft: 0,
   errors: [],
 };
 
@@ -79,6 +80,7 @@ export function ScheduleImportForm() {
                 <Stat label={t("statGroupsCreated")}   value={result.groupsCreated} />
                 <Stat label={t("statSlotsRemoved")}   value={result.slotsRemoved} />
                 <Stat label={t("statSlotsRetired")}   value={result.slotsRetired} />
+                <Stat label={t("statStaffLeft")}      value={result.staffLeft} />
               </dl>
             </div>
           )}

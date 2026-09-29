@@ -126,3 +126,32 @@ export function planRemovals(
   }
   return { deleteIds, hideIds };
 }
+
+/**
+ * Which roster profiles the import marks as having left the timetable, and
+ * which it brings back. The file's Καθηγητής column is the whole staff roster
+ * (teachers without lessons included), so a name missing from it has left.
+ * Returns trimmed names; profiles already in the right state are not listed.
+ */
+export function rosterChanges(
+  profiles: { scheduleName: string | null; leftTimetable: boolean }[],
+  importedNames: Iterable<string>,
+): { left: string[]; back: string[] } {
+  const inFile = new Set<string>();
+  for (const raw of importedNames) {
+    const name = raw?.trim();
+    if (name) inFile.add(name);
+  }
+  const left = new Set<string>();
+  const back = new Set<string>();
+  for (const p of profiles) {
+    const name = p.scheduleName?.trim();
+    if (!name) continue;
+    if (inFile.has(name)) {
+      if (p.leftTimetable) back.add(name);
+    } else if (!p.leftTimetable) {
+      left.add(name);
+    }
+  }
+  return { left: [...left].sort(byGreekName), back: [...back].sort(byGreekName) };
+}

@@ -11,6 +11,7 @@ import {
   newStaffProfileNames,
   planRemovals,
   removalGuard,
+  rosterChanges,
   splitTeacherBlocks,
   type RemovalSkipReason,
 } from "@/lib/timetableImport";
@@ -30,6 +31,8 @@ export interface ScheduleImportResult {
   slotsRetired: number;
   /** Why nothing was removed, when the file did not look complete. */
   removalSkipped: RemovalSkipReason | null;
+  /** Teachers no longer in the file's roster — no longer offered at sign-up. */
+  staffLeft: number;
   errors: string[];
 }
 
@@ -43,6 +46,7 @@ const EMPTY_RESULT = {
   slotsRemoved: 0,
   slotsRetired: 0,
   removalSkipped: null,
+  staffLeft: 0,
 } as const;
 
 // Column layout: cols 3-42 are the 5×8 timetable grid.
@@ -267,7 +271,7 @@ export async function importSchedule(
   // and of the re-link below, both of which deliberately require a live login.
   const knownStaff = await db.staffProfile.findMany({
     where: { scheduleName: { not: null } },
-    select: { scheduleName: true },
+    select: { scheduleName: true, leftTimetableAt: true },
   });
   const rosterAdditions = newStaffProfileNames(
     importedStaffNames,
@@ -279,6 +283,25 @@ export async function importSchedule(
       data: rosterAdditions.map((scheduleName) => ({ scheduleName })),
     });
     staffProfilesCreated = created.count;
+  }
+
+  // Teachers who dropped out of the roster: no longer offered at sign-up or in
+  // the teacher search. Marked, not deleted — a profile can carry homerooms,
+  // substitution history and a login. Same guard as lesson removal: a file that
+  // looks partial must not hide half the staff.
+  let staffLeft = 0;
+  if (!removalSkipped) {
+    const { left, back } = rosterChanges(
+      knownStaff.map((p) => ({ scheduleName: p.scheduleName, leftTimetable: p.leftTimetableAt !== null })),
+      importedStaffNames,
+    );
+    if (left.length + back.length > 0) {
+      const [marked] = await db.$transaction([
+        db.staffProfile.updateMany({ where: { scheduleName: { in: left } }, data: { leftTimetableAt: new Date() } }),
+        db.staffProfile.updateMany({ where: { scheduleName: { in: back } }, data: { leftTimetableAt: null } }),
+      ]);
+      staffLeft = marked.count;
+    }
   }
 
   // Re-link freshly imported slots to teachers who were already approved.
@@ -327,6 +350,6 @@ export async function importSchedule(
 
   return {
     success: true, slotsCreated, slotsUpdated, slotsLinked, staffProfilesCreated, coursesCreated, groupsCreated,
-    slotsRemoved, slotsRetired, removalSkipped, errors,
+    slotsRemoved, slotsRetired, removalSkipped, staffLeft, errors,
   };
 }

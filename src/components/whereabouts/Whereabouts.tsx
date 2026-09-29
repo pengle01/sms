@@ -118,7 +118,8 @@ async function TeachersTab({
   const t = await getTranslations("whereabouts");
 
   const profiles = await db.staffProfile.findMany({
-    where: { scheduleName: { not: null } },
+    // Teachers who left the timetable are not searchable.
+    where: { scheduleName: { not: null }, leftTimetableAt: null },
     select: { scheduleName: true, phone: true, user: { select: { name: true } } },
   });
   // The roster: every profile with a timetable name, plus names that appear only

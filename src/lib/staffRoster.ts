@@ -3,7 +3,12 @@
 
 const byGreekName = (a: string, b: string) => a.localeCompare(b, "el");
 
-export type RosterProfile = { scheduleName: string | null; userId: string | null };
+export type RosterProfile = {
+  scheduleName: string | null;
+  userId: string | null;
+  /** No longer in the latest timetable import's roster — never offered. */
+  leftTimetable?: boolean;
+};
 
 /**
  * The names offered in the sign-up and claim pickers.
@@ -44,7 +49,13 @@ export function availableStaffNames(input: {
     const name = raw?.trim();
     if (name && !taken.has(name)) out.add(name);
   };
-  for (const p of input.profiles) if (!p.userId) offer(p.scheduleName);
+  // A teacher who left the timetable is not offered — not even through a slot
+  // name, though the timetable import hides their lessons anyway.
+  for (const p of input.profiles) {
+    const name = p.scheduleName?.trim();
+    if (name && p.leftTimetable) taken.add(name);
+  }
+  for (const p of input.profiles) if (!p.userId && !p.leftTimetable) offer(p.scheduleName);
   for (const n of input.slotNames) offer(n);
 
   return [...out].sort(byGreekName);

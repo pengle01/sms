@@ -75,3 +75,27 @@ describe("availableStaffNames", () => {
     expect(call({})).toEqual([]);
   });
 });
+
+describe("availableStaffNames — teachers who left the timetable", () => {
+  it("does not offer a profile that left the timetable", () => {
+    expect(call({ profiles: [{ scheduleName: "Μ-ΠΑΛΙΟΣ Α.", userId: null, leftTimetable: true }] })).toEqual([]);
+  });
+
+  it("does not offer a departed teacher's name through a slot either", () => {
+    expect(
+      call({ profiles: [{ scheduleName: "Μ-ΠΑΛΙΟΣ Α.", userId: null, leftTimetable: true }], slotNames: ["Μ-ΠΑΛΙΟΣ Α."] }),
+    ).toEqual([]);
+  });
+
+  it("still offers current teachers and other slot names", () => {
+    expect(
+      call({
+        profiles: [
+          { scheduleName: "Μ-ΠΑΛΙΟΣ Α.", userId: null, leftTimetable: true },
+          { scheduleName: "Φ-ΝΕΟΣ Β.", userId: null, leftTimetable: false },
+        ],
+        slotNames: ["Χ-ΑΛΛΟΣ Γ."],
+      }),
+    ).toEqual(["Φ-ΝΕΟΣ Β.", "Χ-ΑΛΛΟΣ Γ."]);
+  });
+});
