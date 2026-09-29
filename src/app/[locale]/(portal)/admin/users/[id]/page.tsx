@@ -52,9 +52,9 @@ export default async function UserDetailPage({
           homeroomGroups: { select: { id: true, name: true } },
           homeroomHeadGroups: { select: { id: true, name: true } },
           homeroomCounselorGroups: { select: { id: true, name: true } },
-          _count: { select: { timetableSlots: true } },
+          _count: { select: { timetableSlots: { where: { removedAt: null } } } },
           timetableSlots: {
-            where: { staffName: { not: null } },
+            where: { staffName: { not: null }, removedAt: null },
             select: { staffName: true },
             take: 1,
           },

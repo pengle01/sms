@@ -10,6 +10,7 @@ import { getPendingAttendance, type PendingLesson } from "@/server/attendanceLoc
 import { sendAbsenceSms } from "@/server/absenceSms";
 
 const OUT_OF_YEAR_MSG = "Η ημερομηνία είναι εκτός των ορίων του σχολικού έτους.";
+const REMOVED_LESSON_MSG = "Το μάθημα αυτό δεν υπάρχει πλέον στο ωρολόγιο πρόγραμμα. Ανανεώστε τη σελίδα.";
 
 export const attendanceRouter = createTRPCRouter({
   // Attendance-completion lock status for the current teacher. Drives the
@@ -66,6 +67,16 @@ export const attendanceRouter = createTRPCRouter({
       const slot = await ctx.db.timetableSlot.findFirst({
         where: { id: input.records[0]?.timetableSlotId },
       });
+
+      // Lists only offer current lessons (db.ts filters removed ones), but a page
+      // left open across a timetable re-import can still post a removed lesson.
+      const slotIds = [...new Set(input.records.map((r) => r.timetableSlotId))];
+      if (slotIds.length > 0) {
+        const current = await ctx.db.timetableSlot.count({ where: { id: { in: slotIds } } });
+        if (current !== slotIds.length) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: REMOVED_LESSON_MSG });
+        }
+      }
 
       // Ad-hoc claim visibility: marking a slot that is neither mine nor a
       // finalized-substitution assignment is a Κάλυψη — leave an audit trail

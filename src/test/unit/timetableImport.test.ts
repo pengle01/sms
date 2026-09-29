@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { newStaffProfileNames, splitTeacherBlocks } from "@/lib/timetableImport";
+import {
+  claimAfterUpdate,
+  newStaffProfileNames,
+  planRemovals,
+  removalGuard,
+  splitTeacherBlocks,
+} from "@/lib/timetableImport";
 
 describe("newStaffProfileNames", () => {
   it("returns imported names that have no profile yet", () => {
@@ -91,5 +97,65 @@ describe("splitTeacherBlocks", () => {
   it("honours a custom start row", () => {
     const { blocks } = splitTeacherBlocks([["Μ-ΑΡΝΟΣ Σ."], [""]], 0);
     expect(blocks.map((b) => b.staffName)).toEqual(["Μ-ΑΡΝΟΣ Σ."]);
+  });
+});
+
+describe("claimAfterUpdate", () => {
+  it("keeps the claim when the file names the same teacher", () => {
+    expect(claimAfterUpdate({ staffId: "sp1", staffName: "ΠΑΠΑΔΟΠΟΥΛΟΣ Γ." }, " ΠΑΠΑΔΟΠΟΥΛΟΣ Γ. ")).toBe("sp1");
+  });
+
+  it("drops the claim when the lesson moves to another teacher", () => {
+    expect(claimAfterUpdate({ staffId: "sp1", staffName: "ΠΑΠΑΔΟΠΟΥΛΟΣ Γ." }, "ΓΕΩΡΓΙΟΥ Μ.")).toBeNull();
+  });
+
+  it("drops the claim when the stored name is missing", () => {
+    expect(claimAfterUpdate({ staffId: "sp1", staffName: null }, "ΓΕΩΡΓΙΟΥ Μ.")).toBeNull();
+  });
+
+  it("stays unclaimed when there was no claim", () => {
+    expect(claimAfterUpdate({ staffId: null, staffName: "ΓΕΩΡΓΙΟΥ Μ." }, "ΓΕΩΡΓΙΟΥ Μ.")).toBeNull();
+  });
+});
+
+describe("removalGuard", () => {
+  it("allows removal for a complete file", () => {
+    expect(removalGuard({ cellErrors: 0, importedLessons: 2100, activeLessons: 2167 })).toBeNull();
+  });
+
+  it("skips removal when any cell failed to import", () => {
+    expect(removalGuard({ cellErrors: 1, importedLessons: 2166, activeLessons: 2167 })).toBe("cellErrors");
+  });
+
+  it("skips removal when the file holds less than half the current lessons", () => {
+    expect(removalGuard({ cellErrors: 0, importedLessons: 999, activeLessons: 2000 })).toBe("fileTooSmall");
+  });
+
+  it("allows removal at exactly half", () => {
+    expect(removalGuard({ cellErrors: 0, importedLessons: 1000, activeLessons: 2000 })).toBeNull();
+  });
+
+  it("allows removal on an empty timetable", () => {
+    expect(removalGuard({ cellErrors: 0, importedLessons: 0, activeLessons: 0 })).toBeNull();
+  });
+});
+
+describe("planRemovals", () => {
+  it("deletes unseen lessons without attendance and hides those with it", () => {
+    const active = [
+      { id: "a", hasAttendance: false },
+      { id: "b", hasAttendance: true },
+      { id: "c", hasAttendance: false },
+      { id: "d", hasAttendance: true },
+    ];
+    expect(planRemovals(active, new Set(["c", "d"]))).toEqual({ deleteIds: ["a"], hideIds: ["b"] });
+  });
+
+  it("removes nothing when every lesson is in the file", () => {
+    expect(planRemovals([{ id: "a", hasAttendance: true }], new Set(["a"]))).toEqual({ deleteIds: [], hideIds: [] });
+  });
+
+  it("handles an empty timetable", () => {
+    expect(planRemovals([], new Set())).toEqual({ deleteIds: [], hideIds: [] });
   });
 });

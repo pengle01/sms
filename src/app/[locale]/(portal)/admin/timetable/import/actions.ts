@@ -6,7 +6,14 @@ import { db } from "@/server/db";
 import { Prisma } from "@/generated/prisma/client";
 import { slotLinkAssignments } from "@/lib/timetableLink";
 import { parseCourseCell } from "@/lib/timetableParse";
-import { splitTeacherBlocks, newStaffProfileNames } from "@/lib/timetableImport";
+import {
+  claimAfterUpdate,
+  newStaffProfileNames,
+  planRemovals,
+  removalGuard,
+  splitTeacherBlocks,
+  type RemovalSkipReason,
+} from "@/lib/timetableImport";
 import * as XLSX from "xlsx";
 
 export interface ScheduleImportResult {
@@ -17,6 +24,12 @@ export interface ScheduleImportResult {
   staffProfilesCreated: number;
   coursesCreated: number;
   groupsCreated: number;
+  /** Lessons no longer in the file, deleted (no attendance recorded against them). */
+  slotsRemoved: number;
+  /** Lessons no longer in the file, hidden to keep their attendance history. */
+  slotsRetired: number;
+  /** Why nothing was removed, when the file did not look complete. */
+  removalSkipped: RemovalSkipReason | null;
   errors: string[];
 }
 
@@ -27,6 +40,9 @@ const EMPTY_RESULT = {
   staffProfilesCreated: 0,
   coursesCreated: 0,
   groupsCreated: 0,
+  slotsRemoved: 0,
+  slotsRetired: 0,
+  removalSkipped: null,
 } as const;
 
 // Column layout: cols 3-42 are the 5×8 timetable grid.
@@ -34,6 +50,7 @@ const EMPTY_RESULT = {
 // period = ((col - 3) % 8) + 1       → 1..8
 const SLOT_START = 3;
 const SLOT_END   = 42; // inclusive
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 
 function slotPosition(col: number): { dayOfWeek: number; period: number } {
   return {
@@ -77,6 +94,11 @@ export async function importSchedule(
   // Staff names seen in this file — the post-import re-link only needs to look
   // at these teachers' slots, not the whole table.
   const importedStaffNames = new Set<string>();
+  // Every lesson the file contains. The file is the whole timetable: current
+  // lessons not in this set are removed after the loop.
+  const seenSlotIds = new Set<string>();
+  let cellErrors = 0;
+  const unreadableCells: string[] = [];
 
   // Cache to avoid redundant DB round-trips within the same import.
   const courseCache = new Map<string, string>(); // code → id
@@ -130,11 +152,16 @@ export async function importSchedule(
       const courseCell = String(detailRow[col]  ?? "").trim();
       if (!groupCell || !courseCell) continue;
 
+      const { dayOfWeek, period } = slotPosition(col);
       const parsed = parseCourseCell(courseCell);
-      if (!parsed) continue;
+      if (!parsed) {
+        // A class with no readable "room / lesson" under it: this lesson can't be
+        // imported, so it must not count as removed either.
+        unreadableCells.push(`${staffName} ${DAYS[dayOfWeek - 1]} P${period}`);
+        continue;
+      }
 
       const { room, courseName } = parsed;
-      const { dayOfWeek, period } = slotPosition(col);
 
       // Group codes: full code from the cell is the Group name.
       // A cell can hold a single code; combined codes like "ΜΟ2α+ΜΟ2β" are treated
@@ -150,7 +177,7 @@ export async function importSchedule(
 
         const existing = await db.timetableSlot.findUnique({
           where: { groupId_dayOfWeek_period: { groupId, dayOfWeek, period } },
-          select: { id: true, staffId: true },
+          select: { id: true, staffId: true, staffName: true },
         });
 
         if (existing) {
@@ -158,24 +185,75 @@ export async function importSchedule(
             courseId,
             room:     room || null,
             staffName,
-            // Never overwrite staffId if a teacher has already claimed this slot.
-            ...(existing.staffId ? {} : { staffId: null }),
+            // A teacher's claim survives only while the file still names them;
+            // a reassigned lesson is released for the re-link below.
+            staffId:   claimAfterUpdate(existing, staffName),
+            // Back in the file → back in the timetable.
+            removedAt: null,
           };
           await db.timetableSlot.update({ where: { id: existing.id }, data: updateData });
+          seenSlotIds.add(existing.id);
           slotsUpdated++;
         } else {
           const createData: Prisma.TimetableSlotUncheckedCreateInput = {
             groupId, courseId, staffId: null, staffName, dayOfWeek, period, room: room || null,
           };
-          await db.timetableSlot.create({ data: createData });
+          const created = await db.timetableSlot.create({ data: createData, select: { id: true } });
+          seenSlotIds.add(created.id);
           slotsCreated++;
         }
       } catch (err) {
+        cellErrors++;
         errors.push(
-          `${staffName} ${["Mon","Tue","Wed","Thu","Fri"][dayOfWeek - 1]} P${period}: ` +
+          `${staffName} ${DAYS[dayOfWeek - 1]} P${period}: ` +
           (err instanceof Error ? err.message : String(err))
         );
       }
+    }
+  }
+
+  if (unreadableCells.length > 0) {
+    const shown = unreadableCells.slice(0, 5).join(", ");
+    const more = unreadableCells.length > 5 ? ` and ${unreadableCells.length - 5} more` : "";
+    errors.push(
+      `${unreadableCells.length} cell(s) have a class but no readable "room / lesson" ` +
+      `under it (${shown}${more}) — is this the timetable export?`,
+    );
+  }
+
+  // Lessons no longer in the file leave the timetable — a dropped lesson, the old
+  // period of a moved one, every lesson of a teacher who left. Lessons with
+  // attendance are hidden rather than deleted: attendance reaches its period and
+  // course through the lesson, and deleting it would strip that history.
+  let slotsRemoved = 0, slotsRetired = 0;
+  const active = await db.timetableSlot.findMany({
+    select: { id: true, _count: { select: { attendance: true } } },
+  });
+  const removalSkipped = removalGuard({
+    cellErrors: cellErrors + unreadableCells.length + desyncRows.length,
+    importedLessons: seenSlotIds.size,
+    activeLessons: active.length,
+  });
+  if (removalSkipped) {
+    errors.push(
+      removalSkipped === "fileTooSmall"
+        ? `Nothing was removed from the timetable: the file holds ${seenSlotIds.size} lessons against ` +
+          `${active.length} in the current timetable, so it doesn't look like the whole timetable.`
+        : `Nothing was removed from the timetable because of the errors above. Fix them and import again ` +
+          `to remove lessons that are no longer in the file.`,
+    );
+  } else {
+    const { deleteIds, hideIds } = planRemovals(
+      active.map((s) => ({ id: s.id, hasAttendance: s._count.attendance > 0 })),
+      seenSlotIds,
+    );
+    if (deleteIds.length + hideIds.length > 0) {
+      const [deleted, hidden] = await db.$transaction([
+        db.timetableSlot.deleteMany({ where: { id: { in: deleteIds } } }),
+        db.timetableSlot.updateMany({ where: { id: { in: hideIds } }, data: { removedAt: new Date() } }),
+      ]);
+      slotsRemoved = deleted.count;
+      slotsRetired = hidden.count;
     }
   }
 
@@ -247,5 +325,8 @@ export async function importSchedule(
   // import.
   revalidatePath("/", "layout");
 
-  return { success: true, slotsCreated, slotsUpdated, slotsLinked, staffProfilesCreated, coursesCreated, groupsCreated, errors };
+  return {
+    success: true, slotsCreated, slotsUpdated, slotsLinked, staffProfilesCreated, coursesCreated, groupsCreated,
+    slotsRemoved, slotsRetired, removalSkipped, errors,
+  };
 }

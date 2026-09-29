@@ -12,6 +12,9 @@ const initial: ScheduleImportResult = {
   staffProfilesCreated: 0,
   coursesCreated: 0,
   groupsCreated: 0,
+  slotsRemoved: 0,
+  slotsRetired: 0,
+  removalSkipped: null,
   errors: [],
 };
 
@@ -74,6 +77,8 @@ export function ScheduleImportForm() {
                 <Stat label={t("statStaffCreated")} value={result.staffProfilesCreated} />
                 <Stat label={t("statCoursesCreated")}  value={result.coursesCreated} />
                 <Stat label={t("statGroupsCreated")}   value={result.groupsCreated} />
+                <Stat label={t("statSlotsRemoved")}   value={result.slotsRemoved} />
+                <Stat label={t("statSlotsRetired")}   value={result.slotsRetired} />
               </dl>
             </div>
           )}

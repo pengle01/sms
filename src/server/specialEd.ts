@@ -38,6 +38,7 @@ export async function getStudentSupport(studentId: string): Promise<SupportEntry
         select: {
           name: true,
           timetableSlots: {
+            where: { removedAt: null },
             select: {
               period: true,
               dayOfWeek: true,
@@ -138,7 +139,7 @@ export async function supportSlotsByStudent(
     where: { studentProfileId: { in: studentIds }, ...SUPPORT_GROUP_WHERE },
     select: {
       studentProfileId: true,
-      group: { select: { timetableSlots: { select: { dayOfWeek: true, period: true } } } },
+      group: { select: { timetableSlots: { where: { removedAt: null }, select: { dayOfWeek: true, period: true } } } },
     },
   });
 

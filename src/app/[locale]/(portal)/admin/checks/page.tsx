@@ -43,7 +43,7 @@ export default async function ChecksPage({
         homeroomTeacherId: true,
         homeroomHeadteacherId: true,
         counselorId: true,
-        _count: { select: { students: true, studentGroups: true, timetableSlots: true } },
+        _count: { select: { students: true, studentGroups: true, timetableSlots: { where: { removedAt: null } } } },
       },
       orderBy: [{ grade: "asc" }, { name: "asc" }],
     }),

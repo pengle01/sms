@@ -452,11 +452,17 @@ model TimetableSlot {
   dayOfWeek Int // 1=Mon … 5=Fri
   period    Int // 1-based
   room      String?
+  // Set when a re-imported timetable no longer contains this lesson but it has
+  // attendance history: hidden from every current view (the db client filters
+  // it out of findMany/findFirst/count — see src/server/db.ts) while past
+  // attendance keeps its period and course. Lessons without history are deleted.
+  removedAt DateTime?
 
   attendance              Attendance[]
   substitutionPlanEntries SubstitutionPlanEntry[]
 
   @@unique([groupId, dayOfWeek, period])
+  @@index([removedAt])
 }
 
 // ─── Attendance ───────────────────────────────────────────────────────────────

@@ -69,3 +69,60 @@ export function newStaffProfileNames(
   }
   return [...out].sort(byGreekName);
 }
+
+/**
+ * The teacher claim a re-imported lesson keeps. A lesson the file now gives to
+ * someone else must drop the previous teacher's profile — otherwise the old
+ * teacher keeps seeing it and the new one never does (the post-import re-link
+ * only hands out unclaimed lessons). Same teacher → the claim stands.
+ */
+export function claimAfterUpdate(
+  existing: { staffId: string | null; staffName: string | null },
+  importedStaffName: string,
+): string | null {
+  if (!existing.staffId) return null;
+  return existing.staffName?.trim() === importedStaffName.trim() ? existing.staffId : null;
+}
+
+/** A file that covers less than this share of the current timetable is not trusted to remove anything. */
+export const REMOVAL_MIN_SHARE = 0.5;
+
+export type RemovalSkipReason = "cellErrors" | "fileTooSmall";
+
+/**
+ * Whether the import may remove the lessons the file doesn't contain. The file
+ * is the whole timetable, so anything missing from it goes — unless the file
+ * looks incomplete: a cell failed to import (its lesson would be "missing" and
+ * wrongly removed), or it holds far fewer lessons than the timetable does now
+ * (a partial or wrong workbook). Then nothing is removed and the admin is told.
+ */
+export function removalGuard(input: {
+  cellErrors: number;
+  importedLessons: number;
+  activeLessons: number;
+}): RemovalSkipReason | null {
+  if (input.cellErrors > 0) return "cellErrors";
+  if (input.activeLessons > 0 && input.importedLessons < input.activeLessons * REMOVAL_MIN_SHARE) {
+    return "fileTooSmall";
+  }
+  return null;
+}
+
+/**
+ * Split the current lessons the file no longer contains into those to delete
+ * and those to hide. A lesson with attendance is hidden (`removedAt`), because
+ * attendance carries its period and course through the lesson — deleting it
+ * would strip that history. One without attendance has nothing to protect.
+ */
+export function planRemovals(
+  active: { id: string; hasAttendance: boolean }[],
+  seen: ReadonlySet<string>,
+): { deleteIds: string[]; hideIds: string[] } {
+  const deleteIds: string[] = [];
+  const hideIds: string[] = [];
+  for (const slot of active) {
+    if (seen.has(slot.id)) continue;
+    (slot.hasAttendance ? hideIds : deleteIds).push(slot.id);
+  }
+  return { deleteIds, hideIds };
+}

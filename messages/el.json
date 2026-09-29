@@ -1531,6 +1531,8 @@
     "statSlotsCreated": "Νέες ώρες",
     "statSlotsUpdated": "Ενημερωμένες ώρες",
     "statSlotsLinked": "Συνδέθηκαν με προσωπικό",
+    "statSlotsRemoved": "Ώρες που αφαιρέθηκαν",
+    "statSlotsRetired": "Ώρες που αποσύρθηκαν (κρατούν το ιστορικό παρουσιών)",
     "statStaffCreated": "Νέα προφίλ προσωπικού",
     "statCoursesCreated": "Νέα μαθήματα",
     "statGroupsCreated": "Νέα τμήματα",

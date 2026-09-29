@@ -25,6 +25,7 @@ export const groupsRouter = createTRPCRouter({
             orderBy: { user: { name: "asc" } },
           },
           timetableSlots: {
+            where: { removedAt: null },
             include: {
               course: true,
               staff: { include: { user: { select: { name: true } } } },

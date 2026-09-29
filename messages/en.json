@@ -1531,6 +1531,8 @@
     "statSlotsCreated": "Slots created",
     "statSlotsUpdated": "Slots updated",
     "statSlotsLinked": "Linked to staff",
+    "statSlotsRemoved": "Lessons removed",
+    "statSlotsRetired": "Lessons retired (attendance history kept)",
     "statStaffCreated": "Staff profiles added",
     "statCoursesCreated": "Courses added",
     "statGroupsCreated": "Groups added",

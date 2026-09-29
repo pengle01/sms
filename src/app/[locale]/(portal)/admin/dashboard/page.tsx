@@ -81,7 +81,7 @@ export default async function AdminDashboardPage({
         select: {
           id: true,
           name: true,
-          _count: { select: { students: true, studentGroups: true, timetableSlots: true } },
+          _count: { select: { students: true, studentGroups: true, timetableSlots: { where: { removedAt: null } } } },
         },
       }),
       getPeriodsPerDay(),
