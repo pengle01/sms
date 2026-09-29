@@ -6,10 +6,13 @@ import { getActiveAuth } from "@/server/authz";
 import { getCoordinatorStaff } from "@/server/substitutions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
+import { utcMidnight, localDateStr, fmtDisplayDate, fmtDisplayDateTime } from "@/lib/dates";
+import { SCHOOL_ABSENCE_SOURCE, readImportMeta } from "@/lib/substitutionImport";
+import { ImportCard } from "./ImportCard";
+import { ConfirmRegenerate } from "./ConfirmRegenerate";
 import { staffDisplayName } from "@/lib/staffName";
 import { isPoolEligible } from "@/lib/substitutions";
-import { ChevronLeft, Printer, Sparkles, CheckCircle2, Info, Trash2 } from "lucide-react";
+import { ChevronLeft, Printer, Sparkles, CheckCircle2, Info, Trash2, FileUp } from "lucide-react";
 import {
   generatePlanAction,
   finalizePlanAction,
@@ -77,6 +80,8 @@ export default async function SubstitutionPlanPage({
   ]);
 
   const isDraft = plan?.status === "DRAFT";
+  const imported = plan?.source === SCHOOL_ABSENCE_SOURCE;
+  const meta = imported ? readImportMeta(plan?.importMeta) : null;
   const entries = plan?.entries ?? [];
   const covers = entries.filter((e) => e.kind === "COVER" || e.kind === "SWAP");
   const studyHalls = entries.filter((e) => e.kind === "STUDY_HALL");
@@ -206,6 +211,16 @@ export default async function SubstitutionPlanPage({
         </div>
       </div>
 
+      {imported && (
+        <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-2 text-sm text-sky-800 flex items-center gap-2">
+          <FileUp className="w-4 h-4 flex-shrink-0" />
+          Εισήχθη από SchoolAbsence
+          {meta?.exportedAt && ` · εξαγωγή ${fmtDisplayDateTime(new Date(meta.exportedAt))}`}
+        </div>
+      )}
+
+      <ImportCard locale={locale} />
+
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
           {error === "weekend" ? "Σαββατοκύριακο — δεν υπάρχει πρόγραμμα." : "Κάτι πήγε στραβά."}
@@ -232,15 +247,19 @@ export default async function SubstitutionPlanPage({
             Μετάβαση
           </button>
         </form>
-        <form action={generateAction}>
-          <button
-            type="submit"
-            className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700"
-          >
-            <Sparkles className="w-4 h-4" />
-            {plan ? "Επαναδημιουργία" : "Δημιουργία πλάνου"}
-          </button>
-        </form>
+        {imported ? (
+          <ConfirmRegenerate action={generateAction} />
+        ) : (
+          <form action={generateAction}>
+            <button
+              type="submit"
+              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700"
+            >
+              <Sparkles className="w-4 h-4" />
+              {plan ? "Επαναδημιουργία" : "Δημιουργία πλάνου"}
+            </button>
+          </form>
+        )}
         {isDraft && (
           <form action={finalizeAction}>
             <button
@@ -294,6 +313,50 @@ export default async function SubstitutionPlanPage({
       {sectionCard("Β. Τμήματα που αποχωρούν", releases, false)}
       {sectionCard("Γ. Αλλαγές αίθουσας", roomChanges, false)}
       {sectionCard("Στήριξη", supportMerges, false)}
+
+      {meta && (meta.absences.length > 0 || meta.exemptions.length > 0) && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Δ. Απουσίες εκπαιδευτικών ({meta.absences.length})</CardTitle>
+          </CardHeader>
+          <CardContent className="divide-y divide-slate-50">
+            {meta.absences.map((a) => (
+              <div key={a.staffId} className="py-2 text-sm flex items-center gap-2 flex-wrap">
+                <span className="font-medium text-slate-800">{a.teacher}</span>
+                {a.periods.length > 0 && <span className="text-xs text-slate-500">Π: {a.periods.join(", ")}</span>}
+                <span className="text-xs text-slate-400">{a.reason}</span>
+              </div>
+            ))}
+            {meta.exemptions.map((a) => (
+              <div key={`ex-${a.staffId}`} className="py-2 text-sm flex items-center gap-2 flex-wrap">
+                <span className="font-medium text-slate-800">{a.teacher}</span>
+                <Badge variant="outline" className="text-xs">Εξαίρεση</Badge>
+                {a.periods.length > 0 && <span className="text-xs text-slate-500">Π: {a.periods.join(", ")}</span>}
+                <span className="text-xs text-slate-400">{a.reason}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {meta && meta.duty.length > 0 && (
+        <Card className="border-amber-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base text-amber-800">Εφημερίες χωρίς κάλυψη ({meta.duty.length})</CardTitle>
+          </CardHeader>
+          <CardContent className="divide-y divide-slate-50">
+            {meta.duty.map((d, i) => (
+              <div key={i} className="py-2 text-sm">
+                <span className="font-medium text-slate-800">{d.teacher}</span>
+                <span className="block text-xs text-slate-500">{d.message}</span>
+              </div>
+            ))}
+            <p className="pt-2 text-xs text-slate-400">
+              Με την οριστικοποίηση ειδοποιούνται οι εφημερεύοντες βοηθοί της ημέρας.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Quotas */}
       <details open={tab === "quotas"}>

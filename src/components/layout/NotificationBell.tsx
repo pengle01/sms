@@ -63,6 +63,7 @@ export function NotificationBell({ locale }: { locale: string }) {
     if (type === "REFERRAL_RESOLVED") return <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />;
     if (type.startsWith("RESOLUTION_UNLOCK")) return <LockOpen className="w-4 h-4 text-amber-500 flex-shrink-0" />;
     if (type === "MESSAGE") return <MessageSquare className="w-4 h-4 text-emerald-500 flex-shrink-0" />;
+    if (type === "SUBSTITUTION_DUTY_UNCOVERED") return <FileWarning className="w-4 h-4 text-amber-500 flex-shrink-0" />;
     if (type === "MAINTENANCE_RESOLVED") return <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />;
     if (type.startsWith("MAINTENANCE_")) return <Wrench className="w-4 h-4 text-violet-500 flex-shrink-0" />;
     return <Bell className="w-4 h-4 text-slate-400 flex-shrink-0" />;

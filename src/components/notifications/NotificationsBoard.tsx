@@ -21,6 +21,7 @@ const TYPE_ICON: Record<string, React.ReactNode> = {
   GUARDIAN_LINK: <UserPlus className="w-5 h-5 text-sky-500" />,
   MAINTENANCE_CREATED: <Wrench className="w-5 h-5 text-violet-500" />,
   MAINTENANCE_RESOLVED: <CheckCircle2 className="w-5 h-5 text-emerald-500" />,
+  SUBSTITUTION_DUTY_UNCOVERED: <ShieldAlert className="w-5 h-5 text-amber-500" />,
 };
 
 export function NotificationsBoard({ locale }: { locale: string }) {

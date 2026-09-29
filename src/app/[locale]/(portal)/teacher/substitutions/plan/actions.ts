@@ -7,6 +7,8 @@ import { getActiveAuth } from "@/server/authz";
 import { writeAudit, requestMeta } from "@/server/audit";
 import { utcMidnight } from "@/lib/dates";
 import { generatePlan, finalizePlan, getCoordinatorStaff } from "@/server/substitutions";
+import { analyseImport, applyImport } from "@/server/substitutionImport";
+import { IMPORT_MAX_BYTES, countByKind, type ImportIssue } from "@/lib/substitutionImport";
 
 const PAGE = "/[locale]/(portal)/teacher/substitutions/plan";
 
@@ -120,4 +122,80 @@ export async function updateQuota(locale: string, staffId: string, formData: For
   }
   revalidatePath(PAGE, "page");
   redirect(`/${locale}/teacher/substitutions/plan?tab=quotas`);
+}
+
+// ── Import from SchoolAbsence ────────────────────────────────────────────────
+
+export type ImportPreview =
+  | { ok: false; error: ImportIssue }
+  | {
+      ok: true;
+      date: string;
+      dayName: string | null;
+      exportedAt: string | null;
+      counts: ReturnType<typeof countByKind>;
+      absences: number;
+      duty: number;
+      errors: ImportIssue[];
+      warnings: ImportIssue[];
+      existing: "DRAFT" | "FINAL" | null;
+    };
+
+function tooLarge(raw: string) {
+  return new TextEncoder().encode(raw).length > IMPORT_MAX_BYTES;
+}
+
+/** Check an uploaded SchoolAbsence file against the timetable. Writes nothing. */
+export async function previewImportAction(raw: string): Promise<ImportPreview> {
+  if (!(await requireCoordinator())) return { ok: false, error: { code: "notAllowed" } };
+  if (tooLarge(raw)) return { ok: false, error: { code: "tooLarge" } };
+  const a = await analyseImport(raw);
+  if (!a.ok) return a;
+  return {
+    ok: true,
+    date: a.result.date,
+    dayName: a.dayName,
+    exportedAt: a.result.meta.exportedAt,
+    counts: countByKind(a.result.entries),
+    absences: a.result.meta.absences.length,
+    duty: a.result.meta.duty.length,
+    errors: a.result.errors,
+    warnings: a.result.warnings,
+    existing: a.existing,
+  };
+}
+
+/**
+ * Import the file as the date's DRAFT plan. Everything is checked again here —
+ * nothing from the preview is trusted — and a file with any error is refused.
+ */
+export async function importPlanAction(
+  raw: string,
+): Promise<{ ok: true; date: string } | { ok: false; errors: ImportIssue[] }> {
+  const ctx = await requireCoordinator();
+  if (!ctx) return { ok: false, errors: [{ code: "notAllowed" }] };
+  if (tooLarge(raw)) return { ok: false, errors: [{ code: "tooLarge" }] };
+  const a = await analyseImport(raw);
+  if (!a.ok) return { ok: false, errors: [a.error] };
+  if (a.result.errors.length > 0) return { ok: false, errors: a.result.errors };
+
+  await applyImport(a.result, ctx.auth.userId);
+  await writeAudit({
+    userId: ctx.auth.userId,
+    action: "substitution.import",
+    resource: "SubstitutionPlan",
+    resourceId: a.result.date,
+    details: {
+      source: "SchoolAbsence",
+      exportedAt: a.result.meta.exportedAt,
+      entries: a.result.entries.length,
+      counts: countByKind(a.result.entries),
+      absences: a.result.meta.absences.length,
+      duty: a.result.meta.duty.length,
+      replaced: a.existing,
+    },
+    ...(await requestMeta()),
+  });
+  revalidatePath(PAGE, "page");
+  return { ok: true, date: a.result.date };
 }

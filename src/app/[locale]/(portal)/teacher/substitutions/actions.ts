@@ -5,6 +5,7 @@ import { db } from "@/server/db";
 import { getActiveAuth } from "@/server/authz";
 import { writeAudit, requestMeta } from "@/server/audit";
 import { isEducator } from "@/lib/rbac";
+import { SUBSTITUTION_REQUESTS_IN_APP } from "@/lib/substitutionImport";
 import { utcMidnight, fmtDisplayDate } from "@/lib/dates";
 import { sendSms } from "@/lib/sms";
 import type { SubstitutionRequestType } from "@/generated/prisma/client";
@@ -73,6 +74,9 @@ export async function createSubstitutionRequest(input: {
   groupId?: string | null;
   newRoom?: string | null;
 }): Promise<RequestResult> {
+  // Requests are filed in SchoolAbsence, which decides the plan; one filed here
+  // would never reach it. The form is hidden, and this refuses a stale page.
+  if (!SUBSTITUTION_REQUESTS_IN_APP) return { ok: false, error: "errRequestsElsewhere" };
   const ctx = await requireEducatorStaff();
   if (!ctx) return { ok: false, error: "errForbidden" };
 

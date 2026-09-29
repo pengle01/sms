@@ -10,7 +10,8 @@ import { utcMidnight, fmtDisplayDate } from "@/lib/dates";
 import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY } from "@/lib/schoolConfig";
 import { maxPeriodCount } from "@/lib/periods";
 import { getRooms } from "@/server/rooms";
-import { ClipboardEdit, MessageSquare, ArrowRight } from "lucide-react";
+import { ClipboardEdit, MessageSquare, ArrowRight, ExternalLink } from "lucide-react";
+import { SUBSTITUTION_REQUESTS_IN_APP } from "@/lib/substitutionImport";
 import { RequestForm } from "./RequestForm";
 import { CancelRequestButton } from "./CancelRequestButton";
 
@@ -77,7 +78,20 @@ export default async function SubstitutionsPage({
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2 items-start">
-        {/* New request */}
+        {/* New request — or, while SchoolAbsence decides the plan, where to file instead */}
+        {!SUBSTITUTION_REQUESTS_IN_APP ? (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <ExternalLink className="w-4 h-4 text-sky-600" />
+                {t("requestsElsewhere")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-slate-600">{t("requestsElsewhereHint")}</p>
+            </CardContent>
+          </Card>
+        ) : (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
@@ -92,6 +106,7 @@ export default async function SubstitutionsPage({
             <RequestForm groups={groups} maxPeriod={maxPeriod} rooms={rooms.map(({ name, capacity }) => ({ name, capacity }))} />
           </CardContent>
         </Card>
+        )}
 
         {/* My requests */}
         <Card>

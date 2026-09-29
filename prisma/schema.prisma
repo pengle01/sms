@@ -535,6 +535,13 @@ model SubstitutionPlan {
   finalizedBy   User?                  @relation("SubstitutionPlanFinalizer", fields: [finalizedById], references: [id])
   finalizedAt   DateTime?
   createdAt     DateTime               @default(now())
+  // "SCHOOL_ABSENCE" when the plan was imported from the SchoolAbsence export
+  // rather than generated here; null for a generated plan.
+  source        String?
+  // What an imported file carries that has no entry model: the absent teachers
+  // (section Δ of the sheet), exemptions, and break-duty posts left uncovered.
+  // Shape: ImportMeta in src/lib/substitutionImport.ts.
+  importMeta    Json?
 
   entries SubstitutionPlanEntry[]
 }

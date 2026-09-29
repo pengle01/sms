@@ -913,7 +913,10 @@
     "errRoomChange": "Fill in the group and the new room.",
     "errUnknownRoom": "Unknown room.",
     "errNotFound": "Request not found.",
-    "errPastCancel": "Past requests cannot be cancelled."
+    "errPastCancel": "Past requests cannot be cancelled.",
+    "requestsElsewhere": "Requests are filed in SchoolAbsence",
+    "requestsElsewhereHint": "Absences, exemptions from covering and room changes are now filed in the SchoolAbsence program. The day's plan appears in the app once the substitution coordinator finalizes it.",
+    "errRequestsElsewhere": "Requests are now filed in the SchoolAbsence program."
   },
   "staffNotify": {
     "composeTitle": "New Notification to Teachers",
@@ -1957,5 +1960,46 @@
       "IN_PROGRESS": "In progress",
       "RESOLVED": "Resolved"
     }
+  },
+  "substitutionImport": {
+    "title": "Import from SchoolAbsence",
+    "hint": "Choose the .json file exported by SchoolAbsence. It is checked against the timetable first and imported as a draft for you to finalize.",
+    "chooseFile": "Choose file",
+    "checking": "Checking…",
+    "previewFor": "Plan for {date} ({day})",
+    "exportedAt": "Exported from SchoolAbsence: {when}",
+    "absencesCount": "{count, plural, one {# absent} other {# absent}}",
+    "dutyCount": "{count, plural, one {# uncovered duty post} other {# uncovered duty posts}}",
+    "kind_COVER": "Covers",
+    "kind_SWAP": "Lesson swaps",
+    "kind_STUDY_HALL": "Study hall",
+    "kind_RELEASE": "Leave early",
+    "kind_ROOM_CHANGE": "Room changes",
+    "kind_SUPPORT_MERGE": "Support → class",
+    "errorsTitle": "Import refused — {count, plural, one {# problem} other {# problems}}, nothing was saved",
+    "errorsHint": "The file must match the app's timetable exactly. Fix the items below, or import the current timetable first, then try again.",
+    "warningsTitle": "Note",
+    "replaceDraft": "A draft plan already exists for this day — it will be replaced.",
+    "replaceFinal": "A final plan already exists for this day — it will be replaced and must be finalized again.",
+    "importButton": "Import as draft",
+    "imported": "The plan was imported as a draft. Check it and finalize.",
+    "regenerate": "Regenerate",
+    "regenerateTitle": "Replace the plan imported from SchoolAbsence?",
+    "regenerateBody": "Generating a plan in the app deletes the plan imported from SchoolAbsence for this day.",
+    "regenerateConfirm": "Replace",
+    "cancel": "Cancel",
+    "err_badJson": "The file is not valid JSON.",
+    "err_badShape": "The file isn't a SchoolAbsence export (field: {path}).",
+    "err_badDate": "Invalid date: {date}.",
+    "err_weekend": "The date {date} is a weekend.",
+    "err_dayMismatch": "The day «{dayName}» doesn't match the date {date}.",
+    "err_unknownClass": "Class «{cls}» is not in the app's timetable.",
+    "err_noLesson": "The timetable has no lesson for {cls} in period {period}.",
+    "err_teacherMismatch": "{cls}, period {period}: the file says «{file}», the timetable «{timetable}».",
+    "err_unknownTeacher": "«{name}» is not in the app's staff list.",
+    "err_ambiguousTeacher": "The name «{name}» matches two staff profiles.",
+    "err_tooLarge": "The file is too large for a one-day export.",
+    "err_notAllowed": "Only the substitution coordinator can import a plan.",
+    "warn_noLogin": "«{name}» has no account — they won't be notified of the cover."
   }
 }

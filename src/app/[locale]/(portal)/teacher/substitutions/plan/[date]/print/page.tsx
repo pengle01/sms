@@ -5,6 +5,7 @@ import { isEducator } from "@/lib/rbac";
 import { getSchoolName } from "@/lib/schoolConfig";
 import { staffDisplayName } from "@/lib/staffName";
 import { utcMidnight } from "@/lib/dates";
+import { SCHOOL_ABSENCE_SOURCE, readImportMeta } from "@/lib/substitutionImport";
 import { PrintBar } from "./PrintBar";
 
 // The posted daily substitution sheet (A4). Any educator may view/print it.
@@ -58,6 +59,9 @@ export default async function PrintSubstitutionPlanPage({
   const releases = entries.filter((e) => e.kind === "RELEASE");
   const roomChanges = entries.filter((e) => e.kind === "ROOM_CHANGE");
   const supportMerges = entries.filter((e) => e.kind === "SUPPORT_MERGE");
+  // An imported plan carries its own absence list (section Δ) and uncovered
+  // duty posts; a generated one reads absences from the app's requests.
+  const meta = plan.source === SCHOOL_ABSENCE_SOURCE ? readImportMeta(plan.importMeta) : null;
 
   const dateLabel = date.toLocaleDateString("el-GR", {
     weekday: "long", day: "2-digit", month: "long", year: "numeric", timeZone: "UTC",
@@ -177,7 +181,34 @@ export default async function PrintSubstitutionPlanPage({
               ))
             )}
 
-          {requests.length > 0 &&
+          {meta && meta.absences.length + meta.exemptions.length > 0 &&
+            section(
+              "Δ. Απουσίες εκπαιδευτικών",
+              ["Εκπαιδευτικός", "Λόγος"],
+              [...meta.absences, ...meta.exemptions.map((x) => ({ ...x, reason: `Εξαίρεση — ${x.reason}` }))].map((a) => (
+                <tr key={`${a.staffId}-${a.reason}`} className="border-b border-slate-100">
+                  <td className="py-1.5 pr-3 font-medium">{a.teacher}</td>
+                  <td className="py-1.5 text-slate-600">
+                    {a.reason}
+                    {a.periods.length > 0 && ` (Π: ${a.periods.join(", ")})`}
+                  </td>
+                </tr>
+              ))
+            )}
+
+          {meta && meta.duty.length > 0 &&
+            section(
+              "Εφημερίες χωρίς κάλυψη",
+              ["Εκπαιδευτικός", "Εφημερία"],
+              meta.duty.map((d, i) => (
+                <tr key={i} className="border-b border-slate-100">
+                  <td className="py-1.5 pr-3 font-medium">{d.teacher}</td>
+                  <td className="py-1.5 text-slate-600">{d.message}</td>
+                </tr>
+              ))
+            )}
+
+          {!meta && requests.length > 0 &&
             section(
               "Δ. Απουσίες εκπαιδευτικών",
               ["Εκπαιδευτικός", "Λόγος"],

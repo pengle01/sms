@@ -8,6 +8,7 @@ import { getOnDutyDeputies } from "@/lib/calendar";
 import { dutyDowFor } from "@/lib/dutyRoster";
 import { fmtDisplayDate } from "@/lib/dates";
 import { getRooms } from "@/server/rooms";
+import { readImportMeta } from "@/lib/substitutionImport";
 import {
   buildPlan,
   lastPeriodFor,
@@ -184,9 +185,15 @@ export async function finalizePlan(date: Date, userId: string) {
     }
   }
 
-  // Study halls go to the day's on-duty deputies
+  // Study halls, and break-duty posts an imported plan lists as uncovered, go
+  // to the day's on-duty deputies.
   const studyHalls = plan.entries.filter((e) => e.kind === "STUDY_HALL");
-  const deputies = studyHalls.length > 0 ? await getOnDutyDeputies(date) : [];
+  const uncoveredDuty = readImportMeta(plan.importMeta)?.duty ?? [];
+  const deputies =
+    studyHalls.length > 0 || uncoveredDuty.length > 0 ? await getOnDutyDeputies(date) : [];
+  const deputyUserIds = [
+    ...new Set(deputies.flatMap((d) => (d.staffProfile.user?.id ? [d.staffProfile.user.id] : []))),
+  ];
 
   let finalized = false;
   await db.$transaction(async (tx) => {
@@ -202,7 +209,7 @@ export async function finalizePlan(date: Date, userId: string) {
     // stack on top of it — drop this date's old substitution notifications.
     await tx.notification.deleteMany({
       where: {
-        type: { in: ["SUBSTITUTION_ASSIGNED", "SUBSTITUTION_STUDY_HALL"] },
+        type: { in: ["SUBSTITUTION_ASSIGNED", "SUBSTITUTION_STUDY_HALL", "SUBSTITUTION_DUTY_UNCOVERED"] },
         title: { endsWith: dateLabel },
       },
     });
@@ -220,11 +227,7 @@ export async function finalizePlan(date: Date, userId: string) {
       });
     }
 
-    const notifiedDeputies = new Set<string>();
-    for (const d of deputies) {
-      const deputyUserId = d.staffProfile.user?.id;
-      if (!deputyUserId || notifiedDeputies.has(deputyUserId)) continue;
-      notifiedDeputies.add(deputyUserId);
+    for (const deputyUserId of studyHalls.length > 0 ? deputyUserIds : []) {
       await tx.notification.create({
         data: {
           userId: deputyUserId,
@@ -238,6 +241,19 @@ export async function finalizePlan(date: Date, userId: string) {
         },
       });
     }
+
+    for (const deputyUserId of uncoveredDuty.length > 0 ? deputyUserIds : []) {
+      await tx.notification.create({
+        data: {
+          userId: deputyUserId,
+          type: "SUBSTITUTION_DUTY_UNCOVERED",
+          title: `Εφημερίες χωρίς κάλυψη ${dateLabel}`,
+          body: uncoveredDuty.map((d) => `${d.teacher}: ${d.message}`).join(" · "),
+          linkUrl: `/teacher/substitutions/plan/${iso(date)}/print`,
+          read: false,
+        },
+      });
+    }
   });
   if (!finalized) return { ok: false as const, error: "alreadyFinal" };
 
@@ -246,7 +262,12 @@ export async function finalizePlan(date: Date, userId: string) {
     action: "substitution.finalize",
     resource: "SubstitutionPlan",
     resourceId: iso(date),
-    details: { entries: plan.entries.length, notified: bySubUser.size },
+    details: {
+      entries: plan.entries.length,
+      notified: bySubUser.size,
+      dutyUncovered: uncoveredDuty.length,
+      source: plan.source,
+    },
     ...(await requestMeta()),
   });
   return { ok: true as const };
