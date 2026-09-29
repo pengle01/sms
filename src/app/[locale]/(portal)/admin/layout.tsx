@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getActiveAuth } from "@/server/authz";
-import { isAdminStaff, isEducator } from "@/lib/rbac";
+import { isAdminStaff, isEducator, REGISTRATION_ROLES } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma/client";
 import { db } from "@/server/db";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -27,7 +27,7 @@ export default async function AdminPortalLayout({
   const teacherPortalLink = isEducator(auth.role);
 
   const pendingClaimsCount = await Promise.all([
-    db.user.count({ where: { isActive: false } }),
+    db.user.count({ where: { isActive: false, role: { in: REGISTRATION_ROLES } } }),
     db.teacherClaim.count({ where: { status: "PENDING", user: { isActive: true } } }),
     db.chaperoneRequest.count({ where: { status: "PENDING" } }),
   ]).then(([u, t, c]) => u + t + c);

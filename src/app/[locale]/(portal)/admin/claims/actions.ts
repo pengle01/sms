@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { canManageClaims, SELF_REGISTER_EDUCATOR_ROLES } from "@/lib/rbac";
+import { canManageClaims, SELF_REGISTER_EDUCATOR_ROLES, isPendingRegistration } from "@/lib/rbac";
 import { getActiveAuth } from "@/server/authz";
 import { writeAudit, requestMeta } from "@/server/audit";
 import { db } from "@/server/db";
@@ -24,6 +24,9 @@ const VALID_ROLES: Role[] = [
 export async function approveRegistrationAction(userId: string, role: Role) {
   const admin = await requireAdmin();
   if (!VALID_ROLES.includes(role)) return;
+  // Only a sign-up awaiting approval — never a deactivated student or parent.
+  const pending = await db.user.findUnique({ where: { id: userId }, select: { isActive: true, role: true } });
+  if (!pending || !isPendingRegistration(pending)) return;
 
   if (SELF_REGISTER_EDUCATOR_ROLES.includes(role)) {
     await db.$transaction(async (tx) => {
@@ -55,7 +58,9 @@ export async function approveRegistrationAction(userId: string, role: Role) {
 export async function rejectRegistrationAction(userId: string) {
   const admin = await requireAdmin();
   const user = await db.user.findUnique({ where: { id: userId } });
-  if (!user || user.isActive) return;
+  // Rejecting deletes the account, so it must be a sign-up — a deactivated
+  // student or parent would take their profile, links and contacts with them.
+  if (!user || !isPendingRegistration(user)) return;
   await db.user.delete({ where: { id: userId } });
   await writeAudit({
     userId: admin.userId,

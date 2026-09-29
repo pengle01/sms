@@ -43,6 +43,19 @@ export const SELF_REGISTER_EDUCATOR_ROLES: Role[] = [
   "HEADMASTER",
 ];
 
+// Every role someone can sign up for (educators claim a timetable name; the
+// office and chaperones just register). A sign-up waits inactive for approval.
+export const REGISTRATION_ROLES: Role[] = [...SELF_REGISTER_EDUCATOR_ROLES, "SCHOOL_ADMIN", "CHAPERONE"];
+
+/**
+ * An inactive account that is a sign-up awaiting approval — not a student or
+ * parent who was deactivated (import, office button). Those must never reach
+ * the approvals list: rejecting a sign-up deletes the account.
+ */
+export function isPendingRegistration(user: { isActive: boolean; role: Role }): boolean {
+  return !user.isActive && REGISTRATION_ROLES.includes(user.role);
+}
+
 // Office administration — /office portal
 export const OFFICE_ROLES: Role[] = ["SCHOOL_ADMIN"];
 

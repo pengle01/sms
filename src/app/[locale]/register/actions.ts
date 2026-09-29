@@ -8,13 +8,13 @@ import { allowRegistration } from "@/server/rateLimit";
 import { clientIp } from "@/server/audit";
 import { logger } from "@/server/logger";
 import { composeFullName } from "@/lib/profile";
-import { SELF_REGISTER_EDUCATOR_ROLES } from "@/lib/rbac";
+import { SELF_REGISTER_EDUCATOR_ROLES, REGISTRATION_ROLES } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma/client";
 import { PASSWORD_MIN_LENGTH as MIN_PASSWORD_LENGTH } from "@/lib/password";
 
 // Educators (teacher / deputy heads / headmaster) claim a timetable name;
 // office & chaperone just register for approval without a claim.
-const CLAIMABLE_ROLES: Role[] = [...SELF_REGISTER_EDUCATOR_ROLES, "SCHOOL_ADMIN", "CHAPERONE"];
+const CLAIMABLE_ROLES: Role[] = REGISTRATION_ROLES;
 
 export async function registerAction(formData: FormData) {
   const firstName = ((formData.get("firstName") as string) ?? "").trim();

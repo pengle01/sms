@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
+  isPendingRegistration,
+  REGISTRATION_ROLES,
   hasMinRole,
   isStaff,
   isManagement,
@@ -281,5 +283,26 @@ describe("RBAC utilities", () => {
     it("refuses an empty role list", () => {
       expect(canViewStaffDirectory([])).toBe(false);
     });
+  });
+});
+
+describe("isPendingRegistration", () => {
+  it("is a sign-up for an inactive teacher, secretary or chaperone", () => {
+    expect(isPendingRegistration({ isActive: false, role: "TEACHER" })).toBe(true);
+    expect(isPendingRegistration({ isActive: false, role: "SCHOOL_ADMIN" })).toBe(true);
+    expect(isPendingRegistration({ isActive: false, role: "CHAPERONE" })).toBe(true);
+  });
+
+  it("is never a deactivated student or parent", () => {
+    expect(isPendingRegistration({ isActive: false, role: "STUDENT" })).toBe(false);
+    expect(isPendingRegistration({ isActive: false, role: "PARENT" })).toBe(false);
+  });
+
+  it("is never an active account", () => {
+    expect(isPendingRegistration({ isActive: true, role: "TEACHER" })).toBe(false);
+  });
+
+  it("registration roles exclude students, parents and the system admin", () => {
+    for (const r of ["STUDENT", "PARENT", "SUPER_ADMIN"] as const) expect(REGISTRATION_ROLES).not.toContain(r);
   });
 });

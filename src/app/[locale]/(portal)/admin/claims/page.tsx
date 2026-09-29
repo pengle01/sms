@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getActiveAuth } from "@/server/authz";
-import { canManageClaims } from "@/lib/rbac";
+import { canManageClaims, REGISTRATION_ROLES } from "@/lib/rbac";
 import { db } from "@/server/db";
 import type { Role } from "@/generated/prisma/client";
 import { RequestsList } from "./RequestsList";
@@ -20,7 +20,9 @@ export default async function ClaimsPage({
 
   const [rawUsers, rawClaims, rawChaperones] = await Promise.all([
     db.user.findMany({
-      where: { isActive: false },
+      // Sign-ups only — a deactivated student or parent is inactive too, but is
+      // not a request (see isPendingRegistration).
+      where: { isActive: false, role: { in: REGISTRATION_ROLES } },
       orderBy: { createdAt: "asc" },
       include: { teacherClaim: true },
     }),
