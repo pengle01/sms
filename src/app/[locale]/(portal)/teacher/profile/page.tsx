@@ -97,6 +97,7 @@ export default async function ProfilePage({
             hasStaffProfile={!!staff}
             // Force the form open until every required field is filled.
             mustEdit={!!required && incomplete}
+            firstCompletion={incomplete}
           />
 
           {!staff && <p className="text-xs text-slate-400">{t("noStaffProfile")}</p>}

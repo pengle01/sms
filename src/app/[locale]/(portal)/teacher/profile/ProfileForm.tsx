@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { Loader2, Save, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/trpc/client";
@@ -20,14 +21,19 @@ export function ProfileForm({
   initial,
   hasStaffProfile,
   mustEdit = false,
+  firstCompletion = false,
 }: {
   initial: Form;
   hasStaffProfile: boolean;
   /** Open straight into edit mode (e.g. a required ΠΜΠ is still missing). */
   mustEdit?: boolean;
+  /** The profile is still incomplete (first sign-in): saving it goes on to the dashboard. */
+  firstCompletion?: boolean;
 }) {
   const t = useTranslations("profile");
   const utils = trpc.useUtils();
+  const router = useRouter();
+  const locale = useLocale();
   const [form, setForm] = useState<Form>(initial);
   const [editing, setEditing] = useState(mustEdit);
   const [pending, startTransition] = useTransition();
@@ -52,6 +58,8 @@ export function ProfileForm({
         setEditing(false);
         // Lift the portal-wide ProfileGuard overlay now that the data is in.
         utils.profile.completeness.invalidate();
+        // First sign-in: the profile was the gate, the dashboard is where they were going.
+        if (firstCompletion) router.push(`/${locale}/teacher/dashboard`);
       } else {
         toast.error(t(res.error as "errFirstName"));
       }
