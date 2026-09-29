@@ -58,7 +58,7 @@ export function RegisterForm({ locale, error, success, staffNames }: RegisterFor
         <h2 className="text-xl font-bold text-white">{t("successTitle")}</h2>
         <p className="text-sm text-emerald-300/80">{t("successMessage")}</p>
         <Link
-          href={`/${locale}/login`}
+          href={`/${locale}/login/staff`}
           className="inline-block mt-4 text-sm font-medium text-lime-400 hover:text-lime-300"
         >
           ← {t("signIn")}
@@ -175,7 +175,7 @@ export function RegisterForm({ locale, error, success, staffNames }: RegisterFor
 
       <p className="text-center text-sm text-emerald-300/70">
         {t("alreadyHaveAccount")}{" "}
-        <Link href={`/${locale}/login`} className="text-lime-400 hover:text-lime-300 font-medium">
+        <Link href={`/${locale}/login/staff`} className="text-lime-400 hover:text-lime-300 font-medium">
           {tAuth("login")}
         </Link>
       </p>
