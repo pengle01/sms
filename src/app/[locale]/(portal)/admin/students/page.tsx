@@ -17,9 +17,9 @@ export default async function StudentsPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ search?: string; grade?: string; groupId?: string; page?: string }>;
+  searchParams: Promise<{ search?: string; grade?: string; groupId?: string; page?: string; status?: string; all?: string }>;
 }) {
-  const [{ locale }, { search, grade, groupId, page: pageStr }, adminAuth, t, tLocate] =
+  const [{ locale }, { search, grade, groupId, page: pageStr, status, all }, adminAuth, t, tLocate] =
     await Promise.all([
       params,
       searchParams,
@@ -29,26 +29,35 @@ export default async function StudentsPage({
     ]);
 
   const gradeNum = grade ? parseInt(grade) : undefined;
-  const page = Math.max(1, parseInt(pageStr ?? "1"));
+  // Inactive students (left the school, deactivated by the office or by a
+  // student-file import) are listed only under their own pill.
+  const showInactive = status === "inactive";
+  // "Show all": the whole selection on one scrolling page instead of pages of 40.
+  const showAll = all === "1";
+  const page = showAll ? 1 : Math.max(1, parseInt(pageStr ?? "1"));
   const limit = 40;
 
   // Show table only when: all school (no grade filter), specific homegroup, or search active
-  const showTable = !gradeNum || !!groupId || !!search;
+  const showTable = !gradeNum || !!groupId || !!search || showInactive;
 
-  const [homeroomGroups, allTotal, missingCodes] = await Promise.all([
+  const [homeroomGroups, allTotal, missingCodes, inactiveTotal] = await Promise.all([
     gradeNum
       ? db.group.findMany({
           where: { grade: gradeNum, students: { some: {} } },
           orderBy: { name: "asc" },
         })
       : Promise.resolve([]),
-    db.studentProfile.count(),
+    db.studentProfile.count({ where: { user: { isActive: true } } }),
     db.studentProfile.count({ where: { accessCode: { is: null }, user: { isActive: true } } }),
+    db.studentProfile.count({ where: { user: { isActive: false } } }),
   ]);
 
   const where = {
     ...(groupId ? { groupId } : gradeNum ? { group: { grade: gradeNum } } : {}),
-    ...(search ? { user: { name: { contains: search, mode: "insensitive" as const } } } : {}),
+    user: {
+      isActive: !showInactive,
+      ...(search ? { name: { contains: search, mode: "insensitive" as const } } : {}),
+    },
   };
 
   const [total, students] = showTable
@@ -63,19 +72,18 @@ export default async function StudentsPage({
           orderBy: !gradeNum && !groupId
             ? [{ group: { grade: "asc" } }, { group: { name: "asc" } }, { user: { name: "asc" } }]
             : { user: { name: "asc" } },
-          skip: (page - 1) * limit,
-          take: limit,
+          ...(showAll ? {} : { skip: (page - 1) * limit, take: limit }),
         }),
       ])
     : [0, []];
 
-  const totalPages = Math.ceil(total / limit);
+  const totalPages = showAll ? 1 : Math.ceil(total / limit);
 
   // Autocomplete: student names scoped to the selected homegroup/year
   const suggestionRows = await db.studentProfile.findMany({
     where: {
       ...(groupId ? { groupId } : gradeNum ? { group: { grade: gradeNum } } : {}),
-      user: { isActive: true },
+      user: { isActive: !showInactive },
     },
     select: { user: { select: { name: true } } },
   });
@@ -83,7 +91,10 @@ export default async function StudentsPage({
 
   const buildHref = (extra: Record<string, string | undefined>) => {
     const p = new URLSearchParams();
-    const merged = { grade: grade ?? "", groupId: groupId ?? "", search: search ?? "", ...extra };
+    const merged = {
+      grade: grade ?? "", groupId: groupId ?? "", search: search ?? "",
+      status: showInactive ? "inactive" : "", all: showAll ? "1" : "", ...extra,
+    };
     for (const [k, v] of Object.entries(merged)) if (v) p.set(k, v);
     return `?${p.toString()}`;
   };
@@ -91,8 +102,11 @@ export default async function StudentsPage({
   // Current filters travel with each row link so the detail page's "Back to
   // students" returns to exactly this view (pills, search, page intact).
   const listFilters = pickQueryString(
-    { grade, groupId, search, page: page > 1 ? String(page) : undefined },
-    ["grade", "groupId", "search", "page"]
+    {
+      grade, groupId, search, page: page > 1 ? String(page) : undefined,
+      status: showInactive ? "inactive" : undefined, all: showAll ? "1" : undefined,
+    },
+    ["grade", "groupId", "search", "page", "status", "all"]
   );
 
   const selectedGroup = groupId ? homeroomGroups.find((g) => g.id === groupId) : null;
@@ -158,6 +172,37 @@ export default async function StudentsPage({
         </div>
       </div>
 
+      {/* Status: active students by default; inactive ones only under this pill */}
+      <div className="space-y-1.5">
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("status")}</p>
+        <div className="flex gap-2 flex-wrap">
+          <Link
+            href={buildHref({ status: undefined, page: undefined })}
+            className={cn(
+              "h-9 px-4 rounded-xl text-sm font-medium border transition-colors inline-flex items-center",
+              !showInactive
+                ? "bg-emerald-600 text-white border-emerald-600"
+                : "bg-white text-slate-600 border-slate-200 hover:border-emerald-400 hover:text-emerald-700"
+            )}
+          >
+            {t("activePill")}
+            <span className="ml-1.5 text-xs opacity-70">{allTotal}</span>
+          </Link>
+          <Link
+            href={buildHref({ status: "inactive", page: undefined })}
+            className={cn(
+              "h-9 px-4 rounded-xl text-sm font-medium border transition-colors inline-flex items-center",
+              showInactive
+                ? "bg-red-600 text-white border-red-600"
+                : "bg-white text-slate-600 border-slate-200 hover:border-red-300 hover:text-red-700"
+            )}
+          >
+            {t("inactivePill")}
+            <span className="ml-1.5 text-xs opacity-70">{inactiveTotal}</span>
+          </Link>
+        </div>
+      </div>
+
       {/* Homegroup selector */}
       {gradeNum && homeroomGroups.length > 0 && (
         <div className="space-y-1.5">
@@ -185,6 +230,8 @@ export default async function StudentsPage({
       <form method="GET" className="flex gap-2">
         {gradeNum && <input type="hidden" name="grade" value={gradeNum} />}
         {groupId && <input type="hidden" name="groupId" value={groupId} />}
+        {showInactive && <input type="hidden" name="status" value="inactive" />}
+        {showAll && <input type="hidden" name="all" value="1" />}
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <SuggestInput
@@ -217,8 +264,19 @@ export default async function StudentsPage({
         ) : gradeNum ? (
           <><span className="font-medium text-slate-700">{t(`grade${gradeNum as 1 | 2 | 3}`)}</span> · </>
         ) : null}
-        {t("studentCount", { count: total })}
+        {t(showInactive ? "inactiveCount" : "studentCount", { count: total })}
         {search && <> {t("matchingSearch", { count: total, search })}</>}
+        {(showAll || totalPages > 1) && (
+          <>
+            {" · "}
+            <Link
+              href={buildHref({ all: showAll ? undefined : "1", page: undefined })}
+              className="font-medium text-emerald-700 hover:text-emerald-800"
+            >
+              {showAll ? t("showPaged") : t("showAll", { count: total })}
+            </Link>
+          </>
+        )}
       </p>
       )}
 
