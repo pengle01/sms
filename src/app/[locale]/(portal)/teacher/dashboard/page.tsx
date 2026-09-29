@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, AlertCircle, CalendarRange, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
+import { RefreshAfterAttendance } from "@/components/attendance/RefreshAfterAttendance";
 
 function resolveFirstName(...candidates: (string | null | undefined)[]): string {
   for (const raw of candidates) {
@@ -194,6 +195,7 @@ export default async function TeacherDashboardPage({
 
   return (
     <div className="space-y-6">
+      <RefreshAfterAttendance />
       <div>
         <h2 className="text-2xl font-bold text-slate-900">
           {t("welcome", { name: resolveFirstName(staff?.user?.nameEl, staff?.user?.name, session.user?.name) })}

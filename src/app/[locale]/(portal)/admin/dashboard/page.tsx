@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { getPeriodsPerDay } from "@/lib/schoolConfig";
 import { computeIntegrityReport } from "@/lib/integrityChecks";
+import { RefreshAfterAttendance } from "@/components/attendance/RefreshAfterAttendance";
 
 export default async function AdminDashboardPage({
   params,
@@ -127,6 +128,7 @@ export default async function AdminDashboardPage({
 
   return (
     <div className="space-y-6">
+      <RefreshAfterAttendance />
       <div>
         <h2 className="text-2xl font-bold text-slate-900">
           {t("welcome", { name: session.user?.name ?? "" })}

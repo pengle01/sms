@@ -10,6 +10,7 @@ import { isWithinSchoolYear } from "@/lib/schoolYear";
 import Link from "next/link";
 import { CheckCircle2, ClipboardList, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { getTranslations } from "next-intl/server";
+import { RefreshAfterAttendance } from "@/components/attendance/RefreshAfterAttendance";
 
 type Slot = {
   id: string;
@@ -251,6 +252,7 @@ export default async function TeacherSchedulePage({
 
   return (
     <div className="space-y-5">
+      <RefreshAfterAttendance />
       {/* Header + week navigation */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex-1">

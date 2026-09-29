@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { CheckCircle, XCircle, Clock, Loader2, MapPin, CalendarRange, LogOut, DoorOpen } from "lucide-react";
+import { markAttendanceSaved } from "@/lib/attendanceRefresh";
 
 type Student = { id: string; user: { name: string | null }; studentId: string };
 type Slot = { id: string; room: string | null; course: { name: string } } | null;
@@ -166,12 +167,12 @@ export function AttendanceMarkForm({
 
   const utils = trpc.useUtils();
   const { mutate: markAttendance, isPending: isPendingRegular } = trpc.attendance.markAttendance.useMutation({
-    onSuccess: () => { toast.success(t("savedToast")); utils.attendance.lockStatus.invalidate(); router.back(); },
+    onSuccess: () => { toast.success(t("savedToast")); utils.attendance.lockStatus.invalidate(); markAttendanceSaved(); router.back(); },
     onError: (e) => toast.error(e.message),
   });
 
   const { mutate: markIntercalary, isPending: isPendingIntercalary } = trpc.attendance.markIntercalaryAttendance.useMutation({
-    onSuccess: () => { toast.success(t("savedToast")); utils.attendance.lockStatus.invalidate(); router.back(); },
+    onSuccess: () => { toast.success(t("savedToast")); utils.attendance.lockStatus.invalidate(); markAttendanceSaved(); router.back(); },
     onError: (e) => toast.error(e.message),
   });
 

@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { CheckCircle, XCircle, Clock, Loader2 } from "lucide-react";
+import { markAttendanceSaved } from "@/lib/attendanceRefresh";
 
 type Student = { id: string; user: { name: string | null }; studentId: string };
 type Group = { id: string; name: string; grade: number };
@@ -55,6 +56,7 @@ export function AttendanceMarkForm({
   const { mutate: markAttendance, isPending } = trpc.attendance.markAttendance.useMutation({
     onSuccess: () => {
       toast.success(t("savedToast"));
+      markAttendanceSaved();
       router.back();
     },
     onError: (e) => toast.error(e.message),

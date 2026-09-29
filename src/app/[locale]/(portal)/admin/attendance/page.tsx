@@ -9,6 +9,7 @@ import Link from "next/link";
 import { ClipboardList, Search } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
+import { RefreshAfterAttendance } from "@/components/attendance/RefreshAfterAttendance";
 
 export default async function AttendancePage({
   params,
@@ -55,6 +56,7 @@ export default async function AttendancePage({
 
   return (
     <div className="space-y-5">
+      <RefreshAfterAttendance />
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>

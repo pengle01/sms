@@ -6,6 +6,7 @@ import { getNow, utcMidnight, fmtDisplayDate } from "@/lib/dates";
 import { getSpecialDayForDate } from "@/lib/calendar";
 import Link from "next/link";
 import { CheckCircle2, ClipboardList, AlertCircle } from "lucide-react";
+import { RefreshAfterAttendance } from "@/components/attendance/RefreshAfterAttendance";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"] as const;
 
@@ -90,6 +91,7 @@ export default async function TeacherSchedulePage({
 
   return (
     <div className="space-y-6">
+      <RefreshAfterAttendance />
       <div>
         <h2 className="text-2xl font-bold text-slate-900">My Schedule</h2>
         <p className="text-slate-500 text-sm mt-1">{dateLabel}</p>

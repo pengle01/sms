@@ -19,6 +19,7 @@ import { BellOff, CheckCircle2, LogOut, Phone, Printer, Search, X } from "lucide
 import { issueExitPermit, cancelExitPermit } from "./actions";
 import { ReferralTabs } from "@/components/referrals/ReferralTabs";
 import { ToiletPanel } from "./ToiletPanel";
+import { RefreshAfterAttendance } from "@/components/attendance/RefreshAfterAttendance";
 
 export default async function TeacherDutyPage({
   params,
@@ -566,6 +567,7 @@ export default async function TeacherDutyPage({
 
   return (
     <div className="space-y-6">
+      <RefreshAfterAttendance />
       <div>
         <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>
         <p className="text-slate-500 text-sm mt-1">{t("subtitle")}</p>
