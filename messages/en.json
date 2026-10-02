@@ -1256,8 +1256,6 @@
     "post_subCoord": "Substitutions Coord.",
     "post_homeroom": "Homegroup teacher",
     "post_extraAdmin": "+Admin",
-    "badgeScheduleMarker": "{marker} (schedule)",
-    "badgeScheduleMarkerHint": "Marker from the timetable — no account with a management role has signed up yet.",
     "searchPlaceholder": "Name, schedule code or email",
     "clearFilters": "Clear",
     "noMatches": "No matches.",
@@ -1366,7 +1364,14 @@
     "roomsSelected": "{count, plural, one {# room} other {# rooms}}",
     "roomsTakenLegend": "already has another maintainer",
     "saveRooms": "Save rooms",
-    "roomsSaved": "Rooms saved"
+    "roomsSaved": "Rooms saved",
+    "rowRole": "Role",
+    "rowRoleHint": "E.g. a teacher with deputy duties. The menu and permissions follow the role; the user should sign out and in again.",
+    "roleChanged": "Role changed to “{role}”",
+    "plannedRoleLabel": "Role (before sign-up)",
+    "plannedRoleHint": "The person's role before they sign up. Left empty, it follows the timetable marker (e.g. ΒΔ).",
+    "plannedRoleFromName": "From timetable: {role}",
+    "plannedRoleSaved": "Role saved"
   },
   "adminStudents": {
     "title": "Students",

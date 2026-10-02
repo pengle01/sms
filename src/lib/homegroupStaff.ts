@@ -5,28 +5,29 @@
 // yet can be assigned; when they sign up and are approved, linkStaffProfile
 // adopts that same profile and the assignment carries over. Their role is not
 // known until then (it lives on the account), so an unlinked profile is placed
-// by its timetable name: "… ΒΔ" is deputy B, "ΣΕΑ-…" the counselor.
+// by the admin's planned role, else its timetable name ("… ΒΔ", "ΣΕΑ-…").
 
 import type { Role } from "@/generated/prisma/enums";
-import { isManagementName, specialtyPrefix } from "@/lib/substitutions";
+import { effectiveStaffRole } from "@/lib/staffRole";
 
 export interface HomegroupProfile {
   id: string;
   scheduleName: string | null;
   /** The account's role, or null when the profile has no account yet. */
   role: Role | null;
+  /** The role the admin planned before sign-up (StaffProfile.plannedRole). */
+  plannedRole?: Role | null;
   leftTimetable: boolean;
 }
 
 export type HomegroupCandidate = HomegroupProfile & { hasAccount: boolean };
 
-const COUNSELOR_PREFIX = "ΣΕΑ";
-
-function lastToken(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  return parts[parts.length - 1] ?? "";
-}
-
+/**
+ * Split the roster into the three dropdowns by each person's role — the
+ * account's, else the admin's planned role, else the timetable-name marker
+ * (effectiveStaffRole). A deputy whose name lacks «ΒΔ» is therefore offered as
+ * headteacher once their account or planned role says so.
+ */
 export function homegroupCandidates(profiles: HomegroupProfile[]): {
   teachers: HomegroupCandidate[];
   headteachers: HomegroupCandidate[];
@@ -36,22 +37,15 @@ export function homegroupCandidates(profiles: HomegroupProfile[]): {
   const headteachers: HomegroupCandidate[] = [];
   const counselors: HomegroupCandidate[] = [];
   for (const p of profiles) {
-    if (p.role) {
-      // With an account: by role, as before.
-      const c = { ...p, hasAccount: true };
-      if (p.role === "TEACHER") teachers.push(c);
-      else if (p.role === "HEADTEACHER_B") headteachers.push(c);
-      else if (p.role === "STUDENT_COUNSELOR") counselors.push(c);
-      continue;
-    }
-    // No account: by timetable name. Teachers who left the timetable are not offered.
-    const name = p.scheduleName?.trim();
-    if (!name || p.leftTimetable) continue;
-    const c = { ...p, hasAccount: false };
-    if (specialtyPrefix(name) === COUNSELOR_PREFIX) counselors.push(c);
-    else if (lastToken(name) === "ΒΔ") headteachers.push(c);
-    else if (!isManagementName(name)) teachers.push(c);
-    // Δ (headmaster) and ΒΔΑ (deputy A) are not homegroup staff.
+    const hasAccount = p.role !== null;
+    // Without an account: only current timetable names; teachers who left aren't offered.
+    if (!hasAccount && (!p.scheduleName?.trim() || p.leftTimetable)) continue;
+    const role = effectiveStaffRole({ accountRole: p.role, plannedRole: p.plannedRole, scheduleName: p.scheduleName });
+    const c = { ...p, hasAccount };
+    if (role === "TEACHER") teachers.push(c);
+    else if (role === "HEADTEACHER_B") headteachers.push(c);
+    else if (role === "STUDENT_COUNSELOR") counselors.push(c);
+    // The headmaster and deputy A are not homegroup staff.
   }
   return { teachers, headteachers, counselors };
 }

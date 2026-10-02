@@ -207,6 +207,7 @@ export default async function UserDetailPage({
         ddkCoordinator={sp?.ddkCoordinator ?? false}
         itMaintenance={sp?.itMaintenance ?? false}
         parentMessaging={sp?.parentMessaging ?? false}
+        currentRole={user.role}
       />
 
       {sp?.itMaintenance && (await maintainedRoomsCard(user.id, sp.id))}

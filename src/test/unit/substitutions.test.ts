@@ -380,3 +380,14 @@ describe("buildPlan", () => {
     expect(changes[1]!.note).toBe("Αυτόματη αλλαγή αίθουσας");
   });
 });
+
+describe("isPoolEligible — management without a name marker", () => {
+  it("never picks a teacher holding a management role, even with an unmarked name", () => {
+    expect(isPoolEligible("Μ-ΧΩΡΙΣ ΣΗΜΑ Α.", null, true)).toBe(false);
+    expect(isPoolEligible("Μ-ΧΩΡΙΣ ΣΗΜΑ Α.", null, false)).toBe(true);
+  });
+
+  it("still excludes a marked deputy whatever the role flag says", () => {
+    expect(isPoolEligible("ΗΥ-ΜΑΣΙΑ Μ. ΒΔ", null, false)).toBe(false);
+  });
+});

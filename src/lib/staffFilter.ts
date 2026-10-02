@@ -1,8 +1,8 @@
 // The admin staff roster's filter — pure helpers, unit-tested, no DB.
 import type { Role } from "@/generated/prisma/client";
 import { matchesSearch } from "@/lib/textSearch";
-import { MANAGEMENT_ROLES } from "@/lib/rbac";
-import { specialtyPrefix, isManagementName } from "@/lib/substitutions";
+import { specialtyPrefix } from "@/lib/substitutions";
+import { effectiveStaffRole, isManagementRole } from "@/lib/staffRole";
 
 /**
  * One person on the admin roster.
@@ -31,6 +31,8 @@ export interface StaffRow {
   substitutionCoordinator: boolean;
   itMaintenance: boolean;
   parentMessaging: boolean;
+  /** Role the admin planned before sign-up (StaffProfile.plannedRole). */
+  plannedRole: Role | null;
   homerooms: string[];
   /** Lessons a week. Counted by staffName, never by staffId — see lessonsByName. */
   lessons: number;
@@ -58,16 +60,15 @@ export function staffSpecialty(row: StaffRow): string {
 }
 
 /**
- * Is this person management?
- *
- * Answered from the schedule marker (Δ / ΒΔΑ / ΒΔ) as well as the account role,
- * because most of the roster has no account yet: 16 profiles carry a marker
- * while only 4 hold a management role. Going by role alone would hide every
- * deputy who has not signed up.
+ * Is this person management? By their role — the account's, else the role the
+ * admin planned, else the schedule marker (Δ / ΒΔΑ / ΒΔ). Most of the roster has
+ * no account yet, so the planned role and the marker cover deputies who have not
+ * signed up, including those whose timetable name carries no marker.
  */
 export function isManagementRow(row: StaffRow): boolean {
-  if (row.role && MANAGEMENT_ROLES.includes(row.role)) return true;
-  return isManagementName(row.scheduleName);
+  return isManagementRole(
+    effectiveStaffRole({ accountRole: row.role, plannedRole: row.plannedRole, scheduleName: row.scheduleName }),
+  );
 }
 
 /** The name to show and to sort by: schedule coding first, account name as fallback. */

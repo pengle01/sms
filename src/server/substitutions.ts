@@ -16,6 +16,7 @@ import {
   type SubSlot,
   type SubTeacher,
 } from "@/lib/substitutions";
+import { effectiveStaffRole, isManagementRole } from "@/lib/staffRole";
 
 function iso(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -57,7 +58,7 @@ async function loadEngineInput(date: Date) {
     }),
     db.staffProfile.findMany({
       where: { userId: { not: null }, user: { is: { isActive: true } } },
-      select: { id: true, scheduleName: true, maxSubstitutions: true },
+      select: { id: true, scheduleName: true, maxSubstitutions: true, plannedRole: true, user: { select: { role: true } } },
     }),
     db.substitutionRequest.findMany({ where: requestsWhere(date) }),
     getRooms(),
@@ -96,6 +97,9 @@ async function loadEngineInput(date: Date) {
     staffId: t.id,
     scheduleName: t.scheduleName ?? "",
     maxSubstitutions: t.maxSubstitutions,
+    isManagement: isManagementRole(
+      effectiveStaffRole({ accountRole: t.user?.role, plannedRole: t.plannedRole, scheduleName: t.scheduleName }),
+    ),
     yearCount: yearCount.get(t.id) ?? 0,
     recentCount: recentCount.get(t.id) ?? 0,
   }));

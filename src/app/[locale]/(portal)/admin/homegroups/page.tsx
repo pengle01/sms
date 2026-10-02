@@ -58,12 +58,15 @@ export default async function HomegroupsPage({
     // Everyone on the staff roster, with or without an account: a homegroup can
     // be assigned before the person signs up (see homegroupCandidates).
     db.staffProfile.findMany({
-      select: { id: true, scheduleName: true, leftTimetableAt: true, user: { select: { name: true, role: true } } },
+      select: { id: true, scheduleName: true, leftTimetableAt: true, plannedRole: true, user: { select: { name: true, role: true } } },
     }),
   ]);
   const byId = new Map(profiles.map((p) => [p.id, p]));
   const candidates = homegroupCandidates(
-    profiles.map((p) => ({ id: p.id, scheduleName: p.scheduleName, role: p.user?.role ?? null, leftTimetable: p.leftTimetableAt !== null })),
+    profiles.map((p) => ({
+      id: p.id, scheduleName: p.scheduleName, role: p.user?.role ?? null,
+      plannedRole: p.plannedRole, leftTimetable: p.leftTimetableAt !== null,
+    })),
   );
   const noAccount = t("noAccountSuffix");
   const candidateOption = (c: { id: string; hasAccount: boolean }) => {

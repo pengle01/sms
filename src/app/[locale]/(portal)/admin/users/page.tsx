@@ -25,7 +25,8 @@ import {
   lessonsByName,
   migrateLegacyRole,
 } from "@/lib/staffFilter";
-import { isManagementName } from "@/lib/substitutions";
+import { roleFromScheduleName } from "@/lib/staffRole";
+import { PlannedRoleSelect } from "./PlannedRoleSelect";
 
 const ROLE_COLOR: Record<string, string> = {
   SUPER_ADMIN:       "bg-purple-100 text-purple-700 border-purple-200",
@@ -141,6 +142,7 @@ export default async function UsersPage({
       substitutionCoordinator: sp.substitutionCoordinator,
       itMaintenance: sp.itMaintenance,
       parentMessaging: sp.parentMessaging,
+      plannedRole: sp.plannedRole,
       homerooms: [
         ...sp.homeroomGroups.map((g) => g.name),
         ...sp.homeroomHeadGroups.map((g) => `${g.name} (B')`),
@@ -163,6 +165,7 @@ export default async function UsersPage({
       substitutionCoordinator: false,
       itMaintenance: false,
       parentMessaging: false,
+      plannedRole: null,
       homerooms: [],
       lessons: 0,
     })),
@@ -380,13 +383,6 @@ export default async function UsersPage({
                 rows.map((r) => {
                   const status = staffStatus(r);
                   const label = staffRowLabel(r) || "—";
-                  // The schedule marker is the only clue to a deputy who has not
-                  // signed up yet, but it is the timetable's word, not a granted
-                  // role — so it is badged separately and labelled as such.
-                  const scheduleMarker =
-                    !r.role && isManagementName(r.scheduleName)
-                      ? r.scheduleName!.trim().split(/\s+/).pop()!
-                      : null;
                   return (
                     <tr
                       key={r.userId ?? r.staffProfileId}
@@ -420,14 +416,15 @@ export default async function UsersPage({
                               {tRoles(r.role)}
                             </Badge>
                           )}
-                          {scheduleMarker && (
-                            <Badge
-                              variant="outline"
-                              title={t("badgeScheduleMarkerHint")}
-                              className="text-xs bg-slate-50 text-slate-500 border-slate-200"
-                            >
-                              {t("badgeScheduleMarker", { marker: scheduleMarker })}
-                            </Badge>
+                          {/* No account yet: the role they will hold. Defaults to the
+                              timetable name's marker; the admin sets it for a deputy
+                              whose name has no «ΒΔ», or a teacher with deputy duties. */}
+                          {!r.userId && r.staffProfileId && (
+                            <PlannedRoleSelect
+                              staffProfileId={r.staffProfileId}
+                              plannedRole={r.plannedRole}
+                              nameRole={roleFromScheduleName(r.scheduleName)}
+                            />
                           )}
                           {r.extraAdmin && (
                             <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">

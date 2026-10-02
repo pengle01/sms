@@ -236,6 +236,10 @@ model StaffProfile {
   // column (the teacher left); cleared when a later import lists it again. Such
   // profiles are no longer offered at sign-up or in the teacher search.
   leftTimetableAt         DateTime?
+  // The role this person holds, set by the admin before they sign up (their
+  // timetable name may lack the ΒΔ/ΒΔΑ/Δ marker). Null → guessed from the name.
+  // Once they have an account, User.role is what counts.
+  plannedRole             Role?
   // Substitution quota: null = unlimited, 0 = never picked
   maxSubstitutions        Int?
 

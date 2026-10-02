@@ -52,6 +52,8 @@ export interface SubTeacher {
   staffId: string;
   scheduleName: string;
   maxSubstitutions: number | null; // null = unlimited, 0 = never
+  /** Holds a management role (account or planned) — never a substitute, marker or not. */
+  isManagement?: boolean;
   yearCount: number; // substitutions this school year (FINAL plans)
   recentCount: number; // substitutions in the last 7 days
 }
@@ -117,11 +119,13 @@ export function isManagementName(scheduleName: string | null | undefined): boole
  */
 export function isPoolEligible(
   scheduleName: string | null | undefined,
-  maxSubstitutions: number | null | undefined
+  maxSubstitutions: number | null | undefined,
+  isManagement = false,
 ): boolean {
   const name = (scheduleName ?? "").trim();
   if (!name) return false;
-  if (isManagementName(name)) return false;
+  // A deputy whose timetable name lacks the marker is still management.
+  if (isManagement || isManagementName(name)) return false;
   const prefix = specialtyPrefix(name);
   if (prefix === "Ξ" || prefix === "Σ" || prefix === "ΣΕΑ") return false;
   if (maxSubstitutions === 0) return false;
@@ -317,7 +321,7 @@ export function buildPlan(input: BuildPlanInput): PlanEntryDraft[] {
     const candidates = teachers
       .filter((t) => {
         if (t.staffId === v.slot.staffId) return false;
-        if (!isPoolEligible(t.scheduleName, t.maxSubstitutions)) return false;
+        if (!isPoolEligible(t.scheduleName, t.maxSubstitutions, t.isManagement)) return false;
         if (unavailable.has(t.staffId)) return false;
         if (busy.has(`${t.staffId}:${p}`)) return false; // must be free that period
         if (!lessonsToday.has(t.staffId)) return false; // not at school that day

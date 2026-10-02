@@ -12,6 +12,7 @@ import { ImportCard } from "./ImportCard";
 import { ConfirmRegenerate } from "./ConfirmRegenerate";
 import { staffDisplayName } from "@/lib/staffName";
 import { isPoolEligible } from "@/lib/substitutions";
+import { effectiveStaffRole, isManagementRole } from "@/lib/staffRole";
 import { ChevronLeft, Printer, Sparkles, CheckCircle2, Info, Trash2, FileUp } from "lucide-react";
 import {
   generatePlanAction,
@@ -74,7 +75,7 @@ export default async function SubstitutionPlanPage({
     }),
     db.staffProfile.findMany({
       where: { userId: { not: null }, user: { is: { isActive: true } } },
-      select: { id: true, scheduleName: true, maxSubstitutions: true, user: { select: { name: true } } },
+      select: { id: true, scheduleName: true, maxSubstitutions: true, plannedRole: true, user: { select: { name: true, role: true } } },
       orderBy: { scheduleName: "asc" },
     }),
   ]);
@@ -90,7 +91,11 @@ export default async function SubstitutionPlanPage({
   const supportMerges = entries.filter((e) => e.kind === "SUPPORT_MERGE");
 
   const eligibleOptions = allStaff.filter((s) =>
-    isPoolEligible(s.scheduleName, s.maxSubstitutions)
+    isPoolEligible(
+      s.scheduleName,
+      s.maxSubstitutions,
+      isManagementRole(effectiveStaffRole({ accountRole: s.user?.role, plannedRole: s.plannedRole, scheduleName: s.scheduleName })),
+    )
   );
 
   const generateAction = generatePlanAction.bind(null, locale, dateStr);

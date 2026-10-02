@@ -31,6 +31,7 @@ function row(over: Partial<StaffRow> = {}): StaffRow {
     substitutionCoordinator: false,
     itMaintenance: false,
     parentMessaging: false,
+    plannedRole: null,
     homerooms: [],
     lessons: 0,
     ...over,
@@ -82,6 +83,10 @@ describe("isManagementRow", () => {
 
   it("is false for an initial that happens to be Δ", () => {
     expect(isManagementRow(row({ scheduleName: "Ε-ΛΑΜΠΡΟΥ Δ." }))).toBe(false);
+  });
+
+  it("is true for a planned deputy role on an unmarked name", () => {
+    expect(isManagementRow(row({ scheduleName: "Α-ΝΙΚΟΛΑΟΥ Κ.", plannedRole: "HEADTEACHER_B" }))).toBe(true);
   });
 
   it("is true for a management account role even with no schedule marker", () => {

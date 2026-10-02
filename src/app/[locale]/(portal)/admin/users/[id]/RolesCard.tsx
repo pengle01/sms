@@ -17,7 +17,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ShieldCheck, ShieldOff, HeartHandshake, ArrowLeftRight, Award, Wrench, MessageSquare, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { grantSuperAdmin, revokeSuperAdmin, setSpecialEducation, setSubstitutionCoordinator, setDdkCoordinator, setItMaintenance, setParentMessaging } from "./actions";
+import type { Role } from "@/generated/prisma/client";
+import { STAFF_PROFILE_ROLES } from "@/lib/staffRole";
+import { grantSuperAdmin, revokeSuperAdmin, setSpecialEducation, setSubstitutionCoordinator, setDdkCoordinator, setItMaintenance, setParentMessaging, setUserRole } from "./actions";
 
 interface Props {
   userId: string;
@@ -37,6 +39,8 @@ interface Props {
   ddkCoordinator: boolean;
   itMaintenance: boolean;
   parentMessaging: boolean;
+  /** The account's primary role (changeable here between educator roles). */
+  currentRole: Role;
 }
 
 export function RolesCard({
@@ -52,6 +56,7 @@ export function RolesCard({
   ddkCoordinator,
   itMaintenance,
   parentMessaging,
+  currentRole,
 }: Props) {
   const t = useTranslations("adminUsers");
   const router = useRouter();
@@ -77,6 +82,30 @@ export function RolesCard({
       </div>
       <div className="flex-shrink-0">{control}</div>
     </div>
+  );
+
+  // ── Educator role (teacher ↔ counselor ↔ deputies ↔ headmaster) ─────────
+  const tRoles = useTranslations("roles");
+  const canChangeRole = STAFF_PROFILE_ROLES.includes(currentRole);
+  const roleControl = !canChangeRole ? (
+    <span className="text-xs text-slate-500">{tRoles(currentRole)}</span>
+  ) : (
+    <select
+      aria-label={t("rowRole")}
+      disabled={pending || isSelf}
+      value={currentRole}
+      onChange={(e) => {
+        const next = e.target.value as Role;
+        run(() => setUserRole(userId, next), t("roleChanged", { role: tRoles(next) }));
+      }}
+      className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 disabled:opacity-50"
+    >
+      {STAFF_PROFILE_ROLES.map((r) => (
+        <option key={r} value={r}>
+          {tRoles(r)}
+        </option>
+      ))}
+    </select>
   );
 
   // ── System administrator control ────────────────────────────────────────
@@ -279,6 +308,7 @@ export function RolesCard({
         </CardTitle>
       </CardHeader>
       <CardContent className="divide-y divide-slate-50">
+        {row(t("rowRole"), roleControl, canChangeRole ? t("rowRoleHint") : undefined)}
         {row(t("rowSystemAdmin"), adminControl, adminHint)}
         {row(t("rowSpecialEd"), specialEdControl, t("rowSpecialEdHint"))}
         {row(t("rowSubCoord"), coordinatorControl, t("rowSubCoordHint"))}

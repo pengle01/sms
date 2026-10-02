@@ -1256,8 +1256,6 @@
     "post_subCoord": "Συντ. Αναπληρώσεων",
     "post_homeroom": "Υπεύθυνος τμήματος",
     "post_extraAdmin": "+Διαχειριστής",
-    "badgeScheduleMarker": "{marker} (πρόγραμμα)",
-    "badgeScheduleMarkerHint": "Ένδειξη από το πρόγραμμα — δεν έχει εγγραφεί ακόμη λογαριασμός με ρόλο διεύθυνσης.",
     "searchPlaceholder": "Όνομα, κωδικός προγράμματος ή email",
     "clearFilters": "Καθαρισμός",
     "noMatches": "Κανένα αποτέλεσμα.",
@@ -1366,7 +1364,14 @@
     "roomsSelected": "{count, plural, one {# αίθουσα} other {# αίθουσες}}",
     "roomsTakenLegend": "έχει ήδη άλλον υπεύθυνο",
     "saveRooms": "Αποθήκευση αιθουσών",
-    "roomsSaved": "Οι αίθουσες αποθηκεύτηκαν"
+    "roomsSaved": "Οι αίθουσες αποθηκεύτηκαν",
+    "rowRole": "Ρόλος",
+    "rowRoleHint": "Π.χ. εκπαιδευτικός με καθήκοντα Β.Δ. Το μενού και τα δικαιώματα ακολουθούν τον ρόλο· ο χρήστης να αποσυνδεθεί και να συνδεθεί ξανά.",
+    "roleChanged": "Ο ρόλος άλλαξε σε «{role}»",
+    "plannedRoleLabel": "Ρόλος (πριν την εγγραφή)",
+    "plannedRoleHint": "Ο ρόλος του προσώπου πριν εγγραφεί. Αν μείνει κενό, ακολουθεί την ένδειξη του ωρολογίου (π.χ. ΒΔ).",
+    "plannedRoleFromName": "Από το ωρολόγιο: {role}",
+    "plannedRoleSaved": "Ο ρόλος αποθηκεύτηκε"
   },
   "adminStudents": {
     "title": "Μαθητές",

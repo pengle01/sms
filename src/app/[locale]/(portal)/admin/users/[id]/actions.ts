@@ -7,6 +7,8 @@ import { getSuperAdminAuth } from "@/server/authz";
 import { writeAudit, requestMeta } from "@/server/audit";
 import { validateAdminGrant, validateAdminRevoke, validateUserDelete } from "@/lib/roleAssignment";
 import { PASSWORD_MIN_LENGTH as MIN_PASSWORD_LENGTH } from "@/lib/password";
+import { roleChangeError, STAFF_PROFILE_ROLES } from "@/lib/staffRole";
+import type { Role } from "@/generated/prisma/client";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -426,5 +428,68 @@ export async function setMaintainedRooms(
   for (const portal of ["teacher", "office", "admin"]) {
     revalidatePath(`/[locale]/(portal)/${portal}/maintenance`, "page");
   }
+  return { ok: true };
+}
+
+const ROLE_CHANGE_ERRORS = {
+  self: "Δεν μπορείτε να αλλάξετε τον δικό σας ρόλο",
+  notStaffRole: "Ο ρόλος αλλάζει μόνο μεταξύ εκπαιδευτικών ρόλων",
+  noChange: "Ο χρήστης έχει ήδη αυτόν τον ρόλο",
+} as const;
+
+/**
+ * Change an educator's role (e.g. a teacher given deputy duties, or a deputy
+ * whose timetable name lacks «ΒΔ» and who signed up as a teacher). The menu,
+ * homegroup lists and permissions follow the account role; pages that read it
+ * from the login session catch up at the next sign-in.
+ */
+export async function setUserRole(targetUserId: string, role: Role): Promise<ActionResult> {
+  const auth = await getSuperAdminAuth();
+  if (!auth) return { ok: false, error: "Δεν επιτρέπεται" };
+
+  const target = await db.user.findUnique({ where: { id: targetUserId }, select: { role: true } });
+  if (!target) return { ok: false, error: "Ο χρήστης δεν βρέθηκε" };
+
+  const err = roleChangeError({ actorId: auth.userId, targetId: targetUserId, currentRole: target.role, newRole: role });
+  if (err) return { ok: false, error: ROLE_CHANGE_ERRORS[err] };
+
+  await db.user.update({ where: { id: targetUserId }, data: { role } });
+  await writeAudit({
+    userId: auth.userId,
+    action: "user.setRole",
+    resource: "User",
+    resourceId: targetUserId,
+    details: { from: target.role, to: role },
+    ...(await requestMeta()),
+  });
+  revalidateUsers();
+  revalidatePath("/[locale]/(portal)/admin/homegroups", "page");
+  return { ok: true };
+}
+
+/**
+ * The role a roster profile WITHOUT an account holds — set before they sign up,
+ * for names the timetable does not mark (no «ΒΔ»). null = follow the name.
+ */
+export async function setPlannedRole(staffProfileId: string, role: Role | null): Promise<ActionResult> {
+  const auth = await getSuperAdminAuth();
+  if (!auth) return { ok: false, error: "Δεν επιτρέπεται" };
+  if (role !== null && !STAFF_PROFILE_ROLES.includes(role)) return { ok: false, error: "Μη έγκυρος ρόλος" };
+
+  const profile = await db.staffProfile.findUnique({ where: { id: staffProfileId }, select: { userId: true } });
+  if (!profile) return { ok: false, error: "Το προφίλ δεν βρέθηκε" };
+  if (profile.userId) return { ok: false, error: "Έχει λογαριασμό — αλλάξτε τον ρόλο από τη σελίδα του χρήστη" };
+
+  await db.staffProfile.update({ where: { id: staffProfileId }, data: { plannedRole: role } });
+  await writeAudit({
+    userId: auth.userId,
+    action: "staff.plannedRole",
+    resource: "StaffProfile",
+    resourceId: staffProfileId,
+    details: { role },
+    ...(await requestMeta()),
+  });
+  revalidateUsers();
+  revalidatePath("/[locale]/(portal)/admin/homegroups", "page");
   return { ok: true };
 }

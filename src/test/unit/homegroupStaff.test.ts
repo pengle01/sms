@@ -38,6 +38,20 @@ describe("homegroupCandidates", () => {
     expect(r.headteachers).toEqual([]);
   });
 
+  it("places an unmarked deputy as headteacher by account role or planned role", () => {
+    const r = homegroupCandidates([
+      p("acct", "Μ-ΧΩΡΙΣ ΣΗΜΑ Α.", "HEADTEACHER_B"),
+      { id: "planned", scheduleName: "Φ-ΧΩΡΙΣ ΣΗΜΑ Β.", role: null, plannedRole: "HEADTEACHER_B", leftTimetable: false },
+    ]);
+    expect(ids(r.headteachers)).toEqual(["acct", "planned"]);
+    expect(r.teachers).toEqual([]);
+  });
+
+  it("a planned role overrides the name marker", () => {
+    const r = homegroupCandidates([{ id: "x", scheduleName: "Φ-ΒΗΤΑ Β. ΒΔ", role: null, plannedRole: "TEACHER", leftTimetable: false }]);
+    expect(ids(r.teachers)).toEqual(["x"]);
+  });
+
   it("skips profiles that left the timetable or have no name", () => {
     const r = homegroupCandidates([p("x", "Μ-ΠΑΛΙΟΣ Α.", null, true), p("y", null)]);
     expect(r.teachers).toEqual([]);
