@@ -39,7 +39,7 @@ export async function StaffNotificationsHub({
   if (!auth) redirect(`/${locale}/login/staff`);
   const t = await getTranslations("staffNotify");
   const td = await getTranslations("dashboard");
-  const tn = await getTranslations("notifications");
+  const tNav = await getTranslations("nav");
 
   const canManage = canManageAnnouncements(auth.roles);
   const canSend = canSendStaffNotifications(auth.roles);
@@ -143,19 +143,7 @@ export async function StaffNotificationsHub({
           {td(`err_${announcementError}`)}
         </div>
       )}
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-2xl font-bold text-slate-900">{tn("title")}</h2>
-        {/* Management and the office compose ad-hoc messages to teachers */}
-        {canSend && (
-          <Link
-            href={`${hub}/compose`}
-            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
-          >
-            <PenSquare className="w-4 h-4" />
-            {t("newMessage")}
-          </Link>
-        )}
-      </div>
+      <h2 className="text-2xl font-bold text-slate-900">{tNav("communication")}</h2>
 
       {canManage || canSend ? (
         <ReferralTabs
@@ -166,6 +154,17 @@ export async function StaffNotificationsHub({
               label: t("tabMessages"),
               content: (
                 <div className="space-y-4">
+                  {/* Management and the office compose ad-hoc messages to teachers —
+                      inside the tab, like «Νέα Ανακοίνωση» in its own. */}
+                  {canSend && (
+                    <Link
+                      href={`${hub}/compose`}
+                      className="inline-flex w-fit items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
+                    >
+                      <PenSquare className="w-4 h-4" />
+                      {t("newMessage")}
+                    </Link>
+                  )}
                   <NotificationsBoard locale={locale} />
                   {/* Sent staff-notification history lives under Notifications (received vs sent),
                       collapsed by default so it doesn't crowd the inbox. */}

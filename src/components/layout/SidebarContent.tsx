@@ -32,7 +32,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "referrals",    href: "referrals",           icon: AlertTriangle,   roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "grades",       href: "grades",              icon: BookOpen,        roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","TEACHER"] },
   { key: "tests",        href: "tests",               icon: FileText,        roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","TEACHER"] },
-  { key: "noticeboard",  href: "noticeboard",       icon: Bell,            roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
+  { key: "communication", href: "noticeboard",      icon: Bell,            roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "messages",     href: "messages",          icon: MessageSquare,   roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "activities",   href: "activities",        icon: CalendarRange,   roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "substitutions", href: "substitutions",    icon: ArrowLeftRight,  roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
@@ -47,7 +47,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "reports",      href: "attendance/reports", icon: BarChart3,      roles: ["SCHOOL_ADMIN"] },
   { key: "students",     href: "students",          icon: GraduationCap,   roles: ["SCHOOL_ADMIN"] },
   { key: "whereabouts",  href: "whereabouts",       icon: MapPin,          roles: ["SCHOOL_ADMIN"] },
-  { key: "noticeboard",  href: "noticeboard",       icon: Bell,            roles: ["SCHOOL_ADMIN"] },
+  { key: "communication", href: "notifications",    icon: Bell,            roles: ["SCHOOL_ADMIN"] },
   { key: "maintenance",  href: "maintenance",       icon: Wrench,          roles: ["SCHOOL_ADMIN"] },
 
   // ── Admin portal (/admin) — registrations & system ───────────────────
@@ -62,7 +62,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "checks",       href: "checks",            icon: ShieldAlert,     roles: ["SUPER_ADMIN"] },
   { key: "referrals",    href: "referrals",         icon: AlertTriangle,   roles: ["SUPER_ADMIN"] },
   { key: "permits",      href: "permits",           icon: LogOut,          roles: ["SUPER_ADMIN"] },
-  { key: "noticeboard",  href: "notifications",     icon: Bell,            roles: ["SUPER_ADMIN"] },
+  { key: "communication", href: "notifications",    icon: Bell,            roles: ["SUPER_ADMIN"] },
   { key: "notices",      href: "noticeboard",       icon: Megaphone,       roles: ["SUPER_ADMIN"] },
   { key: "maintenance",  href: "maintenance",       icon: Wrench,          roles: ["SUPER_ADMIN"] },
   { key: "calendar",     href: "calendar",          icon: CalendarRange,   roles: ["SUPER_ADMIN"] },

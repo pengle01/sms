@@ -77,6 +77,7 @@
     "timetable": "Ωρολόγιο Πρόγραμμα",
     "tests": "Διαγωνίσματα",
     "noticeboard": "Ειδοποιήσεις",
+    "communication": "Επικοινωνία",
     "students": "Μαθητές",
     "homegroups": "Τμήματα",
     "allGroups": "Όλες οι Ομάδες",
@@ -1617,9 +1618,6 @@
     "pageOf": "Σελίδα {page} από {total}",
     "previous": "Προηγούμενη",
     "next": "Επόμενη"
-  },
-  "adminNotifications": {
-    "title": "Ειδοποιήσεις"
   },
   "adminGroupDetail": {
     "back": "Τμήματα",

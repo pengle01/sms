@@ -14,11 +14,11 @@ export default async function AdminNotificationsPage({
   const auth = await getSuperAdminAuth();
   if (!auth) redirect(`/${locale}/login/staff`);
 
-  const t = await getTranslations("adminNotifications");
+  const t = await getTranslations("nav");
 
   return (
     <div className="space-y-5">
-      <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>
+      <h2 className="text-2xl font-bold text-slate-900">{t("communication")}</h2>
       <NotificationsBoard locale={locale} />
     </div>
   );

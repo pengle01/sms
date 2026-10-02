@@ -77,6 +77,7 @@
     "timetable": "Timetable",
     "tests": "Tests",
     "noticeboard": "Notifications",
+    "communication": "Communication",
     "students": "Students",
     "homegroups": "Homegroups",
     "allGroups": "All Groups",
@@ -1617,9 +1618,6 @@
     "pageOf": "Page {page} of {total}",
     "previous": "Previous",
     "next": "Next"
-  },
-  "adminNotifications": {
-    "title": "Notifications"
   },
   "adminGroupDetail": {
     "back": "Groups",
