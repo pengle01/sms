@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { roleFromScheduleName, effectiveStaffRole, isManagementRole, roleChangeError } from "@/lib/staffRole";
+import { roleFromScheduleName, effectiveStaffRole, isManagementRole, roleChangeError, expectedSignupRole } from "@/lib/staffRole";
 
 describe("roleFromScheduleName", () => {
   it("reads the management markers and the counselor prefix", () => {
@@ -62,5 +62,19 @@ describe("roleChangeError", () => {
 
   it("reports no change", () => {
     expect(roleChangeError({ ...base, newRole: "TEACHER" })).toBe("noChange");
+  });
+});
+
+describe("expectedSignupRole", () => {
+  it("is the planned role when the admin set one", () => {
+    expect(expectedSignupRole({ plannedRole: "HEADTEACHER_B", scheduleName: "Μ-ΧΩΡΙΣ ΣΗΜΑ Α." })).toBe("HEADTEACHER_B");
+  });
+
+  it("is the name marker's role otherwise", () => {
+    expect(expectedSignupRole({ plannedRole: null, scheduleName: "Μ-ΑΛΦΑ Α. ΒΔ" })).toBe("HEADTEACHER_B");
+  });
+
+  it("expects nothing in particular for an unmarked name", () => {
+    expect(expectedSignupRole({ plannedRole: null, scheduleName: "Μ-ΑΛΦΑ Α." })).toBeNull();
   });
 });

@@ -63,3 +63,14 @@ export function roleChangeError(input: {
   if (input.currentRole === input.newRole) return "noChange";
   return null;
 }
+
+/**
+ * The role a sign-up is expected to choose for their timetable name, or null
+ * when nothing points anywhere in particular (an unmarked name with no planned
+ * role — any educator role is plausible). Drives the approvals warning only.
+ */
+export function expectedSignupRole(p: { plannedRole: Role | null | undefined; scheduleName: string | null | undefined }): Role | null {
+  if (p.plannedRole) return p.plannedRole;
+  const fromName = roleFromScheduleName(p.scheduleName);
+  return fromName === "TEACHER" ? null : fromName;
+}

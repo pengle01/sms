@@ -1779,7 +1779,7 @@
     "postTeacher": "Homeroom teacher: {groups}",
     "postHeadteacher": "Homeroom deputy (ΒΔ): {groups}",
     "postCounselor": "Counselor (ΣΕΑ): {groups}",
-    "roleMismatch": "These posts need the “{role}” role — the user signed up with another. If approved as is, the assignment stays but without that role's access."
+    "roleMismatch": "Expected role: “{role}” — the user chose another. After approving, you can change the role on the user's page."
   },
   "adminNoticeboard": {
     "title": "Noticeboard",

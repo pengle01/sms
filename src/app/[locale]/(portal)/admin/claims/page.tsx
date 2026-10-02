@@ -6,6 +6,7 @@ import type { Role } from "@/generated/prisma/client";
 import { RequestsList } from "./RequestsList";
 import { normalizeStaffName } from "@/lib/staffLink";
 import { roleNeededFor } from "@/lib/homegroupStaff";
+import { expectedSignupRole } from "@/lib/staffRole";
 import type { PendingUser, PendingClaim, PendingChaperone } from "./RequestsList";
 
 export default async function ClaimsPage({
@@ -51,6 +52,7 @@ export default async function ClaimsPage({
     where: { userId: null, scheduleName: { not: null } },
     select: {
       scheduleName: true,
+      plannedRole: true,
       homeroomGroups: { select: { name: true } },
       homeroomHeadGroups: { select: { name: true } },
       homeroomCounselorGroups: { select: { name: true } },
@@ -63,6 +65,7 @@ export default async function ClaimsPage({
         teacherOf: p.homeroomGroups.map((g) => g.name),
         headteacherOf: p.homeroomHeadGroups.map((g) => g.name),
         counselorOf: p.homeroomCounselorGroups.map((g) => g.name),
+        expected: expectedSignupRole({ plannedRole: p.plannedRole, scheduleName: p.scheduleName }),
       },
     ]),
   );
@@ -77,7 +80,9 @@ export default async function ClaimsPage({
     ...(() => {
       const posts = u.teacherClaim ? postsByName.get(normalizeStaffName(u.teacherClaim.staffName)) : undefined;
       if (!posts) return {};
-      const needed = roleNeededFor(posts);
+      // The homegroup posts decide first; otherwise the admin's planned role or
+      // the timetable marker. The teacher's own choice stands — this only warns.
+      const needed = roleNeededFor(posts) ?? posts.expected;
       return { posts, roleMismatch: needed !== null && needed !== u.role ? needed : undefined };
     })(),
   }));
