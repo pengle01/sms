@@ -1,5 +1,5 @@
 import { ChevronDown } from "lucide-react";
-import { recommendationLabel } from "@/lib/referralLabels";
+import { referralRecommendations, recommendationsLabel } from "@/lib/referralLabels";
 
 // Full referral details, expandable in place. Everyone who can see the
 // referral sees everything: description, location, incident time, the filer's
@@ -13,10 +13,12 @@ export function ReferralInfo({
     incidentTime: string | null;
     extraInfo: string | null;
     recommendation: string;
+    recommendations?: string[];
   };
 }) {
   const r = referral;
-  const hasMore = !!(r.location || r.incidentTime || r.extraInfo || (r.recommendation && r.recommendation !== "NO_RECOMMENDATION"));
+  const recs = referralRecommendations(r);
+  const hasMore = !!(r.location || r.incidentTime || r.extraInfo || recs.length > 0);
 
   return (
     <details className="group">
@@ -39,8 +41,8 @@ export function ReferralInfo({
           {r.extraInfo && (
             <div><dt className="inline font-semibold text-slate-600">Επιπλέον πληροφορίες: </dt><dd className="inline whitespace-pre-wrap">{r.extraInfo}</dd></div>
           )}
-          {r.recommendation && r.recommendation !== "NO_RECOMMENDATION" && (
-            <div><dt className="inline font-semibold text-slate-600">Εισήγηση: </dt><dd className="inline">{recommendationLabel(r.recommendation)}</dd></div>
+          {recs.length > 0 && (
+            <div><dt className="inline font-semibold text-slate-600">Εισήγηση: </dt><dd className="inline">{recommendationsLabel(recs)}</dd></div>
           )}
         </dl>
       )}

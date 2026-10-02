@@ -14,6 +14,24 @@ export function recommendationLabel(value: string): string {
   return RECOMMENDATION_LABEL[value] ?? value;
 }
 
+/**
+ * A referral's recommendations: the list (several may be ticked), or — for a
+ * referral filed before that — its single legacy value. «Καμία εισήγηση» and an
+ * empty list both mean none.
+ */
+export function referralRecommendations(r: {
+  recommendations?: readonly string[] | null;
+  recommendation?: string | null;
+}): string[] {
+  if (r.recommendations && r.recommendations.length > 0) return [...r.recommendations];
+  return r.recommendation && r.recommendation !== "NO_RECOMMENDATION" ? [r.recommendation] : [];
+}
+
+/** "Αυστηρή παρατήρηση · Ενημέρωση γονέων" — empty string for none. */
+export function recommendationsLabel(values: readonly string[]): string {
+  return values.map(recommendationLabel).join(" · ");
+}
+
 export const ACTION_LABEL: Record<string, string> = {
   DETENTION: "Αποβολή",
   PEDAGOGICAL_DIALOGUE: "Παιδαγωγικός Διάλογος",

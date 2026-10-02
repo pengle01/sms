@@ -799,7 +799,12 @@ model Referral {
   location       String?
   incidentTime   String?
   extraInfo      String?                @db.Text
+  // Legacy single recommendation — referrals filed before several could be
+  // ticked. New referrals leave it at the default and use `recommendations`.
+  // Read both through referralRecommendations() in src/lib/referralLabels.ts.
   recommendation ReferralRecommendation @default(NO_RECOMMENDATION)
+  // The teacher's recommendations to management (any number; empty = none).
+  recommendations ReferralRecommendation[] @default([])
   date           DateTime
   isDraft        Boolean                @default(false)
   // Set the first time a headteacher opens the referral to examine it.

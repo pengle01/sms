@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { ChevronRight, Loader2, X, Printer, MessageSquare, CheckCircle2, Plus, CalendarDays } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { totalPeriodsForDays } from "@/lib/periods";
-import { recommendationLabel } from "@/lib/referralLabels";
+import { recommendationsLabel } from "@/lib/referralLabels";
 
 const ACTIONS = [
   { value: "PEDAGOGICAL_DIALOGUE", label: "Παιδαγωγικός Διάλογος" },
@@ -24,7 +24,8 @@ interface Props {
   referralId: string;
   referralStudentId?: string;
   studentNames: string[];
-  recommendation?: string;
+  /** The filing teacher's recommendations (empty = none). */
+  recommendations?: string[];
   canViewCounselorNotes?: boolean;
   groupResolve?: boolean;
   locale?: string;
@@ -64,7 +65,7 @@ export function ResolveReferralDialog({
   referralId,
   referralStudentId,
   studentNames,
-  recommendation,
+  recommendations = [],
   canViewCounselorNotes = false,
   groupResolve = false,
   locale = "el",
@@ -250,10 +251,10 @@ export function ResolveReferralDialog({
           ) : (
             /* ── RESOLVE FORM ── */
             <>
-              {recommendation && recommendation !== "NO_RECOMMENDATION" && (
+              {recommendations.length > 0 && (
                 <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
                   <span className="font-semibold">Εισήγηση εκπαιδευτικού: </span>
-                  {recommendationLabel(recommendation)}
+                  {recommendationsLabel(recommendations)}
                 </div>
               )}
 

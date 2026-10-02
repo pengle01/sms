@@ -25,8 +25,10 @@ interface Props {
   locale: string;
 }
 
-const REC_LABELS: Record<ReferralRecommendation, string> = {
-  NO_RECOMMENDATION: "Καμία εισήγηση",
+// Any number may be ticked; none ticked = no recommendation (so there is no
+// «Καμία εισήγηση» box).
+type RecommendationChoice = Exclude<ReferralRecommendation, "NO_RECOMMENDATION">;
+const REC_LABELS: Record<RecommendationChoice, string> = {
   EXPULSION: "Παρακαλώ όπως επιβληθεί αποβολή",
   STRICT_MEASURE: "Αυστηρό παιδαγωγικό μέτρο",
   OBSERVATION: "Παρατήρηση (να μην επιβληθεί αποβολή)",
@@ -47,7 +49,9 @@ export function ReferralForm({ groups, filerName, locale }: Props) {
   const [incidentTime, setIncidentTime] = useState("");
   const [description, setDescription] = useState("");
   const [extraInfo, setExtraInfo] = useState("");
-  const [recommendation, setRecommendation] = useState<ReferralRecommendation>("NO_RECOMMENDATION");
+  const [recommendations, setRecommendations] = useState<RecommendationChoice[]>([]);
+  const toggleRecommendation = (val: RecommendationChoice) =>
+    setRecommendations((cur) => (cur.includes(val) ? cur.filter((v) => v !== val) : [...cur, val]));
 
   const { mutate: createReferral, isPending } = trpc.referrals.create.useMutation({
     onSuccess: (_, vars) => {
@@ -69,7 +73,7 @@ export function ReferralForm({ groups, filerName, locale }: Props) {
         location: location || undefined,
         incidentTime: incidentTime || undefined,
         extraInfo: extraInfo || undefined,
-        recommendation,
+        recommendations,
         isDraft,
       });
     });
@@ -182,19 +186,20 @@ export function ReferralForm({ groups, filerName, locale }: Props) {
           </p>
         </div>
         <div className="space-y-2 mt-2">
-          {(Object.keys(REC_LABELS) as ReferralRecommendation[]).map((val) => (
+          {(Object.keys(REC_LABELS) as RecommendationChoice[]).map((val) => (
             <label key={val} className="flex items-start gap-2.5 cursor-pointer">
               <input
-                type="radio"
-                name="recommendation"
+                type="checkbox"
+                name="recommendations"
                 value={val}
-                checked={recommendation === val}
-                onChange={() => setRecommendation(val)}
-                className="mt-0.5 text-emerald-600 focus:ring-emerald-500"
+                checked={recommendations.includes(val)}
+                onChange={() => toggleRecommendation(val)}
+                className="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500"
               />
               <span className="text-sm text-slate-700">{REC_LABELS[val]}</span>
             </label>
           ))}
+          <p className="text-xs text-slate-400">Μπορείτε να επιλέξετε περισσότερες από μία. Αφήστε κενό αν δεν έχετε εισήγηση.</p>
         </div>
       </div>
 

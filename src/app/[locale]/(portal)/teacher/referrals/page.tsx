@@ -17,7 +17,7 @@ import { StudentsDropdown } from "@/components/referrals/StudentsDropdown";
 import { ReferralInfo } from "@/components/referrals/ReferralInfo";
 import { ReferralTabs } from "@/components/referrals/ReferralTabs";
 import { canDeleteReferral, overallStatus } from "@/lib/referralStatus";
-import { recommendationLabel, resolutionSummary } from "@/lib/referralLabels";
+import { referralRecommendations, recommendationsLabel, resolutionSummary } from "@/lib/referralLabels";
 import { parseReferralSearchTab, referralSearchWhere } from "@/lib/referralSearch";
 import { UnlockResolutionDialog } from "./UnlockResolutionDialog";
 import type { Role } from "@/generated/prisma/client";
@@ -241,7 +241,7 @@ export default async function TeacherReferralsPage({
             <ResolveReferralDialog
               referralId={r.id}
               studentNames={pendingNames}
-              recommendation={r.recommendation}
+              recommendations={referralRecommendations(r)}
               canViewCounselorNotes={showCounselorNotes}
               locale={locale}
               periodsConfig={periodsConfig}
@@ -342,10 +342,10 @@ export default async function TeacherReferralsPage({
               )}
             </div>
           )}
-          {r.recommendation && r.recommendation !== "NO_RECOMMENDATION" && (
+          {referralRecommendations(r).length > 0 && (
             <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
               <span className="font-semibold">Εισήγηση:</span>
-              {recommendationLabel(r.recommendation)}
+              {recommendationsLabel(referralRecommendations(r))}
             </div>
           )}
         </div>
@@ -357,7 +357,7 @@ export default async function TeacherReferralsPage({
               <ResolveReferralDialog
                 referralId={r.id}
                 studentNames={pendingMine.map((rs) => rs.student.user?.name ?? "").filter(Boolean)}
-                recommendation={r.recommendation}
+                recommendations={referralRecommendations(r)}
                 canViewCounselorNotes={showCounselorNotes}
                 groupResolve
                 locale={locale}
@@ -415,7 +415,7 @@ export default async function TeacherReferralsPage({
                   referralId={r.id}
                   referralStudentId={rs.id}
                   studentNames={[rs.student.user?.name ?? ""]}
-                  recommendation={r.recommendation}
+                  recommendations={referralRecommendations(r)}
                   canViewCounselorNotes={showCounselorNotes}
                   locale={locale}
                   periodsConfig={periodsConfig}

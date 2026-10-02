@@ -22,8 +22,8 @@ function reqMeta(req?: Request) {
   };
 }
 
+// What a teacher may recommend (several at once; none = no recommendation).
 const RECOMMENDATION_VALUES = [
-  "NO_RECOMMENDATION",
   "EXPULSION",
   "STRICT_MEASURE",
   "OBSERVATION",
@@ -56,7 +56,7 @@ export const referralsRouter = createTRPCRouter({
         location: z.string().optional(),
         incidentTime: z.string().optional(),
         extraInfo: z.string().optional(),
-        recommendation: z.enum(RECOMMENDATION_VALUES).default("NO_RECOMMENDATION"),
+        recommendations: z.array(z.enum(RECOMMENDATION_VALUES)).max(RECOMMENDATION_VALUES.length).default([]),
         isDraft: z.boolean().default(false),
       })
     )
@@ -93,7 +93,7 @@ export const referralsRouter = createTRPCRouter({
             location: input.location,
             incidentTime: input.incidentTime,
             extraInfo: input.extraInfo,
-            recommendation: input.recommendation,
+            recommendations: [...new Set(input.recommendations)],
             date: new Date(input.date),
             isDraft: input.isDraft,
             students: {
