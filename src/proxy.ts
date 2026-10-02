@@ -5,6 +5,8 @@ import { routing } from "@/i18n/routing";
 import { getToken } from "next-auth/jwt";
 import { USE_SECURE_COOKIES } from "@/lib/sessionCookie";
 import { getPortalForRole } from "@/lib/rbac";
+import { loginPathForPortal } from "@/lib/loginRedirect";
+import { publicOrigin } from "@/lib/redirect";
 import type { Role } from "@/generated/prisma/client";
 
 const intlMiddleware = createMiddleware(routing);
@@ -50,12 +52,10 @@ export default async function proxy(request: NextRequest) {
     });
 
     if (!token) {
-      const segments = pathname.split("/").filter(Boolean);
-      const locale = segments[0] === "en" ? "en" : "el";
-      // Staff portals get the staff login page; everything else the family one.
-      const portalSeg = segments[0] === "en" || segments[0] === "el" ? segments[1] : segments[0];
-      const isStaffPortal = portalSeg === "teacher" || portalSeg === "admin" || portalSeg === "office";
-      const loginUrl = new URL(`/${locale}/login${isStaffPortal ? "/staff" : ""}`, request.url);
+      // Family portals → family login; staff portals (chaperone included) →
+      // staff login. Built on the browser's address (forwarded headers), never
+      // the reverse proxy's internal one, which sent users to localhost.
+      const loginUrl = new URL(loginPathForPortal(pathname), publicOrigin(request.headers, request.url));
       loginUrl.searchParams.set("callbackUrl", pathname);
       return NextResponse.redirect(loginUrl);
     }
@@ -65,7 +65,7 @@ export default async function proxy(request: NextRequest) {
       const portal = getPortalForRole(token.role as Role);
       const segments = pathname.split("/").filter(Boolean);
       const locale = segments[0] === "en" ? "en" : "el";
-      return NextResponse.redirect(new URL(`/${locale}/${portal}`, request.url));
+      return NextResponse.redirect(new URL(`/${locale}/${portal}`, publicOrigin(request.headers, request.url)));
     }
   }
 
