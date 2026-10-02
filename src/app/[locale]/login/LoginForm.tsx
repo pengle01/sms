@@ -122,11 +122,6 @@ export async function LoginForm({ locale, urlError, variant }: LoginFormProps) {
               {t("createAccount")}
             </Link>
           </p>
-          <p className="text-center text-sm text-emerald-300/60 mt-1">
-            <Link href={`/${locale}/login`} className="text-lime-400 hover:text-lime-300 font-medium">
-              {t("toFamilyLogin")}
-            </Link>
-          </p>
         </>
       ) : (
         <>

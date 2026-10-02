@@ -67,8 +67,7 @@
     "createAccount": "Create an account",
     "familyLogin": "Parents & Students",
     "staffLoginTitle": "Staff Sign-in",
-    "toStaffLogin": "Teacher or staff member? Sign in here →",
-    "toFamilyLogin": "Parent or student? Sign in here →"
+    "toStaffLogin": "Teacher or staff member? Sign in here →"
   },
   "nav": {
     "dashboard": "Dashboard",
