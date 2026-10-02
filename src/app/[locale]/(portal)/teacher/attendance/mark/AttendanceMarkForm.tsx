@@ -6,6 +6,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { getNow } from "@/lib/dates";
 import { periodLabel } from "@/lib/periods";
 import { breakMinutes } from "@/lib/toilet";
+import { WaitingIndicator } from "@/components/toilet/WaitingIndicator";
 import { trpc } from "@/trpc/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -343,7 +344,7 @@ export function AttendanceMarkForm({
                                   : "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
                               }`}
                             >
-                              <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${mins > 10 ? "bg-red-500" : "bg-amber-500"}`} />
+                              <WaitingIndicator severity={mins > 10 ? "overdue" : "warn"} />
                               WC {fmtTime(brk.leftAt)} · {mins}′
                             </button>
                           );

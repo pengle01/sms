@@ -220,3 +220,17 @@ html[data-font="large"]  { font-size: 143.75%; } /* 23px */
    pure-CSS checkbox (#mobile-nav-toggle) so it works pre-hydration; this keeps
    the body from scrolling underneath without any JS. */
 body:has(#mobile-nav-toggle:checked) { overflow: hidden; }
+
+/* WC "waiting" indicator: an hourglass that turns over and over (see
+   src/components/toilet/WaitingIndicator.tsx). Speed is set per severity. */
+@keyframes hourglass-flip {
+  0%, 40%   { transform: rotate(0deg); }
+  50%, 90%  { transform: rotate(180deg); }
+  100%      { transform: rotate(360deg); }
+}
+.animate-hourglass {
+  animation: hourglass-flip var(--hourglass-speed, 2.4s) ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-hourglass { animation: none; }
+}

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { breakMinutes, breakSeverity, breakCounts } from "@/lib/toilet";
 import { cn } from "@/lib/utils";
 import { DoorOpen, CheckCircle2 } from "lucide-react";
+import { WaitingIndicator } from "@/components/toilet/WaitingIndicator";
 
 export type ToiletRow = {
   id: string;
@@ -84,7 +85,7 @@ export function ToiletPanel({ breaks: initial }: { breaks: ToiletRow[] }) {
                 const mins = breakMinutes(b.leftAt, null, new Date(now));
                 return (
                   <div key={b.id} className={cn("flex items-center gap-3 px-4 py-3 border-l-4", s.row)}>
-                    <span className={cn("w-2 h-2 rounded-full flex-shrink-0 animate-pulse", s.dot)} />
+                    <WaitingIndicator severity={sev} size="md" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-slate-900">
                         {b.studentName}
