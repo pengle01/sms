@@ -73,7 +73,7 @@ export function EditSpecialEdForm({
   }
 
   function remove() {
-    if (!confirm("Διαγραφή του μαθητή από την Ειδική Αγωγή;")) return;
+    if (!confirm("Διαγραφή του/της μαθητή/τριας από την Ειδική Αγωγή;")) return;
     startTransition(async () => {
       const res = await removeSpecialEdRecord(studentId);
       if (res.ok) {

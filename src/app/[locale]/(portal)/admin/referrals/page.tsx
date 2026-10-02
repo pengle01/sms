@@ -193,8 +193,8 @@ export default async function ReferralsPage({
           className="h-9 px-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
         >
           <option value="number">Αρ. παραπομπής</option>
-          <option value="student">Όνομα μαθητή</option>
-          <option value="studentId">Αρ. μητρώου μαθητή</option>
+          <option value="student">Όνομα μαθητή/τριας</option>
+          <option value="studentId">Αρ. μητρώου μαθητή/τριας</option>
           <option value="filer">Εκπαιδευτικός υποβολής</option>
         </select>
         <input

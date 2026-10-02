@@ -244,7 +244,7 @@ export default async function PrintResolutionPage({
           <section className="mt-12 grid grid-cols-3 gap-8 text-center text-xs text-slate-600">
             <div>
               <div className="border-t border-slate-400 pt-2 mt-8">
-                Ο/Η Βοηθός Διευθυντής/ρια
+                Ο/Η Βοηθός Διευθυντής/ντρια
                 {deciders.length > 0 && (
                   <div className="mt-0.5 font-medium text-slate-800">
                     {deciders.join(" / ")}
@@ -253,7 +253,7 @@ export default async function PrintResolutionPage({
               </div>
             </div>
             <div>
-              <div className="border-t border-slate-400 pt-2 mt-8">Ο/Η Διευθυντής/ρια</div>
+              <div className="border-t border-slate-400 pt-2 mt-8">Ο/Η Διευθυντής/ντρια</div>
             </div>
             <div>
               <div className="border-t border-slate-400 pt-2 mt-8">Γονέας / Κηδεμόνας</div>

@@ -119,7 +119,7 @@ export default async function SpecialEdDeskPage({
               className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
             >
               <UserPlus className="w-4 h-4" />
-              Προσθήκη μαθητή
+              Προσθήκη μαθητή/τριας
             </Link>
           )}
           <Link
@@ -353,7 +353,7 @@ export default async function SpecialEdDeskPage({
             <tbody className="divide-y divide-slate-50">
               {cohort.length === 0 ? (
                 <tr><td colSpan={5} className="px-5 py-10 text-center text-slate-400">
-                  {everyone.length === 0 ? "Κανένας μαθητής ακόμη." : t("noMatches")}
+                  {everyone.length === 0 ? "Κανένας/καμία μαθητής/τρια ακόμη." : t("noMatches")}
                 </td></tr>
               ) : (
                 cohort.map((s) => (

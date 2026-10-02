@@ -41,7 +41,7 @@ export async function setUserPassword(targetUserId: string, password: string): P
   }
 
   const target = await db.user.findUnique({ where: { id: targetUserId }, select: { id: true } });
-  if (!target) return { ok: false, error: "Ο χρήστης δεν βρέθηκε" };
+  if (!target) return { ok: false, error: "Ο/Η χρήστης δεν βρέθηκε" };
 
   await db.user.update({
     where: { id: targetUserId },
@@ -78,7 +78,7 @@ export async function grantSuperAdmin(targetUserId: string): Promise<ActionResul
     where: { id: targetUserId },
     select: { role: true, extraRoles: true, isActive: true },
   });
-  if (!target) return { ok: false, error: "Ο χρήστης δεν βρέθηκε" };
+  if (!target) return { ok: false, error: "Ο/Η χρήστης δεν βρέθηκε" };
 
   const check = validateAdminGrant({
     actorId: auth.userId,
@@ -114,7 +114,7 @@ export async function revokeSuperAdmin(targetUserId: string): Promise<ActionResu
     where: { id: targetUserId },
     select: { role: true, extraRoles: true },
   });
-  if (!target) return { ok: false, error: "Ο χρήστης δεν βρέθηκε" };
+  if (!target) return { ok: false, error: "Ο/Η χρήστης δεν βρέθηκε" };
 
   const check = validateAdminRevoke({
     actorId: auth.userId,
@@ -173,7 +173,7 @@ export async function setSpecialEducation(
 
 const DELETE_ERRORS: Record<string, string> = {
   errSelf: "Δεν μπορείτε να διαγράψετε τον δικό σας λογαριασμό.",
-  errLastSuperAdmin: "Αυτός είναι ο τελευταίος ενεργός διαχειριστής συστήματος — δεν μπορεί να διαγραφεί.",
+  errLastSuperAdmin: "Αυτός είναι ο/η τελευταίος/α ενεργός/ή διαχειριστής/τρια συστήματος — δεν μπορεί να διαγραφεί.",
 };
 
 /**
@@ -196,7 +196,7 @@ export async function deleteUser(targetUserId: string): Promise<ActionResult> {
     where: { id: targetUserId },
     select: { id: true, name: true, email: true, role: true, extraRoles: true },
   });
-  if (!target) return { ok: false, error: "Ο χρήστης δεν βρέθηκε" };
+  if (!target) return { ok: false, error: "Ο/Η χρήστης δεν βρέθηκε" };
 
   const check = validateUserDelete({
     actorId: auth.userId,
@@ -254,15 +254,15 @@ export async function deleteUser(targetUserId: string): Promise<ActionResult> {
 
 const GRANT_ERRORS: Record<string, string> = {
   errSelf: "Δεν μπορείτε να αλλάξετε τη δική σας πρόσβαση.",
-  errAlreadyAdmin: "Αυτός ο χρήστης είναι ήδη διαχειριστής συστήματος.",
+  errAlreadyAdmin: "Αυτός/ή ο/η χρήστης είναι ήδη διαχειριστής/τρια συστήματος.",
   errInactive: "Δεν είναι δυνατή η παραχώρηση πρόσβασης διαχειριστή σε ανενεργούς λογαριασμούς.",
 };
 
 const REVOKE_ERRORS: Record<string, string> = {
   errSelf: "Δεν μπορείτε να αλλάξετε τη δική σας πρόσβαση.",
-  errPrimaryAdmin: "Ο κύριος ρόλος αυτού του χρήστη είναι Υπερδιαχειριστής — δεν μπορεί να ανακληθεί εδώ.",
-  errNotGranted: "Αυτός ο χρήστης δεν έχει παραχωρημένη πρόσβαση διαχειριστή.",
-  errLastSuperAdmin: "Αυτός είναι ο τελευταίος ενεργός διαχειριστής συστήματος — η πρόσβαση δεν μπορεί να ανακληθεί.",
+  errPrimaryAdmin: "Ο κύριος ρόλος αυτού του χρήστη είναι Υπερδιαχειριστής/τρια — δεν μπορεί να ανακληθεί εδώ.",
+  errNotGranted: "Αυτός/ή ο/η χρήστης δεν έχει παραχωρημένη πρόσβαση διαχειριστή.",
+  errLastSuperAdmin: "Αυτός είναι ο/η τελευταίος/α ενεργός/ή διαχειριστής/τρια συστήματος — η πρόσβαση δεν μπορεί να ανακληθεί.",
 };
 
 /** Toggle the "substitution coordinator" designation. */
@@ -434,7 +434,7 @@ export async function setMaintainedRooms(
 const ROLE_CHANGE_ERRORS = {
   self: "Δεν μπορείτε να αλλάξετε τον δικό σας ρόλο",
   notStaffRole: "Ο ρόλος αλλάζει μόνο μεταξύ εκπαιδευτικών ρόλων",
-  noChange: "Ο χρήστης έχει ήδη αυτόν τον ρόλο",
+  noChange: "Ο/Η χρήστης έχει ήδη αυτόν τον ρόλο",
 } as const;
 
 /**
@@ -448,7 +448,7 @@ export async function setUserRole(targetUserId: string, role: Role): Promise<Act
   if (!auth) return { ok: false, error: "Δεν επιτρέπεται" };
 
   const target = await db.user.findUnique({ where: { id: targetUserId }, select: { role: true } });
-  if (!target) return { ok: false, error: "Ο χρήστης δεν βρέθηκε" };
+  if (!target) return { ok: false, error: "Ο/Η χρήστης δεν βρέθηκε" };
 
   const err = roleChangeError({ actorId: auth.userId, targetId: targetUserId, currentRole: target.role, newRole: role });
   if (err) return { ok: false, error: ROLE_CHANGE_ERRORS[err] };

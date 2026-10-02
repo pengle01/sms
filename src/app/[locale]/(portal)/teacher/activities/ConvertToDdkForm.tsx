@@ -135,7 +135,7 @@ export function ConvertToDdkForm({
           <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
             Μαθητές ({selectedCount})
           </label>
-          <span className="text-xs text-slate-400">Μονάδες ανά μαθητή</span>
+          <span className="text-xs text-slate-400">Μονάδες ανά μαθητή/τρια</span>
         </div>
         <div className="border border-slate-200 rounded-lg divide-y divide-slate-100 max-h-80 overflow-y-auto">
           {participants.map((p) => {

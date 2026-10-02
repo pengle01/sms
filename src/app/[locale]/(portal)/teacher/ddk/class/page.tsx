@@ -134,7 +134,7 @@ export default async function DdkClassReportPage({
                   <tr className="bg-slate-100 text-left">
                     <th className="border border-slate-400 px-2 py-1">Δραστηριότητα</th>
                     <th className="border border-slate-400 px-2 py-1 w-28">Ημερομηνία</th>
-                    <th className="border border-slate-400 px-2 py-1 w-48">Υπεύθυνος Καθηγητής</th>
+                    <th className="border border-slate-400 px-2 py-1 w-48">Υπεύθυνος/η Καθηγητής/τρια</th>
                     <th className="border border-slate-400 px-2 py-1">Περιγραφή</th>
                   </tr>
                 </thead>

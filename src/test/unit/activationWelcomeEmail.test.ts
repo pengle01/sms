@@ -32,6 +32,6 @@ describe("activationWelcomeEmail", () => {
 
   it("copes with a missing student name in the guardian email", () => {
     const mail = activationWelcomeEmail("guardian", "", "");
-    expect(mail.text).toContain("συνδέθηκε επιτυχώς με τον/τη μαθητή/ρια.");
+    expect(mail.text).toContain("συνδέθηκε επιτυχώς με τον/τη μαθητή/τρια.");
   });
 });

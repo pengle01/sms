@@ -140,10 +140,10 @@ export default async function SpecialEdAddPage({
         <div>
           <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             <UserPlus className="w-6 h-6 text-emerald-600" />
-            Προσθήκη μαθητή
+            Προσθήκη μαθητή/τριας
           </h2>
           <p className="text-slate-500 text-sm mt-1">
-            Επιλέξτε μαθητή — ανά τμήμα ή με αναζήτηση — και συμπληρώστε τα στοιχεία ειδικής αγωγής στη φόρμα που εμφανίζεται.
+            Επιλέξτε μαθητή/τρια — ανά τμήμα ή με αναζήτηση — και συμπληρώστε τα στοιχεία ειδικής αγωγής στη φόρμα που εμφανίζεται.
           </p>
         </div>
       </div>
@@ -152,7 +152,7 @@ export default async function SpecialEdAddPage({
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Search className="w-4 h-4" />
-            Επιλογή μαθητή
+            Επιλογή μαθητή/τριας
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">

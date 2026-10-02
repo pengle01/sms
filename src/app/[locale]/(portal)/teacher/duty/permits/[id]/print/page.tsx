@@ -108,7 +108,7 @@ export default async function PrintExitPermitPage({
           <p className="border-b border-slate-700 mx-6 mt-4">&nbsp;</p>
         </div>
         <div className="flex flex-col justify-end">
-          <p>Ο/Η Βοηθός Διευθυντής/τρια</p>
+          <p>Ο/Η Βοηθός Διευθυντής/ντρια</p>
           <p className="mt-auto">{staffDisplayName(permit.issuer)}</p>
           <p className="border-b border-slate-700 mx-6">&nbsp;</p>
         </div>
@@ -121,7 +121,7 @@ export default async function PrintExitPermitPage({
         ΟΤΑΝ Ο ΜΑΘΗΤΗΣ ΕΠΙΣΚΕΦΤΕΙ ΓΙΑΤΡΟ / ΑΛΛΗ ΥΠΗΡΕΣΙΑ
       </h2>
       <p>
-        Βεβαιώνω ότι ο πιο πάνω αναφερόμενος μαθητής με επισκέφτηκε σήμερα και ώρα: <Dots w="w-32" />
+        Βεβαιώνω ότι ο/η πιο πάνω αναφερόμενος/η μαθητής/τρια με επισκέφτηκε σήμερα και ώρα: <Dots w="w-32" />
       </p>
       <div className="flex justify-between gap-4">
         <span>Ημερομηνία: {dateLabel}</span>

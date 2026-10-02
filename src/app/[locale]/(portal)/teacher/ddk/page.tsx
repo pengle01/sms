@@ -185,7 +185,7 @@ export default async function DdkOverviewPage({
           </CardHeader>
           <CardContent className="p-0">
             {rows.length === 0 ? (
-              <p className="px-5 py-10 text-center text-sm text-slate-400">Κανένας μαθητής στο τμήμα.</p>
+              <p className="px-5 py-10 text-center text-sm text-slate-400">Κανένας/καμία μαθητής/τρια στο τμήμα.</p>
             ) : (
               <table className="w-full text-sm">
                 <tbody className="divide-y divide-slate-50">

@@ -51,7 +51,7 @@ export function StudentInfoDialog({ studentId, excludeReferralId, studentName }:
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 sticky top-0 bg-white">
               <h3 className="text-base font-semibold text-slate-900">
-                {data?.name ?? studentName ?? "Στοιχεία μαθητή"}
+                {data?.name ?? studentName ?? "Στοιχεία μαθητή/τριας"}
                 {data?.group && <span className="ml-2 text-sm font-normal text-slate-400">{data.group}</span>}
               </h3>
               <button onClick={() => setOpen(false)} className="p-1 rounded-lg hover:bg-slate-100 text-slate-400">

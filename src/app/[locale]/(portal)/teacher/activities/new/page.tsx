@@ -413,7 +413,7 @@ export default async function NewActivityPage({
                         </div>
                         <span className="text-xs text-amber-700 bg-amber-100 rounded-full px-2 py-1 whitespace-nowrap">
                           {w.affectedCount === 1
-                            ? "1 μαθητής επηρεάζεται"
+                            ? "1 μαθητής/τρια επηρεάζεται"
                             : `${w.affectedCount} μαθητές επηρεάζονται`}
                         </span>
                       </div>

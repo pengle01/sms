@@ -92,7 +92,7 @@ export function DatabaseTools({ locale }: { locale: string }) {
         <CardContent className="space-y-3">
           <p className="text-sm text-slate-600">
             Εφαρμογή ενός αντιγράφου <code>.sql</code> (από την Εξαγωγή). Αυτό <strong>αντικαθιστά ολόκληρη τη βάση δεδομένων</strong>.
-            Ενδέχεται να αποσυνδεθείτε αν το αντίγραφο περιέχει διαφορετικό διαχειριστή.
+            Ενδέχεται να αποσυνδεθείτε αν το αντίγραφο περιέχει διαφορετικό/ή διαχειριστή/τρια.
           </p>
           <input
             type="file"

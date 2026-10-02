@@ -152,7 +152,7 @@ function Certificate({
       <p className="mt-6 text-sm">Συμμετείχε στο πρόγραμμα και {perf} χαρακτηρίζεται ως:</p>
       <p className="mt-2 text-lg font-bold">{ddkRating(student.total) || "—"}</p>
 
-      <div className="mt-auto w-full pt-16 text-right text-sm">Ο/Η Διευθυντής/τρια</div>
+      <div className="mt-auto w-full pt-16 text-right text-sm">Ο/Η Διευθυντής/ντρια</div>
     </div>
   );
 }

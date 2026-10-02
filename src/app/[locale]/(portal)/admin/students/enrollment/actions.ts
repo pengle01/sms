@@ -103,7 +103,7 @@ export async function importEnrollment(
   for (const r of parsed) {
     const profileId = profileByRegistry.get(r.registryId);
     if (!profileId) {
-      errors.push(`Γραμμή ${r.line} (${r.name} / ${r.registryId}): ο μαθητής δεν βρέθηκε`);
+      errors.push(`Γραμμή ${r.line} (${r.name} / ${r.registryId}): ο/η μαθητής/τρια δεν βρέθηκε`);
       continue;
     }
 

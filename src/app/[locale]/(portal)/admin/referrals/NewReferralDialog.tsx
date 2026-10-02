@@ -68,7 +68,7 @@ export function NewReferralDialog({ students, locale }: { students: Student[]; l
               required
               className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
             >
-              <option value="">Επιλέξτε μαθητή…</option>
+              <option value="">Επιλέξτε μαθητή/τρια…</option>
               {students.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.user?.name} ({s.studentId})

@@ -26,7 +26,7 @@ export async function updateStudent(id: string, locale: string, formData: FormDa
   const current = await db.studentProfile.findUnique({ where: { id }, select: { studentId: true } });
   if (registryId && current && registryId !== current.studentId) {
     const taken = await db.studentProfile.findUnique({ where: { studentId: registryId }, select: { id: true } });
-    if (taken) throw new Error("Ο αριθμός μητρώου χρησιμοποιείται ήδη από άλλον μαθητή.");
+    if (taken) throw new Error("Ο αριθμός μητρώου χρησιμοποιείται ήδη από άλλον/η μαθητή/τρια.");
   }
 
   await db.studentProfile.update({

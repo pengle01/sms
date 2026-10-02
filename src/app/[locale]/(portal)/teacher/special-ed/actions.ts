@@ -62,7 +62,7 @@ export async function updateSpecialEdRecord(input: {
     where: { id: input.studentId },
     select: { id: true, user: { select: { name: true } } },
   });
-  if (!student) return { ok: false, error: "Ο μαθητής δεν βρέθηκε." };
+  if (!student) return { ok: false, error: "Ο/Η μαθητής/τρια δεν βρέθηκε." };
 
   const fileNo = input.fileNo.trim() || null;
   const remarks = input.remarks.trim() || null;
@@ -220,7 +220,7 @@ export async function importSpecialEd(_prev: ImportResult | null, formData: Form
     return {
       ok: false,
       error:
-        "Οι κωδικοί ειδικής αγωγής (Προβλημάτων & Διευκολύνσεων) δεν έχουν αρχικοποιηθεί. Επικοινωνήστε με τον διαχειριστή πριν την εισαγωγή.",
+        "Οι κωδικοί ειδικής αγωγής (Προβλημάτων & Διευκολύνσεων) δεν έχουν αρχικοποιηθεί. Επικοινωνήστε με τον/τη διαχειριστή/τρια πριν την εισαγωγή.",
     };
   }
 
