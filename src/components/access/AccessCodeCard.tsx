@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { KeyRound, Loader2, RefreshCw, Check, Copy } from "lucide-react";
 import { toast } from "sonner";
+import { formatAccessCode } from "@/lib/accessCode";
 
 export function AccessCodeCard({
   studentProfileId,
@@ -72,8 +73,8 @@ export function AccessCodeCard({
         ) : code ? (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <code className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 font-mono text-lg tracking-[0.3em] text-slate-900 text-center">
-                {code}
+              <code className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 font-mono text-lg tracking-[0.15em] text-slate-900 text-center">
+                {formatAccessCode(code)}
               </code>
               <button
                 onClick={handleCopy}

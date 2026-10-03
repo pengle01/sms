@@ -4,9 +4,17 @@
 // The random generators use the Web Crypto API (available in Node 18+ and the
 // edge/browser runtimes) and are only called server-side.
 
-// Unambiguous alphabet — no 0/O, 1/I/L to avoid confusion when read aloud.
-export const ACCESS_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-export const ACCESS_CODE_LENGTH = 8;
+// Access codes are 12 digits, shown as four groups of three ("482 913 057 316"):
+// Latin letters mixed with digits confused families. 12 digits are as hard to
+// guess as the old 8-character code (~40 bits); attempts are rate-limited too.
+export const ACCESS_CODE_DIGITS = 12;
+export const ACCESS_CODE_GROUP = 3;
+
+// The previous format, still accepted so codes families already used keep
+// working (a guardian re-activates with it to reset a password). Unused ones
+// were re-issued as numeric — see accessCodes.reissueLegacy.
+export const LEGACY_ACCESS_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+export const LEGACY_ACCESS_CODE_LENGTH = 8;
 export const OTP_LENGTH = 6;
 
 // Default cap on guardian accounts per student. The live cap is admin-configurable
@@ -51,12 +59,29 @@ export function normalizeCode(input: string): string {
   return input.toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
 
-/** True if the (already-normalized) string is a plausible access code. */
-export function isWellFormedCode(input: string): boolean {
+/** True for a numeric code ("482913057316", spaces/dashes allowed). */
+export function isNumericCode(input: string): boolean {
+  return new RegExp(`^\\d{${ACCESS_CODE_DIGITS}}$`).test(normalizeCode(input));
+}
+
+/** True for a code in the old letters-and-digits format. */
+export function isLegacyCode(input: string): boolean {
   const c = normalizeCode(input);
-  if (c.length !== ACCESS_CODE_LENGTH) return false;
-  for (const ch of c) if (!ACCESS_CODE_ALPHABET.includes(ch)) return false;
+  if (c.length !== LEGACY_ACCESS_CODE_LENGTH) return false;
+  for (const ch of c) if (!LEGACY_ACCESS_CODE_ALPHABET.includes(ch)) return false;
   return true;
+}
+
+/** True if the string is a plausible access code — numeric, or the old format. */
+export function isWellFormedCode(input: string): boolean {
+  return isNumericCode(input) || isLegacyCode(input);
+}
+
+/** "482913057316" → "482 913 057 316". Other formats are returned as they are. */
+export function formatAccessCode(code: string): string {
+  const c = normalizeCode(code);
+  if (!isNumericCode(c)) return code;
+  return c.match(new RegExp(`.{1,${ACCESS_CODE_GROUP}}`, "g"))!.join(" ");
 }
 
 function randomInts(count: number): Uint32Array {
@@ -65,12 +90,18 @@ function randomInts(count: number): Uint32Array {
   return arr;
 }
 
-/** A new random access code, e.g. "K7M2QPRX". */
+/**
+ * A new random access code: 12 digits, e.g. "482913057316" (stored without
+ * spaces; shown with formatAccessCode). Each digit is drawn without modulo
+ * bias: values above the largest multiple of 10 are redrawn.
+ */
 export function randomAccessCode(): string {
-  const ints = randomInts(ACCESS_CODE_LENGTH);
+  const limit = Math.floor(0x1_0000_0000 / 10) * 10;
   let out = "";
-  for (let i = 0; i < ACCESS_CODE_LENGTH; i++) {
-    out += ACCESS_CODE_ALPHABET[ints[i]! % ACCESS_CODE_ALPHABET.length];
+  while (out.length < ACCESS_CODE_DIGITS) {
+    for (const n of randomInts(ACCESS_CODE_DIGITS)) {
+      if (n < limit && out.length < ACCESS_CODE_DIGITS) out += String(n % 10);
+    }
   }
   return out;
 }

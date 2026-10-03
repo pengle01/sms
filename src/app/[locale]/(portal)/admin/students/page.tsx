@@ -11,6 +11,8 @@ import { suggestionList } from "@/lib/textSearch";
 import { SuggestInput } from "@/components/SuggestInput";
 import { StudentRow } from "./student-row";
 import { GenerateAllCodesButton } from "./GenerateAllCodesButton";
+import { ReissueLegacyCodesButton } from "./ReissueLegacyCodesButton";
+import { isLegacyCode } from "@/lib/accessCode";
 
 export default async function StudentsPage({
   params,
@@ -51,6 +53,14 @@ export default async function StudentsPage({
     db.studentProfile.count({ where: { accessCode: { is: null }, user: { isActive: true } } }),
     db.studentProfile.count({ where: { user: { isActive: false } } }),
   ]);
+
+  // Unused codes still in the old letters-and-digits format (re-issue button).
+  const legacyUnused = adminAuth
+    ? (await db.studentAccessCode.findMany({
+        where: { studentClaimedAt: null, guardianClaims: 0 },
+        select: { code: true },
+      })).filter((c) => isLegacyCode(c.code)).length
+    : 0;
 
   const where = {
     ...(groupId ? { groupId } : gradeNum ? { group: { grade: gradeNum } } : {}),
@@ -121,6 +131,7 @@ export default async function StudentsPage({
         </div>
         {adminAuth && (
           <div className="flex items-center gap-2 flex-wrap">
+            <ReissueLegacyCodesButton count={legacyUnused} />
             <GenerateAllCodesButton missing={missingCodes} />
             <Link
               href={`/${locale}/admin/students/import`}

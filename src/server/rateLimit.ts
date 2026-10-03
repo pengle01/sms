@@ -90,8 +90,8 @@ export function allowActivation(ip: string, code: string): LimitVerdict {
  * Access-code lookup — the code-enumeration surface, so this one stays keyed on
  * the IP alone: an attacker varies the code, which makes it useless as an actor
  * key. The cap is generous because guessing is already infeasible on entropy
- * (8 characters over a 31-symbol alphabet, ~40 bits; with ~1000 live codes a
- * guess lands with probability ~1e-9). The limit is here to stop a flood, not
+ * (12 digits, ~40 bits — the same as the old 8-character code; with ~1000 live
+ * codes a guess lands with probability ~1e-9). The limit is here to stop a flood, not
  * to be the thing standing between an attacker and a valid code.
  */
 export function allowActivationCheck(ip: string): boolean {

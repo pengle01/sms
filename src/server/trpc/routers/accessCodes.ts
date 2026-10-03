@@ -2,7 +2,7 @@ import { z } from "zod";
 import { createTRPCRouter, staffProcedure, adminProcedure } from "../init";
 import { TRPCError } from "@trpc/server";
 import { canAnyRoleViewAccessCode } from "@/lib/rbac";
-import { randomAccessCode } from "@/lib/accessCode";
+import { randomAccessCode, isLegacyCode } from "@/lib/accessCode";
 import { writeAudit, requestMeta } from "@/server/audit";
 import type { Role } from "@/generated/prisma/client";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -99,6 +99,38 @@ export const accessCodesRouter = createTRPCRouter({
 
       return rec;
     }),
+
+  // Re-issue every UNUSED code still in the old letters-and-digits format as a
+  // numeric one (admin only). Codes already used by a student or a guardian
+  // are kept — those families may need them to re-activate.
+  reissueLegacy: adminProcedure.mutation(async ({ ctx }) => {
+    const unused = await ctx.db.studentAccessCode.findMany({
+      where: { studentClaimedAt: null, guardianClaims: 0 },
+      select: { id: true, code: true },
+    });
+    const legacy = unused.filter((c) => isLegacyCode(c.code));
+
+    let reissued = 0;
+    for (const c of legacy) {
+      const code = await freshCode(ctx.db);
+      // Re-check it is still unused at write time.
+      const res = await ctx.db.studentAccessCode.updateMany({
+        where: { id: c.id, code: c.code, studentClaimedAt: null, guardianClaims: 0 },
+        data: { code, createdById: ctx.session.user.id },
+      });
+      reissued += res.count;
+    }
+
+    const meta = await requestMeta();
+    await writeAudit({
+      userId: ctx.session.user.id,
+      action: "accessCode.reissueLegacy",
+      resource: "StudentAccessCode",
+      resourceId: `reissued:${reissued}`,
+      ...meta,
+    });
+    return { reissued };
+  }),
 
   // Generate codes for every active student that doesn't have one yet
   // (admin only). Existing codes are left untouched.

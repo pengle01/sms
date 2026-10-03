@@ -7,8 +7,10 @@ import {
   canAddGuardian,
   roleAvailability,
   guardianLinkDigest,
-  ACCESS_CODE_ALPHABET,
-  ACCESS_CODE_LENGTH,
+  ACCESS_CODE_DIGITS,
+  formatAccessCode,
+  isNumericCode,
+  isLegacyCode,
   OTP_LENGTH,
   MAX_GUARDIAN_CLAIMS,
 } from "@/lib/accessCode";
@@ -22,26 +24,48 @@ describe("normalizeCode", () => {
 });
 
 describe("isWellFormedCode", () => {
-  it("accepts codes of the right length and alphabet", () => {
+  it("accepts the 12-digit numeric code, with or without spaces", () => {
+    expect(isWellFormedCode("482913057316")).toBe(true);
+    expect(isWellFormedCode("482 913 057 316")).toBe(true);
+    expect(isWellFormedCode("482-913-057-316")).toBe(true);
+    expect(isNumericCode("482 913 057 316")).toBe(true);
+  });
+  it("still accepts a code in the old letters-and-digits format", () => {
     expect(isWellFormedCode("K7M2QPRX")).toBe(true);
     expect(isWellFormedCode("k7m2-qprx")).toBe(true);
+    expect(isLegacyCode("K7M2QPRX")).toBe(true);
+    expect(isLegacyCode("482913057316")).toBe(false);
   });
-  it("rejects wrong length or ambiguous/invalid chars", () => {
-    expect(isWellFormedCode("K7M2QPR")).toBe(false); // too short
-    expect(isWellFormedCode("K7M2QPRXY")).toBe(false); // too long
-    expect(isWellFormedCode("K7M2QPR0")).toBe(false); // 0 not in alphabet
-    expect(isWellFormedCode("K7M2QPRI")).toBe(false); // I not in alphabet
+  it("rejects wrong lengths and invalid characters", () => {
+    expect(isWellFormedCode("48291305731")).toBe(false); // 11 digits
+    expect(isWellFormedCode("4829130573161")).toBe(false); // 13 digits
+    expect(isWellFormedCode("K7M2QPR")).toBe(false); // old format, too short
+    expect(isWellFormedCode("K7M2QPR0")).toBe(false); // 0 not in the old alphabet
+  });
+});
+
+describe("formatAccessCode", () => {
+  it("groups a numeric code in threes", () => {
+    expect(formatAccessCode("482913057316")).toBe("482 913 057 316");
+    expect(formatAccessCode("482-913 057316")).toBe("482 913 057 316");
+  });
+  it("leaves an old-format code as it is", () => {
+    expect(formatAccessCode("K7M2QPRX")).toBe("K7M2QPRX");
   });
 });
 
 describe("randomAccessCode", () => {
-  it("produces a well-formed code from the alphabet", () => {
-    for (let i = 0; i < 50; i++) {
+  it("produces 12 digits", () => {
+    for (let i = 0; i < 200; i++) {
       const c = randomAccessCode();
-      expect(c).toHaveLength(ACCESS_CODE_LENGTH);
-      expect(isWellFormedCode(c)).toBe(true);
-      for (const ch of c) expect(ACCESS_CODE_ALPHABET).toContain(ch);
+      expect(c).toHaveLength(ACCESS_CODE_DIGITS);
+      expect(/^\d+$/.test(c)).toBe(true);
+      expect(isNumericCode(c)).toBe(true);
     }
+  });
+  it("uses every digit", () => {
+    const seen = new Set(Array.from({ length: 100 }, () => randomAccessCode()).join(""));
+    expect(seen.size).toBe(10);
   });
 });
 

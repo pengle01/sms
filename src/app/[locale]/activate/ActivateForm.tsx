@@ -126,6 +126,8 @@ export function ActivateForm({ locale, labels }: { locale: string; labels: Label
             value={code}
             onChange={(e) => setCode(e.target.value)}
             placeholder={t("codePlaceholder")}
+            inputMode="numeric"
+            autoComplete="off"
             className={cn(inputClass, "font-mono tracking-widest uppercase")}
             autoFocus
           />

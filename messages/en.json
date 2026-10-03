@@ -529,7 +529,7 @@
     "title": "Activate account",
     "subtitle": "Enter the access code the school gave you.",
     "codeLabel": "Access code",
-    "codePlaceholder": "e.g. K7M2QPRX",
+    "codePlaceholder": "e.g. 482 913 057 316",
     "continue": "Continue",
     "chooseRole": "Who are you?",
     "roleStudent": "Student",
@@ -1504,7 +1504,12 @@
     "missingCancel": "Cancel",
     "missingConfirm": "Deactivate",
     "missingDone": "Deactivated {students} students · {parents} parents",
-    "alsoGuardianOf": "Also guardian of"
+    "alsoGuardianOf": "Also guardian of",
+    "reissueCodesButton": "New numeric codes ({count})",
+    "reissueCodesTitle": "Replace old access codes",
+    "reissueCodesDescription": "{count, plural, one {The # unused code with letters will be replaced} other {The # unused codes with letters will be replaced}} by numeric ones (e.g. 482 913 057 316). The old ones stop working — the new ones must be handed out again. Codes already used are not changed.",
+    "reissueCodesConfirm": "Replace",
+    "codesReissuedToast": "{count, plural, one {# code replaced} other {# codes replaced}}"
   },
   "adminAttendance": {
     "title": "Attendance",
