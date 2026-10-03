@@ -1691,7 +1691,7 @@
     "dutyIntro": "Fixed weekly schedule: the assigned headteacher is on duty (εφημερεύει) every week on that day. Duty events (referrals, exit permits) will be routed to them.",
     "removeName": "Remove {name}",
     "addDeputy": "+ Add…",
-    "noDeputies": "No active headteachers with a linked staff profile found — link them under Staff first.",
+    "noDeputies": "No deputy heads (Β.Δ. or Β.Δ.Α.) found. Set their role in Users, or check their timetable name ends in «ΒΔ»/«ΒΔΑ».",
     "gradesIntro": "Grade entry stays frozen until the term is unlocked here. Teachers can neither enter nor edit grades for a locked term.",
     "unlocked": "Unlocked",
     "locked": "Locked",

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { roleFromScheduleName, effectiveStaffRole, isManagementRole, roleChangeError, expectedSignupRole } from "@/lib/staffRole";
+import { roleFromScheduleName, effectiveStaffRole, isManagementRole, roleChangeError, expectedSignupRole, isDutyCandidate } from "@/lib/staffRole";
 
 describe("roleFromScheduleName", () => {
   it("reads the management markers and the counselor prefix", () => {
@@ -76,5 +76,27 @@ describe("expectedSignupRole", () => {
 
   it("expects nothing in particular for an unmarked name", () => {
     expect(expectedSignupRole({ plannedRole: null, scheduleName: "Μ-ΑΛΦΑ Α." })).toBeNull();
+  });
+});
+
+describe("isDutyCandidate", () => {
+  const base = { accountRole: null, accountActive: null, plannedRole: null, leftTimetable: false } as const;
+
+  it("accepts Deputy A and B without an account, by marker or planned role", () => {
+    expect(isDutyCandidate({ ...base, scheduleName: "Μ-ΑΛΦΑ Α. ΒΔ" })).toBe(true);
+    expect(isDutyCandidate({ ...base, scheduleName: "Μ-ΑΛΦΑ Α. ΒΔΑ" })).toBe(true);
+    expect(isDutyCandidate({ ...base, scheduleName: "Μ-ΧΩΡΙΣ ΣΗΜΑ Α.", plannedRole: "HEADTEACHER_A" })).toBe(true);
+  });
+
+  it("rejects teachers, the headmaster, and people who left the timetable", () => {
+    expect(isDutyCandidate({ ...base, scheduleName: "Μ-ΑΛΦΑ Α." })).toBe(false);
+    expect(isDutyCandidate({ ...base, scheduleName: "Ξ-ΑΝΔΡΕΟΥ Ι. Δ" })).toBe(false);
+    expect(isDutyCandidate({ ...base, scheduleName: "Μ-ΑΛΦΑ Α. ΒΔ", leftTimetable: true })).toBe(false);
+  });
+
+  it("with an account, needs an active deputy role", () => {
+    expect(isDutyCandidate({ ...base, scheduleName: "x", accountRole: "HEADTEACHER_A", accountActive: true })).toBe(true);
+    expect(isDutyCandidate({ ...base, scheduleName: "x", accountRole: "HEADTEACHER_B", accountActive: false })).toBe(false);
+    expect(isDutyCandidate({ ...base, scheduleName: "Μ-ΑΛΦΑ Α. ΒΔ", accountRole: "TEACHER", accountActive: true })).toBe(false);
   });
 });

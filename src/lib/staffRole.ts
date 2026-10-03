@@ -74,3 +74,24 @@ export function expectedSignupRole(p: { plannedRole: Role | null | undefined; sc
   const fromName = roleFromScheduleName(p.scheduleName);
   return fromName === "TEACHER" ? null : fromName;
 }
+
+const DEPUTY_ROLES: ReadonlySet<Role> = new Set<Role>(["HEADTEACHER_A", "HEADTEACHER_B"]);
+
+/**
+ * May this person be put on the duty roster (Β.Δ. or Β.Δ.Α.)? With an account:
+ * an active account with a deputy role. Without one: the role the admin planned,
+ * else the «ΒΔ»/«ΒΔΑ» timetable marker — so a deputy can be rostered before
+ * signing up, and keeps the slot when they do (the roster points at the staff
+ * record, which approval adopts).
+ */
+export function isDutyCandidate(p: {
+  accountRole: Role | null | undefined;
+  accountActive: boolean | null | undefined;
+  plannedRole: Role | null | undefined;
+  scheduleName: string | null | undefined;
+  leftTimetable: boolean;
+}): boolean {
+  if (p.accountRole) return !!p.accountActive && DEPUTY_ROLES.has(p.accountRole);
+  if (p.leftTimetable || !p.scheduleName?.trim()) return false;
+  return DEPUTY_ROLES.has(effectiveStaffRole({ accountRole: null, plannedRole: p.plannedRole, scheduleName: p.scheduleName }));
+}

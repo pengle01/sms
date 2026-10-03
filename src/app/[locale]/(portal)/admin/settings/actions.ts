@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/server/db";
 import { getSuperAdminAuth } from "@/server/authz";
 import { writeAudit, requestMeta } from "@/server/audit";
-import { DUTY_ELIGIBLE_ROLES } from "@/lib/dutyRoster";
+import { isDutyCandidate } from "@/lib/staffRole";
 import { GRADES_UNLOCKED_KEY, GRADE_PERIODS, type GradesUnlocked } from "@/lib/grades";
 import {
   ABSENCE_SMS_KEY,
@@ -267,17 +267,34 @@ export async function saveDutyRoster(
     return { ok: false, error: "Invalid weekday" };
   }
 
-  // Only headteachers may hold the duty.
+  // Only deputies (Β.Δ. or Β.Δ.Α.) may hold the duty — with or without an
+  // account (isDutyCandidate). Someone already on the roster may stay.
   const staffIds = [...new Set(entries.map((e) => e.staffProfileId))];
   if (staffIds.length > 0) {
-    const eligible = await db.staffProfile.count({
-      where: {
-        id: { in: staffIds },
-        user: { is: { role: { in: DUTY_ELIGIBLE_ROLES }, isActive: true } },
-      },
-    });
-    if (eligible !== staffIds.length) {
-      return { ok: false, error: "Only active headteachers can be assigned duty" };
+    const [profiles, current] = await Promise.all([
+      db.staffProfile.findMany({
+        where: { id: { in: staffIds } },
+        select: {
+          id: true, scheduleName: true, plannedRole: true, leftTimetableAt: true,
+          user: { select: { role: true, isActive: true } },
+        },
+      }),
+      db.dutyRosterEntry.findMany({ select: { staffProfileId: true } }),
+    ]);
+    const already = new Set(current.map((c) => c.staffProfileId));
+    const ok = profiles.filter(
+      (p) =>
+        already.has(p.id) ||
+        isDutyCandidate({
+          accountRole: p.user?.role,
+          accountActive: p.user?.isActive,
+          plannedRole: p.plannedRole,
+          scheduleName: p.scheduleName,
+          leftTimetable: p.leftTimetableAt !== null,
+        }),
+    );
+    if (ok.length !== staffIds.length) {
+      return { ok: false, error: "Only deputy heads (Β.Δ. or Β.Δ.Α.) can be assigned duty" };
     }
   }
 

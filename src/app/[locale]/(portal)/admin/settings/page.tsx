@@ -1,7 +1,7 @@
 import { getSuperAdminAuth } from "@/server/authz";
 import { redirect } from "next/navigation";
 import { db } from "@/server/db";
-import { DUTY_ELIGIBLE_ROLES } from "@/lib/dutyRoster";
+import { isDutyCandidate } from "@/lib/staffRole";
 import { staffDisplayName } from "@/lib/staffName";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY, getMaxTestsPerWeek, DEFAULT_MAX_TESTS_PER_WEEK, getMaxGuardiansPerStudent, DEFAULT_MAX_GUARDIANS_PER_STUDENT, getSchoolYear, getTermDatesConfig, getSchoolName, getGradesUnlocked, getAttendanceLockConfig, getSessionIdleMinutes } from "@/lib/schoolConfig";
@@ -50,9 +50,14 @@ export default async function AdminSettingsPage({
     getGradesUnlocked(),
     getAttendanceLockConfig(),
     db.dutyRosterEntry.findMany({ select: { dayOfWeek: true, staffProfileId: true } }),
+    // Every possible duty deputy — Β.Δ. or Β.Δ.Α., with or without an account
+    // (isDutyCandidate decides below).
     db.staffProfile.findMany({
-      where: { user: { is: { role: { in: DUTY_ELIGIBLE_ROLES }, isActive: true } } },
-      select: { id: true, scheduleName: true, user: { select: { name: true } } },
+      where: { scheduleName: { not: null } },
+      select: {
+        id: true, scheduleName: true, plannedRole: true, leftTimetableAt: true,
+        user: { select: { name: true, role: true, isActive: true } },
+      },
       orderBy: { user: { name: "asc" } },
     }),
     getRooms(),
@@ -89,10 +94,26 @@ export default async function AdminSettingsPage({
   // Weekly on-duty schedule: weekday → assigned staffProfileIds
   const dutyInitial: Record<number, string[]> = { 1: [], 2: [], 3: [], 4: [], 5: [] };
   for (const e of dutyEntries) dutyInitial[e.dayOfWeek]?.push(e.staffProfileId);
-  const deputyOptions = dutyDeputies.map((d) => ({
-    staffProfileId: d.id,
-    name: staffDisplayName(d, d.id),
-  }));
+  const tGroups = await getTranslations("groups");
+  const rostered = new Set(dutyEntries.map((e) => e.staffProfileId));
+  const deputyOptions = dutyDeputies
+    .filter(
+      (d) =>
+        // Keep anyone already on the roster visible, even if no longer eligible.
+        rostered.has(d.id) ||
+        isDutyCandidate({
+          accountRole: d.user?.role,
+          accountActive: d.user?.isActive,
+          plannedRole: d.plannedRole,
+          scheduleName: d.scheduleName,
+          leftTimetable: d.leftTimetableAt !== null,
+        }),
+    )
+    .map((d) => ({
+      staffProfileId: d.id,
+      name: d.user ? staffDisplayName(d, d.id) : `${staffDisplayName(d, d.id)} ${tGroups("noAccountSuffix")}`,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, "el"));
 
   // Email: prefill Resend defaults (temporary, until M365 SMTP is enabled) + the
   // school name as the formal "From name".
