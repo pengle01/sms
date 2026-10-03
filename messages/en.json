@@ -652,7 +652,9 @@
     "colType": "Type",
     "colStudents": "Students",
     "colEnrolled": "Enrolled",
-    "noAccountSuffix": "(no account)"
+    "noAccountSuffix": "(no account)",
+    "missingDeputyHint": "A deputy missing from the list? Set their role (Deputy Head or … A) with the role picker on their row in Users.",
+    "missingDeputyLink": "Go to Users →"
   },
   "users": {
     "title": "User Management",

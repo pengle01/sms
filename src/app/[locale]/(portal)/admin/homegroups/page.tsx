@@ -196,6 +196,14 @@ export default async function HomegroupsPage({
         )}
       </form>
 
+      {/* A deputy whose timetable name lacks «ΒΔ»/«ΒΔΑ» is offered only once their role is set. */}
+      <p className="text-xs text-slate-500">
+        {t("missingDeputyHint")}{" "}
+        <Link href={`/${locale}/admin/users`} className="font-medium text-emerald-700 hover:underline">
+          {t("missingDeputyLink")}
+        </Link>
+      </p>
+
       {Object.entries(byGrade).map(([grade, gradeGroups]) => (
         <Card key={grade}>
           <CardHeader className="pb-2">

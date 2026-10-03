@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { homegroupCandidates, roleNeededFor, filterHomegroupRows, type HomegroupProfile } from "@/lib/homegroupStaff";
+import { homegroupCandidates, roleNeededFor, roleFitsPosts, filterHomegroupRows, type HomegroupProfile } from "@/lib/homegroupStaff";
 
 const p = (id: string, scheduleName: string | null, role: HomegroupProfile["role"] = null, leftTimetable = false): HomegroupProfile =>
   ({ id, scheduleName, role, leftTimetable });
@@ -15,7 +15,7 @@ describe("homegroupCandidates", () => {
       p("a", "Χ-ΔΕΛΤΑ Δ. ΒΔΑ", "HEADTEACHER_A"),
     ]);
     expect(ids(r.teachers)).toEqual(["t"]);
-    expect(ids(r.headteachers)).toEqual(["h"]);
+    expect(ids(r.headteachers)).toEqual(["h", "a"]); // Deputy A too
     expect(ids(r.counselors)).toEqual(["c"]);
     expect(r.teachers[0]!.hasAccount).toBe(true);
   });
@@ -32,10 +32,17 @@ describe("homegroupCandidates", () => {
     expect(r.headteachers[0]!.hasAccount).toBe(false);
   });
 
-  it("keeps the headmaster and deputy A out of the teacher list", () => {
-    const r = homegroupCandidates([p("d", "Ξ-ΑΝΔΡΕΟΥ Ι. Δ"), p("a", "Χ-ΔΕΛΤΑ Δ. ΒΔΑ"), p("e", "Ε-ΛΑΜΠΡΟΥ Δ.")]);
+  it("offers Deputy A as a homegroup deputy, never the headmaster", () => {
+    const r = homegroupCandidates([
+      p("d", "Ξ-ΑΝΔΡΕΟΥ Ι. Δ"),
+      p("a", "Χ-ΔΕΛΤΑ Δ. ΒΔΑ"),
+      p("aa", "Μ-ΑΛΛΟΣ Α.", "HEADTEACHER_A"),
+      { id: "ap", scheduleName: "Φ-ΧΩΡΙΣ ΣΗΜΑ Β.", role: null, plannedRole: "HEADTEACHER_A", leftTimetable: false },
+      p("e", "Ε-ΛΑΜΠΡΟΥ Δ."),
+    ]);
+    expect(ids(r.headteachers)).toEqual(["a", "aa", "ap"]);
     expect(ids(r.teachers)).toEqual(["e"]); // "Δ." is an initial, not the marker
-    expect(r.headteachers).toEqual([]);
+    expect([...ids(r.teachers), ...ids(r.headteachers), ...ids(r.counselors)]).not.toContain("d");
   });
 
   it("places an unmarked deputy as headteacher by account role or planned role", () => {
@@ -89,5 +96,22 @@ describe("filterHomegroupRows", () => {
 
   it("returns everything for an empty search", () => {
     expect(filterHomegroupRows(rows, "  ")).toHaveLength(2);
+  });
+});
+
+describe("roleFitsPosts", () => {
+  const none = { teacherOf: [], headteacherOf: [], counselorOf: [] };
+  it("deputy posts suit Deputy A or B, not a teacher", () => {
+    const deputy = { ...none, headteacherOf: ["Β2"] };
+    expect(roleFitsPosts("HEADTEACHER_B", deputy)).toBe(true);
+    expect(roleFitsPosts("HEADTEACHER_A", deputy)).toBe(true);
+    expect(roleFitsPosts("TEACHER", deputy)).toBe(false);
+  });
+  it("counselor posts need the counselor role", () => {
+    expect(roleFitsPosts("STUDENT_COUNSELOR", { ...none, counselorOf: ["Α1"] })).toBe(true);
+    expect(roleFitsPosts("HEADTEACHER_B", { ...none, counselorOf: ["Α1"] })).toBe(false);
+  });
+  it("no posts: any role fits", () => {
+    expect(roleFitsPosts("TEACHER", none)).toBe(true);
   });
 });

@@ -44,9 +44,10 @@ export function homegroupCandidates(profiles: HomegroupProfile[]): {
     const role = effectiveStaffRole({ accountRole: p.role, plannedRole: p.plannedRole, scheduleName: p.scheduleName });
     const c = { ...p, hasAccount };
     if (role === "TEACHER") teachers.push(c);
-    else if (role === "HEADTEACHER_B") headteachers.push(c);
+    // Either deputy may be a homegroup's «υπεύθυνος/η Β.Δ.».
+    else if (role === "HEADTEACHER_B" || role === "HEADTEACHER_A") headteachers.push(c);
     else if (role === "STUDENT_COUNSELOR") counselors.push(c);
-    // The headmaster and deputy A are not homegroup staff.
+    // The headmaster is not homegroup staff.
   }
   return { teachers, headteachers, counselors };
 }
@@ -67,6 +68,18 @@ export function roleNeededFor(a: HomegroupAssignments): Role | null {
   if (a.counselorOf.length > 0) return "STUDENT_COUNSELOR";
   if (a.headteacherOf.length > 0) return "HEADTEACHER_B";
   return null;
+}
+
+const DEPUTY_ROLES: Role[] = ["HEADTEACHER_B", "HEADTEACHER_A"];
+
+/**
+ * Does this role suit the homegroup posts assigned to the profile? Counselor
+ * posts need STUDENT_COUNSELOR; deputy posts are fine for either deputy.
+ */
+export function roleFitsPosts(role: Role, a: HomegroupAssignments): boolean {
+  if (a.counselorOf.length > 0) return role === "STUDENT_COUNSELOR";
+  if (a.headteacherOf.length > 0) return DEPUTY_ROLES.includes(role);
+  return true;
 }
 
 export interface HomegroupStaffRow {

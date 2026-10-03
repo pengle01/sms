@@ -5,7 +5,7 @@ import { db } from "@/server/db";
 import type { Role } from "@/generated/prisma/client";
 import { RequestsList } from "./RequestsList";
 import { normalizeStaffName } from "@/lib/staffLink";
-import { roleNeededFor } from "@/lib/homegroupStaff";
+import { roleNeededFor, roleFitsPosts } from "@/lib/homegroupStaff";
 import { expectedSignupRole } from "@/lib/staffRole";
 import type { PendingUser, PendingClaim, PendingChaperone } from "./RequestsList";
 
@@ -82,8 +82,12 @@ export default async function ClaimsPage({
       if (!posts) return {};
       // The homegroup posts decide first; otherwise the admin's planned role or
       // the timetable marker. The teacher's own choice stands — this only warns.
-      const needed = roleNeededFor(posts) ?? posts.expected;
-      return { posts, roleMismatch: needed !== null && needed !== u.role ? needed : undefined };
+      // Homegroup posts decide first (a deputy post suits Deputy A or B);
+      // otherwise the planned role or the timetable marker.
+      const needed = roleNeededFor(posts);
+      if (needed) return { posts, roleMismatch: roleFitsPosts(u.role, posts) ? undefined : needed };
+      const expected = posts.expected;
+      return { posts, roleMismatch: expected !== null && expected !== u.role ? expected : undefined };
     })(),
   }));
 
