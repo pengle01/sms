@@ -1723,7 +1723,7 @@
     "absenceSmsCutoff": "Cutoff time",
     "absenceSmsCutoffHint": "After this time no message is sent, even if an absence is recorded.",
     "absenceSmsTemplate": "Message text",
-    "absenceSmsPlaceholders": "Available fields: {όνομα}, {ημερομηνία}",
+    "absenceSmsPlaceholders": "Available fields: '{όνομα}', '{ημερομηνία}'",
     "absenceSmsSegments": "{count, plural, one {# message} other {# messages}} · {chars}/{limit} chars",
     "absenceSmsCostHint": "Greek fits 70 characters per message. The count uses your longest student name.",
     "absenceSmsErrTemplate": "The message cannot be empty.",

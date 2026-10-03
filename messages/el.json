@@ -1723,7 +1723,7 @@
     "absenceSmsCutoff": "Ώρα λήξης",
     "absenceSmsCutoffHint": "Μετά από αυτή την ώρα δεν στέλνεται μήνυμα, ακόμη και αν καταχωρηθεί απουσία.",
     "absenceSmsTemplate": "Κείμενο μηνύματος",
-    "absenceSmsPlaceholders": "Διαθέσιμα πεδία: {όνομα}, {ημερομηνία}",
+    "absenceSmsPlaceholders": "Διαθέσιμα πεδία: '{όνομα}', '{ημερομηνία}'",
     "absenceSmsSegments": "{count, plural, one {# μήνυμα} other {# μηνύματα}} · {chars}/{limit} χαρ.",
     "absenceSmsCostHint": "Τα ελληνικά χωρούν 70 χαρακτήρες ανά μήνυμα. Ο υπολογισμός γίνεται με το μεγαλύτερο όνομα μαθητή/τριας.",
     "absenceSmsErrTemplate": "Το κείμενο δεν μπορεί να είναι κενό.",
