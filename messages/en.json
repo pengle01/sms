@@ -104,6 +104,7 @@
     "ddk": "ΔΔΚ",
     "specialEd": "Special Education",
     "homegroup": "My Homegroup",
+    "homegroupStaff": "Homegroup staff",
     "calendar": "Calendar",
     "portalAdmin": "System Administration",
     "portalTeacher": "Teacher Portal",
@@ -2078,5 +2079,18 @@
     "warnBody": "Logging out in {seconds}s due to inactivity. Stay signed in?",
     "stay": "Stay signed in",
     "logoutNow": "Log out"
+  },
+  "homegroupStaff": {
+    "title": "Homegroup staff",
+    "subtitle": "The homegroup teacher, deputy head and counselor of every homegroup.",
+    "searchPlaceholder": "Class or name…",
+    "colGroup": "Class",
+    "colTeacher": "Homegroup teacher",
+    "colHeadteacher": "Homegroup deputy",
+    "colCounselor": "Counselor",
+    "colStudents": "Students",
+    "you": "you",
+    "noMatches": "No homegroups found.",
+    "empty": "No homegroups yet."
   }
 }

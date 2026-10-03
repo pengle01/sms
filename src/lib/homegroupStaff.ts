@@ -9,6 +9,7 @@
 
 import type { Role } from "@/generated/prisma/enums";
 import { effectiveStaffRole } from "@/lib/staffRole";
+import { matchesSearch } from "@/lib/textSearch";
 
 export interface HomegroupProfile {
   id: string;
@@ -66,4 +67,20 @@ export function roleNeededFor(a: HomegroupAssignments): Role | null {
   if (a.counselorOf.length > 0) return "STUDENT_COUNSELOR";
   if (a.headteacherOf.length > 0) return "HEADTEACHER_B";
   return null;
+}
+
+export interface HomegroupStaffRow {
+  groupName: string;
+  teacher: string | null;
+  headteacher: string | null;
+  counselor: string | null;
+}
+
+/**
+ * Rows of the teachers' «Υπεύθυνοι τμημάτων» list matching the search box:
+ * by class or by any of the three names, accent- and case-insensitive.
+ */
+export function filterHomegroupRows<T extends HomegroupStaffRow>(rows: T[], q: string): T[] {
+  if (!q.trim()) return rows;
+  return rows.filter((r) => [r.groupName, r.teacher, r.headteacher, r.counselor].some((v) => matchesSearch(v, q)));
 }

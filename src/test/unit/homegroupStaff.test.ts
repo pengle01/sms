@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { homegroupCandidates, roleNeededFor, type HomegroupProfile } from "@/lib/homegroupStaff";
+import { homegroupCandidates, roleNeededFor, filterHomegroupRows, type HomegroupProfile } from "@/lib/homegroupStaff";
 
 const p = (id: string, scheduleName: string | null, role: HomegroupProfile["role"] = null, leftTimetable = false): HomegroupProfile =>
   ({ id, scheduleName, role, leftTimetable });
@@ -67,5 +67,27 @@ describe("roleNeededFor", () => {
   it("needs no particular role for a homeroom teacher or no posts", () => {
     expect(roleNeededFor({ teacherOf: ["Α1"], headteacherOf: [], counselorOf: [] })).toBeNull();
     expect(roleNeededFor({ teacherOf: [], headteacherOf: [], counselorOf: [] })).toBeNull();
+  });
+});
+
+describe("filterHomegroupRows", () => {
+  const rows = [
+    { groupName: "Α1", teacher: "Μ-ΠΑΠΑΣ Α.", headteacher: "Φ-ΒΗΤΑ Β. ΒΔ", counselor: "ΣΕΑ-ΓΑΜΜΑ Γ." },
+    { groupName: "Β2", teacher: "Ε-ΛΑΜΠΡΟΥ Δ.", headteacher: null, counselor: null },
+  ];
+
+  it("matches by class and by any of the three names", () => {
+    expect(filterHomegroupRows(rows, "β2").map((r) => r.groupName)).toEqual(["Β2"]);
+    expect(filterHomegroupRows(rows, "παπας").map((r) => r.groupName)).toEqual(["Α1"]);
+    expect(filterHomegroupRows(rows, "βητα").map((r) => r.groupName)).toEqual(["Α1"]);
+    expect(filterHomegroupRows(rows, "γαμμα").map((r) => r.groupName)).toEqual(["Α1"]);
+  });
+
+  it("ignores accents and case", () => {
+    expect(filterHomegroupRows(rows, "λαμπρού").map((r) => r.groupName)).toEqual(["Β2"]);
+  });
+
+  it("returns everything for an empty search", () => {
+    expect(filterHomegroupRows(rows, "  ")).toHaveLength(2);
   });
 });
