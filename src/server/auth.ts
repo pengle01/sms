@@ -1,3 +1,5 @@
+import { idleMinutesFor } from "@/lib/sessionPolicy";
+import { getSessionIdleMinutes } from "@/lib/schoolConfig";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import type { NextAuthOptions, Session } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
@@ -20,7 +22,10 @@ if (!IS_DEV && !process.env.NEXTAUTH_SECRET) {
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(db),
   secret: process.env.NEXTAUTH_SECRET,
-  session: { strategy: "jwt" },
+  // 7 days is the longest any login may last (families); NextAuth must never
+  // extend a cookie past it. The real limits are enforced by the proxy from the
+  // token's own times — see src/lib/sessionPolicy.ts.
+  session: { strategy: "jwt", maxAge: 7 * 24 * 60 * 60 },
   // Cookie naming lives in one place — see src/lib/sessionCookie.ts for why.
   // The name is pinned explicitly as well as useSecureCookies being set, so
   // getServerSession can never disagree with what the login action wrote.
@@ -115,6 +120,12 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = (user as { role?: Role }).role ?? "PARENT";
+        // A sign-in through NextAuth itself (SSO, if ever enabled) gets the same
+        // session times as the password login, or the proxy would end it at once.
+        const now = Date.now();
+        token.loginAt = now;
+        token.lastSeen = now;
+        token.idleMin = idleMinutesFor(token.role, await getSessionIdleMinutes());
       }
       return token;
     },
@@ -150,5 +161,8 @@ declare module "next-auth/jwt" {
     id: string;
     role: Role;
     isActive?: boolean;
+    loginAt?: number;
+    lastSeen?: number;
+    idleMin?: number | null;
   }
 }

@@ -12,10 +12,10 @@ export default async function StaffLoginPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ error?: string; callbackUrl?: string }>;
+  searchParams: Promise<{ error?: string; callbackUrl?: string; reason?: string }>;
 }) {
   const { locale } = await params;
-  const { error } = await searchParams;
+  const { error, reason } = await searchParams;
   const session = await getServerSession(authOptions);
 
   if (session?.user) {
@@ -43,7 +43,7 @@ export default async function StaffLoginPage({
           <p className="text-emerald-300/70 mt-2 text-sm">School Management System</p>
         </div>
 
-        <LoginForm locale={locale} urlError={error} variant="staff" />
+        <LoginForm locale={locale} urlError={error} reason={reason} variant="staff" />
       </div>
     </div>
   );

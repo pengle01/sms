@@ -14,6 +14,7 @@ import {
 } from "@/lib/absenceSms";
 import { ATTENDANCE_LOCK_KEY, ATTENDANCE_LOCK_WINDOWS, type AttendanceLockConfig } from "@/lib/attendanceLock";
 import { parseRoomInput } from "@/lib/rooms";
+import { SESSION_IDLE_KEY, parseIdleMinutes } from "@/lib/sessionPolicy";
 import { parseSpecialEdCodeInput } from "@/lib/specialEd";
 
 export type SaveRosterResult = { ok: true } | { ok: false; error: string };
@@ -293,6 +294,32 @@ export async function saveDutyRoster(
     action: "duty.rosterSave",
     resource: "DutyRosterEntry",
     details: { entries: unique.size },
+    ...(await requestMeta()),
+  });
+  revalidatePath("/[locale]/(portal)/admin/settings", "page");
+  return { ok: true };
+}
+
+/**
+ * Minutes of inactivity before staff are logged out (5–240). New logins and
+ * active sessions pick it up within about a minute; see src/lib/sessionPolicy.ts.
+ */
+export async function saveSessionIdle(minutes: number): Promise<SaveRosterResult> {
+  const auth = await getSuperAdminAuth();
+  if (!auth) return { ok: false, error: "Forbidden" };
+  const value = parseIdleMinutes(minutes);
+
+  await db.globalSetting.upsert({
+    where: { key: SESSION_IDLE_KEY },
+    create: { key: SESSION_IDLE_KEY, value: String(value) },
+    update: { value: String(value) },
+  });
+  await writeAudit({
+    userId: auth.userId,
+    action: "settings.sessionIdle",
+    resource: "GlobalSetting",
+    resourceId: SESSION_IDLE_KEY,
+    details: { minutes: value },
     ...(await requestMeta()),
   });
   revalidatePath("/[locale]/(portal)/admin/settings", "page");

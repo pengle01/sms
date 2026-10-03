@@ -1,3 +1,4 @@
+import { SESSION_IDLE_KEY, parseIdleMinutes } from "@/lib/sessionPolicy";
 import { db } from "@/server/db";
 import { MAX_GUARDIAN_CLAIMS } from "@/lib/accessCode";
 import { DEFAULT_PERIODS_PER_DAY, type PeriodsPerDay } from "@/lib/periods";
@@ -106,4 +107,10 @@ export async function getSchoolYear(): Promise<SchoolYearRanges> {
 export async function getActiveTermInfo(date: Date): Promise<ActiveTermInfo | null> {
   const config = await getTermDatesConfig();
   return activeTermFor(date, resolveSchoolYear(getNow(), config), config);
+}
+
+/** Idle minutes before a staff member is logged out (Admin → Settings). Default 30. */
+export async function getSessionIdleMinutes(): Promise<number> {
+  const setting = await db.globalSetting.findUnique({ where: { key: SESSION_IDLE_KEY } });
+  return parseIdleMinutes(setting?.value);
 }

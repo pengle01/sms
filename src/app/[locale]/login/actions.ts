@@ -1,34 +1,31 @@
 "use server";
 
 import { db } from "@/server/db";
-import { encode } from "next-auth/jwt";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import type { Role } from "@/generated/prisma/client";
 import { getPortalForRole } from "@/lib/rbac";
 import { rateLimit, resetRateLimit } from "@/server/rateLimit";
-import { SESSION_COOKIE, USE_SECURE_COOKIES } from "@/lib/sessionCookie";
+import { issueSessionCookie } from "@/lib/sessionToken";
+import { idleMinutesFor } from "@/lib/sessionPolicy";
+import { getSessionIdleMinutes } from "@/lib/schoolConfig";
 
-const SESSION_MAX_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
-
+// The login carries its own start time, last activity and idle limit; the proxy
+// ends it after idle minutes (staff) or the maximum length (see sessionPolicy).
 async function createSession(userId: string, email: string, name: string | null, role: Role, image: string | null) {
-  const token = await encode({
-    token: { id: userId, email, name, role, picture: image },
-    secret: process.env.NEXTAUTH_SECRET!,
-    maxAge: SESSION_MAX_AGE,
-  });
-
-  const cookieStore = await cookies();
-  // Flags must match what authOptions declares, or getServerSession looks for a
-  // cookie by a different name and every page treats the user as signed out.
-  cookieStore.set(SESSION_COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    secure: USE_SECURE_COOKIES,
-    maxAge: SESSION_MAX_AGE,
-  });
+  const now = Date.now();
+  const cookie = await issueSessionCookie(
+    {
+      id: userId, email, name, role, picture: image,
+      loginAt: now, lastSeen: now,
+      idleMin: idleMinutesFor(role, await getSessionIdleMinutes()),
+    },
+    now,
+  );
+  // Name and flags come from sessionCookie.ts, the same source authOptions uses,
+  // or getServerSession would look for a different cookie.
+  (await cookies()).set(cookie.name, cookie.value, cookie.options);
 }
 
 // The two login portals share one credential check; each only admits its own

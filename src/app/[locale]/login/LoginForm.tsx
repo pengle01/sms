@@ -13,10 +13,12 @@ import { familyLoginAction, staffLoginAction } from "./actions";
 interface LoginFormProps {
   locale: string;
   urlError?: string;
+  /** Why the user was logged out (idle timer / maximum length). */
+  reason?: string;
   variant: "family" | "staff";
 }
 
-export async function LoginForm({ locale, urlError, variant }: LoginFormProps) {
+export async function LoginForm({ locale, urlError, reason, variant }: LoginFormProps) {
   const t = await getTranslations("auth");
   const tActivate = await getTranslations("activate");
 
@@ -44,6 +46,14 @@ export async function LoginForm({ locale, urlError, variant }: LoginFormProps) {
           {otherLocaleLabel}
         </a>
       </div>
+
+      {/* Logged out by the idle timer or the maximum session length */}
+      {!errorMessage && (reason === "idle" || reason === "expired") && (
+        <div className="flex items-center gap-2 rounded-xl bg-amber-500/20 border border-amber-400/30 text-amber-100 text-sm px-4 py-3">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          {t(reason === "idle" ? "loggedOutIdle" : "loggedOutExpired")}
+        </div>
+      )}
 
       {/* Error banner */}
       {errorMessage && (

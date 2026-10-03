@@ -4,7 +4,7 @@ import { db } from "@/server/db";
 import { DUTY_ELIGIBLE_ROLES } from "@/lib/dutyRoster";
 import { staffDisplayName } from "@/lib/staffName";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY, getMaxTestsPerWeek, DEFAULT_MAX_TESTS_PER_WEEK, getMaxGuardiansPerStudent, DEFAULT_MAX_GUARDIANS_PER_STUDENT, getSchoolYear, getTermDatesConfig, getSchoolName, getGradesUnlocked, getAttendanceLockConfig } from "@/lib/schoolConfig";
+import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY, getMaxTestsPerWeek, DEFAULT_MAX_TESTS_PER_WEEK, getMaxGuardiansPerStudent, DEFAULT_MAX_GUARDIANS_PER_STUDENT, getSchoolYear, getTermDatesConfig, getSchoolName, getGradesUnlocked, getAttendanceLockConfig, getSessionIdleMinutes } from "@/lib/schoolConfig";
 import { getSmsConfig } from "@/lib/sms";
 import { getAbsenceSmsConfig } from "@/lib/schoolConfig";
 import { getEmailConfig } from "@/lib/email";
@@ -34,6 +34,8 @@ export default async function AdminSettingsPage({
   const { DutyRosterForm } = await import("./DutyRosterForm");
   const { GradesUnlockForm } = await import("./GradesUnlockForm");
   const { AttendanceLockForm } = await import("./AttendanceLockForm");
+  const { SessionIdleForm } = await import("./SessionIdleForm");
+  const sessionIdleMinutes = await getSessionIdleMinutes();
   const { RoomsForm } = await import("./RoomsForm");
   const { SpecialEdCodesForm } = await import("./SpecialEdCodesForm");
   const [periodsPerDay, maxTestsPerWeek, maxGuardians, smsConfig, emailConfig, termConfig, schoolYear, schoolName, gradesUnlocked, attendanceLock, dutyEntries, dutyDeputies, rooms, specialEdCodes, absenceSms, longestName] = await Promise.all([
@@ -152,6 +154,15 @@ export default async function AdminSettingsPage({
         </CardHeader>
         <CardContent>
           <AttendanceLockForm initial={attendanceLock} />
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">{t("sessionIdle")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <SessionIdleForm initial={sessionIdleMinutes} />
         </CardContent>
       </Card>
 

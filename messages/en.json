@@ -67,7 +67,9 @@
     "createAccount": "Create an account",
     "familyLogin": "Parents & Students",
     "staffLoginTitle": "Staff Sign-in",
-    "toStaffLogin": "Teacher or staff member? Sign in here →"
+    "toStaffLogin": "Teacher or staff member? Sign in here →",
+    "loggedOutIdle": "You were logged out after a period of inactivity. Please sign in again.",
+    "loggedOutExpired": "Your session has ended. Please sign in again."
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -1762,7 +1764,11 @@
     "seInUse": "{count, plural, one {# student} other {# students}}",
     "seCodeDeactivated": "This code is used on student records — it was deactivated instead of deleted.",
     "seCodeErrExists": "This code already exists.",
-    "seCodeErrInput": "Invalid code or description."
+    "seCodeErrInput": "Invalid code or description.",
+    "sessionIdle": "Automatic logout",
+    "sessionIdleIntro": "Staff are logged out after this many minutes without activity (with a warning a minute before), and in any case 12 hours after signing in. Parents and students: up to 7 days.",
+    "sessionIdleLabel": "Idle minutes",
+    "sessionIdleValue": "{minutes} minutes"
   },
   "adminClaims": {
     "title": "Requests",
@@ -2061,5 +2067,11 @@
     "freeCount": "{count, plural, =0 {None free} one {# free} other {# free}}",
     "unknownRooms": "Timetable rooms missing from the room list (Settings): {rooms}",
     "regularWeekNote": "Shows the regular weekly timetable; the day's changes (covers, room changes) are on the substitution plan."
+  },
+  "session": {
+    "warnTitle": "You're about to be logged out",
+    "warnBody": "Logging out in {seconds}s due to inactivity. Stay signed in?",
+    "stay": "Stay signed in",
+    "logoutNow": "Log out"
   }
 }

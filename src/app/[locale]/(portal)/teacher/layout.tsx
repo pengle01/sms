@@ -8,6 +8,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { AttendanceLockGuard } from "@/components/attendance/AttendanceLockGuard";
 import { ProfileGuard } from "@/components/layout/ProfileGuard";
+import { SessionTimeout } from "@/components/layout/SessionTimeout";
 
 export default async function TeacherPortalLayout({
   children,
@@ -68,6 +69,8 @@ export default async function TeacherPortalLayout({
         <main className="flex-1 overflow-y-auto p-4 md:p-6 print:p-0 print:overflow-visible">
           {children}
         </main>
+        {/* Staff idle logout — see src/lib/sessionPolicy.ts */}
+        <SessionTimeout locale={locale} />
       </div>
       <AttendanceLockGuard locale={locale} />
       {/* Rendered last so an incomplete profile paints ABOVE the attendance

@@ -3,6 +3,7 @@ import { getActiveAuth } from "@/server/authz";
 import { isOfficeAdmin } from "@/lib/rbac";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
+import { SessionTimeout } from "@/components/layout/SessionTimeout";
 
 export default async function OfficePortalLayout({
   children,
@@ -34,6 +35,8 @@ export default async function OfficePortalLayout({
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           {children}
         </main>
+        {/* Staff idle logout — see src/lib/sessionPolicy.ts */}
+        <SessionTimeout locale={locale} />
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { getToken } from "next-auth/jwt";
 import { USE_SECURE_COOKIES, expiredSessionCookies } from "@/lib/sessionCookie";
 import { loginPathFor } from "@/lib/loginRedirect";
 import { redirectTo } from "@/lib/redirect";
+import { toLogoutReason } from "@/lib/sessionPolicy";
 
 export async function GET(request: NextRequest) {
   const locale = request.nextUrl.searchParams.get("locale");
@@ -20,5 +21,7 @@ export async function GET(request: NextRequest) {
   for (const c of expiredSessionCookies()) store.set(c.name, c.value, c.options);
   // Relative Location: behind the reverse proxy request.url is the internal
   // address, and an absolute redirect built from it sent users to localhost.
-  return redirectTo(loginPathFor(token?.role, locale));
+  // ?reason=idle|expired (the idle timer) is shown on the login page.
+  const reason = toLogoutReason(request.nextUrl.searchParams.get("reason"));
+  return redirectTo(loginPathFor(token?.role, locale) + (reason ? `?reason=${reason}` : ""));
 }
