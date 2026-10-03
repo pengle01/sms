@@ -38,6 +38,18 @@ RUN if [ -z "$NEXT_PUBLIC_TEST_DATE" ]; then unset NEXT_PUBLIC_TEST_DATE; fi \
 
 # ---- runtime -----------------------------------------------------------------
 FROM base AS runtime
+# pg_dump / psql for Admin → Database (export / restore), from the PostgreSQL
+# apt repo: Debian's own client is v15, and pg_dump refuses to dump a newer
+# server — the database runs postgres:18 (compose.yaml), so the client must be 18.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends curl \
+ && install -d /usr/share/postgresql-common/pgdg \
+ && curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+ && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends postgresql-client-18 \
+ && apt-get purge -y curl && apt-get autoremove -y \
+ && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production \
     PORT=3000 \
     UPLOADS_DIR=/data/uploads \
