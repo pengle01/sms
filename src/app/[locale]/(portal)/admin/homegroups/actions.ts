@@ -4,6 +4,8 @@ import { db } from "@/server/db";
 import { getSuperAdminAuth } from "@/server/authz";
 import { revalidatePath } from "next/cache";
 import * as XLSX from "xlsx";
+import { writeAudit, requestMeta } from "@/server/audit";
+import { groupRemoval, type GroupRemoval } from "@/lib/homegroupFilter";
 
 async function requireSuperAdmin() {
   const auth = await getSuperAdminAuth();
@@ -26,6 +28,68 @@ export async function assignHomeroomCounselor(groupId: string, staffId: string |
   await requireSuperAdmin();
   await db.group.update({ where: { id: groupId }, data: { counselorId: staffId } });
   revalidatePath("/[locale]/admin/homegroups", "page");
+}
+
+export type RemoveHomegroupResult = { ok: true; done: Exclude<GroupRemoval, "refuse"> } | { ok: false; error: "hasStudents" | "notFound" };
+
+/**
+ * «Διαγραφή τμήματος»: remove a group that isn't really a homegroup any more.
+ * Deleted outright when nothing points at it; otherwise (inactive students,
+ * lessons, history) its homegroup staff are cleared so it stops being listed,
+ * and the group itself is kept so no record loses its class. A class with
+ * active students is refused. Re-checked here, not trusted from the page.
+ */
+export async function removeHomegroup(groupId: string): Promise<RemoveHomegroupResult> {
+  const auth = await getSuperAdminAuth();
+  if (!auth) throw new Error("Forbidden");
+
+  const result = await db.$transaction(async (tx) => {
+    const g = await tx.group.findUnique({
+      where: { id: groupId },
+      select: {
+        name: true,
+        _count: {
+          select: {
+            studentGroups: true, courseAssignments: true, referrals: true, referralStudents: true,
+            testSchedules: true, substitutionRequests: true, substitutionPlanEntries: true,
+            toiletBreaks: true, attendanceExports: true,
+          },
+        },
+      },
+    });
+    if (!g) return { ok: false as const, error: "notFound" as const };
+    const [activeStudents, inactiveStudents, timetableSlots, intercalaryAttendance] = await Promise.all([
+      tx.studentProfile.count({ where: { groupId, user: { isActive: true } } }),
+      tx.studentProfile.count({ where: { groupId, user: { isActive: false } } }),
+      // Removed lessons too: naming removedAt opts out of the current-timetable filter (db.ts).
+      tx.timetableSlot.count({ where: { groupId, removedAt: undefined } }),
+      tx.attendance.count({ where: { intercalaryGroupId: groupId } }),
+    ]);
+    const done = groupRemoval({ activeStudents, inactiveStudents, timetableSlots, intercalaryAttendance, ...g._count });
+    if (done === "refuse") return { ok: false as const, error: "hasStudents" as const };
+    if (done === "delete") await tx.group.delete({ where: { id: groupId } });
+    else {
+      await tx.group.update({
+        where: { id: groupId },
+        data: { homeroomTeacherId: null, homeroomHeadteacherId: null, counselorId: null },
+      });
+    }
+    return { ok: true as const, done, name: g.name };
+  });
+
+  if (result.ok) {
+    await writeAudit({
+      userId: auth.userId,
+      action: result.done === "delete" ? "group.delete" : "group.unassignHomeroom",
+      resource: "Group",
+      resourceId: groupId,
+      details: { name: result.name },
+      ...(await requestMeta()),
+    });
+    revalidatePath("/[locale]/admin/homegroups", "page");
+    return { ok: true, done: result.done };
+  }
+  return result;
 }
 
 export interface GroupImportResult {

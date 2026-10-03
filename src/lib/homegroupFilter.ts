@@ -12,14 +12,15 @@ export function parseMissingFilter(v: string | undefined | null): MissingFilter 
 }
 
 /**
- * A "homegroup" is a group that either has homeroom students or has any of
- * the homeroom staff roles assigned. (There is no type column — subject
- * groups have neither.)
+ * A "homegroup" is a group that either has ACTIVE homeroom students or has any
+ * of the homeroom staff roles assigned. (There is no type column — subject
+ * groups have neither.) Deactivated students keep their old class, so counting
+ * them kept last year's or a removed class listed as a homegroup.
  */
 export function isHomegroupWhere(): Record<string, unknown> {
   return {
     OR: [
-      { students: { some: {} } },
+      { students: { some: { user: { isActive: true } } } },
       { homeroomTeacherId: { not: null } },
       { homeroomHeadteacherId: { not: null } },
       { counselorId: { not: null } },
@@ -55,4 +56,37 @@ export function homegroupWhere(params: {
   }
 
   return where;
+}
+
+/** What still uses a group — every table that points at it. */
+export interface GroupUsage {
+  activeStudents: number;
+  inactiveStudents: number;
+  studentGroups: number;
+  courseAssignments: number;
+  timetableSlots: number;
+  referrals: number;
+  referralStudents: number;
+  testSchedules: number;
+  substitutionRequests: number;
+  substitutionPlanEntries: number;
+  toiletBreaks: number;
+  attendanceExports: number;
+  intercalaryAttendance: number;
+}
+
+export type GroupRemoval = "refuse" | "delete" | "unassign";
+
+/**
+ * «Διαγραφή τμήματος» on Admin → Τμήματα:
+ *  - a class with active students is a real class → refuse;
+ *  - nothing points at it at all → delete it;
+ *  - anything else (inactive students, old lessons, history) → keep the group,
+ *    because deleting would blank those records' class, and just clear its
+ *    homegroup staff so it stops being listed as a homegroup.
+ */
+export function groupRemoval(u: GroupUsage): GroupRemoval {
+  const { activeStudents, ...rest } = u;
+  if (activeStudents > 0) return "refuse";
+  return Object.values(rest).every((n) => n === 0) ? "delete" : "unassign";
 }

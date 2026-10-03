@@ -3,6 +3,7 @@ import {
   parseMissingFilter,
   homegroupWhere,
   isHomegroupWhere,
+  groupRemoval,
 } from "@/lib/homegroupFilter";
 
 describe("parseMissingFilter", () => {
@@ -62,11 +63,34 @@ describe("isHomegroupWhere", () => {
   it("matches groups with homeroom students or any homeroom staff", () => {
     expect(isHomegroupWhere()).toEqual({
       OR: [
-        { students: { some: {} } },
+        { students: { some: { user: { isActive: true } } } },
         { homeroomTeacherId: { not: null } },
         { homeroomHeadteacherId: { not: null } },
         { counselorId: { not: null } },
       ],
     });
+  });
+});
+
+describe("groupRemoval", () => {
+  const unused = {
+    activeStudents: 0, inactiveStudents: 0, studentGroups: 0, courseAssignments: 0, timetableSlots: 0,
+    referrals: 0, referralStudents: 0, testSchedules: 0, substitutionRequests: 0,
+    substitutionPlanEntries: 0, toiletBreaks: 0, attendanceExports: 0, intercalaryAttendance: 0,
+  };
+
+  it("deletes a group nothing points at", () => {
+    expect(groupRemoval(unused)).toBe("delete");
+  });
+
+  it("refuses a class with active students", () => {
+    expect(groupRemoval({ ...unused, activeStudents: 3 })).toBe("refuse");
+  });
+
+  it("only clears homegroup staff when anything else still uses it", () => {
+    expect(groupRemoval({ ...unused, inactiveStudents: 12 })).toBe("unassign");
+    expect(groupRemoval({ ...unused, timetableSlots: 1 })).toBe("unassign");
+    expect(groupRemoval({ ...unused, referralStudents: 1 })).toBe("unassign");
+    expect(groupRemoval({ ...unused, intercalaryAttendance: 1 })).toBe("unassign");
   });
 });

@@ -654,7 +654,16 @@
     "colEnrolled": "Enrolled",
     "noAccountSuffix": "(no account)",
     "missingDeputyHint": "A deputy missing from the list? Set their role (Deputy Head or … A) with the role picker on their row in Users.",
-    "missingDeputyLink": "Go to Users →"
+    "missingDeputyLink": "Go to Users →",
+    "removeGroup": "Delete class",
+    "removeTitle": "Delete class {name}?",
+    "removeBody": "This class has no active students. If nothing uses it, it is deleted; if there is history (inactive students, lessons, referrals), it is kept for that history and only its homegroup staff are removed — so it no longer appears among the homegroups.",
+    "removeConfirm": "Delete",
+    "removeCancel": "Cancel",
+    "removedDeleted": "Class {name} deleted",
+    "removedUnassigned": "Class {name} removed from the homegroups (kept for history)",
+    "removeHasStudents": "This class has active students and can't be deleted.",
+    "removeNotFound": "Class not found."
   },
   "users": {
     "title": "User Management",

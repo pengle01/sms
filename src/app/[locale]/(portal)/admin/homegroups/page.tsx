@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GraduationCap, Users, ChevronRight } from "lucide-react";
 import { InlineTeacherAssign } from "./InlineTeacherAssign";
+import { RemoveHomegroupButton } from "./RemoveHomegroupButton";
 import { GroupAssignmentImport } from "./GroupAssignmentImport";
 import { FilterSelect } from "./FilterSelect";
 import { getTranslations } from "next-intl/server";
@@ -51,7 +52,8 @@ export default async function HomegroupsPage({
         homeroomTeacher:   { include: { user: { select: { name: true } } } },
         homeroomHeadteacher: { include: { user: { select: { name: true } } } },
         counselor:         { include: { user: { select: { name: true } } } },
-        _count: { select: { students: true, studentGroups: true } },
+        // Active students only — deactivated ones keep their old class.
+        _count: { select: { students: { where: { user: { isActive: true } } }, studentGroups: true } },
       },
       orderBy: [{ grade: "asc" }, { name: "asc" }],
     }),
@@ -221,7 +223,7 @@ export default async function HomegroupsPage({
                   </th>
                   <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("homeroomStaff")}</th>
                   <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide w-36">{t("counselorColumn")}</th>
-                  <th className="w-10" />
+                  <th className="w-16" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -250,6 +252,8 @@ export default async function HomegroupsPage({
                       )}
                     </td>
                     <td className="px-3 py-3">
+                      <div className="flex items-center gap-2">
+                      {g._count.students === 0 && <RemoveHomegroupButton groupId={g.id} groupName={g.name} />}
                       <Link
                         href={`/${locale}/admin/groups/${g.id}`}
                         className="text-slate-300 hover:text-slate-600 transition-colors"
@@ -257,6 +261,7 @@ export default async function HomegroupsPage({
                       >
                         <ChevronRight className="w-4 h-4" />
                       </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}

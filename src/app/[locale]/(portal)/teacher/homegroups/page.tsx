@@ -44,7 +44,7 @@ export default async function HomegroupStaffPage({
         homeroomTeacher: staffSelect,
         homeroomHeadteacher: staffSelect,
         counselor: staffSelect,
-        _count: { select: { students: true } },
+        _count: { select: { students: { where: { user: { isActive: true } } } } },
       },
       orderBy: [{ grade: "asc" }, { name: "asc" }],
     }),
