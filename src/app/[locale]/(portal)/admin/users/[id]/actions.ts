@@ -225,7 +225,11 @@ export async function deleteUser(targetUserId: string): Promise<ActionResult> {
         await tx.group.updateMany({ where: { homeroomTeacherId: profile.id }, data: { homeroomTeacherId: null } });
         await tx.group.updateMany({ where: { homeroomHeadteacherId: profile.id }, data: { homeroomHeadteacherId: null } });
         await tx.group.updateMany({ where: { counselorId: profile.id }, data: { counselorId: null } });
-        await tx.staffProfile.update({ where: { id: profile.id }, data: { userId: null } });
+        // The record is kept for history; the person's own details go with the person.
+        await tx.staffProfile.update({
+          where: { id: profile.id },
+          data: { userId: null, phone: null, department: null, pmp: null },
+        });
       }
       await tx.user.delete({ where: { id: targetUserId } });
     });

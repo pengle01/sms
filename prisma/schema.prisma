@@ -173,6 +173,10 @@ model User {
   // from the new file, or a parent left with no active child). Only these are
   // brought back by a later import; a manual deactivation is never undone.
   deactivatedByImport DateTime?
+  // A staff member's own details (phone, specialty, ΠΜΠ — { phone, department,
+  // pmp }) while they're not linked to any staff record, so an admin unlink →
+  // link carries them over. Normally they live on the linked StaffProfile.
+  staffDetails Json?
   // Per-account appearance preferences
   colorTheme   String  @default("emerald") // emerald | ocean | violet | rose | amber
   fontSize     String  @default("small") // small | medium | large
