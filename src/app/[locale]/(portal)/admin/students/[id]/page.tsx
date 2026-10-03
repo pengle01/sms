@@ -19,6 +19,7 @@ import { getPeriodsPerDay, getMaxGuardiansPerStudent } from "@/lib/schoolConfig"
 import { periodsForDow, maxPeriodCount } from "@/lib/periods";
 import { isPassing } from "@/lib/grades";
 import { cn } from "@/lib/utils";
+import { slotTeacherName } from "@/lib/staffName";
 
 const DAY_KEYS = ["dayMon", "dayTue", "dayWed", "dayThu", "dayFri"] as const;
 
@@ -142,6 +143,7 @@ export default async function StudentDetailPage({
           include: {
             course: { select: { name: true } },
             group: { select: { name: true } },
+            staff: { select: { scheduleName: true, user: { select: { name: true } } } },
           },
           orderBy: [{ dayOfWeek: "asc" }, { period: "asc" }],
         })
@@ -293,6 +295,9 @@ export default async function StudentDetailPage({
                                         {s.group.name}
                                         {s.room ? ` · ${s.room}` : ""}
                                       </p>
+                                      {slotTeacherName(s, "") && (
+                                        <p className="text-[11px] text-slate-500 truncate">{slotTeacherName(s, "")}</p>
+                                      )}
                                     </div>
                                   ))}
                                 </div>
