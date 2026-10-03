@@ -3,6 +3,7 @@ import {
   sessionCookieName,
   SESSION_COOKIE,
   ALL_SESSION_COOKIES,
+  expiredSessionCookies,
   USE_SECURE_COOKIES,
 } from "@/lib/sessionCookie";
 
@@ -45,5 +46,22 @@ describe("session cookie naming", () => {
 
   it("names are distinct, so clearing one cannot clear the other", () => {
     expect(new Set(ALL_SESSION_COOKIES).size).toBe(2);
+  });
+});
+
+describe("expiredSessionCookies", () => {
+  const byName = Object.fromEntries(expiredSessionCookies().map((c) => [c.name, c]));
+
+  it("expires every session cookie name", () => {
+    expect(Object.keys(byName).sort()).toEqual([...ALL_SESSION_COOKIES].sort());
+    for (const c of Object.values(byName)) {
+      expect(c.value).toBe("");
+      expect(c.options.maxAge).toBe(0);
+      expect(c.options.path).toBe("/");
+    }
+  });
+
+  it("marks the __Secure- one Secure, or the browser ignores the removal", () => {
+    expect(byName["__Secure-next-auth.session-token"]!.options.secure).toBe(true);
   });
 });

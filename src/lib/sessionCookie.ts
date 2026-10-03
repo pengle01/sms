@@ -45,3 +45,30 @@ export const ALL_SESSION_COOKIES = [
   sessionCookieName(false),
   sessionCookieName(true),
 ] as const;
+
+/**
+ * The cookies to set to log out — one per name, already expired.
+ *
+ * Not cookies().delete(): that sends no `Secure` attribute, and browsers refuse
+ * any Set-Cookie for a `__Secure-` name without it — including the one meant to
+ * remove it. In production (where the name is `__Secure-…`) the session then
+ * survived logout and the login page sent the user straight back in.
+ */
+export function expiredSessionCookies(): {
+  name: string;
+  value: "";
+  options: { path: "/"; maxAge: 0; expires: Date; httpOnly: true; sameSite: "lax"; secure: boolean };
+}[] {
+  return ALL_SESSION_COOKIES.map((name) => ({
+    name,
+    value: "",
+    options: {
+      path: "/",
+      maxAge: 0,
+      expires: new Date(0),
+      httpOnly: true,
+      sameSite: "lax",
+      secure: name.startsWith("__Secure-") || USE_SECURE_COOKIES,
+    },
+  }));
+}
