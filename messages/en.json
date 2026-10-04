@@ -77,6 +77,7 @@
     "referrals": "Referrals",
     "grades": "Term Grades",
     "timetable": "Timetable",
+    "lessonNotes": "Lesson notes",
     "tests": "Tests",
     "noticeboard": "Notifications",
     "communication": "Communication",
@@ -2103,5 +2104,28 @@
     "you": "you",
     "noMatches": "No homegroups found.",
     "empty": "No homegroups yet."
+  },
+  "lessonNotes": {
+    "title": "Lesson notes",
+    "subtitle": "Only you can see your notes.",
+    "cardTitle": "Lesson note",
+    "privateHint": "only you",
+    "placeholder": "What was covered, where to pick up, what to remember…",
+    "save": "Save",
+    "saved": "Saved",
+    "savedToast": "Note saved",
+    "deletedToast": "Note deleted",
+    "errSave": "The note was not saved.",
+    "errTooLong": "The note is too long (up to 2000 characters).",
+    "allNotesLink": "All my notes →",
+    "searchPlaceholder": "Search notes…",
+    "allClasses": "All classes",
+    "openLesson": "Open lesson",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this note?",
+    "empty": "No notes yet. Write one on a lesson's attendance page.",
+    "noMatches": "No notes found.",
+    "absentLabel": "Absent",
+    "lateLabel": "Late"
   }
 }

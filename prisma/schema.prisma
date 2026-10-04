@@ -202,6 +202,7 @@ model User {
   auditLogs                  AuditLog[]
   chaperoneAssignments       ActivityChaperone[]
   teacherClaim               TeacherClaim?
+  lessonNotes                LessonNote[]
   chaperoneRequests          ChaperoneRequest[]
   startedConversations       Conversation[]              @relation("ConversationStarter")
   authoredMessages           Message[]                   @relation("MessageAuthor")
@@ -1366,4 +1367,27 @@ model RoomMaintainer {
 
   @@id([roomId, staffProfileId])
   @@index([staffProfileId])
+}
+
+// A teacher's private note about one lesson (class + period + date), written on
+// the attendance page and listed under «Σημειώσεις μαθημάτων». Belongs to the
+// ACCOUNT, not the staff record: relinking keeps it with the person, nobody
+// else can read it, and deleting the account deletes it. Class and lesson
+// names are copied in so the note stays readable after timetable changes;
+// groupId is a plain string so it never blocks removing a group.
+model LessonNote {
+  id         String   @id @default(cuid())
+  authorId   String
+  author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  groupId    String
+  groupName  String
+  courseName String?
+  date       DateTime @db.Date
+  period     Int
+  body       String   @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([authorId, groupId, period, date])
+  @@index([authorId, date])
 }

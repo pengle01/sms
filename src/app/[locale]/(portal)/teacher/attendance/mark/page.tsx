@@ -9,6 +9,7 @@ import { ArrowLeft, Plus } from "lucide-react";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { AttendanceMarkForm } from "./AttendanceMarkForm";
+import { LessonNoteCard } from "../../lesson-notes/LessonNoteCard";
 
 export default async function TeacherMarkAttendancePage({
   params,
@@ -334,6 +335,22 @@ export default async function TeacherMarkAttendancePage({
 
   const t = await getTranslations("attendance");
 
+  // The viewer's own private note for this lesson, if any.
+  const lessonNote =
+    groupId && period
+      ? await db.lessonNote.findUnique({
+          where: {
+            authorId_groupId_period_date: {
+              authorId: session.user.id,
+              groupId,
+              period,
+              date: utcMidnight(attendanceDateStr),
+            },
+          },
+          select: { body: true },
+        })
+      : null;
+
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-3">
@@ -377,6 +394,17 @@ export default async function TeacherMarkAttendancePage({
           prevActivityPeriods={prevActivityPeriods}
           intercalaryGroupId={isIntercalary || isExcursion ? groupId : undefined}
           isExcursion={isExcursion}
+        />
+      )}
+
+      {/* Private lesson note — the teacher's own log for this lesson */}
+      {groupId && period && students.length > 0 && (
+        <LessonNoteCard
+          locale={locale}
+          groupId={groupId}
+          period={period}
+          date={attendanceDateStr}
+          initial={lessonNote?.body ?? ""}
         />
       )}
 
