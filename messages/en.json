@@ -1032,7 +1032,6 @@
     "smsSent": "Sent",
     "tabLog": "Daily Log",
     "tabErase": "Erase Absences",
-    "tabDaily": "Daily",
     "dailyFor": "Absences {date}",
     "colPeriods": "Periods",
     "colTotal": "Total",
@@ -1067,7 +1066,18 @@
     "csvDelayMinutes": "Delay (minutes)",
     "csvSubstitution": "Substitution",
     "csvSms": "SMS",
-    "csvYes": "Yes"
+    "csvYes": "Yes",
+    "subHomegroup": "Homegroup cover",
+    "insteadOf": "in place of {name}",
+    "lessonHomegroupPeriod": "Homegroup period",
+    "lessonExcursion": "Excursion",
+    "csvLessonTeacher": "Lesson's teacher",
+    "tag": {
+      "HEADMASTER": "Head",
+      "HEADTEACHER_A": "Deputy A",
+      "HEADTEACHER_B": "Deputy"
+    },
+    "downloadXlsx": "Excel"
   },
   "officeDashboard": {
     "title": "Office",

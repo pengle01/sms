@@ -1032,7 +1032,6 @@
     "smsSent": "Εστάλη",
     "tabLog": "Ημερολόγιο",
     "tabErase": "Διαγραφή Απουσιών",
-    "tabDaily": "Ημερήσιο",
     "dailyFor": "Απουσίες {date}",
     "colPeriods": "Περίοδοι",
     "colTotal": "Σύνολο",
@@ -1067,7 +1066,18 @@
     "csvDelayMinutes": "Καθυστέρηση (λεπτά)",
     "csvSubstitution": "Αναπλήρωση",
     "csvSms": "SMS",
-    "csvYes": "Ναι"
+    "csvYes": "Ναι",
+    "subHomegroup": "Κάλυψη τμήματος",
+    "insteadOf": "αντί για {name}",
+    "lessonHomegroupPeriod": "Υπευθυνότητα Τμήματος",
+    "lessonExcursion": "Εκδρομή",
+    "csvLessonTeacher": "Καθηγητής/τρια μαθήματος",
+    "tag": {
+      "HEADMASTER": "Δ.",
+      "HEADTEACHER_A": "Β.Δ.Α.",
+      "HEADTEACHER_B": "Β.Δ."
+    },
+    "downloadXlsx": "Excel"
   },
   "officeDashboard": {
     "title": "Γραμματεία",
