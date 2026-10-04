@@ -1,6 +1,7 @@
 import { db } from "@/server/db";
 import { utcMidnight } from "@/lib/dates";
-import { getPeriodsPerDay, getSchoolYear } from "@/lib/schoolConfig";
+import { getSchoolYear } from "@/lib/schoolConfig";
+import { homegroupMeeting, type HomegroupMeeting } from "@/lib/homegroupPeriod";
 import { configuredHolidayFor, type DateRange } from "@/lib/schoolYear";
 import { dutyDowFor } from "@/lib/dutyRoster";
 import type { SpecialDay, SpecialDayType } from "@/generated/prisma/client";
@@ -91,11 +92,20 @@ export async function getOnDutyDeputies(date: Date) {
   });
 }
 
-export async function getPeriodsForDate(date: Date, dow: number): Promise<number> {
-  const type = await getSpecialDayForDate(date);
-  if (type === "INTERCALARY") return 8;
-  const config = await getPeriodsPerDay();
-  return config[dow] ?? 7;
+/**
+ * The date's homegroup meeting («Υπευθυνότητα Τμήματος»), if the admin set
+ * one: inserted on an INTERCALARY day, replacing on a HOMEGROUP_PERIOD day.
+ */
+export async function getHomegroupMeetingForDate(date: Date): Promise<HomegroupMeeting | null> {
+  const day = await db.specialDay.findFirst({
+    where: {
+      type: { in: ["INTERCALARY", "HOMEGROUP_PERIOD"] },
+      startDate: { lte: date },
+      endDate: { gte: date },
+    },
+    select: { type: true, intercalaryMeetingPeriod: true },
+  });
+  return day ? homegroupMeeting(day.type, day.intercalaryMeetingPeriod) : null;
 }
 
 /** Build a date-string → SpecialDayType map for a whole week (Mon–Fri).
@@ -117,20 +127,19 @@ export function buildDayTypeMap(
   return map;
 }
 
-/** Build a date-string → meeting period map for INTERCALARY days in a week.
- *  Defaults to 8 if the admin did not configure a specific period.
+/** Build a date-string → homegroup meeting map for a week (inserted or
+ *  replacing; the meeting period defaults to 8 if the admin set none).
  */
-export function buildDayMeetingPeriodMap(
+export function buildDayMeetingMap(
   specialDays: Awaited<ReturnType<typeof getSpecialDaysInRange>>,
   weekDates: Date[]
-): Map<string, number> {
-  const map = new Map<string, number>();
+): Map<string, HomegroupMeeting> {
+  const map = new Map<string, HomegroupMeeting>();
   for (const sd of specialDays) {
-    if (sd.type !== "INTERCALARY") continue;
+    const meeting = homegroupMeeting(sd.type, sd.intercalaryMeetingPeriod);
+    if (!meeting) continue;
     for (const d of weekDates) {
-      if (d >= sd.startDate && d <= sd.endDate) {
-        map.set(d.toISOString().slice(0, 10), sd.intercalaryMeetingPeriod ?? 8);
-      }
+      if (d >= sd.startDate && d <= sd.endDate) map.set(d.toISOString().slice(0, 10), meeting);
     }
   }
   return map;

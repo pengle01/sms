@@ -14,6 +14,7 @@ const RANGE_TYPES: SpecialDayType[] = ["CHRISTMAS", "EASTER"];
 
 const TYPE_COLORS: Record<SpecialDayType, string> = {
   INTERCALARY: "bg-purple-100 text-purple-700",
+  HOMEGROUP_PERIOD: "bg-violet-100 text-violet-700",
   EXCURSION: "bg-blue-100 text-blue-700",
   BANK_HOLIDAY: "bg-red-100 text-red-700",
   CHRISTMAS: "bg-emerald-100 text-emerald-700",
@@ -73,7 +74,7 @@ export function CalendarClient({ specialDays }: Props) {
                     </td>
                     <td className="px-4 py-3 text-slate-600">
                       {day.label ?? "—"}
-                      {day.type === "INTERCALARY" && day.intercalaryMeetingPeriod != null && (
+                      {(day.type === "INTERCALARY" || day.type === "HOMEGROUP_PERIOD") && day.intercalaryMeetingPeriod != null && (
                         <span className="ml-2 text-xs text-purple-500 font-medium">P{day.intercalaryMeetingPeriod}</span>
                       )}
                       {day.type === "SCHOOL_EVENT" && day.eventStartPeriod != null && day.eventEndPeriod != null && (

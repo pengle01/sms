@@ -8,8 +8,10 @@ import { getAttendanceLockConfig, getSchoolYear } from "@/lib/schoolConfig";
 import { isWithinSchoolYear } from "@/lib/schoolYear";
 import { getPendingAttendance, type PendingLesson } from "@/server/attendanceLock";
 import { sendAbsenceSms } from "@/server/absenceSms";
+import { getSpecialDayForDate, getHomegroupMeetingForDate } from "@/lib/calendar";
 
 const OUT_OF_YEAR_MSG = "Η ημερομηνία είναι εκτός των ορίων του σχολικού έτους.";
+const NO_HOMEGROUP_PERIOD_MSG = "Δεν υπάρχει Υπευθυνότητα Τμήματος σε αυτή την ημέρα και περίοδο.";
 const REMOVED_LESSON_MSG = "Το μάθημα αυτό δεν υπάρχει πλέον στο ωρολόγιο πρόγραμμα. Ανανεώστε τη σελίδα.";
 
 export const attendanceRouter = createTRPCRouter({
@@ -157,7 +159,10 @@ export const attendanceRouter = createTRPCRouter({
       return upserted;
     }),
 
-  // Mark intercalary period-8 attendance (no timetable slot required)
+  // Homegroup register — «Υπευθυνότητα Τμήματος» (inserted or replacing
+  // period) or an excursion day (P1). No timetable slot. Any teacher may take
+  // it (e.g. covering an absent homegroup teacher); anyone other than the
+  // homegroup's own staff leaves an audit trail.
   markIntercalaryAttendance: staffProcedure
     .input(
       z.object({
@@ -183,6 +188,30 @@ export const attendanceRouter = createTRPCRouter({
       const ranges = await getSchoolYear();
       if (!isWithinSchoolYear(utcMidnight(input.date), ranges)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: OUT_OF_YEAR_MSG });
+      }
+
+      // Only on a real homegroup-period day, at its meeting period (or P1 of an excursion).
+      const day = utcMidnight(input.date);
+      const isExcursion = (await getSpecialDayForDate(day)) === "EXCURSION";
+      const meeting = isExcursion ? null : await getHomegroupMeetingForDate(day);
+      if (isExcursion ? input.period !== 1 : meeting?.period !== input.period) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: NO_HOMEGROUP_PERIOD_MSG });
+      }
+
+      const group = await ctx.db.group.findUnique({
+        where: { id: input.groupId },
+        select: { homeroomTeacherId: true, homeroomHeadteacherId: true, counselorId: true },
+      });
+      if (!group) throw new TRPCError({ code: "NOT_FOUND" });
+      const ownStaff = [group.homeroomTeacherId, group.homeroomHeadteacherId, group.counselorId];
+      if (!ownStaff.includes(staff.id)) {
+        await writeAudit({
+          userId: ctx.session.user.id,
+          action: "attendance.claimHomegroup",
+          resource: "group",
+          resourceId: input.groupId,
+          details: { period: input.period, date: input.date, excursion: isExcursion },
+        });
       }
 
       const thresholdSetting = await ctx.db.globalSetting.findUnique({

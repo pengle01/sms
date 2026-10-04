@@ -3,7 +3,8 @@ import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/server/db";
 import { getNow, utcMidnight, fmtDisplayDate } from "@/lib/dates";
-import { getSpecialDayForDate } from "@/lib/calendar";
+import { getHomegroupMeetingForDate } from "@/lib/calendar";
+import { rowsForDay, storedPeriodAt, isMeetingRow, isLessonCancelled } from "@/lib/homegroupPeriod";
 import Link from "next/link";
 import { CheckCircle2, ClipboardList, AlertCircle } from "lucide-react";
 import { RefreshAfterAttendance } from "@/components/attendance/RefreshAfterAttendance";
@@ -51,15 +52,11 @@ export default async function TeacherSchedulePage({
     slotMap[s.dayOfWeek]![s.period] = s;
   }
 
-  const todaySpecialDay = !isWeekend ? await getSpecialDayForDate(today) : null;
-  const todayMeetingPeriod =
-    todaySpecialDay === "INTERCALARY"
-      ? await db.specialDay.findFirst({ where: { type: "INTERCALARY", startDate: today }, select: { intercalaryMeetingPeriod: true } })
-          .then((r) => r?.intercalaryMeetingPeriod ?? null)
-      : null;
+  // Today's homegroup period («Υπευθυνότητα Τμήματος»), inserted or replacing.
+  const meeting = !isWeekend ? await getHomegroupMeetingForDate(today) : null;
 
   const normalMax = slots.reduce((m, s) => Math.max(m, s.period), 0);
-  const maxPeriod = Math.max(normalMax, todayMeetingPeriod ?? 0);
+  const maxPeriod = rowsForDay(normalMax, meeting);
   const periods = maxPeriod > 0 ? Array.from({ length: maxPeriod }, (_, i) => i + 1) : [];
 
   // Which today slots already have attendance marked
@@ -133,22 +130,28 @@ export default async function TeacherSchedulePage({
                 </td>
                 {([1, 2, 3, 4, 5] as const).map((dow) => {
                   const isToday = dow === todayDow && !isWeekend;
-                  const isIntercalaryDay = isToday && todayMeetingPeriod !== null;
-                  const dbPeriod =
-                    isIntercalaryDay && todayMeetingPeriod !== null && period > todayMeetingPeriod
-                      ? period - 1
-                      : period;
-                  const slot =
-                    isIntercalaryDay && period === todayMeetingPeriod
-                      ? undefined
-                      : slotMap[dow]?.[dbPeriod];
+                  const dayMeeting = isToday ? meeting : null;
+                  const dbPeriod = storedPeriodAt(period, dayMeeting);
+                  const isMeeting = isMeetingRow(period, dayMeeting);
+                  const slot = isMeeting ? undefined : slotMap[dow]?.[dbPeriod];
                   const marked = slot ? markedSlotIds.has(slot.id) : false;
 
-                  if (isIntercalaryDay && period === todayMeetingPeriod) {
+                  if (isMeeting) {
                     return (
                       <td key={dow} className="px-2 py-2 align-top bg-emerald-50/30">
                         <div className="rounded-lg px-3 py-2 border border-purple-100 bg-purple-50/20">
-                          <p className="text-xs text-purple-400 text-center">Intercalary</p>
+                          <p className="text-xs text-purple-400 text-center">Υπευθυνότητα Τμήματος</p>
+                        </div>
+                      </td>
+                    );
+                  }
+
+                  if (slot && isLessonCancelled(dbPeriod, dayMeeting)) {
+                    return (
+                      <td key={dow} className="px-2 py-2 align-top bg-emerald-50/30">
+                        <div className="rounded-lg px-3 py-2.5 border border-slate-200 bg-slate-50 opacity-60">
+                          <p className="text-xs font-semibold leading-snug text-slate-400 line-through">{slot.course.name}</p>
+                          <p className="mt-0.5 text-xs text-slate-400">{slot.group.name}</p>
                         </div>
                       </td>
                     );

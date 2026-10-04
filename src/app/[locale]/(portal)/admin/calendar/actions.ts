@@ -18,6 +18,9 @@ async function requireSuperAdmin() {
 
 import type { SpecialDayType } from "@/generated/prisma/client";
 
+/** Day types with a homegroup meeting period (inserted / replacing). */
+const hasMeetingPeriod = (t: SpecialDayType) => t === "INTERCALARY" || t === "HOMEGROUP_PERIOD";
+
 export async function createSpecialDay(data: {
   type: SpecialDayType;
   startDate: string;
@@ -34,7 +37,7 @@ export async function createSpecialDay(data: {
       startDate: utcMidnight(data.startDate),
       endDate: utcMidnight(data.endDate),
       label: data.label?.trim() || null,
-      intercalaryMeetingPeriod: data.type === "INTERCALARY" ? (data.intercalaryMeetingPeriod ?? 8) : null,
+      intercalaryMeetingPeriod: hasMeetingPeriod(data.type) ? (data.intercalaryMeetingPeriod ?? 8) : null,
       eventStartPeriod: data.type === "SCHOOL_EVENT" ? (data.eventStartPeriod ?? 1) : null,
       eventEndPeriod: data.type === "SCHOOL_EVENT" ? (data.eventEndPeriod ?? 1) : null,
     },
@@ -54,7 +57,7 @@ export async function updateSpecialDay(
       startDate: utcMidnight(data.startDate),
       endDate: utcMidnight(data.endDate),
       label: data.label?.trim() || null,
-      intercalaryMeetingPeriod: data.type === "INTERCALARY" ? (data.intercalaryMeetingPeriod ?? 8) : null,
+      intercalaryMeetingPeriod: hasMeetingPeriod(data.type) ? (data.intercalaryMeetingPeriod ?? 8) : null,
       eventStartPeriod: data.type === "SCHOOL_EVENT" ? (data.eventStartPeriod ?? 1) : null,
       eventEndPeriod: data.type === "SCHOOL_EVENT" ? (data.eventEndPeriod ?? 1) : null,
     },

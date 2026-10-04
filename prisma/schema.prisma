@@ -109,6 +109,7 @@ enum SpecialDayType {
   EASTER
   OTHER_HOLIDAY
   SCHOOL_EVENT
+  HOMEGROUP_PERIOD // «Υπευθυνότητα Τμήματος»: the meeting period replaces that period's lessons (INTERCALARY inserts it)
 }
 
 // ─── NextAuth ─────────────────────────────────────────────────────────────────
@@ -1266,7 +1267,7 @@ model SpecialDay {
   startDate                DateTime       @db.Date
   endDate                  DateTime       @db.Date
   label                    String?
-  intercalaryMeetingPeriod Int? // only for INTERCALARY type
+  intercalaryMeetingPeriod Int? // INTERCALARY / HOMEGROUP_PERIOD: the homegroup meeting period
   eventStartPeriod         Int? // only for SCHOOL_EVENT type
   eventEndPeriod           Int? // only for SCHOOL_EVENT type
   createdAt                DateTime       @default(now())

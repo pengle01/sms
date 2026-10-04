@@ -233,7 +233,8 @@ export default async function NewActivityPage({
                   isHoliday ? "Αργία" :
                   isExcursion ? "Εκδρομή" :
                   isEvent ? `Σχολική Εκδήλωση${periodSuffix}` :
-                  isIntercalary ? "Εμβόλιμη Περίοδος" : dateSpecialDay.type;
+                  isIntercalary ? "Εμβόλιμη Περίοδος" :
+                  dateSpecialDay.type === "HOMEGROUP_PERIOD" ? "Υπευθυνότητα Τμήματος" : dateSpecialDay.type;
                 return (
                   <div className={`flex items-center gap-2 rounded-lg border ${border} ${bg} px-3 py-2 text-xs ${text}`}>
                     <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />

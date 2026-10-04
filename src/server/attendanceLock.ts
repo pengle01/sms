@@ -7,8 +7,10 @@ import {
   addDaysIso,
   attendanceLockStartIso,
   schoolWeekdaysBetween,
+  homegroupRegisterDue,
   type AttendanceLockWindow,
 } from "@/lib/attendanceLock";
+import { homegroupMeeting, isLessonCancelled, type HomegroupMeeting } from "@/lib/homegroupPeriod";
 
 export interface PendingLesson {
   dateIso: string;
@@ -87,14 +89,15 @@ export async function getPendingAttendance(
     utcMidnight(addDaysIso(todayIso, -1)),
   );
   const typeByDate = new Map<string, SpecialDayType>();
-  const meetingByDate = new Map<string, number>();
+  const meetingByDate = new Map<string, HomegroupMeeting>();
   for (const sd of specials) {
     let cur = isoOf(sd.startDate);
     const end = isoOf(sd.endDate);
     let guard = 0;
     while (cur <= end && guard++ < 400) {
       typeByDate.set(cur, sd.type);
-      if (sd.type === "INTERCALARY") meetingByDate.set(cur, sd.intercalaryMeetingPeriod ?? 8);
+      const meeting = homegroupMeeting(sd.type, sd.intercalaryMeetingPeriod);
+      if (meeting) meetingByDate.set(cur, meeting);
       cur = addDaysIso(cur, 1);
     }
   }
@@ -139,7 +142,11 @@ export async function getPendingAttendance(
     if (a.intercalaryGroupId && a.intercalaryPeriod != null)
       homeroomMarkedSet.add(`${a.intercalaryGroupId}::${a.intercalaryPeriod}::${isoOf(a.date)}`);
   const absentSet = new Set<string>(); // dateIso:period
-  for (const e of absentEntries) if (e.period != null) absentSet.add(`${isoOf(e.plan.date)}:${e.period}`);
+  const absentDates = new Set<string>(); // the teacher is absent (some or all of) that day
+  for (const e of absentEntries) {
+    absentDates.add(isoOf(e.plan.date));
+    if (e.period != null) absentSet.add(`${isoOf(e.plan.date)}:${e.period}`);
+  }
 
   const slotsByDow = new Map<number, typeof slots>();
   for (const s of slots) {
@@ -152,29 +159,38 @@ export async function getPendingAttendance(
   for (const dateIso of dates) {
     const type = typeByDate.get(dateIso);
     const isExcursion = type === "EXCURSION";
-    const isIntercalary = type === "INTERCALARY";
+    const meeting = meetingByDate.get(dateIso) ?? null;
 
-    // Homeroom attendance owed on intercalary (meeting period) / excursion (P1).
-    if (isExcursion || isIntercalary) {
-      const period = isIntercalary ? meetingByDate.get(dateIso) ?? 8 : 1;
+    // Homegroup register owed in the homegroup period («Υπευθυνότητα
+    // Τμήματος») / on excursion days (P1) — unless someone already took it
+    // (any teacher may) or the teacher is absent that day.
+    if (isExcursion || meeting) {
+      const period = meeting ? meeting.period : 1;
       for (const hg of homeroomGroups) {
-        if (homeroomMarkedSet.has(`${hg.id}::${period}::${dateIso}`)) continue;
+        const due = homegroupRegisterDue({
+          hasHomegroupRegister: true,
+          alreadyMarked: homeroomMarkedSet.has(`${hg.id}::${period}::${dateIso}`),
+          teacherAbsent: absentDates.has(dateIso),
+        });
+        if (!due) continue;
         pending.push({
           dateIso,
           period,
           groupId: hg.id,
           groupName: hg.name,
           courseName: "",
-          kind: isIntercalary ? "intercalary" : "excursion",
+          kind: meeting ? "intercalary" : "excursion",
         });
       }
     }
 
-    // Regular lessons still happen on intercalary days (shifted), but NOT on
-    // excursion days (the class is out).
+    // Regular lessons still happen on homegroup-period days (shifted when the
+    // period is inserted; the one at a replaced period is cancelled), but NOT
+    // on excursion days (the class is out).
     if (!isExcursion) {
       for (const s of slotsByDow.get(dowOf(dateIso)) ?? []) {
         if (!s.groupId) continue;
+        if (isLessonCancelled(s.period, meeting)) continue;
         if (markedSet.has(`${s.id}::${dateIso}`)) continue;
         if (absentSet.has(`${dateIso}:${s.period}`)) continue;
         pending.push({

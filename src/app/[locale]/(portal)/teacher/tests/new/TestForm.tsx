@@ -19,7 +19,7 @@ function getDateSpecialDay(dateStr: string, specialDays: SpecialDayInfo[]): Spec
 const HOLIDAY_TYPES = new Set(["BANK_HOLIDAY", "CHRISTMAS", "EASTER", "OTHER_HOLIDAY"]);
 
 type DateBadge = {
-  key: "holiday" | "excursion" | "schoolEvent" | "intercalary";
+  key: "holiday" | "excursion" | "schoolEvent" | "intercalary" | "homegroupPeriod";
   periods?: { from: number; to: number };
   style: string;
 };
@@ -38,6 +38,7 @@ function dateBadge(day: SpecialDayInfo | null): DateBadge | null {
     };
   }
   if (day.type === "INTERCALARY")  return { key: "intercalary", style: "text-purple-600" };
+  if (day.type === "HOMEGROUP_PERIOD") return { key: "homegroupPeriod", style: "text-violet-600" };
   return null;
 }
 

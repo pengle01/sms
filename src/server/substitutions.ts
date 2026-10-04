@@ -4,7 +4,8 @@
 import { db } from "@/server/db";
 import { writeAudit, requestMeta } from "@/server/audit";
 import { getPeriodsPerDay, getSchoolYear } from "@/lib/schoolConfig";
-import { getOnDutyDeputies } from "@/lib/calendar";
+import { getOnDutyDeputies, getHomegroupMeetingForDate } from "@/lib/calendar";
+import { isLessonCancelled } from "@/lib/homegroupPeriod";
 import { dutyDowFor } from "@/lib/dutyRoster";
 import { fmtDisplayDate } from "@/lib/dates";
 import { getRooms } from "@/server/rooms";
@@ -45,7 +46,7 @@ async function loadEngineInput(date: Date) {
   const dow = dutyDowFor(date);
   if (!dow) return null; // weekend
 
-  const [periodsConfig, schoolYear, slotRows, staffRows, requestRows, roomRows] = await Promise.all([
+  const [periodsConfig, schoolYear, slotRows, staffRows, requestRows, roomRows, meeting] = await Promise.all([
     getPeriodsPerDay(),
     getSchoolYear(),
     db.timetableSlot.findMany({
@@ -62,6 +63,7 @@ async function loadEngineInput(date: Date) {
     }),
     db.substitutionRequest.findMany({ where: requestsWhere(date) }),
     getRooms(),
+    getHomegroupMeetingForDate(date),
   ]);
 
   // Substitution history from FINAL plans (excluding this date itself)
@@ -82,7 +84,9 @@ async function loadEngineInput(date: Date) {
     if (h.plan.date >= weekAgo) recentCount.set(id, (recentCount.get(id) ?? 0) + 1);
   }
 
-  const slots: SubSlot[] = slotRows.map((s) => ({
+  // Lessons replaced by the homegroup period («Υπευθυνότητα Τμήματος») don't
+  // happen, so they are never vacancies.
+  const slots: SubSlot[] = slotRows.filter((s) => !isLessonCancelled(s.period, meeting)).map((s) => ({
     slotId: s.id,
     staffId: s.staffId,
     scheduleName: s.staff?.scheduleName ?? s.staffName ?? "",

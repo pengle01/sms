@@ -75,3 +75,17 @@ export function schoolWeekdaysBetween(startIso: string, endIsoExclusive: string)
   }
   return out;
 }
+
+/**
+ * Whether a homegroup teacher/deputy still owes their homegroup's register on
+ * a homegroup-period («Υπευθυνότητα Τμήματος») or excursion day. Any teacher
+ * may take it, so it is done once anyone has; a teacher absent that day (in
+ * the final substitution plan) doesn't owe it.
+ */
+export function homegroupRegisterDue(o: {
+  hasHomegroupRegister: boolean;
+  alreadyMarked: boolean;
+  teacherAbsent: boolean;
+}): boolean {
+  return o.hasHomegroupRegister && !o.alreadyMarked && !o.teacherAbsent;
+}

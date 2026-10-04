@@ -4,7 +4,10 @@ import { redirect } from "next/navigation";
 import type { Role } from "@/generated/prisma/client";
 import { db } from "@/server/db";
 import { getNow, utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
-import { getSpecialDaysInRange, buildDayTypeMap, buildDayMeetingPeriodMap, isHolidayType } from "@/lib/calendar";
+import { getSpecialDaysInRange, buildDayTypeMap, buildDayMeetingMap, isHolidayType } from "@/lib/calendar";
+import { rowsForDay, storedPeriodAt, isMeetingRow, isLessonCancelled } from "@/lib/homegroupPeriod";
+import { getHomegroupOptions, ownHomegroups } from "@/server/homegroupPeriod";
+import { HomegroupPicker } from "@/components/attendance/HomegroupPicker";
 import { getSchoolYear } from "@/lib/schoolConfig";
 import { isWithinSchoolYear } from "@/lib/schoolYear";
 import Link from "next/link";
@@ -102,20 +105,19 @@ export default async function TeacherSchedulePage({
   const specialDays = await getSpecialDaysInRange(weekDates[0]!, weekDates[4]!);
   const yearRanges = await getSchoolYear();
   const dayTypeMap = buildDayTypeMap(specialDays, weekDates);
-  const dayMeetingPeriodMap = buildDayMeetingPeriodMap(specialDays, weekDates);
+  // «Υπευθυνότητα Τμήματος» days this week (inserted or replacing a period)
+  const dayMeetingMap = buildDayMeetingMap(specialDays, weekDates);
+  const hasMeeting = dayMeetingMap.size > 0;
+  const myHomegroups = ownHomegroups(staff);
+  const homegroupOptions = hasMeeting && myHomegroups.length === 0 ? await getHomegroupOptions() : [];
 
-  const hasIntercalary = dayMeetingPeriodMap.size > 0;
   const normalMax = slots.reduce((m, s) => Math.max(m, s.period), 0);
   let maxPeriod = normalMax;
-  if (hasIntercalary) {
-    for (const m of dayMeetingPeriodMap.values()) {
-      maxPeriod = Math.max(maxPeriod, m);
-    }
-  }
+  for (const m of dayMeetingMap.values()) maxPeriod = Math.max(maxPeriod, rowsForDay(normalMax, m));
   const periods = maxPeriod > 0 ? Array.from({ length: maxPeriod }, (_, i) => i + 1) : [];
 
   const markedSet = new Set<string>();
-  const intercalaryMarkedDates = new Set<string>();
+  const meetingMarked = new Set<string>(); // "date:groupId"
   const excursionMarkedDates = new Set<string>();
 
   const hasExcursion = weekDates.some(
@@ -144,20 +146,15 @@ export default async function TeacherSchedulePage({
       );
     }
 
-    if (hasIntercalary && homeroomGroup) {
-      const intercalaryDates = weekDates.filter(
-        (d) => dayTypeMap.get(d.toISOString().slice(0, 10)) === "INTERCALARY"
-      );
-      if (intercalaryDates.length > 0) {
-        const checks = intercalaryDates.map((d) => {
-          const iso = d.toISOString().slice(0, 10);
-          const mPeriod = dayMeetingPeriodMap.get(iso) ?? 8;
-          return db.attendance.findFirst({
-            where: { intercalaryGroupId: homeroomGroup.id, intercalaryPeriod: mPeriod, date: d },
-            select: { date: true },
-          }).then((row) => { if (row) intercalaryMarkedDates.add(iso); });
-        });
-        queries.push(...checks);
+    if (hasMeeting && myHomegroups.length > 0) {
+      for (const [iso, m] of dayMeetingMap) {
+        queries.push(
+          db.attendance.findMany({
+            where: { intercalaryGroupId: { in: myHomegroups.map((g) => g.id) }, intercalaryPeriod: m.period, date: utcMidnight(iso) },
+            select: { intercalaryGroupId: true },
+            distinct: ["intercalaryGroupId"],
+          }).then((rows) => { for (const r of rows) meetingMarked.add(`${iso}:${r.intercalaryGroupId}`); })
+        );
       }
     }
 
@@ -308,6 +305,7 @@ export default async function TeacherSchedulePage({
                 const isHoliday = isHolidayType(specialType);
                 const isExcursion = specialType === "EXCURSION";
                 const isIntercalary = specialType === "INTERCALARY";
+                const isHomegroupDay = specialType === "HOMEGROUP_PERIOD";
                 return (
                   <th
                     key={dow}
@@ -342,9 +340,9 @@ export default async function TeacherSchedulePage({
                         {tCal("excursion")}
                       </span>
                     )}
-                    {isIntercalary && (
+                    {(isIntercalary || isHomegroupDay) && (
                       <span className="block mt-1 text-[10px] font-medium text-purple-500 normal-case">
-                        {tCal("intercalary")}
+                        {tCal(isIntercalary ? "intercalary" : "homegroupPeriod")}
                       </span>
                     )}
                   </th>
@@ -364,66 +362,67 @@ export default async function TeacherSchedulePage({
                   const past = isPastOrToday(dow);
                   const specialType = dayTypeMap.get(dateStr) ?? null;
                   const isHoliday = isHolidayType(specialType);
-                  const isDayIntercalary = specialType === "INTERCALARY";
                   const isDayExcursion = specialType === "EXCURSION";
                   const inYear = isWithinSchoolYear(utcMidnight(dateStr), yearRanges);
                   const canMark = past && !isFutureWeek && !isHoliday && inYear;
 
-                  // On intercalary days the meeting period is inserted, shifting slots below it down by 1
-                  const meetingPeriod = dayMeetingPeriodMap.get(dateStr);
-                  const dbPeriod =
-                    isDayIntercalary && meetingPeriod !== undefined && period > meetingPeriod
-                      ? period - 1
-                      : period;
-                  const slot =
-                    isDayIntercalary && meetingPeriod === period
-                      ? undefined
-                      : slotMap[dow]?.[dbPeriod];
+                  // «Υπευθυνότητα Τμήματος»: on an inserted day the lessons after
+                  // the meeting row are shown one period later than stored.
+                  const meeting = dayMeetingMap.get(dateStr) ?? null;
+                  const dbPeriod = storedPeriodAt(period, meeting);
+                  const isMeeting = isMeetingRow(period, meeting);
+                  const slot = isMeeting ? undefined : slotMap[dow]?.[dbPeriod];
 
                   const marked = slot ? markedSet.has(`${slot.id}::${dateStr}`) : false;
 
-                  // Intercalary meeting row — homegroup teachers can mark attendance here
-                  if (period === meetingPeriod && isDayIntercalary && homeroomGroup) {
-                    const intercalaryMarked = intercalaryMarkedDates.has(dateStr);
+                  // The homegroup period: own homegroups, plus any other homegroup
+                  // through the picker (e.g. covering an absent homegroup teacher).
+                  if (isMeeting && meeting) {
                     return (
                       <td key={dow} className={`px-2 py-2 align-top ${isToday && isCurrentWeek ? "bg-emerald-50/30" : ""}`}>
-                        {canMark ? (
-                          <Link
-                            href={`/${locale}/teacher/attendance/mark?groupId=${homeroomGroup.id}&period=${meetingPeriod}&date=${dateStr}&intercalary=1`}
-                            className="group block"
-                          >
-                            <div className={`rounded-lg px-3 py-2.5 border ${
-                              intercalaryMarked
-                                ? "border-purple-200 bg-purple-50"
-                                : "border-purple-200 bg-purple-50/50 group-hover:border-purple-300"
-                            }`}>
-                              <p className="text-xs font-semibold leading-snug text-purple-900">{homeroomGroup.name}</p>
-                              <p className="mt-0.5 text-xs text-purple-500">{tCal("intercalary")}</p>
-                              <div className="mt-1.5 flex items-center gap-1">
-                                {intercalaryMarked ? (
-                                  <><CheckCircle2 className="w-3 h-3 text-purple-600" /><span className="text-xs font-medium text-purple-600">{t("done")}</span></>
+                        <div className={`rounded-lg px-2.5 py-2 border border-purple-200 bg-purple-50/50 space-y-1.5 ${canMark ? "" : "opacity-50"}`}>
+                          <p className="text-[11px] font-semibold text-purple-700">{tCal("homegroupPeriod")}</p>
+                          {myHomegroups.map((g) =>
+                            canMark ? (
+                              <Link
+                                key={g.id}
+                                href={`/${locale}/teacher/attendance/mark?groupId=${g.id}&period=${meeting.period}&date=${dateStr}&intercalary=1`}
+                                className="flex items-center gap-1 text-xs font-semibold text-purple-900 hover:underline"
+                              >
+                                {g.name}
+                                {meetingMarked.has(`${dateStr}:${g.id}`) ? (
+                                  <CheckCircle2 className="w-3 h-3 text-purple-600" />
                                 ) : (
-                                  <><ClipboardList className="w-3 h-3 text-purple-500" /><span className="text-xs font-medium text-purple-600">{t("mark")}</span></>
+                                  <ClipboardList className="w-3 h-3 text-purple-500" />
                                 )}
-                              </div>
-                            </div>
-                          </Link>
-                        ) : (
-                          <div className="rounded-lg px-3 py-2.5 border border-purple-100 bg-purple-50/30 opacity-40">
-                            <p className="text-xs font-semibold leading-snug text-purple-800">{homeroomGroup.name}</p>
-                            <p className="mt-0.5 text-xs text-purple-400">{tCal("intercalary")}</p>
-                          </div>
-                        )}
+                              </Link>
+                            ) : (
+                              <p key={g.id} className="text-xs font-semibold text-purple-800">{g.name}</p>
+                            ),
+                          )}
+                          {/* Teachers without a homegroup may take any homegroup's register */}
+                          {canMark && myHomegroups.length === 0 && (
+                            <HomegroupPicker
+                              locale={locale}
+                              period={meeting.period}
+                              date={dateStr}
+                              groups={homegroupOptions}
+                              compact
+                            />
+                          )}
+                        </div>
                       </td>
                     );
                   }
 
-                  // Non-homegroup teachers see a passive indicator at the intercalary row
-                  if (period === meetingPeriod && isDayIntercalary) {
+                  // Replaced by the homegroup period: the lesson doesn't happen
+                  if (slot && isLessonCancelled(dbPeriod, meeting)) {
                     return (
                       <td key={dow} className={`px-2 py-2 align-top ${isToday && isCurrentWeek ? "bg-emerald-50/30" : ""}`}>
-                        <div className="rounded-lg px-3 py-2 border border-purple-100 bg-purple-50/20">
-                          <p className="text-xs text-purple-400 text-center">{tCal("intercalary")}</p>
+                        <div className="rounded-lg px-3 py-2.5 border border-slate-200 bg-slate-50 opacity-70">
+                          <p className="text-xs font-semibold leading-snug text-slate-400 line-through">{slot.course.name}</p>
+                          <p className="mt-0.5 text-xs text-slate-400">{slot.group.name}</p>
+                          <p className="mt-1 text-[11px] font-medium text-purple-600">{t("cancelledHomegroup")}</p>
                         </div>
                       </td>
                     );
@@ -492,13 +491,14 @@ export default async function TeacherSchedulePage({
                   }
 
                   // A substitution/study-hall assigned to me this date+period
-                  const assignment = !slot ? subAssignments.get(`${dateStr}:${period}`) : undefined;
+                  // Plan entries carry the lesson's stored period, not the shown row.
+                  const assignment = !slot ? subAssignments.get(`${dateStr}:${dbPeriod}`) : undefined;
                   if (assignment) {
                     return (
                       <td key={dow} className={`px-2 py-2 align-top ${isToday && isCurrentWeek ? "bg-emerald-50/30" : ""}`}>
                         {canMark ? (
                           <Link
-                            href={`/${locale}/teacher/attendance/mark?groupId=${assignment.groupId}&period=${period}&date=${dateStr}`}
+                            href={`/${locale}/teacher/attendance/mark?groupId=${assignment.groupId}&period=${dbPeriod}&date=${dateStr}`}
                             className="group block"
                           >
                             <div className="rounded-lg px-3 py-2.5 border border-sky-200 bg-sky-50 group-hover:border-sky-400">

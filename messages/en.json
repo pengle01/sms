@@ -252,7 +252,9 @@
     "err_body": "An announcement body is required.",
     "err_attachment": "The attachment was rejected. Please try again.",
     "onDutyToday": "On duty today",
-    "noDutyToday": "No deputies assigned"
+    "noDutyToday": "No deputies assigned",
+    "homegroupPeriod": "Homegroup period",
+    "cancelledHomegroup": "cancelled (homegroup period)"
   },
   "attendance": {
     "title": "Attendance",
@@ -301,7 +303,7 @@
     "prevSaved": "Previously saved — editing",
     "noSlotFound": "No timetable slot found for this group / period / day.",
     "excursionBanner": "Excursion — Homegroup Attendance",
-    "intercalaryBanner": "Intercalary Period {period} — Homegroup Attendance",
+    "intercalaryBanner": "Homegroup period — Period {period} — Homegroup attendance",
     "minShort": "min",
     "saveBtn": "Save Attendance",
     "updateBtn": "Update Attendance",
@@ -319,7 +321,8 @@
     "claimNone": "No lessons in this period.",
     "wcStartHint": "Toilet break — time is recorded",
     "wcReturnHint": "Tap when the student returns",
-    "wcDoneHint": "Completed toilet break"
+    "wcDoneHint": "Completed toilet break",
+    "cancelledHomegroup": "cancelled (homegroup period)"
   },
   "homegroup": {
     "title": "My Homegroup",
@@ -693,7 +696,7 @@
     "dayDate": "Date(s)",
     "dayStart": "Start Date",
     "dayEnd": "End Date",
-    "meetingPeriod": "Meeting Period",
+    "meetingPeriod": "Homegroup period",
     "eventStartPeriod": "Start Period",
     "eventEndPeriod": "End Period",
     "noSpecialDays": "No special days configured",
@@ -702,17 +705,21 @@
     "intercalary": "Intercalary",
     "schoolEvent": "Event",
     "types": {
-      "INTERCALARY": "Intercalary (8-period)",
+      "INTERCALARY": "Intercalary (extra period)",
       "EXCURSION": "Excursion",
       "BANK_HOLIDAY": "Bank Holiday",
       "CHRISTMAS": "Christmas Holidays",
       "EASTER": "Easter Holidays",
       "OTHER_HOLIDAY": "Other Closure",
-      "SCHOOL_EVENT": "School Event"
+      "SCHOOL_EVENT": "School Event",
+      "HOMEGROUP_PERIOD": "Homegroup period (replaces a period)"
     },
     "currentTerm": "Current term: {label}",
     "testDeadlineNote": "Test deadline: {date}",
-    "noCurrentTerm": "No active term"
+    "noCurrentTerm": "No active term",
+    "homegroupPeriod": "Homegroup period",
+    "meetingHintInsert": "The period is added: lessons from this period on happen one period later.",
+    "meetingHintReplace": "The period replaces that period's lessons, which are cancelled for everyone. Other lessons don't change."
   },
   "tests": {
     "title": "Tests",
@@ -2127,5 +2134,9 @@
     "noMatches": "No notes found.",
     "absentLabel": "Absent",
     "lateLabel": "Late"
+  },
+  "homegroupPeriod": {
+    "pick": "Another class…",
+    "open": "Attendance"
   }
 }

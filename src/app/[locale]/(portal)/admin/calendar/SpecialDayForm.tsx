@@ -28,6 +28,7 @@ import type { SpecialDay, SpecialDayType } from "@/generated/prisma/client";
 // & Terms, so they are not offered here.
 const SPECIAL_DAY_TYPES: SpecialDayType[] = [
   "INTERCALARY",
+  "HOMEGROUP_PERIOD",
   "EXCURSION",
   "BANK_HOLIDAY",
   "OTHER_HOLIDAY",
@@ -133,7 +134,7 @@ export function SpecialDayForm({ day, open, onClose }: Props) {
               <DateInput value={startDate} onChange={setStartDate} required />
             </div>
           )}
-          {type === "INTERCALARY" && (
+          {(type === "INTERCALARY" || type === "HOMEGROUP_PERIOD") && (
             <div className="space-y-1.5">
               <Label>{t("meetingPeriod")}</Label>
               <Input
@@ -144,6 +145,9 @@ export function SpecialDayForm({ day, open, onClose }: Props) {
                 onChange={(e) => setMeetingPeriod(Math.max(1, Math.min(8, parseInt(e.target.value) || 8)))}
                 required
               />
+              <p className="text-xs text-slate-500">
+                {t(type === "HOMEGROUP_PERIOD" ? "meetingHintReplace" : "meetingHintInsert")}
+              </p>
             </div>
           )}
           {type === "SCHOOL_EVENT" && (
