@@ -2,12 +2,12 @@ import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../init";
 
 export const notificationsRouter = createTRPCRouter({
-  // For the bell dropdown — last 20, unnoticed first
+  // For the bell dropdown — the 10 most recent
   list: protectedProcedure.query(async ({ ctx }) => {
     return ctx.db.notification.findMany({
       where: { userId: ctx.session.user.id },
       orderBy: { createdAt: "desc" },
-      take: 20,
+      take: 10,
     });
   }),
 

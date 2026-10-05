@@ -30,13 +30,16 @@ export function NotificationBell({ locale }: { locale: string }) {
     refetchInterval: 30_000,
   });
 
-  const unread = notifications.filter((n) => !n.read).length;
+  // The badge counts every unread notification, not just the 10 listed
+  const { data: unread = 0, refetch: refetchUnread } = trpc.notifications.unreadCount.useQuery(undefined, {
+    refetchInterval: 30_000,
+  });
 
   const { mutate: markRead } = trpc.notifications.markRead.useMutation({
-    onSuccess: () => refetch(),
+    onSuccess: () => { refetch(); refetchUnread(); },
   });
   const { mutate: markAllRead } = trpc.notifications.markAllRead.useMutation({
-    onSuccess: () => refetch(),
+    onSuccess: () => { refetch(); refetchUnread(); },
   });
 
   // Close on outside click
@@ -105,7 +108,7 @@ export function NotificationBell({ locale }: { locale: string }) {
             )}
           </div>
 
-          <div className="max-h-80 overflow-y-auto divide-y divide-slate-50">
+          <div className="max-h-[75vh] overflow-y-auto divide-y divide-slate-50">
             {notifications.length === 0 ? (
               <p className="px-4 py-6 text-sm text-slate-400 text-center">
                 {t("noNotifications")}
