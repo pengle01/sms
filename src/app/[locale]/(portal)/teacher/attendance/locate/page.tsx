@@ -189,7 +189,7 @@ export default async function TeacherLocatePage({
           periodMap[p]?.staff?.scheduleName ?? periodMap[p]?.staffName ?? periodMap[p]?.staff?.user?.name ?? null;
         const ovrStaff = ovr
           ? ovr.substituteStaff?.scheduleName ??
-            (ovr.kind === "STUDY_HALL" ? "Φ/δι εφημ ΒΔ" : ovr.kind === "RELEASE" ? "Αποχώρηση" : baseStaff)
+            (ovr.kind === "STUDY_HALL" ? "Φ/δι εφημ ΒΔ" : ovr.kind === "CHAPERONE_HALL" ? "Φ/δι Συνοδοί" : ovr.kind === "RELEASE" ? "Αποχώρηση" : baseStaff)
           : null;
         return {
           period: p,

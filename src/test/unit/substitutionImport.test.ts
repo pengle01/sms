@@ -81,7 +81,7 @@ describe("resolveImport — the real sample against a matching timetable", () =>
 
   it("produces 20 covers, 1 swap, 6 support merges and 6 early departures", () => {
     expect(countByKind(result.entries)).toEqual({
-      COVER: 20, SWAP: 1, STUDY_HALL: 0, RELEASE: 6, ROOM_CHANGE: 0, SUPPORT_MERGE: 6,
+      COVER: 20, SWAP: 1, STUDY_HALL: 0, CHAPERONE_HALL: 0, RELEASE: 6, ROOM_CHANGE: 0, SUPPORT_MERGE: 6,
     });
   });
 
@@ -244,6 +244,14 @@ describe("resolveImport — other cases", () => {
     f.sectionA_substitutions[4] = { ...f.sectionA_substitutions[4], substituteTeacher: "Φ/δι εφημ ΒΔ", newRoom: null };
     const r = resolveImport(parse(f), lookupsFor(sampleLessons(), SAMPLE_TEACHERS));
     expect(r.entries.find((e) => e.kind === "STUDY_HALL")).toMatchObject({ groupId: "g:ΘΗΜ3", newRoom: "κιόσκια" });
+  });
+
+  it("turns «Φ/δι Συνοδοί» into a chaperones' study hall, not the deputy's", () => {
+    const f = clone(SAMPLE);
+    f.sectionA_substitutions[4] = { ...f.sectionA_substitutions[4], substituteTeacher: "Φ/δι Συνοδοί", newRoom: null };
+    const r = resolveImport(parse(f), lookupsFor(sampleLessons(), SAMPLE_TEACHERS));
+    expect(r.entries.find((e) => e.kind === "CHAPERONE_HALL")).toMatchObject({ groupId: "g:ΘΗΜ3", newRoom: null, substituteStaffId: null });
+    expect(r.entries.some((e) => e.kind === "STUDY_HALL")).toBe(false);
   });
 
   it("lists a teacher who is only in section Ε as an exemption", () => {

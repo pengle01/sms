@@ -79,7 +79,7 @@ export default async function StudentSchedulePage({
         const label =
           e.kind === "RELEASE"
             ? t("released")
-            : e.kind === "STUDY_HALL"
+            : e.kind === "STUDY_HALL" || e.kind === "CHAPERONE_HALL"
               ? "Φ/δι"
               : e.kind === "ROOM_CHANGE"
                 ? t("roomChanged")

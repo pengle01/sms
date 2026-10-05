@@ -56,6 +56,7 @@ export default async function PrintSubstitutionPlanPage({
   const entries = plan.entries;
   const covers = entries.filter((e) => e.kind === "COVER" || e.kind === "SWAP");
   const studyHalls = entries.filter((e) => e.kind === "STUDY_HALL");
+  const chaperoneHalls = entries.filter((e) => e.kind === "CHAPERONE_HALL");
   const releases = entries.filter((e) => e.kind === "RELEASE");
   const roomChanges = entries.filter((e) => e.kind === "ROOM_CHANGE");
   const supportMerges = entries.filter((e) => e.kind === "SUPPORT_MERGE");
@@ -134,6 +135,22 @@ export default async function PrintSubstitutionPlanPage({
                     {e.absentStaff ? staffDisplayName(e.absentStaff) : "—"}
                   </td>
                   <td className="py-1.5">{e.newRoom ?? "κιόσκια"}</td>
+                </tr>
+              ))
+            )}
+
+          {chaperoneHalls.length > 0 &&
+            section(
+              "Φ/δι Συνοδοί",
+              ["Περ.", "Τμήμα", "Απών/ούσα", "Χώρος"],
+              chaperoneHalls.map((e) => (
+                <tr key={e.id} className="border-b border-slate-100">
+                  <td className="py-1.5 pr-3 font-semibold">Π{e.period}</td>
+                  <td className="py-1.5 pr-3">{e.group?.name}</td>
+                  <td className="py-1.5 pr-3 text-slate-600">
+                    {e.absentStaff ? staffDisplayName(e.absentStaff) : "—"}
+                  </td>
+                  <td className="py-1.5">{e.newRoom ?? e.room ?? ""}</td>
                 </tr>
               ))
             )}

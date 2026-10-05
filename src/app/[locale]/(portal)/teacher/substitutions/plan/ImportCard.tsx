@@ -10,7 +10,7 @@ import { fmtDisplayDate, fmtDisplayDateTime } from "@/lib/dates";
 import { IMPORT_MAX_BYTES, type ImportIssue, type ImportKind } from "@/lib/substitutionImport";
 import { previewImportAction, importPlanAction, type ImportPreview } from "./actions";
 
-const KINDS: ImportKind[] = ["COVER", "SWAP", "SUPPORT_MERGE", "RELEASE", "ROOM_CHANGE", "STUDY_HALL"];
+const KINDS: ImportKind[] = ["COVER", "SWAP", "SUPPORT_MERGE", "RELEASE", "ROOM_CHANGE", "STUDY_HALL", "CHAPERONE_HALL"];
 
 /**
  * Upload the day's plan exported by SchoolAbsence. The file is checked first

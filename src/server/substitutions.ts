@@ -244,7 +244,8 @@ export async function finalizePlan(date: Date, userId: string) {
           body: studyHalls
             .map((e) => `Π${e.period} ${e.group?.name ?? ""}`)
             .join(" · "),
-          linkUrl: `/teacher/dashboard`,
+          // Informative only — the deputy acts from the dashboard / Εφημερίες
+          linkUrl: null,
           read: false,
         },
       });
@@ -257,7 +258,7 @@ export async function finalizePlan(date: Date, userId: string) {
           type: "SUBSTITUTION_DUTY_UNCOVERED",
           title: `Εφημερίες χωρίς κάλυψη ${dateLabel}`,
           body: uncoveredDuty.map((d) => `${d.teacher}: ${d.message}`).join(" · "),
-          linkUrl: `/teacher/substitutions/plan/${iso(date)}/print`,
+          linkUrl: null, // informative only
           read: false,
         },
       });

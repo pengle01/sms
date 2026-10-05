@@ -90,6 +90,7 @@ enum SubstitutionPlanStatus {
 enum SubstitutionKind {
   COVER // a substitute teacher covers the vacant lesson
   STUDY_HALL // Φ/δι with the on-duty deputy (no substitute found / 2nd of double period)
+  CHAPERONE_HALL // Φ/δι Συνοδοί — the class's chaperones keep the students (e.g. the ΕΜ unit); no deputy, no register
   RELEASE // class released (vacant lesson at the day's last period)
   SWAP // another teacher's last-period lesson with the same class moved up
   ROOM_CHANGE // requested or cascaded room move

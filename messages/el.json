@@ -210,7 +210,8 @@
     "wcNoneOut": "Κανείς εκτός τάξης αυτή τη στιγμή.",
     "wcReturned": "Επέστρεψαν σήμερα",
     "wcNone": "Καμία έξοδος τουαλέτας σήμερα.",
-    "wcNth": "{n}η έξοδος σήμερα"
+    "wcNth": "{n}η έξοδος σήμερα",
+    "planTab": "Πρόγραμμα αναπληρώσεων"
   },
   "dashboard": {
     "welcome": "Καλώς ήρθατε, {name}",
@@ -946,7 +947,24 @@
     "errPastCancel": "Παρελθόντα αιτήματα δεν ακυρώνονται.",
     "requestsElsewhere": "Τα αιτήματα δηλώνονται στο SchoolAbsence",
     "requestsElsewhereHint": "Οι απουσίες, οι εξαιρέσεις από αναπλήρωση και οι αλλαγές αίθουσας δηλώνονται πλέον στο πρόγραμμα SchoolAbsence. Το πλάνο της ημέρας εμφανίζεται στην εφαρμογή μόλις το οριστικοποιήσει ο/η συντονιστής/τρια αναπληρώσεων.",
-    "errRequestsElsewhere": "Τα αιτήματα δηλώνονται πλέον στο πρόγραμμα SchoolAbsence."
+    "errRequestsElsewhere": "Τα αιτήματα δηλώνονται πλέον στο πρόγραμμα SchoolAbsence.",
+    "dayPlanTitle": "Πρόγραμμα αναπληρώσεων — {date}",
+    "dayPlanShow": "Εμφάνιση",
+    "dayPlanPrint": "Εκτύπωση",
+    "dayPlanNone": "Δεν έχει οριστικοποιηθεί πρόγραμμα αναπληρώσεων για αυτή την ημέρα.",
+    "dayPlanEmpty": "Καμία αλλαγή στο πρόγραμμα.",
+    "dayPlanAbsent": "Απόντες/ούσες",
+    "dayPlanAbsentCol": "Απών/ούσα",
+    "dayPlanWhat": "Ρύθμιση",
+    "dayPlanWho": "Αναπληρωτής/τρια",
+    "dayPlanDuty": "Ακάλυπτες εφημερίες",
+    "kind_COVER": "Αναπλήρωση",
+    "kind_SWAP": "Αλλαγή ώρας",
+    "kind_STUDY_HALL": "Φ/δι εφημ ΒΔ",
+    "kind_CHAPERONE_HALL": "Φ/δι Συνοδοί",
+    "kind_RELEASE": "Αποχώρηση τμήματος",
+    "kind_ROOM_CHANGE": "Αλλαγή αίθουσας",
+    "kind_SUPPORT_MERGE": "Στήριξη → τάξη"
   },
   "staffNotify": {
     "composeTitle": "Νέα Ειδοποίηση προς Εκπαιδευτικούς",
@@ -2054,6 +2072,7 @@
     "kind_COVER": "Αναπληρώσεις",
     "kind_SWAP": "Αλλαγές ώρας",
     "kind_STUDY_HALL": "Φ/δι εφημ ΒΔ",
+    "kind_CHAPERONE_HALL": "Φ/δι Συνοδοί",
     "kind_RELEASE": "Αποχωρήσεις",
     "kind_ROOM_CHANGE": "Αλλαγές αίθουσας",
     "kind_SUPPORT_MERGE": "Στήριξη → τάξη",

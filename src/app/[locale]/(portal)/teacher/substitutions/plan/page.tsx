@@ -26,6 +26,7 @@ const KIND_LABEL: Record<string, string> = {
   COVER: "Αναπλήρωση",
   SWAP: "Αλλαγή ώρας",
   STUDY_HALL: "Φ/δι εφημ ΒΔ",
+  CHAPERONE_HALL: "Φ/δι Συνοδοί",
   RELEASE: "Αποχώρηση τμήματος",
   ROOM_CHANGE: "Αλλαγή αίθουσας",
   SUPPORT_MERGE: "Στήριξη → τάξη",
@@ -86,6 +87,7 @@ export default async function SubstitutionPlanPage({
   const entries = plan?.entries ?? [];
   const covers = entries.filter((e) => e.kind === "COVER" || e.kind === "SWAP");
   const studyHalls = entries.filter((e) => e.kind === "STUDY_HALL");
+  const chaperoneHalls = entries.filter((e) => e.kind === "CHAPERONE_HALL");
   const releases = entries.filter((e) => e.kind === "RELEASE");
   const roomChanges = entries.filter((e) => e.kind === "ROOM_CHANGE");
   const supportMerges = entries.filter((e) => e.kind === "SUPPORT_MERGE");
@@ -315,6 +317,7 @@ export default async function SubstitutionPlanPage({
 
       {sectionCard("Α. Αναπληρώσεις", covers, true)}
       {sectionCard("Φ/δι εφημερεύοντος ΒΔ", studyHalls, true)}
+      {sectionCard("Φ/δι Συνοδοί", chaperoneHalls, false)}
       {sectionCard("Β. Τμήματα που αποχωρούν", releases, false)}
       {sectionCard("Γ. Αλλαγές αίθουσας", roomChanges, false)}
       {sectionCard("Στήριξη", supportMerges, false)}

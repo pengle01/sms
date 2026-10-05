@@ -145,7 +145,7 @@ export interface ImportLookups {
   lastPeriod: number;
 }
 
-export type ImportKind = "COVER" | "SWAP" | "STUDY_HALL" | "RELEASE" | "ROOM_CHANGE" | "SUPPORT_MERGE";
+export type ImportKind = "COVER" | "SWAP" | "STUDY_HALL" | "CHAPERONE_HALL" | "RELEASE" | "ROOM_CHANGE" | "SUPPORT_MERGE";
 
 /** One plan entry, ready for SubstitutionPlanEntry.createMany. */
 export interface ImportEntry {
@@ -274,6 +274,9 @@ export function resolveImport(file: SchoolAbsenceFile, lookups: ImportLookups): 
     const comments = empty(row.comments);
     const isSupport = !!sub && plain(sub).startsWith("να πανε");
     const isStudyHall = !!sub && plain(sub).startsWith("φ/δι");
+    // «Φ/δι Συνοδοί»: the class's chaperones keep the students (e.g. the ΕΜ
+    // unit) — not the on-duty deputy's study hall.
+    const isChaperoneHall = isStudyHall && plain(sub!).startsWith("φ/δι συνοδ");
     // A teacher. «#» marks a cover from the program's own list; the teacher is
     // matched and notified like any other, and the comment is kept.
     const code = sub && !isSupport && !isStudyHall ? sub.replace(/^#/, "").trim() : null;
@@ -301,6 +304,10 @@ export function resolveImport(file: SchoolAbsenceFile, lookups: ImportLookups): 
     }
     if (isSupport) {
       entries.push({ ...base, kind: "SUPPORT_MERGE", substituteStaffId: null, newRoom: null, note: sub });
+      continue;
+    }
+    if (isChaperoneHall) {
+      entries.push({ ...base, kind: "CHAPERONE_HALL", substituteStaffId: null, newRoom: empty(row.newRoom), note: sub });
       continue;
     }
     if (isStudyHall) {
@@ -419,7 +426,7 @@ export function resolveImport(file: SchoolAbsenceFile, lookups: ImportLookups): 
 /** Entries per kind, for the preview. */
 export function countByKind(entries: readonly ImportEntry[]): Record<ImportKind, number> {
   const counts: Record<ImportKind, number> = {
-    COVER: 0, SWAP: 0, STUDY_HALL: 0, RELEASE: 0, ROOM_CHANGE: 0, SUPPORT_MERGE: 0,
+    COVER: 0, SWAP: 0, STUDY_HALL: 0, CHAPERONE_HALL: 0, RELEASE: 0, ROOM_CHANGE: 0, SUPPORT_MERGE: 0,
   };
   for (const e of entries) counts[e.kind]++;
   return counts;

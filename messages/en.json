@@ -210,7 +210,8 @@
     "wcNoneOut": "Nobody is out right now.",
     "wcReturned": "Returned today",
     "wcNone": "No toilet breaks today.",
-    "wcNth": "{n}th exit today"
+    "wcNth": "{n}th exit today",
+    "planTab": "Substitution plan"
   },
   "dashboard": {
     "welcome": "Welcome, {name}",
@@ -946,7 +947,24 @@
     "errPastCancel": "Past requests cannot be cancelled.",
     "requestsElsewhere": "Requests are filed in SchoolAbsence",
     "requestsElsewhereHint": "Absences, exemptions from covering and room changes are now filed in the SchoolAbsence program. The day's plan appears in the app once the substitution coordinator finalizes it.",
-    "errRequestsElsewhere": "Requests are now filed in the SchoolAbsence program."
+    "errRequestsElsewhere": "Requests are now filed in the SchoolAbsence program.",
+    "dayPlanTitle": "Substitution plan — {date}",
+    "dayPlanShow": "Show",
+    "dayPlanPrint": "Print",
+    "dayPlanNone": "No substitution plan has been finalized for this day.",
+    "dayPlanEmpty": "No changes to the timetable.",
+    "dayPlanAbsent": "Absent",
+    "dayPlanAbsentCol": "Absent",
+    "dayPlanWhat": "Arrangement",
+    "dayPlanWho": "Substitute",
+    "dayPlanDuty": "Uncovered duty posts",
+    "kind_COVER": "Cover",
+    "kind_SWAP": "Period swap",
+    "kind_STUDY_HALL": "Study hall (deputy)",
+    "kind_CHAPERONE_HALL": "Study hall (chaperones)",
+    "kind_RELEASE": "Class leaves early",
+    "kind_ROOM_CHANGE": "Room change",
+    "kind_SUPPORT_MERGE": "Support → class"
   },
   "staffNotify": {
     "composeTitle": "New Notification to Teachers",
@@ -2054,6 +2072,7 @@
     "kind_COVER": "Covers",
     "kind_SWAP": "Lesson swaps",
     "kind_STUDY_HALL": "Study hall",
+    "kind_CHAPERONE_HALL": "Study hall (chaperones)",
     "kind_RELEASE": "Leave early",
     "kind_ROOM_CHANGE": "Room changes",
     "kind_SUPPORT_MERGE": "Support → class",

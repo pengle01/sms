@@ -5,7 +5,7 @@ import { db } from "@/server/db";
 import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { utcMidnight } from "@/lib/dates";
+import { utcMidnight, localDateStr } from "@/lib/dates";
 import { dutyDowFor, isDutyEligible, isOnDuty } from "@/lib/dutyRoster";
 import { locateHref, parseLocateTab, studentSearchWhere, type LocateTab, type LocateParams } from "@/lib/studentSearch";
 import { suggestionList } from "@/lib/textSearch";
@@ -19,6 +19,8 @@ import { BellOff, CheckCircle2, LogOut, Phone, Printer, Search, X } from "lucide
 import { issueExitPermit, cancelExitPermit } from "./actions";
 import { ReferralTabs } from "@/components/referrals/ReferralTabs";
 import { ToiletPanel } from "./ToiletPanel";
+import { DayPlanCard } from "./DayPlanCard";
+import { isRealDate } from "@/lib/substitutionImport";
 import { RefreshAfterAttendance } from "@/components/attendance/RefreshAfterAttendance";
 
 export default async function TeacherDutyPage({
@@ -33,10 +35,11 @@ export default async function TeacherDutyPage({
     q?: string;
     student?: string;
     error?: string;
+    planDate?: string;
   }>;
 }) {
   const { locale } = await params;
-  const { tab: tabParam, grade, groupId, q, student: selectedStudentId, error } = await searchParams;
+  const { tab: tabParam, grade, groupId, q, student: selectedStudentId, error, planDate } = await searchParams;
   const auth = await getActiveAuth();
   if (!auth) redirect(`/${locale}/login/staff`);
   if (!isDutyEligible(auth.role)) redirect(`/${locale}/teacher/dashboard`);
@@ -575,6 +578,7 @@ export default async function TeacherDutyPage({
 
       {/* Clear separation: permits vs attendance */}
       <ReferralTabs
+        initialKey={tabParam === "plan" ? "plan" : undefined}
         tabs={[
           {
             key: "permits",
@@ -590,6 +594,17 @@ export default async function TeacherDutyPage({
             key: "toilet",
             label: t("toiletTab"),
             content: <ToiletPanel breaks={toiletBreaks} />,
+          },
+          {
+            // The whole day's finalized substitution plan, read-only
+            key: "plan",
+            label: t("planTab"),
+            content: (
+              <DayPlanCard
+                locale={locale}
+                dateStr={planDate && /^\d{4}-\d{2}-\d{2}$/.test(planDate) && isRealDate(planDate) ? planDate : localDateStr()}
+              />
+            ),
           },
         ]}
       />
