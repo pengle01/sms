@@ -8,6 +8,7 @@ import { profileIncomplete } from "@/lib/profile";
 import { getSpecialDayForDate, getOnDutyDeputies, getHomegroupMeetingForDate } from "@/lib/calendar";
 import { rowsForDay, storedPeriodAt, isMeetingRow, isLessonCancelled } from "@/lib/homegroupPeriod";
 import { getHomegroupOptions, ownHomegroups } from "@/server/homegroupPeriod";
+import { getPeriodsPerDay } from "@/lib/schoolConfig";
 import { HomegroupPicker } from "@/components/attendance/HomegroupPicker";
 import { getDayOverrides } from "@/server/substitutions";
 import { getActiveAnnouncements } from "@/server/announcements";
@@ -159,8 +160,11 @@ export default async function TeacherDashboardPage({
   const meetingMarked = new Set(meetingMarkedRows.map((r) => r.intercalaryGroupId));
   const excursionMarked = excursionMarkedRow !== null;
 
-  const normalMax = allSlots.reduce((m, s) => Math.max(m, s.period), 0);
-  const maxPeriod = rowsForDay(normalMax, meeting);
+  // Every period of the school day (Settings → periods per day), not just up
+  // to the teacher's last lesson; plus the homegroup period when inserted.
+  const periodsConfig = await getPeriodsPerDay();
+  const dayLength = Math.max(periodsConfig[todayDow] ?? 7, ...todaySlots.map((s) => s.period));
+  const maxPeriod = isWeekend ? 0 : rowsForDay(dayLength, meeting);
 
   const slotByPeriod = Object.fromEntries(todaySlots.map((s) => [s.period, s]));
 

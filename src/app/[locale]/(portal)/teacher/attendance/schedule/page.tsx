@@ -8,7 +8,7 @@ import { getSpecialDaysInRange, buildDayTypeMap, buildDayMeetingMap, isHolidayTy
 import { rowsForDay, storedPeriodAt, isMeetingRow, isLessonCancelled } from "@/lib/homegroupPeriod";
 import { getHomegroupOptions, ownHomegroups } from "@/server/homegroupPeriod";
 import { HomegroupPicker } from "@/components/attendance/HomegroupPicker";
-import { getSchoolYear } from "@/lib/schoolConfig";
+import { getSchoolYear, getPeriodsPerDay } from "@/lib/schoolConfig";
 import { isWithinSchoolYear } from "@/lib/schoolYear";
 import Link from "next/link";
 import { CheckCircle2, ClipboardList, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
@@ -111,9 +111,17 @@ export default async function TeacherSchedulePage({
   const myHomegroups = ownHomegroups(staff);
   const homegroupOptions = hasMeeting && myHomegroups.length === 0 ? await getHomegroupOptions() : [];
 
-  const normalMax = slots.reduce((m, s) => Math.max(m, s.period), 0);
-  let maxPeriod = normalMax;
-  for (const m of dayMeetingMap.values()) maxPeriod = Math.max(maxPeriod, rowsForDay(normalMax, m));
+  // Every period of each school day (Settings → periods per day), not just up
+  // to the teacher's last lesson; plus the homegroup period when inserted.
+  const periodsConfig = await getPeriodsPerDay();
+  const rowsOn = (dow: number) => {
+    const dayLength = Math.max(
+      periodsConfig[dow] ?? 7,
+      ...slots.filter((s) => s.dayOfWeek === dow).map((s) => s.period),
+    );
+    return rowsForDay(dayLength, dayMeetingMap.get(dowToDateStr[dow]!) ?? null);
+  };
+  const maxPeriod = Math.max(...[1, 2, 3, 4, 5].map(rowsOn));
   const periods = maxPeriod > 0 ? Array.from({ length: maxPeriod }, (_, i) => i + 1) : [];
 
   const markedSet = new Set<string>();
@@ -371,6 +379,11 @@ export default async function TeacherSchedulePage({
                   const meeting = dayMeetingMap.get(dateStr) ?? null;
                   const dbPeriod = storedPeriodAt(period, meeting);
                   const isMeeting = isMeetingRow(period, meeting);
+
+                  // Past the end of this day (e.g. a 7-period day in an 8-row week)
+                  if (period > rowsOn(dow)) {
+                    return <td key={dow} className="px-2 py-2 bg-slate-50/70" />;
+                  }
                   const slot = isMeeting ? undefined : slotMap[dow]?.[dbPeriod];
 
                   const marked = slot ? markedSet.has(`${slot.id}::${dateStr}`) : false;
