@@ -36,3 +36,17 @@ export function totalPeriodsForDays(
     return sum + (dow >= 1 && dow <= 5 ? (config[dow] ?? 7) : 0);
   }, 0);
 }
+
+/**
+ * Lessons per period, keeping EVERY lesson: a teacher can have two in one
+ * period (combined groups), and a map keyed by period alone silently dropped
+ * all but the last. Each list is ordered by class name.
+ */
+export function groupByPeriod<T extends { period: number; group?: { name: string } | null }>(slots: T[]): Map<number, T[]> {
+  const out = new Map<number, T[]>();
+  for (const s of slots) out.set(s.period, [...(out.get(s.period) ?? []), s]);
+  for (const list of out.values()) {
+    list.sort((a, b) => (a.group?.name ?? "").localeCompare(b.group?.name ?? "", "el", { numeric: true }));
+  }
+  return out;
+}

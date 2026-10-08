@@ -5,6 +5,7 @@ import type { Role } from "@/generated/prisma/client";
 import { db } from "@/server/db";
 import { getNow, utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { getSpecialDaysInRange, buildDayTypeMap, buildDayMeetingMap, isHolidayType } from "@/lib/calendar";
+import { groupByPeriod } from "@/lib/periods";
 import { rowsForDay, storedPeriodAt, isMeetingRow, isLessonCancelled } from "@/lib/homegroupPeriod";
 import { getHomegroupOptions, ownHomegroups } from "@/server/homegroupPeriod";
 import { HomegroupPicker } from "@/components/attendance/HomegroupPicker";
@@ -95,11 +96,9 @@ export default async function TeacherSchedulePage({
       })
     : [];
 
-  const slotMap: Record<number, Record<number, Slot>> = {};
-  for (const s of slots) {
-    slotMap[s.dayOfWeek] ??= {};
-    slotMap[s.dayOfWeek]![s.period] = s;
-  }
+  // dow → period → EVERY lesson then (combined groups can share a period)
+  const slotMap: Record<number, Map<number, Slot[]>> = {};
+  for (let dow = 1; dow <= 5; dow++) slotMap[dow] = groupByPeriod(slots.filter((s) => s.dayOfWeek === dow));
 
   const weekDates = [1, 2, 3, 4, 5].map((d) => utcMidnight(dowToDateStr[d]!));
   const specialDays = await getSpecialDaysInRange(weekDates[0]!, weekDates[4]!);
@@ -384,9 +383,7 @@ export default async function TeacherSchedulePage({
                   if (period > rowsOn(dow)) {
                     return <td key={dow} className="px-2 py-2 bg-slate-50/70" />;
                   }
-                  const slot = isMeeting ? undefined : slotMap[dow]?.[dbPeriod];
-
-                  const marked = slot ? markedSet.has(`${slot.id}::${dateStr}`) : false;
+                  const cellSlots = isMeeting ? [] : slotMap[dow]?.get(dbPeriod) ?? [];
 
                   // The homegroup period: own homegroups, plus any other homegroup
                   // through the picker (e.g. covering an absent homegroup teacher).
@@ -428,188 +425,201 @@ export default async function TeacherSchedulePage({
                     );
                   }
 
-                  // Replaced by the homegroup period: the lesson doesn't happen
-                  if (slot && isLessonCancelled(dbPeriod, meeting)) {
-                    return (
-                      <td key={dow} className={`px-2 py-2 align-top ${isToday && isCurrentWeek ? "bg-emerald-50/30" : ""}`}>
-                        <div className="rounded-lg px-3 py-2.5 border border-slate-200 bg-slate-50 opacity-70">
-                          <p className="text-xs font-semibold leading-snug text-slate-400 line-through">{slot.course.name}</p>
-                          <p className="mt-0.5 text-xs text-slate-400">{slot.group.name}</p>
-                          <p className="mt-1 text-[11px] font-medium text-purple-600">{t("cancelledHomegroup")}</p>
-                        </div>
-                      </td>
-                    );
-                  }
-
-                  // Excursion day — normal schedule is suspended
-                  if (isDayExcursion) {
-                    const excursionMarked = excursionMarkedDates.has(dateStr);
-                    // Period 1: homegroup teachers mark attendance; others see a passive indicator
-                    if (period === 1 && homeroomGroup) {
+                  // Each lesson of the period: one cell, or stacked in the cell
+                  // when the teacher has more than one (combined groups).
+                  const renderCell = (slot: Slot | undefined, Wrap: "td" | "div", cellKey: string | number) => {
+                    const marked = slot ? markedSet.has(`${slot.id}::${dateStr}`) : false;
+                    // Replaced by the homegroup period: the lesson doesn't happen
+                    if (slot && isLessonCancelled(dbPeriod, meeting)) {
                       return (
-                        <td key={dow} className={`px-2 py-2 align-top ${isToday && isCurrentWeek ? "bg-blue-50/30" : ""}`}>
+                        <Wrap key={cellKey} className={`px-2 py-2 align-top ${isToday && isCurrentWeek ? "bg-emerald-50/30" : ""}`}>
+                          <div className="rounded-lg px-3 py-2.5 border border-slate-200 bg-slate-50 opacity-70">
+                            <p className="text-xs font-semibold leading-snug text-slate-400 line-through">{slot.course.name}</p>
+                            <p className="mt-0.5 text-xs text-slate-400">{slot.group.name}</p>
+                            <p className="mt-1 text-[11px] font-medium text-purple-600">{t("cancelledHomegroup")}</p>
+                          </div>
+                        </Wrap>
+                      );
+                    }
+
+                    // Excursion day — normal schedule is suspended
+                    if (isDayExcursion) {
+                      const excursionMarked = excursionMarkedDates.has(dateStr);
+                      // Period 1: homegroup teachers mark attendance; others see a passive indicator
+                      if (period === 1 && homeroomGroup) {
+                        return (
+                          <Wrap key={cellKey} className={`px-2 py-2 align-top ${isToday && isCurrentWeek ? "bg-blue-50/30" : ""}`}>
+                            {canMark ? (
+                              <Link
+                                href={`/${locale}/teacher/attendance/mark?groupId=${homeroomGroup.id}&period=1&date=${dateStr}&excursion=1`}
+                                className="group block"
+                              >
+                                <div className={`rounded-lg px-3 py-2.5 border ${
+                                  excursionMarked
+                                    ? "border-blue-200 bg-blue-50"
+                                    : "border-blue-200 bg-blue-50/50 group-hover:border-blue-300"
+                                }`}>
+                                  <p className="text-xs font-semibold leading-snug text-blue-900">{homeroomGroup.name}</p>
+                                  <p className="mt-0.5 text-xs text-blue-500">{tCal("excursion")}</p>
+                                  <div className="mt-1.5 flex items-center gap-1">
+                                    {excursionMarked ? (
+                                      <><CheckCircle2 className="w-3 h-3 text-blue-600" /><span className="text-xs font-medium text-blue-600">{t("done")}</span></>
+                                    ) : (
+                                      <><ClipboardList className="w-3 h-3 text-blue-500" /><span className="text-xs font-medium text-blue-600">{t("mark")}</span></>
+                                    )}
+                                  </div>
+                                </div>
+                              </Link>
+                            ) : (
+                              <div className="rounded-lg px-3 py-2.5 border border-blue-100 bg-blue-50/30 opacity-40">
+                                <p className="text-xs font-semibold leading-snug text-blue-800">{homeroomGroup.name}</p>
+                                <p className="mt-0.5 text-xs text-blue-400">{tCal("excursion")}</p>
+                              </div>
+                            )}
+                          </Wrap>
+                        );
+                      }
+                      // Period 1 for non-homegroup teacher, or any other period: dimmed excursion cell
+                      return (
+                        <Wrap key={cellKey} className="px-2 py-2 align-top bg-blue-50/10">
+                          {period === 1 && (
+                            <div className="rounded-lg px-3 py-2 border border-blue-100 bg-blue-50/20">
+                              <p className="text-xs text-blue-400 text-center">{tCal("excursion")}</p>
+                            </div>
+                          )}
+                        </Wrap>
+                      );
+                    }
+
+                    if (isHoliday) {
+                      return (
+                        <Wrap key={cellKey} className="px-2 py-2 align-top bg-red-50/30">
+                          {slot && (
+                            <div className="rounded-lg px-3 py-2.5 border border-red-100 bg-red-50/40 opacity-40">
+                              <p className="text-xs font-semibold leading-snug text-slate-400">{slot.course.name}</p>
+                              <p className="mt-0.5 text-xs text-slate-400">{slot.group.name}</p>
+                            </div>
+                          )}
+                        </Wrap>
+                      );
+                    }
+
+                    // A substitution/study-hall assigned to me this date+period
+                    // Plan entries carry the lesson's stored period, not the shown row.
+                    const assignment = !slot ? subAssignments.get(`${dateStr}:${dbPeriod}`) : undefined;
+                    if (assignment) {
+                      return (
+                        <Wrap key={cellKey} className={`px-2 py-2 align-top ${isToday && isCurrentWeek ? "bg-emerald-50/30" : ""}`}>
                           {canMark ? (
                             <Link
-                              href={`/${locale}/teacher/attendance/mark?groupId=${homeroomGroup.id}&period=1&date=${dateStr}&excursion=1`}
+                              href={`/${locale}/teacher/attendance/mark?groupId=${assignment.groupId}&period=${dbPeriod}&date=${dateStr}`}
                               className="group block"
                             >
-                              <div className={`rounded-lg px-3 py-2.5 border ${
-                                excursionMarked
-                                  ? "border-blue-200 bg-blue-50"
-                                  : "border-blue-200 bg-blue-50/50 group-hover:border-blue-300"
-                              }`}>
-                                <p className="text-xs font-semibold leading-snug text-blue-900">{homeroomGroup.name}</p>
-                                <p className="mt-0.5 text-xs text-blue-500">{tCal("excursion")}</p>
+                              <div className="rounded-lg px-3 py-2.5 border border-sky-200 bg-sky-50 group-hover:border-sky-400">
+                                <p className="text-xs font-semibold leading-snug text-slate-900">
+                                  {assignment.courseName ?? assignment.groupName}
+                                </p>
+                                <p className="mt-0.5 text-xs text-sky-600 font-medium">
+                                  {assignment.isHall ? "Φ/δι" : t("substitutionBadge")} · {assignment.groupName}
+                                </p>
+                                {assignment.newRoom && (
+                                  <p className="text-xs text-slate-400">Room {assignment.newRoom}</p>
+                                )}
                                 <div className="mt-1.5 flex items-center gap-1">
-                                  {excursionMarked ? (
-                                    <><CheckCircle2 className="w-3 h-3 text-blue-600" /><span className="text-xs font-medium text-blue-600">{t("done")}</span></>
-                                  ) : (
-                                    <><ClipboardList className="w-3 h-3 text-blue-500" /><span className="text-xs font-medium text-blue-600">{t("mark")}</span></>
-                                  )}
+                                  <ClipboardList className="w-3 h-3 text-sky-500" />
+                                  <span className="text-xs font-medium text-sky-600">{t("mark")}</span>
                                 </div>
                               </div>
                             </Link>
                           ) : (
-                            <div className="rounded-lg px-3 py-2.5 border border-blue-100 bg-blue-50/30 opacity-40">
-                              <p className="text-xs font-semibold leading-snug text-blue-800">{homeroomGroup.name}</p>
-                              <p className="mt-0.5 text-xs text-blue-400">{tCal("excursion")}</p>
-                            </div>
-                          )}
-                        </td>
-                      );
-                    }
-                    // Period 1 for non-homegroup teacher, or any other period: dimmed excursion cell
-                    return (
-                      <td key={dow} className="px-2 py-2 align-top bg-blue-50/10">
-                        {period === 1 && (
-                          <div className="rounded-lg px-3 py-2 border border-blue-100 bg-blue-50/20">
-                            <p className="text-xs text-blue-400 text-center">{tCal("excursion")}</p>
-                          </div>
-                        )}
-                      </td>
-                    );
-                  }
-
-                  if (isHoliday) {
-                    return (
-                      <td key={dow} className="px-2 py-2 align-top bg-red-50/30">
-                        {slot && (
-                          <div className="rounded-lg px-3 py-2.5 border border-red-100 bg-red-50/40 opacity-40">
-                            <p className="text-xs font-semibold leading-snug text-slate-400">{slot.course.name}</p>
-                            <p className="mt-0.5 text-xs text-slate-400">{slot.group.name}</p>
-                          </div>
-                        )}
-                      </td>
-                    );
-                  }
-
-                  // A substitution/study-hall assigned to me this date+period
-                  // Plan entries carry the lesson's stored period, not the shown row.
-                  const assignment = !slot ? subAssignments.get(`${dateStr}:${dbPeriod}`) : undefined;
-                  if (assignment) {
-                    return (
-                      <td key={dow} className={`px-2 py-2 align-top ${isToday && isCurrentWeek ? "bg-emerald-50/30" : ""}`}>
-                        {canMark ? (
-                          <Link
-                            href={`/${locale}/teacher/attendance/mark?groupId=${assignment.groupId}&period=${dbPeriod}&date=${dateStr}`}
-                            className="group block"
-                          >
-                            <div className="rounded-lg px-3 py-2.5 border border-sky-200 bg-sky-50 group-hover:border-sky-400">
-                              <p className="text-xs font-semibold leading-snug text-slate-900">
+                            <div className="rounded-lg px-3 py-2.5 border border-sky-100 bg-sky-50/40">
+                              <p className="text-xs font-semibold leading-snug text-slate-700">
                                 {assignment.courseName ?? assignment.groupName}
                               </p>
-                              <p className="mt-0.5 text-xs text-sky-600 font-medium">
+                              <p className="mt-0.5 text-xs text-sky-500">
                                 {assignment.isHall ? "Φ/δι" : t("substitutionBadge")} · {assignment.groupName}
                               </p>
-                              {assignment.newRoom && (
-                                <p className="text-xs text-slate-400">Room {assignment.newRoom}</p>
-                              )}
-                              <div className="mt-1.5 flex items-center gap-1">
-                                <ClipboardList className="w-3 h-3 text-sky-500" />
-                                <span className="text-xs font-medium text-sky-600">{t("mark")}</span>
-                              </div>
                             </div>
-                          </Link>
-                        ) : (
-                          <div className="rounded-lg px-3 py-2.5 border border-sky-100 bg-sky-50/40">
-                            <p className="text-xs font-semibold leading-snug text-slate-700">
-                              {assignment.courseName ?? assignment.groupName}
-                            </p>
-                            <p className="mt-0.5 text-xs text-sky-500">
-                              {assignment.isHall ? "Φ/δι" : t("substitutionBadge")} · {assignment.groupName}
-                            </p>
+                          )}
+                        </Wrap>
+                      );
+                    }
+
+                    // My own lesson, but I'm absent and it's covered/released today.
+                    const absentCovered = slot ? absentOverrides.has(`${dateStr}:${dbPeriod}`) : false;
+                    if (slot && absentCovered) {
+                      return (
+                        <Wrap
+                          key={cellKey}
+                          className={`px-2 py-2 align-top ${isToday && isCurrentWeek ? "bg-emerald-50/30" : ""}`}
+                        >
+                          <div className="rounded-lg px-3 py-2.5 border border-slate-200 bg-slate-50 opacity-70">
+                            <p className="text-xs font-semibold leading-snug text-slate-400 line-through">{slot.course.name}</p>
+                            <p className="mt-0.5 text-xs text-slate-400">{slot.group.name}</p>
+                            <p className="mt-1 text-[11px] font-medium text-amber-600">{t("absentCovered")}</p>
+                          </div>
+                        </Wrap>
+                      );
+                    }
+
+                    const cellContent = slot ? (
+                      <div
+                        className={`rounded-lg px-3 py-2.5 ${
+                          canMark
+                            ? marked
+                              ? "border border-emerald-200 bg-emerald-50"
+                              : isToday
+                              ? "border border-emerald-300 bg-emerald-50 group-hover:border-emerald-400"
+                              : "border border-amber-100 bg-amber-50/60 group-hover:border-amber-300"
+                            : "border border-slate-100 bg-slate-50 opacity-40"
+                        }`}
+                      >
+                        <p className="text-xs font-semibold leading-snug text-slate-900">{slot.course.name}</p>
+                        <p className="mt-0.5 text-xs text-slate-500">{slot.group.name}</p>
+                        {slot.room && <p className="text-xs text-slate-400">Room {slot.room}</p>}
+                        {canMark && marked && (
+                          <div className="mt-1.5 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <span className="text-xs font-medium text-emerald-600">{t("done")}</span>
                           </div>
                         )}
-                      </td>
-                    );
-                  }
+                        {canMark && !marked && (
+                          <div className="mt-1.5 flex items-center gap-1">
+                            <ClipboardList className={`w-3 h-3 ${isToday ? "text-emerald-500" : "text-amber-500"}`} />
+                            <span className={`text-xs font-medium ${isToday ? "text-emerald-600" : "text-amber-600"}`}>
+                              {isToday ? t("mark") : t("fillIn")}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    ) : null;
 
-                  // My own lesson, but I'm absent and it's covered/released today.
-                  const absentCovered = slot ? absentOverrides.has(`${dateStr}:${dbPeriod}`) : false;
-                  if (slot && absentCovered) {
                     return (
-                      <td
-                        key={dow}
+                      <Wrap
+                        key={cellKey}
                         className={`px-2 py-2 align-top ${isToday && isCurrentWeek ? "bg-emerald-50/30" : ""}`}
                       >
-                        <div className="rounded-lg px-3 py-2.5 border border-slate-200 bg-slate-50 opacity-70">
-                          <p className="text-xs font-semibold leading-snug text-slate-400 line-through">{slot.course.name}</p>
-                          <p className="mt-0.5 text-xs text-slate-400">{slot.group.name}</p>
-                          <p className="mt-1 text-[11px] font-medium text-amber-600">{t("absentCovered")}</p>
-                        </div>
+                        {slot && canMark ? (
+                          <Link
+                            href={`/${locale}/teacher/attendance/mark?groupId=${slot.groupId}&period=${slot.period}&date=${dateStr}`}
+                            className="group block"
+                          >
+                            {cellContent}
+                          </Link>
+                        ) : (
+                          cellContent
+                        )}
+                      </Wrap>
+                    );
+                  };
+                  if (cellSlots.length > 1 && !isDayExcursion) {
+                    return (
+                      <td key={dow} className="align-top p-0">
+                        {cellSlots.map((s) => renderCell(s, "div", s.id))}
                       </td>
                     );
                   }
-
-                  const cellContent = slot ? (
-                    <div
-                      className={`rounded-lg px-3 py-2.5 ${
-                        canMark
-                          ? marked
-                            ? "border border-emerald-200 bg-emerald-50"
-                            : isToday
-                            ? "border border-emerald-300 bg-emerald-50 group-hover:border-emerald-400"
-                            : "border border-amber-100 bg-amber-50/60 group-hover:border-amber-300"
-                          : "border border-slate-100 bg-slate-50 opacity-40"
-                      }`}
-                    >
-                      <p className="text-xs font-semibold leading-snug text-slate-900">{slot.course.name}</p>
-                      <p className="mt-0.5 text-xs text-slate-500">{slot.group.name}</p>
-                      {slot.room && <p className="text-xs text-slate-400">Room {slot.room}</p>}
-                      {canMark && marked && (
-                        <div className="mt-1.5 flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                          <span className="text-xs font-medium text-emerald-600">{t("done")}</span>
-                        </div>
-                      )}
-                      {canMark && !marked && (
-                        <div className="mt-1.5 flex items-center gap-1">
-                          <ClipboardList className={`w-3 h-3 ${isToday ? "text-emerald-500" : "text-amber-500"}`} />
-                          <span className={`text-xs font-medium ${isToday ? "text-emerald-600" : "text-amber-600"}`}>
-                            {isToday ? t("mark") : t("fillIn")}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  ) : null;
-
-                  return (
-                    <td
-                      key={dow}
-                      className={`px-2 py-2 align-top ${isToday && isCurrentWeek ? "bg-emerald-50/30" : ""}`}
-                    >
-                      {slot && canMark ? (
-                        <Link
-                          href={`/${locale}/teacher/attendance/mark?groupId=${slot.groupId}&period=${slot.period}&date=${dateStr}`}
-                          className="group block"
-                        >
-                          {cellContent}
-                        </Link>
-                      ) : (
-                        cellContent
-                      )}
-                    </td>
-                  );
+                  return renderCell(cellSlots[0], "td", dow);
                 })}
               </tr>
             ))}

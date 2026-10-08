@@ -17,6 +17,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, AlertCircle, CalendarRange, ShieldCheck } from "lucide-react";
 import Link from "next/link";
+import { Fragment } from "react";
+import { groupByPeriod } from "@/lib/periods";
 import { getTranslations } from "next-intl/server";
 import { RefreshAfterAttendance } from "@/components/attendance/RefreshAfterAttendance";
 
@@ -166,7 +168,7 @@ export default async function TeacherDashboardPage({
   const dayLength = Math.max(periodsConfig[todayDow] ?? 7, ...todaySlots.map((s) => s.period));
   const maxPeriod = isWeekend ? 0 : rowsForDay(dayLength, meeting);
 
-  const slotByPeriod = Object.fromEntries(todaySlots.map((s) => [s.period, s]));
+  const slotsByPeriod = groupByPeriod(todaySlots);
 
   // Today's activities relevant to me: those with a participant I teach today
   // (in any group I have a lesson with today). Each shows my affected students.
@@ -295,117 +297,125 @@ export default async function TeacherDashboardPage({
                   // Lessons keep their timetable period; on an inserted day the
                   // rows after the meeting show the lesson one period earlier.
                   const dbPeriod = storedPeriodAt(period, meeting);
-                  const slot = slotByPeriod[dbPeriod];
-                  const marked = slot ? markedSlotIds.has(slot.id) : false;
+                  // Every lesson of this period (combined groups can share one),
+                  // each on its own row.
+                  const periodSlots = slotsByPeriod.get(dbPeriod) ?? [];
+                  const renderRow = (slot: (typeof todaySlots)[number] | undefined, rowKey: string | number) => {
+                    const marked = slot ? markedSlotIds.has(slot.id) : false;
 
-                  // Replaced by the homegroup period: no lesson today
-                  if (slot && isLessonCancelled(dbPeriod, meeting)) {
-                    return (
-                      <div key={period} className="flex items-center gap-4 px-5 py-3 opacity-60">
-                        <span className="w-5 flex-shrink-0 text-center text-sm font-semibold text-slate-300">
-                          {period}
-                        </span>
-                        <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
-                          <span className="text-sm text-slate-500 line-through">{slot.course.name}</span>
-                          <span className="text-sm text-slate-400">{slot.group.name}</span>
-                          <span className="text-xs font-medium text-purple-600">{t("cancelledHomegroup")}</span>
+                    // Replaced by the homegroup period: no lesson today
+                    if (slot && isLessonCancelled(dbPeriod, meeting)) {
+                      return (
+                        <div key={rowKey} className="flex items-center gap-4 px-5 py-3 opacity-60">
+                          <span className="w-5 flex-shrink-0 text-center text-sm font-semibold text-slate-300">
+                            {period}
+                          </span>
+                          <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+                            <span className="text-sm text-slate-500 line-through">{slot.course.name}</span>
+                            <span className="text-sm text-slate-400">{slot.group.name}</span>
+                            <span className="text-xs font-medium text-purple-600">{t("cancelledHomegroup")}</span>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  }
+                      );
+                    }
 
-                  // My own lesson is covered/released today (I am absent)
-                  const absence = absentByPeriod.get(dbPeriod);
-                  if (slot && absence) {
-                    return (
-                      <div key={period} className="flex items-center gap-4 px-5 py-3 opacity-60">
-                        <span className="w-5 flex-shrink-0 text-center text-sm font-semibold text-slate-300">
-                          {period}
-                        </span>
-                        <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
-                          <span className="text-sm text-slate-500 line-through">{slot.course.name}</span>
-                          <span className="text-sm text-slate-400">{slot.group.name}</span>
-                          <span className="text-xs font-medium text-amber-600">{t("coveredToday")}</span>
+                    // My own lesson is covered/released today (I am absent)
+                    const absence = absentByPeriod.get(dbPeriod);
+                    if (slot && absence) {
+                      return (
+                        <div key={rowKey} className="flex items-center gap-4 px-5 py-3 opacity-60">
+                          <span className="w-5 flex-shrink-0 text-center text-sm font-semibold text-slate-300">
+                            {period}
+                          </span>
+                          <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+                            <span className="text-sm text-slate-500 line-through">{slot.course.name}</span>
+                            <span className="text-sm text-slate-400">{slot.group.name}</span>
+                            <span className="text-xs font-medium text-amber-600">{t("coveredToday")}</span>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  }
+                      );
+                    }
 
-                  // A substitution assigned to me today
-                  const assigned = coverByPeriod.get(dbPeriod);
-                  if (!slot && assigned?.groupId) {
-                    const isHall = assigned.kind === "STUDY_HALL";
+                    // A substitution assigned to me today
+                    const assigned = coverByPeriod.get(dbPeriod);
+                    if (!slot && assigned?.groupId) {
+                      const isHall = assigned.kind === "STUDY_HALL";
+                      return (
+                        <Link
+                          key={rowKey}
+                          href={`/${locale}/teacher/attendance/mark?groupId=${assigned.groupId}&period=${assigned.period}`}
+                          className="flex items-center gap-4 px-5 py-3 transition-colors bg-sky-50/40 hover:bg-sky-50"
+                        >
+                          <span className="w-5 flex-shrink-0 text-center text-sm font-bold text-sky-400">
+                            {period}
+                          </span>
+                          <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-medium text-slate-900">
+                              {assigned.timetableSlot?.course.name ?? t("substitution")}
+                            </span>
+                            <span className="text-sm text-slate-400">{assigned.group?.name}</span>
+                            <span className="text-xs font-semibold text-sky-600">
+                              {isHall ? t("studyHall") : t("substitution")}
+                            </span>
+                            {assigned.newRoom && (
+                              <span className="text-xs text-slate-400 font-mono">{t("room", { room: assigned.newRoom })}</span>
+                            )}
+                          </div>
+                          <span className="text-xs font-medium text-emerald-600 flex-shrink-0">
+                            {t("markAttendance")}
+                          </span>
+                        </Link>
+                      );
+                    }
+
+                    if (!slot) {
+                      return (
+                        <div key={rowKey} className="flex items-center gap-4 px-5 py-3">
+                          <span className="w-5 flex-shrink-0 text-center text-sm font-semibold text-slate-200">
+                            {period}
+                          </span>
+                          <span className="text-sm italic text-slate-300">{t("freePeriod")}</span>
+                          {/* quiet entry to spontaneously cover a class this period */}
+                          <Link
+                            href={`/${locale}/teacher/attendance/mark?period=${dbPeriod}&claim=1`}
+                            className="ml-auto text-xs text-slate-300 hover:text-emerald-600 transition-colors flex-shrink-0"
+                          >
+                            {t("claimCta")}
+                          </Link>
+                        </div>
+                      );
+                    }
+
                     return (
                       <Link
-                        key={period}
-                        href={`/${locale}/teacher/attendance/mark?groupId=${assigned.groupId}&period=${assigned.period}`}
-                        className="flex items-center gap-4 px-5 py-3 transition-colors bg-sky-50/40 hover:bg-sky-50"
+                        key={rowKey}
+                        href={`/${locale}/teacher/attendance/mark?groupId=${slot.groupId}&period=${slot.period}`}
+                        className={`flex items-center gap-4 px-5 py-3 transition-colors hover:bg-slate-50 ${marked ? "bg-emerald-50/40" : ""}`}
                       >
-                        <span className="w-5 flex-shrink-0 text-center text-sm font-bold text-sky-400">
+                        <span className="w-5 flex-shrink-0 text-center text-sm font-bold text-slate-400">
                           {period}
                         </span>
                         <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-medium text-slate-900">
-                            {assigned.timetableSlot?.course.name ?? t("substitution")}
-                          </span>
-                          <span className="text-sm text-slate-400">{assigned.group?.name}</span>
-                          <span className="text-xs font-semibold text-sky-600">
-                            {isHall ? t("studyHall") : t("substitution")}
-                          </span>
-                          {assigned.newRoom && (
-                            <span className="text-xs text-slate-400 font-mono">{t("room", { room: assigned.newRoom })}</span>
+                          <span className="text-sm font-medium text-slate-900">{slot.course.name}</span>
+                          <span className="text-sm text-slate-400">{slot.group.name}</span>
+                          {slot.room && (
+                            <span className="text-xs text-slate-400 font-mono">{t("room", { room: slot.room })}</span>
                           )}
                         </div>
-                        <span className="text-xs font-medium text-emerald-600 flex-shrink-0">
-                          {t("markAttendance")}
-                        </span>
+                        {marked ? (
+                          <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-500" />
+                        ) : (
+                          <span className="text-xs font-medium text-emerald-600 flex-shrink-0">
+                            {t("markAttendance")}
+                          </span>
+                        )}
                       </Link>
                     );
+                  };
+                  if (periodSlots.length > 1) {
+                    return <Fragment key={period}>{periodSlots.map((s) => renderRow(s, `${period}-${s.id}`))}</Fragment>;
                   }
-
-                  if (!slot) {
-                    return (
-                      <div key={period} className="flex items-center gap-4 px-5 py-3">
-                        <span className="w-5 flex-shrink-0 text-center text-sm font-semibold text-slate-200">
-                          {period}
-                        </span>
-                        <span className="text-sm italic text-slate-300">{t("freePeriod")}</span>
-                        {/* quiet entry to spontaneously cover a class this period */}
-                        <Link
-                          href={`/${locale}/teacher/attendance/mark?period=${dbPeriod}&claim=1`}
-                          className="ml-auto text-xs text-slate-300 hover:text-emerald-600 transition-colors flex-shrink-0"
-                        >
-                          {t("claimCta")}
-                        </Link>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <Link
-                      key={period}
-                      href={`/${locale}/teacher/attendance/mark?groupId=${slot.groupId}&period=${slot.period}`}
-                      className={`flex items-center gap-4 px-5 py-3 transition-colors hover:bg-slate-50 ${marked ? "bg-emerald-50/40" : ""}`}
-                    >
-                      <span className="w-5 flex-shrink-0 text-center text-sm font-bold text-slate-400">
-                        {period}
-                      </span>
-                      <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-medium text-slate-900">{slot.course.name}</span>
-                        <span className="text-sm text-slate-400">{slot.group.name}</span>
-                        {slot.room && (
-                          <span className="text-xs text-slate-400 font-mono">{t("room", { room: slot.room })}</span>
-                        )}
-                      </div>
-                      {marked ? (
-                        <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-500" />
-                      ) : (
-                        <span className="text-xs font-medium text-emerald-600 flex-shrink-0">
-                          {t("markAttendance")}
-                        </span>
-                      )}
-                    </Link>
-                  );
+                  return renderRow(periodSlots[0], period);
                 })}
               </div>
             )}
