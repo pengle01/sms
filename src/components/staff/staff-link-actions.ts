@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
 import { getSuperAdminAuth } from "@/server/authz";
 import { writeAudit, requestMeta } from "@/server/audit";
+import { relinkTimetableSlots } from "@/server/staffLink";
 import {
   EMPTY_DETAILS,
   detailsForLink,
@@ -85,12 +86,9 @@ export async function linkStaffUser(staffProfileId: string, userId: string) {
     await tx.staffProfile.update({ where: { id: staffProfileId }, data: { userId, ...details } });
     await tx.user.update({ where: { id: userId }, data: { staffDetails: Prisma.DbNull } });
 
-    if (target.scheduleName) {
-      await tx.timetableSlot.updateMany({
-        where: { staffName: target.scheduleName, staffId: null },
-        data: { staffId: staffProfileId },
-      });
-    }
+    // Attach the record's lessons by name — and release any lesson an earlier
+    // link left on an account with another timetable name.
+    await relinkTimetableSlots(tx);
   });
   await writeAudit({
     userId: admin.userId,

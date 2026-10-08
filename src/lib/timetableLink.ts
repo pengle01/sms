@@ -45,3 +45,31 @@ export function slotLinkAssignments(
   }
   return out;
 }
+
+/** Timetable names compared trimmed with spaces collapsed (same as staffLink's normalizeStaffName). */
+export const sameStaffName = (a: string | null | undefined, b: string | null | undefined) =>
+  !!a && !!b && a.trim().replace(/\s+/g, " ") === b.trim().replace(/\s+/g, " ");
+
+/**
+ * Repair which account each lesson is attached to. A lesson belongs to the
+ * account whose timetable name matches the lesson's: one attached to a profile
+ * with a DIFFERENT name (e.g. an account later corrected to another name kept
+ * its old lessons) is released, then every unclaimed lesson is linked by name
+ * under the usual rules (login required, ambiguous names skipped). Lessons
+ * already attached to the matching profile are never touched. Pure.
+ */
+export function slotRelinks(
+  slots: LinkSlot[],
+  profiles: LinkProfile[],
+): { release: string[]; link: { slotId: string; profileId: string }[] } {
+  const nameById = new Map(profiles.map((p) => [p.id, p.scheduleName]));
+  const release = slots
+    .filter((s) => s.staffId && !sameStaffName(nameById.get(s.staffId), s.staffName))
+    .map((s) => s.id);
+  const released = new Set(release);
+  const link = slotLinkAssignments(
+    slots.map((s) => (released.has(s.id) ? { ...s, staffId: null } : s)),
+    profiles,
+  );
+  return { release, link };
+}

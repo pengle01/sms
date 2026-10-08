@@ -4,6 +4,7 @@ import { db } from "@/server/db";
 import { getSuperAdminAuth } from "@/server/authz";
 import { revalidatePath } from "next/cache";
 import { writeAudit, requestMeta } from "@/server/audit";
+import { relinkTimetableSlots } from "@/server/staffLink";
 
 export type FixResult = { ok: true } | { ok: false; error: string };
 
@@ -135,4 +136,21 @@ export async function removeStudentFromGroup(
 
   revalidateAffected();
   return { ok: true };
+}
+
+// Re-attach every lesson to the account whose timetable name matches it.
+export async function relinkLessons(): Promise<{ ok: true; released: number; linked: number } | { ok: false; error: string }> {
+  const adminId = await requireSuperAdmin();
+  if (!adminId) return { ok: false, error: "Forbidden" };
+  const { released, linked } = await relinkTimetableSlots();
+  const meta = await requestMeta();
+  await writeAudit({
+    userId: adminId,
+    action: "timetable.relink",
+    resource: "TimetableSlot",
+    details: { released, linked },
+    ...meta,
+  });
+  revalidatePath("/", "layout");
+  return { ok: true, released, linked };
 }

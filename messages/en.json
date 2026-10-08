@@ -513,7 +513,15 @@
     "day2": "Tue",
     "day3": "Wed",
     "day4": "Thu",
-    "day5": "Fri"
+    "day5": "Fri",
+    "misattachedTitle": "Lessons attached to the wrong teacher",
+    "misattachedHint": "These lessons show on a different teacher's dashboard than the one the timetable names. «Fix» attaches them to the right account (by timetable name). Attendance already recorded is not changed.",
+    "misattachedWhen": "Day / period",
+    "misattachedLesson": "Class · course",
+    "misattachedBelongs": "Timetable says",
+    "misattachedAttached": "Attached now to",
+    "misattachedFix": "Fix",
+    "misattachedFixed": "Released {released} lessons; attached {linked} to the right account."
   },
   "accessCode": {
     "title": "Access code",
@@ -1630,7 +1638,8 @@
     "statCoursesCreated": "Courses added",
     "statGroupsCreated": "Groups added",
     "warningsCount": "{count, plural, one {# warning} other {# warnings}}",
-    "importFailed": "Import failed with no details. Check server logs."
+    "importFailed": "Import failed with no details. Check server logs.",
+    "statSlotsReleased": "Lessons moved to the right account"
   },
   "adminAudit": {
     "title": "Audit Log",

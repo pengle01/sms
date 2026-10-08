@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getSuperAdminAuth } from "@/server/authz";
 import { db } from "@/server/db";
 import { Prisma } from "@/generated/prisma/client";
-import { slotLinkAssignments } from "@/lib/timetableLink";
+import { relinkTimetableSlots } from "@/server/staffLink";
 import { parseCourseCell } from "@/lib/timetableParse";
 import {
   claimAfterUpdate,
@@ -22,6 +22,8 @@ export interface ScheduleImportResult {
   slotsCreated: number;
   slotsUpdated: number;
   slotsLinked: number;
+  /** Lessons moved off an account whose timetable name didn't match. */
+  slotsReleased: number;
   staffProfilesCreated: number;
   coursesCreated: number;
   groupsCreated: number;
@@ -40,6 +42,7 @@ const EMPTY_RESULT = {
   slotsCreated: 0,
   slotsUpdated: 0,
   slotsLinked: 0,
+  slotsReleased: 0,
   staffProfilesCreated: 0,
   coursesCreated: 0,
   groupsCreated: 0,
@@ -304,43 +307,11 @@ export async function importSchedule(
     }
   }
 
-  // Re-link freshly imported slots to teachers who were already approved.
-  // Registration-approval links slots by staffName, but a lesson ADDED to an
-  // existing teacher arrives with staffId=null and would otherwise stay invisible
-  // in that teacher's portal (which filters by staffId). Mirror the approval link
-  // here so new lessons propagate. Claimed slots are left untouched.
-  let slotsLinked = 0;
-  const [unclaimed, profiles] = await Promise.all([
-    db.timetableSlot.findMany({
-      // Only this import's teachers — slots for other names can't have changed.
-      where: { staffId: null, staffName: { in: [...importedStaffNames] } },
-      select: { id: true, staffName: true, staffId: true },
-    }),
-    db.staffProfile.findMany({
-      // ALL live profiles, not just this import's names: ambiguity detection in
-      // slotLinkAssignments must see every profile sharing a scheduleName. Only
-      // profiles with a live login may claim slots — a detached (deleted-user)
-      // or seeded profile re-grabbing them would block re-registration.
-      where: { scheduleName: { not: null }, userId: { not: null } },
-      select: { id: true, scheduleName: true, userId: true },
-    }),
-  ]);
-  const links = slotLinkAssignments(unclaimed, profiles);
-  const byProfile = new Map<string, string[]>();
-  for (const { slotId, profileId } of links) {
-    const list = byProfile.get(profileId) ?? [];
-    list.push(slotId);
-    byProfile.set(profileId, list);
-  }
-  if (byProfile.size > 0) {
-    // One pipelined batch instead of a round-trip per profile.
-    const linked = await db.$transaction(
-      [...byProfile].map(([profileId, slotIds]) =>
-        db.timetableSlot.updateMany({ where: { id: { in: slotIds } }, data: { staffId: profileId } }),
-      ),
-    );
-    slotsLinked = linked.reduce((n, r) => n + r.count, 0);
-  }
+  // Attach every lesson to the account whose timetable name matches it: new
+  // lessons of already-approved teachers get linked, and lessons left attached
+  // to an account with another name (e.g. after its name was corrected) are
+  // moved to the right one. See slotRelinks.
+  const { linked: slotsLinked, released: slotsReleased } = await relinkTimetableSlots();
 
   // Slots feed the admin timetable, teacher schedules/mark sheets and group
   // pages across portals. Imports are rare admin operations, so refresh
@@ -349,7 +320,7 @@ export async function importSchedule(
   revalidatePath("/", "layout");
 
   return {
-    success: true, slotsCreated, slotsUpdated, slotsLinked, staffProfilesCreated, coursesCreated, groupsCreated,
+    success: true, slotsCreated, slotsUpdated, slotsLinked, slotsReleased, staffProfilesCreated, coursesCreated, groupsCreated,
     slotsRemoved, slotsRetired, removalSkipped, staffLeft, errors,
   };
 }

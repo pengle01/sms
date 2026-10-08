@@ -11,6 +11,8 @@ import { periodLabel } from "@/lib/periods";
 import { computeIntegrityReport } from "@/lib/integrityChecks";
 import { FixStudentGroupsDialog, type GroupOption } from "./FixStudentGroupsDialog";
 import { CleanupRedundantButton } from "./CleanupRedundantButton";
+import { RelinkLessonsButton } from "./RelinkLessonsButton";
+import { misattachedSlots } from "@/server/staffLink";
 
 export default async function ChecksPage({
   params,
@@ -23,7 +25,7 @@ export default async function ChecksPage({
 
   const t = await getTranslations("checks");
 
-  const [students, slots, groups, periodsPerDay, smsFlagged] = await Promise.all([
+  const [students, slots, groups, periodsPerDay, smsFlagged, misattached] = await Promise.all([
     db.studentProfile.findMany({
       where: { user: { isActive: true } },
       select: {
@@ -59,6 +61,8 @@ export default async function ChecksPage({
       },
       orderBy: { user: { name: "asc" } },
     }),
+    // Lessons attached to an account whose timetable name is different
+    misattachedSlots(),
   ]);
 
   const report = computeIntegrityReport({
@@ -99,7 +103,7 @@ export default async function ChecksPage({
         <p className="text-slate-500 text-sm mt-1">{t("subtitle")}</p>
       </div>
 
-      {report.totalIssues === 0 && smsFlagged.length === 0 ? (
+      {report.totalIssues === 0 && smsFlagged.length === 0 && misattached.length === 0 ? (
         <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-emerald-800">
           <ShieldCheck className="w-6 h-6 shrink-0" />
           <p className="font-medium">{t("noIssues")}</p>
@@ -107,8 +111,51 @@ export default async function ChecksPage({
       ) : (
         <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-amber-800">
           <AlertTriangle className="w-6 h-6 shrink-0" />
-          <p className="font-medium">{t("issueCount", { count: report.totalIssues + smsFlagged.length })}</p>
+          <p className="font-medium">{t("issueCount", { count: report.totalIssues + smsFlagged.length + misattached.length })}</p>
         </div>
+      )}
+
+      {/* Lessons attached to the wrong teacher's account */}
+      {misattached.length > 0 && (
+        <Card>
+          <CardHeader className="pb-1">
+            <CardTitle className="text-base flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" />
+              {t("misattachedTitle")} ({misattached.length})
+            </CardTitle>
+            <p className="text-xs text-slate-400 mt-1">{t("misattachedHint")}</p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[560px]">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
+                    <th className="py-2 pr-3">{t("misattachedWhen")}</th>
+                    <th className="py-2 pr-3">{t("misattachedLesson")}</th>
+                    <th className="py-2 pr-3">{t("misattachedBelongs")}</th>
+                    <th className="py-2">{t("misattachedAttached")}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {misattached.map((m) => (
+                    <tr key={m.id}>
+                      <td className="py-2 pr-3 whitespace-nowrap">{cellChip(m)}</td>
+                      <td className="py-2 pr-3">
+                        {m.group.name} <span className="text-slate-400">· {m.course.name}</span>
+                      </td>
+                      <td className="py-2 pr-3 font-medium">{m.staffName ?? "—"}</td>
+                      <td className="py-2 text-red-700">
+                        {m.staff?.scheduleName ?? "—"}
+                        {m.staff?.user?.name && <span className="text-slate-400"> · {m.staff.user.name}</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <RelinkLessonsButton />
+          </CardContent>
+        </Card>
       )}
 
       {/* SMS recipients to review (default number missing / unmatched) */}
