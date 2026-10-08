@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import { registerAction } from "./actions";
 import { SELF_REGISTER_EDUCATOR_ROLES } from "@/lib/rbac";
 import { useTranslations } from "next-intl";
 import { PASSWORD_MIN_LENGTH } from "@/lib/password";
+import { passwordsMatch } from "@/lib/registerForm";
 
 interface RegisterFormProps {
   locale: string;
@@ -46,8 +47,28 @@ const CLAIM_ROLES: string[] = SELF_REGISTER_EDUCATOR_ROLES;
 export function RegisterForm({ locale, error, success, staffNames }: RegisterFormProps) {
   const t = useTranslations("register");
   const tAuth = useTranslations("auth");
+  // Errors come back as state with what was typed, so a refused sign-up keeps
+  // every field except the passwords.
+  const [state, formAction, pending] = useActionState(registerAction, null);
+  const values = state?.values;
+  const shownError = state?.error ?? error;
   const [selectedRole, setSelectedRole] = useState<string>("");
   const [staffName, setStaffName] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const mismatch = !passwordsMatch(password, confirm);
+
+  // A new result from the server: restore role/timetable name, clear passwords
+  const [seenState, setSeenState] = useState(state);
+  if (state !== seenState) {
+    setSeenState(state);
+    setPassword("");
+    setConfirm("");
+    if (state) {
+      setSelectedRole(state.values.role);
+      setStaffName(state.values.staffName);
+    }
+  }
 
   if (success) {
     return (
@@ -74,28 +95,28 @@ export function RegisterForm({ locale, error, success, staffNames }: RegisterFor
         <p className="text-sm text-lime-300/70 mt-1">{t("subtitle")}</p>
       </div>
 
-      {error && (
+      {shownError && (
         <div className="flex items-center gap-2 rounded-xl bg-red-500/20 border border-red-400/30 text-red-200 text-sm px-4 py-3">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          {t(error as Parameters<typeof t>[0])}
+          {t(shownError as Parameters<typeof t>[0])}
         </div>
       )}
 
-      <form action={registerAction} className="space-y-4">
+      <form action={formAction} className="space-y-4">
         <input type="hidden" name="locale" value={locale} />
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label htmlFor="firstName" className="text-lime-200 text-sm">{t("firstName")}</Label>
             <Input
-              id="firstName" name="firstName" type="text" required autoComplete="given-name"
+              id="firstName" name="firstName" type="text" required autoComplete="given-name" defaultValue={values?.firstName}
               className="bg-white/10 border-white/20 text-white placeholder:text-lime-300/40 focus-visible:ring-emerald-400"
             />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="lastName" className="text-lime-200 text-sm">{t("lastName")}</Label>
             <Input
-              id="lastName" name="lastName" type="text" required autoComplete="family-name"
+              id="lastName" name="lastName" type="text" required autoComplete="family-name" defaultValue={values?.lastName}
               className="bg-white/10 border-white/20 text-white placeholder:text-lime-300/40 focus-visible:ring-emerald-400"
             />
           </div>
@@ -104,7 +125,7 @@ export function RegisterForm({ locale, error, success, staffNames }: RegisterFor
         <div className="space-y-1.5">
           <Label htmlFor="email" className="text-lime-200 text-sm">{t("email")}</Label>
           <Input
-            id="email" name="email" type="email" required autoComplete="email"
+            id="email" name="email" type="email" required autoComplete="email" defaultValue={values?.email}
             className="bg-white/10 border-white/20 text-white placeholder:text-lime-300/40 focus-visible:ring-emerald-400"
           />
         </div>
@@ -114,6 +135,15 @@ export function RegisterForm({ locale, error, success, staffNames }: RegisterFor
             <Label htmlFor="password" className="text-lime-200 text-sm">{t("password")}</Label>
             <Input
               id="password" name="password" type="password" required autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH}
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                // Re-check the confirmation against the new password
+                const c = e.target.form?.elements.namedItem("confirmPassword");
+                if (c instanceof HTMLInputElement) {
+                  c.setCustomValidity(passwordsMatch(e.target.value, c.value) ? "" : t("errorPasswordMismatch"));
+                }
+              }}
               className="bg-white/10 border-white/20 text-white placeholder:text-lime-300/40 focus-visible:ring-emerald-400"
             />
           </div>
@@ -121,8 +151,16 @@ export function RegisterForm({ locale, error, success, staffNames }: RegisterFor
             <Label htmlFor="confirmPassword" className="text-lime-200 text-sm">{t("confirmPassword")}</Label>
             <Input
               id="confirmPassword" name="confirmPassword" type="password" required autoComplete="new-password"
+              value={confirm}
+              onChange={(e) => {
+                setConfirm(e.target.value);
+                // Block submit (with the browser's own bubble) while they differ
+                e.target.setCustomValidity(passwordsMatch(password, e.target.value) ? "" : t("errorPasswordMismatch"));
+              }}
+              aria-invalid={mismatch}
               className="bg-white/10 border-white/20 text-white placeholder:text-lime-300/40 focus-visible:ring-emerald-400"
             />
+            {mismatch && <p className="text-xs text-red-300">{t("errorPasswordMismatch")}</p>}
           </div>
         </div>
 
@@ -135,6 +173,7 @@ export function RegisterForm({ locale, error, success, staffNames }: RegisterFor
                 <label key={r} className="flex items-center gap-3 rounded-lg border border-white/20 px-4 py-3 cursor-pointer hover:bg-white/10 has-[:checked]:border-lime-400 has-[:checked]:bg-lime-400/10 transition-colors">
                   <input
                     type="radio" name="role" value={r} required
+                    checked={selectedRole === r}
                     className="accent-lime-400"
                     onChange={() => setSelectedRole(r)}
                   />
@@ -168,8 +207,8 @@ export function RegisterForm({ locale, error, success, staffNames }: RegisterFor
           </div>
         )}
 
-        <Button type="submit" className="w-full h-11 bg-emerald-500 hover:bg-emerald-400 text-white font-semibold">
-          {t("submit")}
+        <Button type="submit" disabled={pending} className="w-full h-11 bg-emerald-500 hover:bg-emerald-400 text-white font-semibold">
+          {pending ? t("submitting") : t("submit")}
         </Button>
       </form>
 

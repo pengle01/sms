@@ -11,12 +11,16 @@ import { composeFullName } from "@/lib/profile";
 import { SELF_REGISTER_EDUCATOR_ROLES, REGISTRATION_ROLES } from "@/lib/rbac";
 import type { Role } from "@/generated/prisma/client";
 import { PASSWORD_MIN_LENGTH as MIN_PASSWORD_LENGTH } from "@/lib/password";
+import { registerValues, type RegisterState } from "@/lib/registerForm";
 
 // Educators (teacher / deputy heads / headmaster) claim a timetable name;
 // office & chaperone just register for approval without a claim.
 const CLAIMABLE_ROLES: Role[] = REGISTRATION_ROLES;
 
-export async function registerAction(formData: FormData) {
+// Errors come back as state (with what was typed, minus the passwords) so the
+// form keeps its fields; only success redirects.
+export async function registerAction(_prev: RegisterState, formData: FormData): Promise<RegisterState> {
+  const fail = (error: string): RegisterState => ({ error, values: registerValues(formData) });
   const firstName = ((formData.get("firstName") as string) ?? "").trim();
   const lastName = ((formData.get("lastName") as string) ?? "").trim();
   const name = composeFullName(firstName, lastName);
@@ -29,7 +33,7 @@ export async function registerAction(formData: FormData) {
 
   const base = `/${locale}/register`;
 
-  if (!firstName || !lastName || !email || !password) redirect(`${base}?error=errorGeneric`);
+  if (!firstName || !lastName || !email || !password) return fail("errorGeneric");
 
   // Throttled per email (tight) and per IP (wide) — a whole staff room signs up
   // from one NAT address, so the IP alone cannot carry the tight limit. Checked
@@ -42,29 +46,29 @@ export async function registerAction(formData: FormData) {
       { event: "register.rateLimited", tier: limit.tier, role },
       "Registration rate-limited",
     );
-    redirect(`${base}?error=errorTooMany`);
+    return fail("errorTooMany");
   }
-  if (password.length < MIN_PASSWORD_LENGTH) redirect(`${base}?error=errorPasswordWeak`);
-  if (password !== confirm) redirect(`${base}?error=errorPasswordMismatch`);
-  if (!CLAIMABLE_ROLES.includes(role)) redirect(`${base}?error=errorInvalidRole`);
+  if (password.length < MIN_PASSWORD_LENGTH) return fail("errorPasswordWeak");
+  if (password !== confirm) return fail("errorPasswordMismatch");
+  if (!CLAIMABLE_ROLES.includes(role)) return fail("errorInvalidRole");
 
   const claimsTimetableName = SELF_REGISTER_EDUCATOR_ROLES.includes(role);
   if (claimsTimetableName) {
-    if (!staffName) redirect(`${base}?error=errorStaffNameRequired`);
+    if (!staffName) return fail("errorStaffNameRequired");
     // Same list the picker was built from, so a name can never be offered here
     // and refused there. The claim check below stays separate so "already taken"
     // reads differently from "no such name".
     if (!(await isStaffNameAvailable(staffName))) {
-      redirect(`${base}?error=errorStaffNameNotFound`);
+      return fail("errorStaffNameNotFound");
     }
     const existing = await db.teacherClaim.findFirst({
       where: { staffName, status: { not: "REJECTED" } },
     });
-    if (existing) redirect(`${base}?error=errorStaffNameTaken`);
+    if (existing) return fail("errorStaffNameTaken");
   }
 
   const existingUser = await db.user.findUnique({ where: { email } });
-  if (existingUser) redirect(`${base}?error=errorEmailExists`);
+  if (existingUser) return fail("errorEmailExists");
 
   const passwordHash = await bcrypt.hash(password, 12);
 

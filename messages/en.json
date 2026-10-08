@@ -616,7 +616,8 @@
     "errorStaffNameNotFound": "That name was not found in the timetable. Contact the administrator.",
     "errorStaffNameTaken": "That name has already been claimed by another account.",
     "errorGeneric": "Registration failed. Please try again.",
-    "errorTooMany": "Too many registration attempts. Please try again in an hour."
+    "errorTooMany": "Too many registration attempts. Please try again in an hour.",
+    "submitting": "Sending…"
   },
   "groups": {
     "title": "Homeroom Groups",
