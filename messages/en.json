@@ -323,7 +323,8 @@
     "wcStartHint": "Toilet break — time is recorded",
     "wcReturnHint": "Tap when the student returns",
     "wcDoneHint": "Completed toilet break",
-    "cancelledHomegroup": "cancelled (homegroup period)"
+    "cancelledHomegroup": "cancelled (homegroup period)",
+    "total": "Total"
   },
   "homegroup": {
     "title": "My Homegroup",
@@ -1600,7 +1601,8 @@
     "noSlot": "No timetable slot found for this group / period / day.",
     "minShort": "min",
     "updateAttendance": "Update Attendance",
-    "saveAttendance": "Save Attendance"
+    "saveAttendance": "Save Attendance",
+    "total": "Total"
   },
   "adminTimetable": {
     "title": "Timetable",

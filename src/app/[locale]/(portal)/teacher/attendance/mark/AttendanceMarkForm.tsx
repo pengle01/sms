@@ -268,6 +268,9 @@ export function AttendanceMarkForm({
           <div className="flex items-start gap-4 flex-wrap">
             {/* Current period counts */}
             <div className="flex gap-2 flex-wrap text-sm">
+              <span className="px-3 py-1 rounded-full border font-medium text-slate-700 bg-slate-50 border-slate-200">
+                {t("total")}: {students.length}
+              </span>
               {(Object.keys(STATUS_CONFIG) as AttendanceStatus[]).map((s) => (
                 <span key={s} className={`px-3 py-1 rounded-full border font-medium ${STATUS_CONFIG[s].color}`}>
                   {t(STATUS_CONFIG[s].key)}: {counts[s] ?? 0}
@@ -292,7 +295,7 @@ export function AttendanceMarkForm({
           <Card>
             <CardContent className="p-0">
               <div className="divide-y divide-slate-50">
-                {students.map((student) => {
+                {students.map((student, idx) => {
                   const rec = records[student.id] ?? { status: "PRESENT" as AttendanceStatus, minutesDelayed: 0 };
                   const loc = studentLocations[student.id];
                   return (
@@ -302,7 +305,10 @@ export function AttendanceMarkForm({
                     >
                       {/* Name + location + period history */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-900 leading-snug">{student.user?.name}</p>
+                        <p className="text-sm font-medium text-slate-900 leading-snug flex items-baseline gap-2">
+                          <span className="w-7 flex-shrink-0 text-right text-sm tabular-nums text-slate-400">{idx + 1}.</span>
+                          <span>{student.user?.name}</span>
+                        </p>
                         {exitPermits[student.id] && (
                           <p className="flex items-center gap-1 text-xs font-medium mt-0.5 text-yellow-700">
                             <LogOut className="w-3 h-3" />
