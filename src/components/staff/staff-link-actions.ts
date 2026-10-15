@@ -6,6 +6,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { getSuperAdminAuth } from "@/server/authz";
 import { writeAudit, requestMeta } from "@/server/audit";
 import { relinkTimetableSlots } from "@/server/staffLink";
+import { staffDeleteBlockers, type StaffDeleteBlocker } from "@/lib/staffDelete";
 import {
   EMPTY_DETAILS,
   detailsForLink,
@@ -99,4 +100,72 @@ export async function linkStaffUser(staffProfileId: string, userId: string) {
     ...(await requestMeta()),
   });
   revalidatePath("/[locale]/(portal)/admin/users", "page");
+}
+
+export type DeleteStaffProfileResult = { ok: true } | { ok: false; reasons: StaffDeleteBlocker[] | ["notFound"] };
+
+/**
+ * Remove a timetable person from Χρήστες — only when nothing uses it (no
+ * account, no lesson current or removed, no homegroup, no history, no
+ * designation). Meant for names a wrong timetable import added.
+ */
+export async function deleteStaffProfile(staffProfileId: string): Promise<DeleteStaffProfileResult> {
+  const admin = await requireSuperAdmin();
+
+  const sp = await db.staffProfile.findUnique({
+    where: { id: staffProfileId },
+    select: {
+      scheduleName: true,
+      userId: true,
+      specialEducation: true,
+      substitutionCoordinator: true,
+      ddkCoordinator: true,
+      itMaintenance: true,
+      _count: {
+        select: {
+          homeroomGroups: true, homeroomHeadGroups: true, homeroomCounselorGroups: true,
+          courseAssignments: true, filedReferrals: true, attendanceRecords: true, issuedPermits: true,
+          filedActivities: true, testSchedules: true, grades: true, dutyDays: true,
+          substitutionRequests: true, substitutionAbsences: true, substitutionAssignments: true,
+          toiletBreaks: true, ddkAwards: true, conversations: true, roomsMaintained: true,
+        },
+      },
+    },
+  });
+  if (!sp) return { ok: false, reasons: ["notFound"] };
+
+  // Lessons by record OR by name, removed ones included (naming removedAt opts
+  // out of the current-timetable filter in db.ts).
+  const lessons = await db.timetableSlot.count({
+    where: {
+      removedAt: undefined,
+      OR: [{ staffId: staffProfileId }, ...(sp.scheduleName ? [{ staffName: sp.scheduleName }] : [])],
+    },
+  });
+  const c = sp._count;
+  const reasons = staffDeleteBlockers({
+    hasAccount: !!sp.userId,
+    lessons,
+    homegroups: c.homeroomGroups + c.homeroomHeadGroups + c.homeroomCounselorGroups,
+    historyCounts: [
+      c.courseAssignments, c.filedReferrals, c.attendanceRecords, c.issuedPermits, c.filedActivities,
+      c.testSchedules, c.grades, c.dutyDays, c.substitutionRequests, c.substitutionAbsences,
+      c.substitutionAssignments, c.toiletBreaks, c.ddkAwards, c.conversations, c.roomsMaintained,
+    ],
+    designations: [sp.specialEducation, sp.substitutionCoordinator, sp.ddkCoordinator, sp.itMaintenance],
+  });
+  if (reasons.length > 0) return { ok: false, reasons };
+
+  // Any reference missed above makes the database refuse the delete.
+  await db.staffProfile.delete({ where: { id: staffProfileId } });
+  await writeAudit({
+    userId: admin.userId,
+    action: "staff.deleteProfile",
+    resource: "StaffProfile",
+    resourceId: staffProfileId,
+    details: { scheduleName: sp.scheduleName },
+    ...(await requestMeta()),
+  });
+  revalidatePath("/[locale]/(portal)/admin/users", "page");
+  return { ok: true };
 }

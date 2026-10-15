@@ -1437,7 +1437,19 @@
     "newEmail": "New email",
     "setEmail": "Change email",
     "emailSetSuccess": "Email changed.",
-    "emailChangeConfirm": "Change the sign-in email from {from} to {to}?"
+    "emailChangeConfirm": "Change the sign-in email from {from} to {to}?",
+    "deleteProfile": "Remove from the list",
+    "deleteProfileConfirm": "Remove «{name}» from the list? Only possible if nothing uses it.",
+    "deleteProfileDone": "«{name}» was removed from the list.",
+    "deleteProfileRefused": "Can't remove: {reasons}",
+    "deleteProfileWhy": {
+      "hasAccount": "has an account",
+      "inTimetable": "is (or was) in the timetable",
+      "homegroup": "is a homegroup teacher or counselor",
+      "history": "has history (attendance, referrals, tests, …)",
+      "designation": "has a special designation (e.g. coordinator)",
+      "notFound": "not found"
+    }
   },
   "adminStudents": {
     "title": "Students",

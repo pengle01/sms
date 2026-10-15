@@ -1437,7 +1437,19 @@
     "newEmail": "Νέο email",
     "setEmail": "Αλλαγή email",
     "emailSetSuccess": "Το email άλλαξε.",
-    "emailChangeConfirm": "Αλλαγή email σύνδεσης από {from} σε {to};"
+    "emailChangeConfirm": "Αλλαγή email σύνδεσης από {from} σε {to};",
+    "deleteProfile": "Διαγραφή από τη λίστα",
+    "deleteProfileConfirm": "Διαγραφή του/της «{name}» από τη λίστα; Γίνεται μόνο αν δεν χρησιμοποιείται πουθενά.",
+    "deleteProfileDone": "Το/Η «{name}» διαγράφηκε από τη λίστα.",
+    "deleteProfileRefused": "Δεν διαγράφεται: {reasons}",
+    "deleteProfileWhy": {
+      "hasAccount": "έχει λογαριασμό",
+      "inTimetable": "υπάρχει (ή υπήρξε) στο ωρολόγιο",
+      "homegroup": "είναι υπεύθυνος/η ή σύμβουλος τμήματος",
+      "history": "έχει ιστορικό (απουσίες, καταγγελίες, διαγωνίσματα κ.ά.)",
+      "designation": "έχει ειδικό ρόλο (π.χ. συντονιστής/τρια)",
+      "notFound": "δεν βρέθηκε"
+    }
   },
   "adminStudents": {
     "title": "Μαθητές",

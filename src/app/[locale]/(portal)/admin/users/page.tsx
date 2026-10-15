@@ -9,6 +9,7 @@ import { Search } from "lucide-react";
 import type { Role } from "@/generated/prisma/client";
 import { getTranslations } from "next-intl/server";
 import { StaffLinkControls } from "@/components/staff/StaffLinkControls";
+import { DeleteStaffProfileButton } from "@/components/staff/DeleteStaffProfileButton";
 import { SuggestInput } from "@/components/SuggestInput";
 import { suggestionList } from "@/lib/textSearch";
 import { pickQueryString } from "@/lib/listFilters";
@@ -471,6 +472,13 @@ export default async function UsersPage({
                             />
                             {status === "awaiting" && (
                               <span className="text-xs text-slate-400">{t("accountAwaiting")}</span>
+                            )}
+                            {/* No account: removable from the list when nothing uses it */}
+                            {!r.userId && (
+                              <DeleteStaffProfileButton
+                                staffProfileId={r.staffProfileId}
+                                name={r.scheduleName ?? r.name ?? "—"}
+                              />
                             )}
                             {status === "orphaned" && (
                               <span className="text-xs text-amber-600 font-medium">{t("accountOrphaned")}</span>
