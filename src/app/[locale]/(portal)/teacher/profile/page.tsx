@@ -10,6 +10,7 @@ import { profileIncomplete, splitFullName } from "@/lib/profile";
 import type { Role } from "@/generated/prisma/client";
 import { ProfileForm } from "./ProfileForm";
 import { ChangePasswordCard } from "@/components/account/ChangePasswordCard";
+import { ChangeEmailCard } from "@/components/account/ChangeEmailCard";
 
 export default async function ProfilePage({
   params,
@@ -106,6 +107,7 @@ export default async function ProfilePage({
 
       {/* Educators keep this page rather than a separate /account one, so the
           password form lives here alongside the rest of their details. */}
+      <ChangeEmailCard currentEmail={user.email} />
       <ChangePasswordCard />
     </div>
   );

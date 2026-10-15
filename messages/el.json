@@ -455,7 +455,7 @@
     "edit": "Επεξεργασία",
     "cancel": "Άκυρο",
     "email": "Email",
-    "emailNote": "Το email είναι το αναγνωριστικό σύνδεσής σας και δεν αλλάζει από εδώ.",
+    "emailNote": "Το email είναι το αναγνωριστικό σύνδεσής σας· μπορείτε να το αλλάξετε πιο κάτω, στο «Email σύνδεσης».",
     "phone": "Τηλέφωνο",
     "department": "Ειδικότητα",
     "pmp": "ΠΜΠ",
@@ -1431,7 +1431,13 @@
     "plannedRoleLabel": "Ρόλος (πριν την εγγραφή)",
     "plannedRoleHint": "Ο ρόλος του προσώπου πριν εγγραφεί. Αν μείνει κενό, ακολουθεί την ένδειξη του ωρολογίου (π.χ. ΒΔ).",
     "plannedRoleFromName": "Από το ωρολόγιο: {role}",
-    "plannedRoleSaved": "Ο ρόλος αποθηκεύτηκε"
+    "plannedRoleSaved": "Ο ρόλος αποθηκεύτηκε",
+    "emailSignIn": "Email σύνδεσης",
+    "emailSignInHint": "Ο/Η χρήστης συνδέεται με το {email}. Η αλλαγή ενημερώνει και τις δύο διευθύνσεις και καταγράφεται.",
+    "newEmail": "Νέο email",
+    "setEmail": "Αλλαγή email",
+    "emailSetSuccess": "Το email άλλαξε.",
+    "emailChangeConfirm": "Αλλαγή email σύνδεσης από {from} σε {to};"
   },
   "adminStudents": {
     "title": "Μαθητές",
@@ -1940,7 +1946,16 @@
     "errCurrentWrong": "Ο τρέχων κωδικός πρόσβασης δεν είναι σωστός.",
     "errNoPassword": "Ο λογαριασμός αυτός δεν έχει κωδικό πρόσβασης. Απευθυνθείτε στη διαχείριση.",
     "errRateLimited": "Πάρα πολλές προσπάθειες. Δοκιμάστε ξανά αργότερα.",
-    "errUnknown": "Κάτι πήγε στραβά. Δοκιμάστε ξανά."
+    "errUnknown": "Κάτι πήγε στραβά. Δοκιμάστε ξανά.",
+    "changeEmail": "Email σύνδεσης",
+    "changeEmailHint": "Συνδέεστε με το {email}. Για αλλαγή, γράψτε το νέο email και τον τρέχοντα κωδικό σας.",
+    "newEmail": "Νέο email",
+    "changeEmailButton": "Αλλαγή email",
+    "emailChanged": "Το email άλλαξε. Από εδώ και πέρα συνδέεστε με το {email}.",
+    "errInvalid": "Το email δεν είναι έγκυρο.",
+    "errSame": "Είναι ήδη το email σας.",
+    "errTaken": "Το email χρησιμοποιείται ήδη από άλλο λογαριασμό.",
+    "errForbidden": "Η αλλαγή email γίνεται από το σχολείο."
   },
   "staffDirectory": {
     "title": "Κατάλογος Προσωπικού",

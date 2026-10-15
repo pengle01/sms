@@ -455,7 +455,7 @@
     "edit": "Edit",
     "cancel": "Cancel",
     "email": "Email",
-    "emailNote": "Your email is your sign-in identity and cannot be changed here.",
+    "emailNote": "Your email is your sign-in identity; you can change it below, under «Sign-in email».",
     "phone": "Phone",
     "department": "Department",
     "pmp": "ΠΜΠ",
@@ -1431,7 +1431,13 @@
     "plannedRoleLabel": "Role (before sign-up)",
     "plannedRoleHint": "The person's role before they sign up. Left empty, it follows the timetable marker (e.g. ΒΔ).",
     "plannedRoleFromName": "From timetable: {role}",
-    "plannedRoleSaved": "Role saved"
+    "plannedRoleSaved": "Role saved",
+    "emailSignIn": "Sign-in email",
+    "emailSignInHint": "This user signs in with {email}. The change notifies both addresses and is audited.",
+    "newEmail": "New email",
+    "setEmail": "Change email",
+    "emailSetSuccess": "Email changed.",
+    "emailChangeConfirm": "Change the sign-in email from {from} to {to}?"
   },
   "adminStudents": {
     "title": "Students",
@@ -1940,7 +1946,16 @@
     "errCurrentWrong": "That is not your current password.",
     "errNoPassword": "This account has no password set. Please contact an administrator.",
     "errRateLimited": "Too many attempts. Please try again later.",
-    "errUnknown": "Something went wrong. Please try again."
+    "errUnknown": "Something went wrong. Please try again.",
+    "changeEmail": "Sign-in email",
+    "changeEmailHint": "You sign in with {email}. To change it, enter the new email and your current password.",
+    "newEmail": "New email",
+    "changeEmailButton": "Change email",
+    "emailChanged": "Email changed. From now on, sign in with {email}.",
+    "errInvalid": "That email isn't valid.",
+    "errSame": "That's already your email.",
+    "errTaken": "That email is already used by another account.",
+    "errForbidden": "Your email is changed by the school."
   },
   "staffDirectory": {
     "title": "Staff Directory",

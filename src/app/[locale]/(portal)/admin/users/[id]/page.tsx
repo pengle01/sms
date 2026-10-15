@@ -4,11 +4,12 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronLeft, CircleUser, Home, Calendar, KeyRound } from "lucide-react";
+import { ChevronLeft, CircleUser, Home, Calendar, KeyRound, AtSign } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getTranslations } from "next-intl/server";
 import { RolesCard } from "./RolesCard";
 import { SetPasswordForm } from "./SetPasswordForm";
+import { SetEmailForm } from "./SetEmailForm";
 import { DeleteUserCard } from "./DeleteUserCard";
 import { MaintainedRoomsCard } from "./MaintainedRoomsCard";
 import { getRooms } from "@/server/rooms";
@@ -211,6 +212,19 @@ export default async function UserDetailPage({
       />
 
       {sp?.itMaintenance && (await maintainedRoomsCard(user.id, sp.id))}
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <AtSign className="w-4 h-4" />
+            {t("emailSignIn")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-slate-500 mb-4">{t("emailSignInHint", { email: user.email })}</p>
+          <SetEmailForm userId={user.id} currentEmail={user.email} />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="pb-2">

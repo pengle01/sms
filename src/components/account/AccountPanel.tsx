@@ -3,6 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CircleUser } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { ChangePasswordCard } from "./ChangePasswordCard";
+import { ChangeEmailCard } from "./ChangeEmailCard";
+import { isStaffSelfServiceRole } from "@/lib/emailChange";
 import type { Role } from "@/generated/prisma/client";
 
 /**
@@ -43,6 +45,9 @@ export async function AccountPanel({ userId }: { userId: string }) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Staff change their own login email; families ask the school */}
+      {user && isStaffSelfServiceRole(user.role) && <ChangeEmailCard currentEmail={user.email} />}
 
       <ChangePasswordCard />
     </div>

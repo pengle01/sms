@@ -8,6 +8,13 @@ import { writeAudit, requestMeta } from "@/server/audit";
 import { logger } from "@/server/logger";
 import { rateLimit, resetRateLimit } from "@/server/rateLimit";
 import { validatePasswordChange, type PasswordChangeProblem } from "@/lib/password";
+import { cookies } from "next/headers";
+import { decode } from "next-auth/jwt";
+import { Prisma } from "@/generated/prisma/client";
+import { SESSION_COOKIE } from "@/lib/sessionCookie";
+import { issueSessionCookie, claimsFromToken } from "@/lib/sessionToken";
+import { normalizeEmail, validateEmailChange, isStaffSelfServiceRole, type EmailChangeProblem } from "@/lib/emailChange";
+import { notifyEmailChanged } from "@/server/emailChange";
 
 export type ChangePasswordResult =
   | { ok: true }
@@ -76,4 +83,73 @@ export async function changeOwnPassword(
   logger.info({ event: "account.passwordChanged", userId }, "Password changed");
 
   return { ok: true };
+}
+
+export type ChangeEmailResult =
+  | { ok: true; email: string }
+  | { ok: false; error: EmailChangeProblem | "errForbidden" | "errTaken" | "errCurrentWrong" | "errNoPassword" | "errRateLimited" | "errUnknown" };
+
+/**
+ * Change your own login email (staff only — families ask the school). Checked
+ * with the current password. The caller's session is re-issued with the new
+ * address; the old address gets a notice.
+ */
+export async function changeOwnEmail(newEmail: string, current: string): Promise<ChangeEmailResult> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) return { ok: false, error: "errUnknown" };
+  const userId = session.user.id;
+
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { email: true, role: true, passwordHash: true },
+  });
+  if (!user) return { ok: false, error: "errUnknown" };
+  if (!isStaffSelfServiceRole(user.role)) return { ok: false, error: "errForbidden" };
+
+  const problem = validateEmailChange({ current: user.email, next: newEmail });
+  if (problem) return { ok: false, error: problem };
+  const email = normalizeEmail(newEmail);
+
+  if (!rateLimit(`emailchange:${userId}`, 10, 15 * 60 * 1000)) {
+    logger.warn({ event: "account.emailChangeRateLimited", userId }, "Email change rate-limited");
+    return { ok: false, error: "errRateLimited" };
+  }
+  if (!user.passwordHash) return { ok: false, error: "errNoPassword" };
+  if (!(await bcrypt.compare(current, user.passwordHash))) {
+    logger.warn({ event: "account.emailChangeFailed", reason: "bad_current", userId }, "Email change failed");
+    return { ok: false, error: "errCurrentWrong" };
+  }
+
+  const taken = await db.user.findUnique({ where: { email }, select: { id: true } });
+  if (taken) return { ok: false, error: "errTaken" };
+  try {
+    await db.user.update({ where: { id: userId }, data: { email } });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") return { ok: false, error: "errTaken" };
+    throw e;
+  }
+  resetRateLimit(`emailchange:${userId}`);
+
+  // Keep this browser signed in, under the new address.
+  const store = await cookies();
+  const raw = store.get(SESSION_COOKIE)?.value;
+  const token = raw ? await decode({ token: raw, secret: process.env.NEXTAUTH_SECRET! }) : null;
+  if (token) {
+    const now = Date.now();
+    const cookie = await issueSessionCookie({ ...claimsFromToken(token), email, lastSeen: now }, now);
+    store.set(cookie.name, cookie.value, cookie.options);
+  }
+
+  await writeAudit({
+    userId,
+    action: "user.changeEmail",
+    resource: "User",
+    resourceId: userId,
+    details: { from: user.email, to: email },
+    ...(await requestMeta()),
+  });
+  logger.info({ event: "account.emailChanged", userId }, "Login email changed");
+  await notifyEmailChanged(user.email, email);
+
+  return { ok: true, email };
 }

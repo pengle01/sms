@@ -8,7 +8,10 @@ import { writeAudit, requestMeta } from "@/server/audit";
 import { validateAdminGrant, validateAdminRevoke, validateUserDelete } from "@/lib/roleAssignment";
 import { PASSWORD_MIN_LENGTH as MIN_PASSWORD_LENGTH } from "@/lib/password";
 import { roleChangeError, STAFF_PROFILE_ROLES } from "@/lib/staffRole";
-import type { Role } from "@/generated/prisma/client";
+import { Prisma, type Role } from "@/generated/prisma/client";
+import { resetRateLimit } from "@/server/rateLimit";
+import { normalizeEmail, validateEmailChange } from "@/lib/emailChange";
+import { notifyEmailChanged } from "@/server/emailChange";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -495,5 +498,48 @@ export async function setPlannedRole(staffProfileId: string, role: Role | null):
   });
   revalidateUsers();
   revalidatePath("/[locale]/(portal)/admin/homegroups", "page");
+  return { ok: true };
+}
+
+/**
+ * Change any user's login email (staff or family) — for someone who can't do
+ * it themselves. No password needed; both addresses get a notice and the
+ * change is audited. Clears the sign-in lock for both addresses.
+ */
+export async function setUserEmail(targetUserId: string, newEmail: string): Promise<ActionResult> {
+  const auth = await getSuperAdminAuth();
+  if (!auth) return { ok: false, error: "Δεν επιτρέπεται" };
+
+  const target = await db.user.findUnique({ where: { id: targetUserId }, select: { email: true } });
+  if (!target) return { ok: false, error: "Ο/Η χρήστης δεν βρέθηκε" };
+
+  const problem = validateEmailChange({ current: target.email, next: newEmail });
+  if (problem === "errInvalid") return { ok: false, error: "Το email δεν είναι έγκυρο." };
+  if (problem === "errSame") return { ok: false, error: "Είναι ήδη το email του/της χρήστη." };
+  const email = normalizeEmail(newEmail);
+
+  const taken = await db.user.findUnique({ where: { email }, select: { id: true } });
+  if (taken) return { ok: false, error: "Το email χρησιμοποιείται ήδη από άλλο λογαριασμό." };
+  try {
+    await db.user.update({ where: { id: targetUserId }, data: { email } });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      return { ok: false, error: "Το email χρησιμοποιείται ήδη από άλλο λογαριασμό." };
+    }
+    throw e;
+  }
+  resetRateLimit(`login:${target.email}`);
+  resetRateLimit(`login:${email}`);
+
+  await writeAudit({
+    userId: auth.userId,
+    action: "user.setEmail",
+    resource: "User",
+    resourceId: targetUserId,
+    details: { from: target.email, to: email },
+    ...(await requestMeta()),
+  });
+  await Promise.all([notifyEmailChanged(target.email, email), notifyEmailChanged(email, email)]);
+  revalidateUsers();
   return { ok: true };
 }
