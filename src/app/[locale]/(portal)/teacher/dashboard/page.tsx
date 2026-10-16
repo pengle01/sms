@@ -11,6 +11,8 @@ import { getHomegroupOptions, ownHomegroups } from "@/server/homegroupPeriod";
 import { getPeriodsPerDay } from "@/lib/schoolConfig";
 import { HomegroupPicker } from "@/components/attendance/HomegroupPicker";
 import { getDayOverrides } from "@/server/substitutions";
+import { loadAdHocCovers } from "@/server/adHocCovers";
+import type { AdHocCover } from "@/lib/coverMarked";
 import { getActiveAnnouncements } from "@/server/announcements";
 import { AnnouncementsCard } from "@/components/announcements/AnnouncementsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -171,6 +173,9 @@ export default async function TeacherDashboardPage({
         })
       : [],
   );
+  // Classes I covered ad hoc today («Κάλυψη τμήματος»)
+  const todayIso = today.toISOString().slice(0, 10);
+  const adHoc = staff && !isWeekend && !isTodayExcursion ? await loadAdHocCovers(staff.id, today, today) : new Map<string, AdHocCover[]>();
   const meetingMarked = new Set(meetingMarkedRows.map((r) => r.intercalaryGroupId));
   const excursionMarked = excursionMarkedRow !== null;
 
@@ -312,6 +317,23 @@ export default async function TeacherDashboardPage({
                   // Every lesson of this period (combined groups can share one),
                   // each on its own row.
                   const periodSlots = slotsByPeriod.get(dbPeriod) ?? [];
+                  const covers = adHoc.get(`${todayIso}:${dbPeriod}`) ?? [];
+                  const renderCover = (c: AdHocCover) => (
+                    <Link
+                      key={`cover-${c.slotId}`}
+                      href={`/${locale}/teacher/attendance/mark?period=${c.period}&date=${todayIso}&claimGroupId=${c.groupId}`}
+                      className="flex items-center gap-4 px-5 py-3 transition-colors bg-amber-50/40 hover:bg-amber-50"
+                    >
+                      <span className="w-5 flex-shrink-0 text-center text-sm font-bold text-amber-400">{period}</span>
+                      <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-slate-900">{c.courseName}</span>
+                        <span className="text-sm text-slate-400">{c.groupName}</span>
+                        <span className="text-xs font-semibold text-amber-700">{t("claimBadge")}</span>
+                        <span className="text-xs text-slate-400">{t("insteadOf", { name: c.teacherName })}</span>
+                      </div>
+                      <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-500" />
+                    </Link>
+                  );
                   const renderRow = (slot: (typeof todaySlots)[number] | undefined, rowKey: string | number) => {
                     const marked = slot ? markedSlotIds.has(slot.id) : false;
 
@@ -388,6 +410,8 @@ export default async function TeacherDashboardPage({
                     }
 
                     if (!slot) {
+                      // A free period I spent covering a class: the cover rows replace it
+                      if (covers.length > 0) return null;
                       return (
                         <div key={rowKey} className="flex items-center gap-4 px-5 py-3">
                           <span className="w-5 flex-shrink-0 text-center text-sm font-semibold text-slate-200">
@@ -431,8 +455,15 @@ export default async function TeacherDashboardPage({
                       </Link>
                     );
                   };
-                  if (periodSlots.length > 1) {
-                    return <Fragment key={period}>{periodSlots.map((s) => renderRow(s, `${period}-${s.id}`))}</Fragment>;
+                  if (periodSlots.length > 1 || covers.length > 0) {
+                    return (
+                      <Fragment key={period}>
+                        {periodSlots.length > 1
+                          ? periodSlots.map((s) => renderRow(s, `${period}-${s.id}`))
+                          : renderRow(periodSlots[0], period)}
+                        {covers.map(renderCover)}
+                      </Fragment>
+                    );
                   }
                   return renderRow(periodSlots[0], period);
                 })}

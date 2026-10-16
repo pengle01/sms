@@ -10,6 +10,7 @@ import { getNow, utcMidnight } from "@/lib/dates";
 import { getDayOverrides } from "@/server/substitutions";
 import { periodsForDow, maxPeriodCount, periodLabel } from "@/lib/periods";
 import { cn } from "@/lib/utils";
+import { PrintTimetableLink } from "@/components/timetable/PrintTimetableLink";
 
 export default async function StudentSchedulePage({
   params,
@@ -95,9 +96,12 @@ export default async function StudentSchedulePage({
 
   return (
     <div className="space-y-5">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>
-        <p className="text-slate-500 text-sm mt-1">{student.group?.name ?? t("noGroup")}</p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>
+          <p className="text-slate-500 text-sm mt-1">{student.group?.name ?? t("noGroup")}</p>
+        </div>
+        {grid.size > 0 && <PrintTimetableLink kind="student" value={student.id} />}
       </div>
 
       {grid.size === 0 ? (

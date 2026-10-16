@@ -20,6 +20,7 @@ import { periodsForDow, maxPeriodCount } from "@/lib/periods";
 import { isPassing } from "@/lib/grades";
 import { cn } from "@/lib/utils";
 import { slotTeacherName } from "@/lib/staffName";
+import { PrintTimetableLink } from "@/components/timetable/PrintTimetableLink";
 
 const DAY_KEYS = ["dayMon", "dayTue", "dayWed", "dayThu", "dayFri"] as const;
 
@@ -233,6 +234,7 @@ export default async function StudentDetailPage({
                   {t("freePeriodCount", { count: gapCells })}
                 </Badge>
               )}
+              {groupIds.length > 0 && <PrintTimetableLink kind="student" value={id} />}
             </div>
           </div>
         </CardHeader>

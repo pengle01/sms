@@ -8,6 +8,7 @@ import { rowsForDay, storedPeriodAt, isMeetingRow, isLessonCancelled } from "@/l
 import Link from "next/link";
 import { CheckCircle2, ClipboardList, AlertCircle } from "lucide-react";
 import { RefreshAfterAttendance } from "@/components/attendance/RefreshAfterAttendance";
+import { PrintTimetableLink } from "@/components/timetable/PrintTimetableLink";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"] as const;
 
@@ -89,9 +90,12 @@ export default async function TeacherSchedulePage({
   return (
     <div className="space-y-6">
       <RefreshAfterAttendance />
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">My Schedule</h2>
-        <p className="text-slate-500 text-sm mt-1">{dateLabel}</p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">My Schedule</h2>
+          <p className="text-slate-500 text-sm mt-1">{dateLabel}</p>
+        </div>
+        {staff.scheduleName && <PrintTimetableLink kind="teacher" value={staff.scheduleName} />}
       </div>
 
       {/* Week grid */}

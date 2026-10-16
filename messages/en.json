@@ -255,7 +255,9 @@
     "onDutyToday": "On duty today",
     "noDutyToday": "No deputies assigned",
     "homegroupPeriod": "Homegroup period",
-    "cancelledHomegroup": "cancelled (homegroup period)"
+    "cancelledHomegroup": "cancelled (homegroup period)",
+    "claimBadge": "Cover",
+    "insteadOf": "instead of {name}"
   },
   "attendance": {
     "title": "Attendance",
@@ -324,7 +326,8 @@
     "wcReturnHint": "Tap when the student returns",
     "wcDoneHint": "Completed toilet break",
     "cancelledHomegroup": "cancelled (homegroup period)",
-    "total": "Total"
+    "total": "Total",
+    "insteadOf": "instead of {name}"
   },
   "homegroup": {
     "title": "My Homegroup",
@@ -2221,5 +2224,19 @@
     "pickGroup": "Print codes…",
     "allGroups": "All homegroups",
     "print": "Print codes"
+  },
+  "timetablePrint": {
+    "print": "Print timetable",
+    "titleTeacher": "Teacher timetable",
+    "titleStudent": "Student timetable",
+    "titleRoom": "Room timetable",
+    "schoolYear": "School year {year}",
+    "room": "Room {room}",
+    "footer": "Fixed weekly timetable — printed {date}",
+    "day1": "Monday",
+    "day2": "Tuesday",
+    "day3": "Wednesday",
+    "day4": "Thursday",
+    "day5": "Friday"
   }
 }

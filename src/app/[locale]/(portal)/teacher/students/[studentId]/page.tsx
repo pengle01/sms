@@ -20,6 +20,7 @@ import { getSpecialEdRecord, getStudentSupport, teachesStudent } from "@/server/
 import { AccessCodeCard } from "@/components/access/AccessCodeCard";
 import { SpecialEdCard } from "@/components/special-ed/SpecialEdCard";
 import type { Role } from "@/generated/prisma/client";
+import { PrintTimetableLink } from "@/components/timetable/PrintTimetableLink";
 
 function Field({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;
@@ -683,7 +684,10 @@ export default async function StudentSchedulePage({
       {showWeek && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">{t("weeklyTimetable")}</CardTitle>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-base">{t("weeklyTimetable")}</CardTitle>
+              <PrintTimetableLink kind="student" value={student.id} />
+            </div>
           </CardHeader>
           <CardContent className="p-0 overflow-x-auto">
             <table className="w-full text-sm min-w-[600px]">

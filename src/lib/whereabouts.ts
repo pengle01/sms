@@ -31,6 +31,13 @@ function put<T>(grid: WeekGrid<T>, day: number, period: number, item: T) {
   else byPeriod.set(period, [item]);
 }
 
+/** Every slot in its day/period cell — lessons sharing a period are stacked. */
+export function weekGrid<T extends { dayOfWeek: number; period: number }>(slots: T[]): WeekGrid<T> {
+  const grid: WeekGrid<T> = new Map();
+  for (const s of slots) put(grid, s.dayOfWeek, s.period, s);
+  return grid;
+}
+
 export function cell<T>(grid: WeekGrid<T>, day: number, period: number): T[] {
   return grid.get(day)?.get(period) ?? [];
 }

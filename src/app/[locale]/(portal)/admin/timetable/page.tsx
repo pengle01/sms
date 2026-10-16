@@ -3,6 +3,7 @@ import { db } from "@/server/db";
 import Link from "next/link";
 import { Upload, CalendarDays } from "lucide-react";
 import { getTranslations } from "next-intl/server";
+import { PrintTimetableLink } from "@/components/timetable/PrintTimetableLink";
 
 const PERIODS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
 
@@ -133,6 +134,9 @@ export default async function TimetablePage({
               <GroupSelector groups={groups} selected={selectedGroupId} locale={locale} view={view} teacher={selectedTeacher} t={t} tLocate={tLocate} />
             ) : (
               <TeacherSelector teachers={teacherNames.map(tn => tn.staffName!)} selected={selectedTeacher} locale={locale} view={view} group={selectedGroupId} t={t} />
+            )}
+            {view === "teacher" && selectedTeacher && (
+              <PrintTimetableLink kind="teacher" value={selectedTeacher} />
             )}
           </div>
 

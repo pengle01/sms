@@ -21,6 +21,7 @@ import {
   type TeacherEntry,
 } from "@/lib/whereabouts";
 import { RoomSelect } from "./RoomSelect";
+import { PrintTimetableLink } from "@/components/timetable/PrintTimetableLink";
 
 export interface WhereaboutsParams {
   tab?: string;
@@ -180,6 +181,7 @@ async function TeachersTab({
           <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
             <h3 className="text-lg font-semibold text-slate-900">{chosen.scheduleName}</h3>
             {chosen.accountName && <span className="text-sm text-slate-500">{chosen.accountName}</span>}
+            <PrintTimetableLink kind="teacher" value={chosen.scheduleName} />
             {showPhone && (
               <span className="inline-flex items-center gap-1.5 text-sm text-slate-700">
                 <Phone className="w-4 h-4 text-slate-400" />
@@ -240,6 +242,7 @@ async function RoomsTab({
       <div className="flex flex-wrap items-center gap-3">
         <RoomSelect rooms={roomNames} value={chosen} allLabel={t("allRooms")} />
         <p className="text-sm text-slate-500">{chosen ? t("roomWeekHint", { room: chosen }) : t("freeRoomsHint")}</p>
+        {chosen && <PrintTimetableLink kind="room" value={chosen} />}
       </div>
 
       {occupancy ? (

@@ -6,7 +6,8 @@ import { db } from "@/server/db";
 import { getNow, utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { getSpecialDaysInRange, buildDayTypeMap, buildDayMeetingMap, isHolidayType } from "@/lib/calendar";
 import { groupByPeriod } from "@/lib/periods";
-import { coverMarkedKeys } from "@/lib/coverMarked";
+import { coverMarkedKeys, type AdHocCover } from "@/lib/coverMarked";
+import { loadAdHocCovers } from "@/server/adHocCovers";
 import { rowsForDay, storedPeriodAt, isMeetingRow, isLessonCancelled } from "@/lib/homegroupPeriod";
 import { getHomegroupOptions, ownHomegroups } from "@/server/homegroupPeriod";
 import { HomegroupPicker } from "@/components/attendance/HomegroupPicker";
@@ -16,6 +17,7 @@ import Link from "next/link";
 import { CheckCircle2, ClipboardList, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { RefreshAfterAttendance } from "@/components/attendance/RefreshAfterAttendance";
+import { PrintTimetableLink } from "@/components/timetable/PrintTimetableLink";
 
 type Slot = {
   id: string;
@@ -232,6 +234,12 @@ export default async function TeacherSchedulePage({
     for (const k of coverMarkedKeys(rows)) markedSet.add(k);
   }
 
+  // Classes I covered ad hoc this week («Κάλυψη τμήματος»), up to today
+  const adHoc =
+    staff && !isFutureWeek
+      ? await loadAdHocCovers(staff.id, utcMidnight(weekStartStr), utcMidnight(isCurrentWeek ? todayStr : weekEndStr))
+      : new Map<string, AdHocCover[]>();
+
   // My own lessons that a finalized plan covers/releases because I'm absent →
   // key "date:period". These cells are dimmed (someone else handles them).
   const absentOverrides = new Map<string, true>();
@@ -291,6 +299,7 @@ export default async function TeacherSchedulePage({
         </div>
 
         <div className="flex items-center gap-1">
+          {staff?.scheduleName && <PrintTimetableLink kind="teacher" value={staff.scheduleName} />}
           <Link
             href={prevWeekHref}
             className="h-9 w-9 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors"
@@ -632,10 +641,35 @@ export default async function TeacherSchedulePage({
                       </Wrap>
                     );
                   };
-                  if (cellSlots.length > 1 && !isDayExcursion) {
+                  // Classes I covered ad hoc in this period, stacked under my own
+                  const covers = isDayExcursion || isHoliday ? [] : adHoc.get(`${dateStr}:${dbPeriod}`) ?? [];
+                  const renderCover = (c: AdHocCover) => (
+                    <div key={`cover-${c.slotId}`} className="px-2 py-2">
+                      <Link
+                        href={`/${locale}/teacher/attendance/mark?period=${c.period}&date=${dateStr}&claimGroupId=${c.groupId}`}
+                        className="group block"
+                      >
+                        <div className="rounded-lg px-3 py-2.5 border border-amber-200 bg-amber-50 group-hover:border-amber-400">
+                          <p className="text-xs font-semibold leading-snug text-slate-900">{c.courseName}</p>
+                          <p className="mt-0.5 text-xs text-amber-700 font-medium">
+                            {t("claimBadge")} · {c.groupName}
+                          </p>
+                          <p className="text-[11px] text-slate-500">{t("insteadOf", { name: c.teacherName })}</p>
+                          <div className="mt-1.5 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-amber-600" />
+                            <span className="text-xs font-medium text-amber-700">{t("done")}</span>
+                          </div>
+                        </div>
+                      </Link>
+                    </div>
+                  );
+                  if ((cellSlots.length > 1 || covers.length > 0) && !isDayExcursion) {
+                    const hasPlanCover = cellSlots.length === 0 && subAssignments.has(`${dateStr}:${dbPeriod}`);
                     return (
-                      <td key={dow} className="align-top p-0">
+                      <td key={dow} className={`align-top p-0 ${isToday && isCurrentWeek ? "bg-emerald-50/30" : ""}`}>
                         {cellSlots.map((s) => renderCell(s, "div", s.id))}
+                        {hasPlanCover && renderCell(undefined, "div", "plan")}
+                        {covers.map(renderCover)}
                       </td>
                     );
                   }
