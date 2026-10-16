@@ -1,13 +1,20 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useSyncExternalStore, useTransition } from "react";
 import Link from "next/link";
 import { Loader2, CheckCircle2, KeyRound } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isWellFormedCode } from "@/lib/accessCode";
 import { checkAccessCode, startActivation, verifyActivation } from "./actions";
 
 type Labels = Record<string, string>;
 type Availability = { student: boolean; guardian: boolean };
+
+const noSubscribe = () => () => {};
+function readHashCode(): string {
+  const m = window.location.hash.match(/code=(\d{12})/);
+  return m && isWellFormedCode(m[1]!) ? m[1]! : "";
+}
 
 export function ActivateForm({ locale, labels }: { locale: string; labels: Labels }) {
   const t = (k: string) => labels[k] ?? k;
@@ -15,7 +22,12 @@ export function ActivateForm({ locale, labels }: { locale: string; labels: Label
   const [step, setStep] = useState<"code" | "details" | "otp" | "done">("code");
   const [role, setRole] = useState<"student" | "guardian" | "">("");
   const [avail, setAvail] = useState<Availability>({ student: true, guardian: true });
-  const [code, setCode] = useState("");
+  // A printed slip's QR opens …/activate#code=… — start with that code filled
+  // in (the part after «#» never reaches the server, so codes stay out of its
+  // logs). Typing replaces it as usual.
+  const hashCode = useSyncExternalStore(noSubscribe, readHashCode, () => "");
+  const [typedCode, setCode] = useState<string | null>(null);
+  const code = typedCode ?? hashCode;
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");

@@ -2206,5 +2206,20 @@
   "homegroupPeriod": {
     "pick": "Another class…",
     "open": "Attendance"
+  },
+  "codeSlips": {
+    "title": "Account activation code",
+    "student": "Student",
+    "homegroup": "Homegroup",
+    "code": "Code",
+    "step1": "Open {site} or scan the QR code.",
+    "step2": "Enter the code and create an account with your email.",
+    "step3": "The same code is used by the student and up to 2 parents/guardians. Keep it safe.",
+    "summary": "{slips} codes on {sheets} A4 sheets — cut each sheet in half.",
+    "missing": "Without a code ({count}) — press «Generate codes» first:",
+    "empty": "No students with a code in this homegroup.",
+    "pickGroup": "Print codes…",
+    "allGroups": "All homegroups",
+    "print": "Print codes"
   }
 }

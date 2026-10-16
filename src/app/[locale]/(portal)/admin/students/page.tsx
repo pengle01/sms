@@ -11,6 +11,7 @@ import { suggestionList } from "@/lib/textSearch";
 import { SuggestInput } from "@/components/SuggestInput";
 import { StudentRow } from "./student-row";
 import { GenerateAllCodesButton } from "./GenerateAllCodesButton";
+import { PrintCodesControl } from "./PrintCodesControl";
 import { ReissueLegacyCodesButton } from "./ReissueLegacyCodesButton";
 import { isLegacyCode } from "@/lib/accessCode";
 
@@ -133,6 +134,7 @@ export default async function StudentsPage({
           <div className="flex items-center gap-2 flex-wrap">
             <ReissueLegacyCodesButton count={legacyUnused} />
             <GenerateAllCodesButton missing={missingCodes} />
+            <PrintCodesControl locale={locale} groups={homeroomGroups.map((g) => ({ id: g.id, name: g.name }))} />
             <Link
               href={`/${locale}/admin/students/import`}
               className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50"
