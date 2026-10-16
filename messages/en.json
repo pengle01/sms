@@ -47,7 +47,14 @@
     "dowShort5": "Fri",
     "periodShort": "P{period}",
     "periodRange": "P{from}–{to}",
-    "testDateBanner": "TEST DATE — the app is running as if today were {date}"
+    "testDateBanner": "TEST DATE — the app is running as if today were {date}",
+    "password": {
+      "show": "Show password",
+      "hide": "Hide password",
+      "capsLock": "Caps Lock is on",
+      "match": "Passwords match",
+      "mismatch": "Passwords don't match"
+    }
   },
   "auth": {
     "login": "Sign In",

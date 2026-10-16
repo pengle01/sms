@@ -12,6 +12,7 @@ import { SELF_REGISTER_EDUCATOR_ROLES } from "@/lib/rbac";
 import { useTranslations } from "next-intl";
 import { PASSWORD_MIN_LENGTH } from "@/lib/password";
 import { passwordsMatch } from "@/lib/registerForm";
+import { PasswordInput, ConfirmHint } from "@/components/ui/password-input";
 
 interface RegisterFormProps {
   locale: string;
@@ -133,8 +134,9 @@ export function RegisterForm({ locale, error, success, staffNames }: RegisterFor
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label htmlFor="password" className="text-lime-200 text-sm">{t("password")}</Label>
-            <Input
-              id="password" name="password" type="password" required autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH}
+            <PasswordInput
+              tone="dark"
+              id="password" name="password" required autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH}
               value={password}
               onChange={(e) => {
                 setPassword(e.target.value);
@@ -149,8 +151,9 @@ export function RegisterForm({ locale, error, success, staffNames }: RegisterFor
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="confirmPassword" className="text-lime-200 text-sm">{t("confirmPassword")}</Label>
-            <Input
-              id="confirmPassword" name="confirmPassword" type="password" required autoComplete="new-password"
+            <PasswordInput
+              tone="dark"
+              id="confirmPassword" name="confirmPassword" required autoComplete="new-password"
               value={confirm}
               onChange={(e) => {
                 setConfirm(e.target.value);
@@ -160,7 +163,7 @@ export function RegisterForm({ locale, error, success, staffNames }: RegisterFor
               aria-invalid={mismatch}
               className="bg-white/10 border-white/20 text-white placeholder:text-lime-300/40 focus-visible:ring-emerald-400"
             />
-            {mismatch && <p className="text-xs text-red-300">{t("errorPasswordMismatch")}</p>}
+            <ConfirmHint password={password} confirm={confirm} tone="dark" />
           </div>
         </div>
 

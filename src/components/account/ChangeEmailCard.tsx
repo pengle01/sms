@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AtSign, Loader2 } from "lucide-react";
 import { validateEmailChange } from "@/lib/emailChange";
 import { changeOwnEmail } from "./password-actions";
+import { PasswordInput } from "@/components/ui/password-input";
 
 /**
  * Change your own login email — staff only (the page decides whether to show
@@ -61,9 +62,8 @@ export function ChangeEmailCard({ currentEmail }: { currentEmail: string }) {
           </div>
           <div>
             <label htmlFor="email-pw" className="block text-xs text-slate-500 mb-1.5">{t("currentPassword")}</label>
-            <input
+            <PasswordInput
               id="email-pw"
-              type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"

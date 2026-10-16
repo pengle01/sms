@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
 import { familyLoginAction, staffLoginAction } from "./actions";
+import { PasswordInput } from "@/components/ui/password-input";
 
 interface LoginFormProps {
   locale: string;
@@ -90,12 +91,12 @@ export async function LoginForm({ locale, urlError, reason, variant }: LoginForm
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="password" className="text-lime-200 text-sm">{t("password")}</Label>
-            <Input
+            <PasswordInput
               id="password"
               name="password"
-              type="password"
               required
               autoComplete="current-password"
+              tone="dark"
               className="bg-white/10 border-white/20 text-white placeholder:text-lime-300/40 focus-visible:ring-emerald-400"
             />
           </div>

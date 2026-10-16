@@ -6,6 +6,7 @@ import { Loader2, CheckCircle2, KeyRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isWellFormedCode } from "@/lib/accessCode";
 import { checkAccessCode, startActivation, verifyActivation } from "./actions";
+import { PasswordInput, ConfirmHint } from "@/components/ui/password-input";
 
 type Labels = Record<string, string>;
 type Availability = { student: boolean; guardian: boolean };
@@ -229,11 +230,12 @@ export function ActivateForm({ locale, labels }: { locale: string; labels: Label
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">{t("password")}</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
+          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" className={inputClass} />
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">{t("confirmPassword")}</label>
-          <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={inputClass} />
+          <PasswordInput value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" className={inputClass} />
+          <ConfirmHint password={password} confirm={confirm} />
         </div>
       </div>
 
