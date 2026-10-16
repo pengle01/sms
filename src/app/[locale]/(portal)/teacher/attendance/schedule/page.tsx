@@ -6,6 +6,7 @@ import { db } from "@/server/db";
 import { getNow, utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { getSpecialDaysInRange, buildDayTypeMap, buildDayMeetingMap, isHolidayType } from "@/lib/calendar";
 import { groupByPeriod } from "@/lib/periods";
+import { coverMarkedKeys } from "@/lib/coverMarked";
 import { rowsForDay, storedPeriodAt, isMeetingRow, isLessonCancelled } from "@/lib/homegroupPeriod";
 import { getHomegroupOptions, ownHomegroups } from "@/server/homegroupPeriod";
 import { HomegroupPicker } from "@/components/attendance/HomegroupPicker";
@@ -187,7 +188,7 @@ export default async function TeacherSchedulePage({
   // Finalized substitution assignments for me in this week → key "date:period"
   const subAssignments = new Map<
     string,
-    { groupId: string; groupName: string; courseName: string | null; newRoom: string | null; isHall: boolean }
+    { slotId: string | null; groupId: string; groupName: string; courseName: string | null; newRoom: string | null; isHall: boolean }
   >();
   if (staff) {
     // Study halls are NOT injected into anyone's grid — headteachers see them
@@ -207,6 +208,7 @@ export default async function TeacherSchedulePage({
     for (const e of weekEntries) {
       if (e.period == null || !e.group) continue;
       subAssignments.set(`${e.plan.date.toISOString().slice(0, 10)}:${e.period}`, {
+        slotId: e.timetableSlotId,
         groupId: e.group.id,
         groupName: e.group.name,
         courseName: e.timetableSlot?.course.name ?? null,
@@ -214,6 +216,20 @@ export default async function TeacherSchedulePage({
         isHall: e.kind === "STUDY_HALL",
       });
     }
+  }
+
+  // Covers are saved under the absent teacher's slot: mark those taken too.
+  const coverSlotIds = [...new Set([...subAssignments.values()].flatMap((a) => (a.slotId ? [a.slotId] : [])))];
+  if (!isFutureWeek && coverSlotIds.length > 0) {
+    const rows = await db.attendance.findMany({
+      where: {
+        date: { gte: utcMidnight(weekStartStr), lte: utcMidnight(isCurrentWeek ? todayStr : weekEndStr) },
+        timetableSlotId: { in: coverSlotIds },
+      },
+      select: { timetableSlotId: true, date: true },
+      distinct: ["timetableSlotId", "date"],
+    });
+    for (const k of coverMarkedKeys(rows)) markedSet.add(k);
   }
 
   // My own lessons that a finalized plan covers/releases because I'm absent →
@@ -508,6 +524,7 @@ export default async function TeacherSchedulePage({
                     // Plan entries carry the lesson's stored period, not the shown row.
                     const assignment = !slot ? subAssignments.get(`${dateStr}:${dbPeriod}`) : undefined;
                     if (assignment) {
+                      const coverDone = assignment.slotId ? markedSet.has(`${assignment.slotId}::${dateStr}`) : false;
                       return (
                         <Wrap key={cellKey} className={`px-2 py-2 align-top ${isToday && isCurrentWeek ? "bg-emerald-50/30" : ""}`}>
                           {canMark ? (
@@ -526,8 +543,11 @@ export default async function TeacherSchedulePage({
                                   <p className="text-xs text-slate-400">Room {assignment.newRoom}</p>
                                 )}
                                 <div className="mt-1.5 flex items-center gap-1">
-                                  <ClipboardList className="w-3 h-3 text-sky-500" />
-                                  <span className="text-xs font-medium text-sky-600">{t("mark")}</span>
+                                  {coverDone ? (
+                                    <><CheckCircle2 className="w-3 h-3 text-sky-600" /><span className="text-xs font-medium text-sky-600">{t("done")}</span></>
+                                  ) : (
+                                    <><ClipboardList className="w-3 h-3 text-sky-500" /><span className="text-xs font-medium text-sky-600">{t("mark")}</span></>
+                                  )}
                                 </div>
                               </div>
                             </Link>

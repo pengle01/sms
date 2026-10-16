@@ -19,6 +19,7 @@ import { CheckCircle2, AlertCircle, CalendarRange, ShieldCheck } from "lucide-re
 import Link from "next/link";
 import { Fragment } from "react";
 import { groupByPeriod } from "@/lib/periods";
+import { coverMarkedKeys, markedKey } from "@/lib/coverMarked";
 import { getTranslations } from "next-intl/server";
 import { RefreshAfterAttendance } from "@/components/attendance/RefreshAfterAttendance";
 
@@ -159,6 +160,17 @@ export default async function TeacherDashboardPage({
       if (e.period != null) absentByPeriod.set(e.period, e);
     }
   }
+  // Covers are saved under the absent teacher's slot — check those for today.
+  const coverSlotIds = [...coverByPeriod.values()].flatMap((e) => (e.timetableSlotId ? [e.timetableSlotId] : []));
+  const coverMarked = coverMarkedKeys(
+    coverSlotIds.length > 0
+      ? await db.attendance.findMany({
+          where: { date: today, timetableSlotId: { in: coverSlotIds } },
+          select: { timetableSlotId: true, date: true },
+          distinct: ["timetableSlotId"],
+        })
+      : [],
+  );
   const meetingMarked = new Set(meetingMarkedRows.map((r) => r.intercalaryGroupId));
   const excursionMarked = excursionMarkedRow !== null;
 
@@ -340,11 +352,14 @@ export default async function TeacherDashboardPage({
                     const assigned = coverByPeriod.get(dbPeriod);
                     if (!slot && assigned?.groupId) {
                       const isHall = assigned.kind === "STUDY_HALL";
+                      const coverDone = assigned.timetableSlotId
+                        ? coverMarked.has(markedKey(assigned.timetableSlotId, today))
+                        : false;
                       return (
                         <Link
                           key={rowKey}
                           href={`/${locale}/teacher/attendance/mark?groupId=${assigned.groupId}&period=${assigned.period}`}
-                          className="flex items-center gap-4 px-5 py-3 transition-colors bg-sky-50/40 hover:bg-sky-50"
+                          className={`flex items-center gap-4 px-5 py-3 transition-colors hover:bg-sky-50 ${coverDone ? "bg-emerald-50/40" : "bg-sky-50/40"}`}
                         >
                           <span className="w-5 flex-shrink-0 text-center text-sm font-bold text-sky-400">
                             {period}
@@ -361,9 +376,13 @@ export default async function TeacherDashboardPage({
                               <span className="text-xs text-slate-400 font-mono">{t("room", { room: assigned.newRoom })}</span>
                             )}
                           </div>
-                          <span className="text-xs font-medium text-emerald-600 flex-shrink-0">
-                            {t("markAttendance")}
-                          </span>
+                          {coverDone ? (
+                            <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-500" />
+                          ) : (
+                            <span className="text-xs font-medium text-emerald-600 flex-shrink-0">
+                              {t("markAttendance")}
+                            </span>
+                          )}
                         </Link>
                       );
                     }
