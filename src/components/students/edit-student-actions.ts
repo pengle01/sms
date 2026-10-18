@@ -6,11 +6,15 @@ import { Gender } from "@/generated/prisma/enums";
 import { isOfficeAdmin, isAdminStaff } from "@/lib/rbac";
 import { getActiveAuth } from "@/server/authz";
 import { writeAudit, requestMeta } from "@/server/audit";
+import { registryChange, type StudentEditPortal } from "@/lib/studentEdit";
 
-export async function updateStudent(id: string, locale: string, formData: FormData) {
+/** Save the student edit form — admin or office (secretary). */
+export async function updateStudent(id: string, locale: string, portal: StudentEditPortal, formData: FormData) {
   const auth = await getActiveAuth();
-  // Effective roles: extra SUPER_ADMIN grants count.
-  if (!auth || !auth.roles.some((r) => isOfficeAdmin(r) || isAdminStaff(r))) {
+  // Effective roles: extra SUPER_ADMIN grants count. The portal must be one the
+  // caller can open, since the save redirects back into it.
+  const allowed = portal === "admin" ? auth?.roles.some(isAdminStaff) : auth?.roles.some(isOfficeAdmin);
+  if (!auth || !allowed) {
     throw new Error("Unauthorized");
   }
 
@@ -24,6 +28,7 @@ export async function updateStudent(id: string, locale: string, formData: FormDa
 
   // Registry number is the unique import key — guard against collisions.
   const current = await db.studentProfile.findUnique({ where: { id }, select: { studentId: true } });
+  const registryNo = current ? registryChange(current.studentId, registryId) : null;
   if (registryId && current && registryId !== current.studentId) {
     const taken = await db.studentProfile.findUnique({ where: { studentId: registryId }, select: { id: true } });
     if (taken) throw new Error("Ο αριθμός μητρώου χρησιμοποιείται ήδη από άλλον/η μαθητή/τρια.");
@@ -87,9 +92,13 @@ export async function updateStudent(id: string, locale: string, formData: FormDa
     action: "student.update",
     resource: "StudentProfile",
     resourceId: id,
-    details: { fields: ["registryId", "name", "email", "group", "gender", "address", "isActive", "parents"] },
+    details: {
+      fields: ["registryId", "name", "email", "group", "gender", "address", "isActive", "parents"],
+      portal,
+      ...(registryNo ? { registryNo } : {}),
+    },
     ...meta,
   });
 
-  redirect(`/${locale}/admin/students/${id}`);
+  redirect(`/${locale}/${portal}/students/${id}`);
 }

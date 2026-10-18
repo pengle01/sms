@@ -334,7 +334,25 @@
     "wcDoneHint": "Completed toilet break",
     "cancelledHomegroup": "cancelled (homegroup period)",
     "total": "Total",
-    "insteadOf": "instead of {name}"
+    "insteadOf": "instead of {name}",
+    "wcEdit": "Correct exit",
+    "wcLeftAt": "Left at",
+    "wcReturnedAt": "Returned at",
+    "wcNowShort": "Now",
+    "wcStillOut": "Still out of class",
+    "wcDelete": "Delete — tapped by mistake",
+    "wcDeleteConfirm": "Yes, delete",
+    "wcKeep": "No",
+    "wcSave": "Save",
+    "wcSaved": "Exit corrected",
+    "wcDeleted": "Exit deleted",
+    "wcErr": {
+      "badTime": "Write the times as HH:MM (e.g. 10:35).",
+      "returnBeforeLeave": "The return must be after the exit.",
+      "future": "The time can't be in the future.",
+      "openNotToday": "An exit from an earlier day needs a return time."
+    },
+    "wcNoReturn": "no return"
   },
   "homegroup": {
     "title": "My Homegroup",
@@ -1595,7 +1613,8 @@
     "reissueCodesTitle": "Replace old access codes",
     "reissueCodesDescription": "{count, plural, one {The # unused code with letters will be replaced} other {The # unused codes with letters will be replaced}} by numeric ones (e.g. 482 913 057 316). The old ones stop working — the new ones must be handed out again. Codes already used are not changed.",
     "reissueCodesConfirm": "Replace",
-    "codesReissuedToast": "{count, plural, one {# code replaced} other {# codes replaced}}"
+    "codesReissuedToast": "{count, plural, one {# code replaced} other {# codes replaced}}",
+    "registryNoWarning": "The student import recognises the student by this number. Change it only to fix a mistake — and fix it in the import file too, or the next import will create a new student."
   },
   "adminAttendance": {
     "title": "Attendance",
@@ -1861,7 +1880,19 @@
     "sessionIdle": "Automatic logout",
     "sessionIdleIntro": "Staff are logged out after this many minutes without activity (with a warning a minute before), and in any case 12 hours after signing in. Parents and students: up to 7 days.",
     "sessionIdleLabel": "Idle minutes",
-    "sessionIdleValue": "{minutes} minutes"
+    "sessionIdleValue": "{minutes} minutes",
+    "bellSchedule": "Bell schedule",
+    "bellSeven": "Schedule A (7 periods)",
+    "bellEight": "Schedule C (8 periods)",
+    "bellSevenShort": "7 periods",
+    "bellEightShort": "8 periods",
+    "bellPeriod": "Period {n}",
+    "bellStart": "start",
+    "bellEnd": "end",
+    "bellBreak": "Break {minutes}′",
+    "bellDays": "Schedule per day",
+    "bellMismatch": "Doesn't match «Periods per day»: {days}.",
+    "bellInvalid": "Fix the times in red: HH:MM, the end after the start, and each period starting after the previous one ends."
   },
   "adminClaims": {
     "title": "Requests",

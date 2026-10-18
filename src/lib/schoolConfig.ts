@@ -5,6 +5,7 @@ import { DEFAULT_PERIODS_PER_DAY, type PeriodsPerDay } from "@/lib/periods";
 import { GRADES_UNLOCKED_KEY, parseGradesUnlocked, type GradesUnlocked } from "@/lib/grades";
 import { ATTENDANCE_LOCK_KEY, parseAttendanceLock, type AttendanceLockConfig } from "@/lib/attendanceLock";
 import { ABSENCE_SMS_KEY, parseAbsenceSms, type AbsenceSmsConfig } from "@/lib/absenceSms";
+import { BELL_SCHEDULE_KEY, parseBellSchedule, type BellScheduleConfig } from "@/lib/bellSchedule";
 import { getNow } from "@/lib/dates";
 import {
   activeTermFor,
@@ -31,6 +32,12 @@ export async function getPeriodsPerDay(): Promise<PeriodsPerDay> {
   } catch {
     return DEFAULT_PERIODS_PER_DAY;
   }
+}
+
+/** «Ωράριο περιόδων»: the start/end of every period; defaults to the printed schedule. */
+export async function getBellSchedule(): Promise<BellScheduleConfig> {
+  const setting = await db.globalSetting.findUnique({ where: { key: BELL_SCHEDULE_KEY } });
+  return parseBellSchedule(setting?.value);
 }
 
 // ── Grade entry locking ──────────────────────────────────────────────────────

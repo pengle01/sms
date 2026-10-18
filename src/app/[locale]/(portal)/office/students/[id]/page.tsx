@@ -2,7 +2,7 @@ import { db } from "@/server/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, MapPin } from "lucide-react";
+import { ChevronLeft, MapPin, Pencil } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { AccessCodeCard } from "@/components/access/AccessCodeCard";
 import { SmsRecipientsCard } from "@/components/students/SmsRecipientsCard";
@@ -38,6 +38,7 @@ export default async function OfficeStudentDetailPage({
   const history = await loadStudentHistory(id);
 
   const tNav = await getTranslations("nav");
+  const tStudents = await getTranslations("adminStudents");
 
   return (
     <div className="space-y-6">
@@ -60,7 +61,16 @@ export default async function OfficeStudentDetailPage({
               </p>
             )}
           </div>
-          {student.group && <Badge variant="outline" className="text-sm">{student.group.name}</Badge>}
+          <div className="flex items-center gap-2">
+            {student.group && <Badge variant="outline" className="text-sm">{student.group.name}</Badge>}
+            <Link
+              href={`/${locale}/office/students/${id}/edit`}
+              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg border border-slate-200 text-sm text-slate-600 font-medium hover:bg-slate-50 transition-colors"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              {tStudents("edit")}
+            </Link>
+          </div>
         </div>
       </div>
 

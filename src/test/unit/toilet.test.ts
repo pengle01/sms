@@ -64,3 +64,55 @@ describe("Toilet breaks", () => {
     expect(frequentStudentIds([]).size).toBe(0);
   });
 });
+
+import { nicosiaInstant, resolveBreakEdit, nicosiaHhmm } from "@/lib/toilet";
+
+describe("nicosiaInstant", () => {
+  it("uses UTC+2 in winter and UTC+3 in summer", () => {
+    expect(nicosiaInstant("2026-01-15", "10:00").toISOString()).toBe("2026-01-15T08:00:00.000Z");
+    expect(nicosiaInstant("2026-07-15", "10:00").toISOString()).toBe("2026-07-15T07:00:00.000Z");
+  });
+
+  it("round-trips with nicosiaHhmm", () => {
+    expect(nicosiaHhmm(nicosiaInstant("2026-10-19", "07:40"))).toBe("07:40");
+    expect(nicosiaHhmm(nicosiaInstant("2026-03-16", "13:35"))).toBe("13:35");
+  });
+});
+
+describe("resolveBreakEdit", () => {
+  const now = new Date("2026-10-19T12:00:00.000Z"); // 15:00 in Cyprus
+  const base = { dateIso: "2026-10-19", now, isToday: true };
+
+  it("accepts a valid correction", () => {
+    const r = resolveBreakEdit({ ...base, leftAt: "10.30", returnedAt: "10:36" });
+    expect(r).toEqual({
+      leftAt: new Date("2026-10-19T07:30:00.000Z"),
+      returnedAt: new Date("2026-10-19T07:36:00.000Z"),
+    });
+  });
+
+  it("allows still out on the same day", () => {
+    expect(resolveBreakEdit({ ...base, leftAt: "10:30", returnedAt: null })).toEqual({
+      leftAt: new Date("2026-10-19T07:30:00.000Z"),
+      returnedAt: null,
+    });
+  });
+
+  it("refuses a malformed time", () => {
+    expect(resolveBreakEdit({ ...base, leftAt: "1030x", returnedAt: "10:36" })).toEqual({ error: "badTime" });
+    expect(resolveBreakEdit({ ...base, leftAt: "10:30", returnedAt: "" })).toEqual({ error: "badTime" });
+  });
+
+  it("refuses a return that is not after the exit", () => {
+    expect(resolveBreakEdit({ ...base, leftAt: "10:30", returnedAt: "10:30" })).toEqual({ error: "returnBeforeLeave" });
+    expect(resolveBreakEdit({ ...base, leftAt: "10:30", returnedAt: "10:20" })).toEqual({ error: "returnBeforeLeave" });
+  });
+
+  it("refuses times in the future", () => {
+    expect(resolveBreakEdit({ ...base, leftAt: "14:50", returnedAt: "15:10" })).toEqual({ error: "future" });
+  });
+
+  it("refuses still out on an earlier day", () => {
+    expect(resolveBreakEdit({ ...base, dateIso: "2026-10-16", isToday: false, leftAt: "10:30", returnedAt: null })).toEqual({ error: "openNotToday" });
+  });
+});

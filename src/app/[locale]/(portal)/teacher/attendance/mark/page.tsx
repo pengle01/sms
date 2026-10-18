@@ -288,10 +288,10 @@ export default async function TeacherMarkAttendancePage({
     }
   }
 
-  // Toilet breaks (WC) for today: any still-open break + this period's
-  // completed ones, for every student on screen (own group and claimed).
+  // Toilet breaks (WC) on this date: any still-open break + this period's
+  // completed ones (past dates too, so the recorder can correct them), for every student on screen (own group and claimed).
   const allStudentIds = [...students.map((s) => s.id), ...(claimed?.students.map((s) => s.id) ?? [])];
-  const toiletBreaks: Record<string, { id: string; leftAt: string; returnedAt: string | null }> = {};
+  const toiletBreaks: Record<string, { id: string; leftAt: string; returnedAt: string | null; staffId: string }> = {};
   if (allStudentIds.length > 0 && period && !isIntercalary && !isExcursion) {
     const rows = await db.toiletBreak.findMany({
       where: {
@@ -308,6 +308,7 @@ export default async function TeacherMarkAttendancePage({
           id: b.id,
           leftAt: b.leftAt.toISOString(),
           returnedAt: b.returnedAt?.toISOString() ?? null,
+          staffId: b.staffId,
         };
       }
     }

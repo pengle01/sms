@@ -4,7 +4,7 @@ import { db } from "@/server/db";
 import { isDutyCandidate } from "@/lib/staffRole";
 import { staffDisplayName } from "@/lib/staffName";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY, getMaxTestsPerWeek, DEFAULT_MAX_TESTS_PER_WEEK, getMaxGuardiansPerStudent, DEFAULT_MAX_GUARDIANS_PER_STUDENT, getSchoolYear, getTermDatesConfig, getSchoolName, getGradesUnlocked, getAttendanceLockConfig, getSessionIdleMinutes } from "@/lib/schoolConfig";
+import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY, getMaxTestsPerWeek, DEFAULT_MAX_TESTS_PER_WEEK, getMaxGuardiansPerStudent, DEFAULT_MAX_GUARDIANS_PER_STUDENT, getSchoolYear, getTermDatesConfig, getSchoolName, getGradesUnlocked, getAttendanceLockConfig, getSessionIdleMinutes, getBellSchedule } from "@/lib/schoolConfig";
 import { getSmsConfig } from "@/lib/sms";
 import { getAbsenceSmsConfig } from "@/lib/schoolConfig";
 import { getEmailConfig } from "@/lib/email";
@@ -24,6 +24,7 @@ export default async function AdminSettingsPage({
   const t = await getTranslations("adminSettings");
 
   const { PeriodsForm } = await import("./PeriodsForm");
+  const { BellScheduleForm } = await import("./BellScheduleForm");
   const { MaxTestsForm } = await import("./MaxTestsForm");
   const { MaxGuardiansForm } = await import("./MaxGuardiansForm");
   const { SmsSettingsForm } = await import("./SmsSettingsForm");
@@ -38,6 +39,7 @@ export default async function AdminSettingsPage({
   const sessionIdleMinutes = await getSessionIdleMinutes();
   const { RoomsForm } = await import("./RoomsForm");
   const { SpecialEdCodesForm } = await import("./SpecialEdCodesForm");
+  const bellSchedule = await getBellSchedule();
   const [periodsPerDay, maxTestsPerWeek, maxGuardians, smsConfig, emailConfig, termConfig, schoolYear, schoolName, gradesUnlocked, attendanceLock, dutyEntries, dutyDeputies, rooms, specialEdCodes, absenceSms, longestName] = await Promise.all([
     getPeriodsPerDay(),
     getMaxTestsPerWeek(),
@@ -193,6 +195,15 @@ export default async function AdminSettingsPage({
         </CardHeader>
         <CardContent>
           <PeriodsForm initial={initial} />
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-2xl">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">{t("bellSchedule")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <BellScheduleForm initial={bellSchedule} periodsPerDay={initial} />
         </CardContent>
       </Card>
 

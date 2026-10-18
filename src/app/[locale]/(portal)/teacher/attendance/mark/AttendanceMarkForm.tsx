@@ -7,6 +7,7 @@ import { getNow } from "@/lib/dates";
 import { periodLabel } from "@/lib/periods";
 import { breakMinutes } from "@/lib/toilet";
 import { WaitingIndicator } from "@/components/toilet/WaitingIndicator";
+import { EditBreakDialog } from "@/components/toilet/EditBreakDialog";
 import { trpc } from "@/trpc/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ import { markAttendanceSaved } from "@/lib/attendanceRefresh";
 type Student = { id: string; user: { name: string | null }; studentId: string };
 type Slot = { id: string; room: string | null; course: { name: string } } | null;
 type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE";
+type ToiletBreakState = { id: string; leftAt: string; returnedAt: string | null; staffId: string };
 type PeriodRecord = { status: string; minutesDelayed: number; isAutoAbsent: boolean; exitPermit?: boolean };
 
 interface Props {
@@ -32,8 +34,8 @@ interface Props {
   studentLocations?: Record<string, { type: "activity" | "support"; name: string }>;
   /** Active exit permits (Άδεια Εξόδου) covering this period — shown yellow. */
   exitPermits?: Record<string, { reason: string; fromPeriod: number }>;
-  /** Today's toilet break per student: an open one, or this period's last. */
-  toiletBreaks?: Record<string, { id: string; leftAt: string; returnedAt: string | null }>;
+  /** The date's toilet break per student: an open one, or this period's last. */
+  toiletBreaks?: Record<string, ToiletBreakState>;
   prevPeriodsRecords?: Record<string, Record<number, PeriodRecord>>;
   prevActivityPeriods?: Record<string, number[]>;
   intercalaryGroupId?: string;
@@ -140,7 +142,7 @@ export function AttendanceMarkForm({
     onSuccess: (b) =>
       setBreaks((m) => ({
         ...m,
-        [b.studentId]: { id: b.id, leftAt: new Date(b.leftAt).toISOString(), returnedAt: b.returnedAt ? new Date(b.returnedAt).toISOString() : null },
+        [b.studentId]: { id: b.id, leftAt: new Date(b.leftAt).toISOString(), returnedAt: b.returnedAt ? new Date(b.returnedAt).toISOString() : null, staffId: b.staffId },
       })),
     onError: (e) => toast.error(e.message),
   });
@@ -148,11 +150,19 @@ export function AttendanceMarkForm({
     onSuccess: (b) =>
       setBreaks((m) => ({
         ...m,
-        [b.studentId]: { id: b.id, leftAt: new Date(b.leftAt).toISOString(), returnedAt: b.returnedAt ? new Date(b.returnedAt).toISOString() : null },
+        [b.studentId]: { id: b.id, leftAt: new Date(b.leftAt).toISOString(), returnedAt: b.returnedAt ? new Date(b.returnedAt).toISOString() : null, staffId: b.staffId },
       })),
     onError: (e) => toast.error(e.message),
   });
   const wcPending = wcStarting || wcEnding;
+  // «Διόρθωση»: only the teacher who recorded an exit may correct or delete it.
+  const correctBreak = (studentId: string, next: { id: string; leftAt: string; returnedAt: string | null } | null) =>
+    setBreaks((m) => {
+      const copy = { ...m };
+      if (next) copy[studentId] = { ...copy[studentId]!, ...next };
+      else delete copy[studentId];
+      return copy;
+    });
   const [records, setRecords] = useState<Record<string, { status: AttendanceStatus; minutesDelayed: number }>>(
     () =>
       Object.fromEntries(
@@ -333,12 +343,29 @@ export function AttendanceMarkForm({
                         />
                       </div>
 
-                      {/* Toilet break (WC): one tap out, one tap back */}
-                      {isToday && !intercalaryGroupId && (() => {
+                      {/* Toilet break (WC): one tap out, one tap back. Past dates show
+                          that day's exits so the recorder can still correct them. */}
+                      {!intercalaryGroupId && (isToday || breaks[student.id]) && (() => {
                         const brk = breaks[student.id];
+                        const edit = brk && brk.staffId === staffId && (
+                          <EditBreakDialog
+                            brk={brk}
+                            studentName={student.user?.name ?? student.studentId}
+                            isToday={isToday}
+                            onChange={(next) => correctBreak(student.id, next)}
+                          />
+                        );
+                        if (brk && brk.returnedAt === null && !isToday) {
+                          return (
+                            <div className="flex items-center gap-1">
+                              <span className="text-[11px] font-semibold text-red-600 whitespace-nowrap">WC {fmtTime(brk.leftAt)} · {t("wcNoReturn")}</span>
+                              {edit}
+                            </div>
+                          );
+                        }
                         if (brk && brk.returnedAt === null) {
                           const mins = breakMinutes(brk.leftAt, null, new Date(wcNow));
-                          return (
+                          const openPill = (
                             <button
                               type="button"
                               disabled={wcPending}
@@ -354,6 +381,12 @@ export function AttendanceMarkForm({
                               WC {fmtTime(brk.leftAt)} · {mins}′
                             </button>
                           );
+                          return (
+                            <div className="flex items-center gap-1">
+                              {openPill}
+                              {edit}
+                            </div>
+                          );
                         }
                         return (
                           <div className="flex items-center gap-1.5">
@@ -362,7 +395,8 @@ export function AttendanceMarkForm({
                                 WC {fmtTime(brk.leftAt)}–{fmtTime(brk.returnedAt)} ({breakMinutes(brk.leftAt, brk.returnedAt, new Date(wcNow))}′)
                               </span>
                             )}
-                            <button
+                            {brk?.returnedAt && edit}
+                            {isToday && <button
                               type="button"
                               disabled={wcPending}
                               onClick={() =>
@@ -378,7 +412,7 @@ export function AttendanceMarkForm({
                             >
                               <DoorOpen className="w-4 h-4" />
                               WC
-                            </button>
+                            </button>}
                           </div>
                         );
                       })()}
