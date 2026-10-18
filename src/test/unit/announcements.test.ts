@@ -3,7 +3,9 @@ import {
   announcementErrorKey,
   canDeleteAnnouncement,
   canManageAnnouncements,
-  resolvePinnedUntil,
+  resolveAnnouncementDay,
+  canEditAnnouncement,
+  announcementFileIds,
 } from "@/lib/announcements";
 import type { Role } from "@/generated/prisma/client";
 
@@ -35,25 +37,25 @@ describe("canManageAnnouncements", () => {
   });
 });
 
-describe("resolvePinnedUntil", () => {
+describe("resolveAnnouncementDay", () => {
   const today = new Date("2026-03-16T09:30:00.000Z");
 
   it("defaults to today when input is empty or invalid", () => {
-    expect(resolvePinnedUntil("", today).toISOString()).toBe("2026-03-16T00:00:00.000Z");
-    expect(resolvePinnedUntil(null, today).toISOString()).toBe("2026-03-16T00:00:00.000Z");
-    expect(resolvePinnedUntil("not-a-date", today).toISOString()).toBe("2026-03-16T00:00:00.000Z");
+    expect(resolveAnnouncementDay("", today).toISOString()).toBe("2026-03-16T00:00:00.000Z");
+    expect(resolveAnnouncementDay(null, today).toISOString()).toBe("2026-03-16T00:00:00.000Z");
+    expect(resolveAnnouncementDay("not-a-date", today).toISOString()).toBe("2026-03-16T00:00:00.000Z");
   });
 
   it("keeps a future date", () => {
-    expect(resolvePinnedUntil("2026-03-20", today).toISOString()).toBe("2026-03-20T00:00:00.000Z");
+    expect(resolveAnnouncementDay("2026-03-20", today).toISOString()).toBe("2026-03-20T00:00:00.000Z");
   });
 
   it("clamps a past date up to today", () => {
-    expect(resolvePinnedUntil("2026-03-01", today).toISOString()).toBe("2026-03-16T00:00:00.000Z");
+    expect(resolveAnnouncementDay("2026-03-01", today).toISOString()).toBe("2026-03-16T00:00:00.000Z");
   });
 
-  it("treats today as valid (today-only)", () => {
-    expect(resolvePinnedUntil("2026-03-16", today).toISOString()).toBe("2026-03-16T00:00:00.000Z");
+  it("treats today as valid", () => {
+    expect(resolveAnnouncementDay("2026-03-16", today).toISOString()).toBe("2026-03-16T00:00:00.000Z");
   });
 });
 
@@ -98,5 +100,51 @@ describe("announcementErrorKey", () => {
     expect(announcementErrorKey("")).toBeNull();
     expect(announcementErrorKey(undefined)).toBeNull();
     expect(announcementErrorKey(null)).toBeNull();
+  });
+});
+
+describe("canEditAnnouncement", () => {
+  it("lets the author edit while they may post", () => {
+    expect(canEditAnnouncement(["HEADTEACHER_B"], "u_me", "u_me")).toBe(true);
+    expect(canEditAnnouncement(["SCHOOL_ADMIN"], "u_me", "u_me")).toBe(true);
+  });
+
+  it("refuses everyone else, management included", () => {
+    expect(canEditAnnouncement(["HEADMASTER"], "u_other", "u_me")).toBe(false);
+    expect(canEditAnnouncement(["HEADTEACHER_A"], "u_other", "u_me")).toBe(false);
+  });
+
+  it("refuses an author who can no longer post", () => {
+    expect(canEditAnnouncement(["TEACHER"], "u_me", "u_me")).toBe(false);
+  });
+
+  it("refuses without a viewer", () => {
+    expect(canEditAnnouncement(["HEADMASTER"], "u_me", null)).toBe(false);
+  });
+});
+
+describe("announcementFileIds", () => {
+  it("keeps the chosen files, adds the new ones and lists the removed", () => {
+    expect(announcementFileIds({ existing: ["a", "b", "c"], keep: ["a", "c"], added: ["d"] })).toEqual({
+      final: ["a", "c", "d"],
+      removed: ["b"],
+    });
+  });
+
+  it("ignores keep ids that were not on the announcement", () => {
+    expect(announcementFileIds({ existing: ["a"], keep: ["a", "foreign"], added: [] })).toEqual({
+      final: ["a"],
+      removed: [],
+    });
+  });
+
+  it("removes everything when nothing is kept", () => {
+    expect(announcementFileIds({ existing: ["a", "b"], keep: [], added: [] })).toEqual({ final: [], removed: ["a", "b"] });
+  });
+
+  it("refuses more than five attachments in total", () => {
+    expect(announcementFileIds({ existing: ["a", "b", "c"], keep: ["a", "b", "c"], added: ["d", "e", "f"] })).toEqual({
+      error: "attachment",
+    });
   });
 });

@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/server/auth";
 import { getTranslations } from "next-intl/server";
-import { getActiveAnnouncements } from "@/server/announcements";
+import { getAnnouncementsForDay } from "@/server/announcements";
 import { AnnouncementsCard } from "@/components/announcements/AnnouncementsCard";
 import { db } from "@/server/db";
 import { getNow, utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
@@ -35,7 +35,7 @@ export default async function OfficeDashboardPage({
     // marked read, and are not shown on /office/notifications at all.
     db.notification.count({ where: { userId: session.user.id, read: false } }),
     // The secretary now posts announcements, so she sees the live ones here too.
-    getActiveAnnouncements(today),
+    getAnnouncementsForDay(today),
   ]);
 
   const stats = [

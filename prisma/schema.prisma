@@ -1061,9 +1061,10 @@ model NoticeAcknowledgment {
 }
 
 // ─── Daily Announcements ──────────────────────────────────────────────────────
-// Short notices pushed by management (headteachers/headmaster) and surfaced on
-// the teacher dashboard. An announcement shows while pinnedUntil >= today, so a
-// post defaults to "today only" but can be kept up for several days.
+// «Ανακοινώσεις ημέρας»: short notices pushed by management and the office and
+// surfaced on the staff dashboards. Each belongs to ONE day, stored in
+// pinnedUntil (the name predates one-day announcements; renaming the column
+// would make db push drop it), and shows on that day only.
 model Announcement {
   id          String       @id @default(cuid())
   title       String?
@@ -1071,7 +1072,7 @@ model Announcement {
   authorId    String
   author      User         @relation(fields: [authorId], references: [id])
   files       StoredFile[] @relation("AnnouncementFiles")
-  pinnedUntil DateTime     @db.Date
+  pinnedUntil DateTime     @db.Date // the day it shows
   createdAt   DateTime     @default(now())
 
   @@index([pinnedUntil])

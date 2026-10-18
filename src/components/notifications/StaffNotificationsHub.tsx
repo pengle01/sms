@@ -2,17 +2,17 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getActiveAuth } from "@/server/authz";
 import { db } from "@/server/db";
-import { canManageAnnouncements, canDeleteAnnouncement, announcementErrorKey } from "@/lib/announcements";
+import { canManageAnnouncements, canDeleteAnnouncement, canEditAnnouncement, announcementErrorKey } from "@/lib/announcements";
 import { canSendStaffNotifications, groupSentNotifications } from "@/lib/staffNotifications";
 import { staffAuthorLabel } from "@/lib/staffName";
-import { getActiveAnnouncements } from "@/server/announcements";
+import { getUpcomingAnnouncements } from "@/server/announcements";
 import { getTranslations } from "next-intl/server";
 import { utcMidnight, localDateStr, fmtDisplayDate, fmtDisplayDateTime } from "@/lib/dates";
 import { NotificationsBoard } from "@/components/notifications/NotificationsBoard";
 import { ReferralTabs } from "@/components/referrals/ReferralTabs";
 import { PenSquare, X, CheckCheck, Send } from "lucide-react";
-import { postAnnouncement, deleteAnnouncement } from "@/components/announcements/announcement-actions";
-import { AnnouncementComposer } from "@/components/announcements/AnnouncementComposer";
+import { postAnnouncement, deleteAnnouncement, updateAnnouncement } from "@/components/announcements/announcement-actions";
+import { AnnouncementComposer, EditableAnnouncement } from "@/components/announcements/AnnouncementComposer";
 import { AttachmentList } from "@/components/attachments/AttachmentLink";
 
 /**
@@ -50,7 +50,7 @@ export async function StaffNotificationsHub({
   // not post, so keying both off one flag would hide their own sent messages.
   const today = utcMidnight();
   const [announcements, sentRows] = await Promise.all([
-    canManage ? getActiveAnnouncements(today) : [],
+    canManage ? getUpcomingAnnouncements(today) : [],
     canSend
       ? db.notification.findMany({
           where: { senderId: auth.userId, type: "STAFF_MESSAGE" },
@@ -72,38 +72,49 @@ export async function StaffNotificationsHub({
         <p className="text-sm text-slate-400 border-t border-slate-100 pt-3">{td("noAnnouncements")}</p>
       ) : (
         <div className="space-y-2 border-t border-slate-100 pt-3">
-          {announcements.map((a) => (
-            <div
-              key={a.id}
-              className="flex items-start gap-3 rounded-lg border border-amber-100 bg-amber-50/40 px-3 py-2"
-            >
-              <div className="flex-1 min-w-0">
-                {a.title && <p className="text-sm font-semibold text-slate-900">{a.title}</p>}
-                <p className="text-sm text-slate-700 whitespace-pre-wrap">{a.body}</p>
-                <AttachmentList files={a.files} className="mt-2" />
-                <p className="text-xs text-slate-400 mt-1">
-                  {staffAuthorLabel(
-                    { role: a.author.role, name: a.author.name, scheduleName: a.author.staffProfile?.scheduleName },
-                    td("officeAuthor"),
-                  )}{" "}
-                  · {td("showUntil")}{" "}
-                  {fmtDisplayDate(a.pinnedUntil)}
-                </p>
-              </div>
-              {canDeleteAnnouncement(auth.roles, a.authorId, auth.userId) && (
-                <form action={deleteAnnouncement.bind(null, locale, hub)}>
-                  <input type="hidden" name="id" value={a.id} />
-                  <button
-                    type="submit"
-                    aria-label={td("deleteAnnouncement")}
-                    className="text-slate-300 hover:text-red-500 transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </form>
-              )}
-            </div>
-          ))}
+          {announcements.map((a) => {
+            const dayIso = a.pinnedUntil.toISOString().slice(0, 10);
+            return (
+              <EditableAnnouncement
+                key={a.id}
+                canEdit={canEditAnnouncement(auth.roles, a.authorId, auth.userId)}
+                action={updateAnnouncement.bind(null, locale, hub)}
+                todayIso={todayIso}
+                initial={{ id: a.id, title: a.title, body: a.body, dayIso, files: a.files.map((f) => ({ id: f.id, filename: f.filename })) }}
+                view={
+                  <>
+                    {a.title && <p className="text-sm font-semibold text-slate-900">{a.title}</p>}
+                    <p className="text-sm text-slate-700 whitespace-pre-wrap">{a.body}</p>
+                    <AttachmentList files={a.files} className="mt-2" />
+                    <p className="text-xs text-slate-400 mt-1">
+                      {staffAuthorLabel(
+                        { role: a.author.role, name: a.author.name, scheduleName: a.author.staffProfile?.scheduleName },
+                        td("officeAuthor"),
+                      )}{" "}
+                      ·{" "}
+                      <span className={dayIso === todayIso ? "font-semibold text-amber-700" : ""}>
+                        {dayIso === todayIso ? td("todayLabel") : fmtDisplayDate(a.pinnedUntil)}
+                      </span>
+                    </p>
+                  </>
+                }
+                actions={
+                  canDeleteAnnouncement(auth.roles, a.authorId, auth.userId) && (
+                    <form action={deleteAnnouncement.bind(null, locale, hub)}>
+                      <input type="hidden" name="id" value={a.id} />
+                      <button
+                        type="submit"
+                        aria-label={td("deleteAnnouncement")}
+                        className="text-slate-300 hover:text-red-500 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </form>
+                  )
+                }
+              />
+            );
+          })}
         </div>
       )}
     </div>

@@ -13,7 +13,7 @@ import { HomegroupPicker } from "@/components/attendance/HomegroupPicker";
 import { getDayOverrides } from "@/server/substitutions";
 import { loadAdHocCovers } from "@/server/adHocCovers";
 import type { AdHocCover } from "@/lib/coverMarked";
-import { getActiveAnnouncements } from "@/server/announcements";
+import { getAnnouncementsForDay } from "@/server/announcements";
 import { AnnouncementsCard } from "@/components/announcements/AnnouncementsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -212,7 +212,7 @@ export default async function TeacherDashboardPage({
   // composed under Ειδοποιήσεις, shown read-only here).
   const [onDuty, announcements] = await Promise.all([
     isWeekend ? Promise.resolve([]) : getOnDutyDeputies(today),
-    getActiveAnnouncements(today),
+    getAnnouncementsForDay(today),
   ]);
 
   return (
