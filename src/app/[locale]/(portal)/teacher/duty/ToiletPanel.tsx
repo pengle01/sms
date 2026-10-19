@@ -124,7 +124,7 @@ export function ToiletPanel({ breaks: initial }: { breaks: ToiletRow[] }) {
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-slate-50">
-              {returned.slice(0, 15).map((b) => (
+              {returned.map((b) => (
                 <div key={b.id} className="flex items-center gap-3 px-4 py-2.5">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-slate-700">
