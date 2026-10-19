@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { staffDisplayName } from "@/lib/staffName";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
@@ -53,7 +54,7 @@ export default async function TeacherMarkAttendancePage({
       const [fetchedStudents, markedRows] = await Promise.all([
         db.studentProfile.findMany({
           where: { groupId, user: { isActive: true } },
-          include: { user: { select: { name: true } } },
+          include: { user: { select: { name: true } }, group: { select: { name: true } } },
           orderBy: { user: { name: "asc" } },
         }),
         db.attendance.findMany({
@@ -78,7 +79,7 @@ export default async function TeacherMarkAttendancePage({
           ],
           user: { isActive: true },
         },
-        include: { user: { select: { name: true } } },
+        include: { user: { select: { name: true } }, group: { select: { name: true } } },
         orderBy: { user: { name: "asc" } },
       }),
       db.timetableSlot.findFirst({
@@ -263,7 +264,7 @@ export default async function TeacherMarkAttendancePage({
             OR: [{ groupId: claimGroupId }, { subjectGroups: { some: { groupId: claimGroupId } } }],
             user: { isActive: true },
           },
-          include: { user: { select: { name: true } } },
+          include: { user: { select: { name: true } }, group: { select: { name: true } } },
           orderBy: { user: { name: "asc" } },
         }),
         db.attendance.findMany({
@@ -352,9 +353,14 @@ export default async function TeacherMarkAttendancePage({
         })
       : null;
 
+  // The register's group, for the printed sheet's header.
+  const sheetGroupName = groupId
+    ? (await db.group.findUnique({ where: { id: groupId }, select: { name: true } }))?.name ?? null
+    : null;
+
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 print:hidden">
         <Link
           href={`/${locale}/teacher/attendance/schedule`}
           className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors"
@@ -364,7 +370,7 @@ export default async function TeacherMarkAttendancePage({
         </Link>
       </div>
 
-      <div>
+      <div className="print:hidden">
         <h2 className="text-2xl font-bold text-slate-900">{t("markAttendance")}</h2>
         <p className="text-slate-500 text-sm mt-1">
           {fmtDisplayDate(attendanceDateObj)}
@@ -395,11 +401,14 @@ export default async function TeacherMarkAttendancePage({
           prevActivityPeriods={prevActivityPeriods}
           intercalaryGroupId={isIntercalary || isExcursion ? groupId : undefined}
           isExcursion={isExcursion}
+          sheetGroupName={sheetGroupName}
+          teacherName={staffDisplayName(staff)}
         />
       )}
 
       {/* Private lesson note — the teacher's own log for this lesson */}
       {groupId && period && students.length > 0 && (
+        <div className="print:hidden">
         <LessonNoteCard
           locale={locale}
           groupId={groupId}
@@ -407,13 +416,14 @@ export default async function TeacherMarkAttendancePage({
           date={attendanceDateStr}
           initial={lessonNote?.body ?? ""}
         />
+        </div>
       )}
 
       {/* Quiet entry to cover/merge a second group in the same period */}
       {groupId && slot && !isClaiming && !claimed && (
         <Link
           href={`?groupId=${groupId}&period=${period}&date=${attendanceDateStr}&claim=1`}
-          className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-emerald-700 transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-emerald-700 transition-colors print:hidden"
         >
           <Plus className="w-4 h-4" />
           {t("claimAddSecond")}
@@ -422,7 +432,7 @@ export default async function TeacherMarkAttendancePage({
 
       {/* The intention gate: pick which class to cover */}
       {isClaiming && !claimGroupId && (
-        <div className="rounded-2xl border border-amber-200 bg-white overflow-hidden max-w-2xl">
+        <div className="rounded-2xl border border-amber-200 bg-white overflow-hidden max-w-2xl print:hidden">
           <div className="px-5 py-3 bg-amber-50 border-b border-amber-100">
             <p className="text-sm font-semibold text-amber-900">
               {t("claimPickerTitle", { period })}
@@ -461,8 +471,8 @@ export default async function TeacherMarkAttendancePage({
 
       {/* The claimed group — its own clearly-labelled marking sheet */}
       {claimed && (
-        <div className="rounded-2xl border-2 border-amber-200 overflow-hidden">
-          <div className="px-5 py-3 bg-amber-50 border-b border-amber-100 flex items-center justify-between gap-3">
+        <div className="rounded-2xl border-2 border-amber-200 overflow-hidden print:border-0 print:break-before-page">
+          <div className="px-5 py-3 bg-amber-50 border-b border-amber-100 flex items-center justify-between gap-3 print:hidden">
             <p className="text-sm font-semibold text-amber-900">
               {t("claimOf", { group: claimed.groupName })}
               <span className="ml-2 font-normal text-amber-700">
@@ -485,6 +495,8 @@ export default async function TeacherMarkAttendancePage({
               isToday={isToday}
               existingRecords={claimed.existing}
               toiletBreaks={toiletBreaks}
+              sheetGroupName={claimed.groupName}
+              teacherName={staffDisplayName(staff)}
             />
           </div>
         </div>

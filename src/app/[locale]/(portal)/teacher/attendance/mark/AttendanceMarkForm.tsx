@@ -12,10 +12,10 @@ import { trpc } from "@/trpc/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { CheckCircle, XCircle, Clock, Loader2, MapPin, CalendarRange, LogOut, DoorOpen } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Loader2, MapPin, CalendarRange, LogOut, DoorOpen, Printer } from "lucide-react";
 import { markAttendanceSaved } from "@/lib/attendanceRefresh";
 
-type Student = { id: string; user: { name: string | null }; studentId: string };
+type Student = { id: string; user: { name: string | null }; studentId: string; group?: { name: string } | null };
 type Slot = { id: string; room: string | null; course: { name: string } } | null;
 type AttendanceStatus = "PRESENT" | "ABSENT" | "LATE";
 type ToiletBreakState = { id: string; leftAt: string; returnedAt: string | null; staffId: string };
@@ -40,6 +40,9 @@ interface Props {
   prevActivityPeriods?: Record<string, number[]>;
   intercalaryGroupId?: string;
   isExcursion?: boolean;
+  /** The register's group and the teacher — for the printed sheet's header. */
+  sheetGroupName?: string | null;
+  teacherName?: string;
 }
 
 const fmtTime = (iso: string) =>
@@ -123,6 +126,8 @@ export function AttendanceMarkForm({
   prevActivityPeriods = {},
   intercalaryGroupId,
   isExcursion,
+  sheetGroupName = null,
+  teacherName,
 }: Props) {
   const router = useRouter();
   const t = useTranslations("attendance");
@@ -243,7 +248,8 @@ export function AttendanceMarkForm({
   }
 
   return (
-    <div className="space-y-4">
+    <>
+    <div className="space-y-4 print:hidden">
       {selectedGroupId && slot && (
         <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm">
           <span>
@@ -281,6 +287,14 @@ export function AttendanceMarkForm({
               <span className="px-3 py-1 rounded-full border font-medium text-slate-700 bg-slate-50 border-slate-200">
                 {t("total")}: {students.length}
               </span>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-slate-200 text-slate-600 hover:bg-slate-50"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                {t("printSheet")}
+              </button>
               {(Object.keys(STATUS_CONFIG) as AttendanceStatus[]).map((s) => (
                 <span key={s} className={`px-3 py-1 rounded-full border font-medium ${STATUS_CONFIG[s].color}`}>
                   {t(STATUS_CONFIG[s].key)}: {counts[s] ?? 0}
@@ -318,6 +332,9 @@ export function AttendanceMarkForm({
                         <p className="text-sm font-medium text-slate-900 leading-snug flex items-baseline gap-2">
                           <span className="w-7 flex-shrink-0 text-right text-sm tabular-nums text-slate-400">{idx + 1}.</span>
                           <span>{student.user?.name}</span>
+                          {student.group?.name && (
+                            <span className="text-xs font-normal text-slate-400">{student.group.name}</span>
+                          )}
                         </p>
                         {exitPermits[student.id] && (
                           <p className="flex items-center gap-1 text-xs font-medium mt-0.5 text-yellow-700">
@@ -472,5 +489,63 @@ export function AttendanceMarkForm({
         </>
       )}
     </div>
+
+    {/* The printed roster: who is in the register, with their homegroup —
+        no attendance marks. */}
+    {students.length > 0 && (
+      <div className="hidden print:block text-[11px] text-black">
+        <div className="mb-3 border-b-2 border-black pb-2">
+          <h1 className="text-base font-bold">{t("printTitle")}</h1>
+          <p>
+            {[
+              sheetGroupName,
+              slot?.course.name ?? (isExcursion ? t("excursionBanner") : intercalaryGroupId ? t("intercalaryBanner", { period: selectedPeriod }) : null),
+              periodLabel(selectedPeriod, locale),
+              attendanceDate ? fmtSheetDate(attendanceDate) : null,
+              teacherName,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        </div>
+        <table className="w-full border-collapse">
+          <thead>
+            <tr>
+              <th className="border border-black px-1 py-0.5 w-8">#</th>
+              <th className="border border-black px-1 py-0.5 text-left">{t("printColName")}</th>
+              <th className="border border-black px-1 py-0.5 text-left w-24">{t("printColGroup")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {students.map((student, idx) => (
+              <tr key={student.id} className="break-inside-avoid">
+                <td className="border border-black px-1 py-0.5 text-right tabular-nums">{idx + 1}</td>
+                <td className="border border-black px-1 py-0.5">{student.user?.name}</td>
+                <td className="border border-black px-1 py-0.5">{student.group?.name ?? ""}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="mt-2">
+          {t("total")}: {students.length}
+        </p>
+        <style>{`
+          @media print {
+            @page { size: A4; margin: 12mm; }
+            html, body { background: white !important; }
+            .h-screen { height: auto !important; }
+            .overflow-hidden, .overflow-y-auto { overflow: visible !important; }
+            main { padding: 0 !important; }
+          }
+        `}</style>
+      </div>
+    )}
+    </>
   );
+}
+
+/** "2026-10-19" → "19/10/2026" for the printed sheet (official print: full year). */
+function fmtSheetDate(iso: string): string {
+  const [y, m, d] = iso.slice(0, 10).split("-");
+  return `${d}/${m}/${y}`;
 }

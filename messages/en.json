@@ -360,7 +360,11 @@
       "future": "The time can't be in the future.",
       "openNotToday": "An exit from an earlier day needs a return time."
     },
-    "wcNoReturn": "no return"
+    "wcNoReturn": "no return",
+    "printSheet": "Print",
+    "printTitle": "CLASS ROSTER",
+    "printColName": "Name",
+    "printColGroup": "Homegroup"
   },
   "homegroup": {
     "title": "My Homegroup",
