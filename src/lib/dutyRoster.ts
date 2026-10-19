@@ -15,6 +15,15 @@ export function isDutyEligible(role: Role): boolean {
 }
 
 /**
+ * Who may open «Εφημερίες». The headteachers run it; the headmaster may look
+ * (toilet panel, registers, permits, the day's plan) but not act — he is not
+ * on the roster, issues no permits and takes no study-hall registers.
+ */
+export function canViewDutyDesk(role: Role): boolean {
+  return isDutyEligible(role) || role === "HEADMASTER";
+}
+
+/**
  * Roster day-of-week (1 Mon – 5 Fri) for a date, or null on weekends.
  * Uses UTC like all date-only values in this codebase (see utcMidnight).
  */

@@ -1,6 +1,8 @@
 import { getSuperAdminAuth } from "@/server/authz";
 import { redirect } from "next/navigation";
 import { db } from "@/server/db";
+import Link from "next/link";
+import { fmtDisplayDate } from "@/lib/dates";
 import { isDutyCandidate } from "@/lib/staffRole";
 import { staffDisplayName } from "@/lib/staffName";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,6 +42,13 @@ export default async function AdminSettingsPage({
   const { RoomsForm } = await import("./RoomsForm");
   const { SpecialEdCodesForm } = await import("./SpecialEdCodesForm");
   const bellSchedule = await getBellSchedule();
+  // «Εφημερίες εκπαιδευτικών»: what the last duty-programme import left.
+  const [dutyPostCount, dutyAssignmentCount, lastDutyImport] = await Promise.all([
+    db.dutyPost.count(),
+    db.dutyPostAssignment.count(),
+    db.auditLog.findFirst({ where: { action: "breakDuty.import" }, orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
+  ]);
+  const tDuty = await getTranslations("breakDuty");
   const [periodsPerDay, maxTestsPerWeek, maxGuardians, smsConfig, emailConfig, termConfig, schoolYear, schoolName, gradesUnlocked, attendanceLock, dutyEntries, dutyDeputies, rooms, specialEdCodes, absenceSms, longestName] = await Promise.all([
     getPeriodsPerDay(),
     getMaxTestsPerWeek(),
@@ -159,6 +168,29 @@ export default async function AdminSettingsPage({
         </CardHeader>
         <CardContent>
           <DutyRosterForm initial={dutyInitial} deputies={deputyOptions} />
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-xl">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">{tDuty("settingsTitle")}</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-slate-600">
+            {dutyPostCount === 0
+              ? tDuty("settingsEmpty")
+              : tDuty("settingsSummary", {
+                  posts: dutyPostCount,
+                  assignments: dutyAssignmentCount,
+                  date: lastDutyImport ? fmtDisplayDate(lastDutyImport.createdAt) : "—",
+                })}
+          </p>
+          <Link
+            href={`/${locale}/admin/duty-posts/import`}
+            className="inline-flex items-center h-9 px-4 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            {tDuty("settingsImport")}
+          </Link>
         </CardContent>
       </Card>
 

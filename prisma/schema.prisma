@@ -269,6 +269,9 @@ model StaffProfile {
   ddkAwards               DdkAward[]              @relation("DdkAwarder")
   conversations           Conversation[]
   roomsMaintained         RoomMaintainer[]
+  breakDutyPosts          DutyPostAssignment[]
+  breakDutyChecked        DutyCheck[]          @relation("DutyCheckChecker")
+  breakDutyCheckedAt      DutyCheck[]          @relation("DutyCheckTeacher")
 }
 
 model StudentProfile {
@@ -1253,6 +1256,58 @@ model EmailOtp {
 
 // Fixed weekly on-duty schedule (Εφημερεύοντες Βοηθοί): which deputy heads
 // are on duty on each school day. Resolved per-date via getOnDutyDeputies().
+// ─── Teachers' break duty («Εφημερίες εκπαιδευτικών») ─────────────────────────
+// The posts teachers stand at during breaks, imported from the school's Excel
+// programme (a re-import replaces posts + assignments). The on-duty deputies
+// check each post once per break; checks and the day's notes keep snapshots
+// of post and teacher so the history survives a re-import.
+
+model DutyPost {
+  id          String               @id @default(cuid())
+  code        String               @unique // Α/Α in the file: "1", "5Α", "7 – 8"
+  name        String
+  order       Int
+  assignments DutyPostAssignment[]
+}
+
+model DutyPostAssignment {
+  id             String        @id @default(cuid())
+  postId         String
+  post           DutyPost      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  dayOfWeek      Int // 1 (Mon) – 5 (Fri)
+  teacherName    String // as written in the file
+  staffProfileId String?
+  staffProfile   StaffProfile? @relation(fields: [staffProfileId], references: [id], onDelete: SetNull)
+
+  @@index([dayOfWeek])
+}
+
+model DutyCheck {
+  id             String        @id @default(cuid())
+  date           DateTime      @db.Date
+  breakNo        Int // 1st, 2nd, 3rd break of the day
+  postCode       String
+  postName       String
+  teacherName    String
+  staffProfileId String?
+  staffProfile   StaffProfile? @relation("DutyCheckTeacher", fields: [staffProfileId], references: [id], onDelete: SetNull)
+  present        Boolean?      // null = only a comment so far
+  comment        String?       @db.Text
+  checkedById    String
+  checkedBy      StaffProfile  @relation("DutyCheckChecker", fields: [checkedById], references: [id])
+  checkedAt      DateTime      @default(now())
+
+  @@unique([date, breakNo, postCode, teacherName])
+  @@index([date])
+}
+
+model DutyDayReport {
+  date        DateTime @id @db.Date
+  comments    String?  @db.Text
+  updatedById String
+  updatedAt   DateTime @updatedAt
+}
+
 model DutyRosterEntry {
   id             String       @id @default(cuid())
   dayOfWeek      Int // 1 (Mon) – 5 (Fri)

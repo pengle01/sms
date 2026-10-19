@@ -6,7 +6,7 @@ import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { utcMidnight, localDateStr } from "@/lib/dates";
-import { dutyDowFor, isDutyEligible, isOnDuty } from "@/lib/dutyRoster";
+import { dutyDowFor, isDutyEligible, canViewDutyDesk, isOnDuty } from "@/lib/dutyRoster";
 import { locateHref, parseLocateTab, studentSearchWhere, type LocateTab, type LocateParams } from "@/lib/studentSearch";
 import { suggestionList } from "@/lib/textSearch";
 import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY } from "@/lib/schoolConfig";
@@ -19,6 +19,10 @@ import { BellOff, CheckCircle2, LogOut, Phone, Printer, Search, X } from "lucide
 import { issueExitPermit, cancelExitPermit } from "./actions";
 import { ReferralTabs } from "@/components/referrals/ReferralTabs";
 import { ToiletPanel } from "./ToiletPanel";
+import { BreakDutyPanel } from "@/components/breakDuty/BreakDutyPanel";
+import { loadBreakDutyDay } from "@/server/breakDuty";
+import { currentBreakNo } from "@/lib/breakDuty";
+import { nicosiaHhmm } from "@/lib/toilet";
 import { DayPlanCard } from "./DayPlanCard";
 import { isRealDate } from "@/lib/substitutionImport";
 import { RefreshAfterAttendance } from "@/components/attendance/RefreshAfterAttendance";
@@ -36,13 +40,17 @@ export default async function TeacherDutyPage({
     student?: string;
     error?: string;
     planDate?: string;
+    /** «Εφημερίες εκπαιδευτικών»: the day shown (default today). */
+    bdDate?: string;
   }>;
 }) {
   const { locale } = await params;
-  const { tab: tabParam, grade, groupId, q, student: selectedStudentId, error, planDate } = await searchParams;
+  const { tab: tabParam, grade, groupId, q, student: selectedStudentId, error, planDate, bdDate } = await searchParams;
   const auth = await getActiveAuth();
   if (!auth) redirect(`/${locale}/login/staff`);
-  if (!isDutyEligible(auth.role)) redirect(`/${locale}/teacher/dashboard`);
+  if (!canViewDutyDesk(auth.role)) redirect(`/${locale}/teacher/dashboard`);
+  // The headmaster sees the desk but doesn't act on it (canViewDutyDesk).
+  const viewOnly = !isDutyEligible(auth.role);
 
   const t = await getTranslations("duty");
   const tLocate = await getTranslations("locate");
@@ -172,6 +180,19 @@ export default async function TeacherDutyPage({
       ])
     : [[], [], [], [], null, null];
 
+  // View-only (headmaster): today's permits without the issue desk.
+  const viewPermits = viewOnly
+    ? await db.exitPermit.findMany({
+        where: { date: today },
+        include: {
+          student: { include: { user: { select: { name: true } }, group: { select: { name: true } } } },
+          issuer: { include: { user: { select: { name: true } } } },
+          smsContact: { select: { name: true, role: true, phone: true } },
+        },
+        orderBy: { issuedAt: "desc" },
+      })
+    : [];
+
   const suggestions = suggestionList(
     suggestionRows.map((s) => (tab === "name" ? s.user?.name : s.studentId))
   );
@@ -211,10 +232,13 @@ export default async function TeacherDutyPage({
           <div className="divide-y divide-slate-50">
             {studyHallsToday.map((e) => {
               const marked = !!e.timetableSlotId && markedHallSlotIds.has(e.timetableSlotId);
+              // View-only: the same row, but not a link to the register.
+              const href = `/${locale}/teacher/attendance/mark?groupId=${e.groupId}&period=${e.period}`;
+              const Row = ({ className, children }: { className: string; children: React.ReactNode }) =>
+                viewOnly ? <div className={className}>{children}</div> : <Link href={href} className={className}>{children}</Link>;
               return (
-                <Link
+                <Row
                   key={e.id}
-                  href={`/${locale}/teacher/attendance/mark?groupId=${e.groupId}&period=${e.period}`}
                   className={cn(
                     "flex items-center gap-4 px-5 py-3 transition-colors border-l-4",
                     marked
@@ -250,10 +274,10 @@ export default async function TeacherDutyPage({
                   ) : (
                     <span className="inline-flex items-center gap-2 flex-shrink-0">
                       <span className="text-xs font-semibold text-red-600">{t("attendancePending")}</span>
-                      <span className="text-xs font-medium text-emerald-600">{tDash("markAttendance")}</span>
+                      {!viewOnly && <span className="text-xs font-medium text-emerald-600">{tDash("markAttendance")}</span>}
                     </span>
                   )}
-                </Link>
+                </Row>
               );
             })}
           </div>
@@ -261,8 +285,92 @@ export default async function TeacherDutyPage({
       </Card>
     );
 
+  // Today's granted permits — on the desk, and read-only for the headmaster.
+  const todayPermitsCard = (list: typeof viewPermits, canCancel: boolean) => (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Printer className="w-4 h-4 text-slate-400" />
+                {t("todayPermits")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {list.length === 0 ? (
+                <p className="text-sm text-slate-400">{t("noPermitsToday")}</p>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {list.map((p) => (
+                    <div key={p.id} className="py-2.5 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-900">
+                          {p.student.user?.name}
+                          {p.student.group?.name && (
+                            <span className="ml-2 text-xs font-normal text-slate-400">{p.student.group.name}</span>
+                          )}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {t("leavesFrom", { period: p.fromPeriod })} · {p.reason}
+                        </p>
+                        {permitContactLabel(p.smsContact, p.contactNote) && (
+                          <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
+                            <Phone className="w-3 h-3" />
+                            {permitContactLabel(p.smsContact, p.contactNote)}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <Link
+                          href={`/${locale}/teacher/duty/permits/${p.id}/print`}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-emerald-700"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                          {t("print")}
+                        </Link>
+                        {canCancel && (
+                          <form action={cancelExitPermit.bind(null, locale, p.id, currentQs)}>
+                            <button
+                              type="submit"
+                              className="text-xs font-medium text-red-400 hover:text-red-600"
+                            >
+                              {t("cancelPermit")}
+                            </button>
+                          </form>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+  );
+
+  // ── Tab: Εφημερίες εκπαιδευτικών — teachers at their break posts ─────────
+  const todayIsoStr = localDateStr();
+  const breakDutyDate =
+    bdDate && /^\d{4}-\d{2}-\d{2}$/.test(bdDate) && isRealDate(bdDate) && bdDate <= todayIsoStr ? bdDate : todayIsoStr;
+  const breakDuty = await loadBreakDutyDay(breakDutyDate);
+  const breakDutyContent = (
+    <BreakDutyPanel
+      key={breakDutyDate}
+      dateIso={breakDutyDate}
+      todayIso={todayIsoStr}
+      // Only today's on-duty deputies record; the headmaster only looks.
+      canRecord={!viewOnly && onDutyToday && breakDutyDate === todayIsoStr}
+      breaks={breakDuty.breaks}
+      defaultBreak={breakDutyDate === todayIsoStr ? currentBreakNo(breakDuty.breaks, nicosiaHhmm(new Date())) : 1}
+      rows={breakDuty.rows}
+      posts={breakDuty.posts}
+      absentTeachers={breakDuty.absentTeachers}
+      dayComments={breakDuty.dayComments}
+      printHref={`/${locale}/teacher/duty/break-report/${breakDutyDate}/print`}
+    />
+  );
+
   // ── Tab: Άδειες Εξόδου — the permit desk ──────────────────────────────────
-  const permitsContent = !onDutyToday ? (
+  const permitsContent = viewOnly ? (
+        <div className="max-w-2xl">{todayPermitsCard(viewPermits, false)}</div>
+      ) : !onDutyToday ? (
         <Card className="max-w-xl">
           <CardContent className="py-4 flex items-center gap-3">
             <div className="flex items-center justify-center w-10 h-10 rounded-full flex-shrink-0 bg-slate-100 text-slate-400">
@@ -510,61 +618,7 @@ export default async function TeacherDutyPage({
             </CardContent>
           </Card>
 
-          {/* Today's granted permits */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Printer className="w-4 h-4 text-slate-400" />
-                {t("todayPermits")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {todayPermits.length === 0 ? (
-                <p className="text-sm text-slate-400">{t("noPermitsToday")}</p>
-              ) : (
-                <div className="divide-y divide-slate-100">
-                  {todayPermits.map((p) => (
-                    <div key={p.id} className="py-2.5 flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-slate-900">
-                          {p.student.user?.name}
-                          {p.student.group?.name && (
-                            <span className="ml-2 text-xs font-normal text-slate-400">{p.student.group.name}</span>
-                          )}
-                        </p>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          {t("leavesFrom", { period: p.fromPeriod })} · {p.reason}
-                        </p>
-                        {permitContactLabel(p.smsContact, p.contactNote) && (
-                          <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
-                            <Phone className="w-3 h-3" />
-                            {permitContactLabel(p.smsContact, p.contactNote)}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <Link
-                          href={`/${locale}/teacher/duty/permits/${p.id}/print`}
-                          className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-emerald-700"
-                        >
-                          <Printer className="w-3.5 h-3.5" />
-                          {t("print")}
-                        </Link>
-                        <form action={cancelExitPermit.bind(null, locale, p.id, currentQs)}>
-                          <button
-                            type="submit"
-                            className="text-xs font-medium text-red-400 hover:text-red-600"
-                          >
-                            {t("cancelPermit")}
-                          </button>
-                        </form>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          {todayPermitsCard(todayPermits, true)}
         </div>
   );
 
@@ -578,7 +632,7 @@ export default async function TeacherDutyPage({
 
       {/* Clear separation: permits vs attendance */}
       <ReferralTabs
-        initialKey={tabParam === "plan" ? "plan" : undefined}
+        initialKey={tabParam === "plan" || tabParam === "breakDuty" ? tabParam : undefined}
         tabs={[
           {
             key: "permits",
@@ -589,6 +643,11 @@ export default async function TeacherDutyPage({
             key: "attendance",
             label: t("attendanceTab"),
             content: attendanceContent,
+          },
+          {
+            key: "breakDuty",
+            label: t("breakDutyTab"),
+            content: breakDutyContent,
           },
           {
             key: "toilet",

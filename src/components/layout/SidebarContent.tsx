@@ -39,7 +39,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "activities",   href: "activities",        icon: CalendarRange,   roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "substitutions", href: "substitutions",    icon: ArrowLeftRight,  roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "maintenance",  href: "maintenance",       icon: Wrench,          roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
-  { key: "duty",         href: "duty",              icon: BellRing,        roles: ["HEADTEACHER_A","HEADTEACHER_B"] },
+  { key: "duty",         href: "duty",              icon: BellRing,        roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B"] },
   { key: "sms",          href: "sms",               icon: Send,            roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B"] },
   { key: "profile",      href: "profile",           icon: CircleUser,      roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
 
@@ -49,6 +49,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "reports",      href: "attendance/reports", icon: BarChart3,      roles: ["SCHOOL_ADMIN"] },
   { key: "students",     href: "students",          icon: GraduationCap,   roles: ["SCHOOL_ADMIN"] },
   { key: "whereabouts",  href: "whereabouts",       icon: MapPin,          roles: ["SCHOOL_ADMIN"] },
+  { key: "breakDutyReports", href: "duty-reports",  icon: BellRing,        roles: ["SCHOOL_ADMIN"] },
   { key: "communication", href: "notifications",    icon: Bell,            roles: ["SCHOOL_ADMIN"] },
   { key: "maintenance",  href: "maintenance",       icon: Wrench,          roles: ["SCHOOL_ADMIN"] },
 

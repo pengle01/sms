@@ -82,3 +82,23 @@ describe("isOnDuty", () => {
     expect(isOnDuty(entries, 1, undefined)).toBe(false);
   });
 });
+
+import { canViewDutyDesk } from "@/lib/dutyRoster";
+
+describe("canViewDutyDesk", () => {
+  it("lets the headteachers and the headmaster open the duty desk", () => {
+    expect(canViewDutyDesk("HEADTEACHER_A")).toBe(true);
+    expect(canViewDutyDesk("HEADTEACHER_B")).toBe(true);
+    expect(canViewDutyDesk("HEADMASTER")).toBe(true);
+  });
+
+  it("keeps everyone else out", () => {
+    expect(canViewDutyDesk("TEACHER")).toBe(false);
+    expect(canViewDutyDesk("STUDENT_COUNSELOR")).toBe(false);
+    expect(canViewDutyDesk("SUPER_ADMIN")).toBe(false);
+  });
+
+  it("does not make the headmaster duty-eligible (no roster, no permits)", () => {
+    expect(isDutyEligible("HEADMASTER")).toBe(false);
+  });
+});
