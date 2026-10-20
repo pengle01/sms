@@ -14,12 +14,19 @@ export function ActivityStudentsField({
   groups,
   formId,
   tests,
+  initialSelected,
 }: {
   groups: PickerGroup[];
   formId: string;
   tests: ActivityTestConflict[];
+  /** Pre-selected students (copying an activity); ones no longer active are dropped. */
+  initialSelected?: string[];
 }) {
-  const [selected, setSelected] = useState<string[]>([]);
+  const [selected, setSelected] = useState<string[]>(() => {
+    if (!initialSelected?.length) return [];
+    const active = new Set(groups.flatMap((g) => g.students.map((s) => s.id)));
+    return initialSelected.filter((id) => active.has(id));
+  });
   const conflicts = conflictsForSelection(tests, selected);
 
   return (

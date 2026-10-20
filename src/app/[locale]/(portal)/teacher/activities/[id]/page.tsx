@@ -10,7 +10,7 @@ import { getPickerGroups } from "@/server/studentPicker";
 import type { PickerGroup } from "@/components/students/StudentPicker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, Users, X, Award, Pencil, Check, Repeat } from "lucide-react";
+import { ChevronLeft, Users, X, Award, Pencil, Check, Repeat, Copy } from "lucide-react";
 import { fmtDisplayDate } from "@/lib/dates";
 import { getPeriodsPerDay, maxPeriodCount } from "@/lib/schoolConfig";
 import { ddkCategoryLabel } from "@/lib/ddk";
@@ -123,13 +123,23 @@ export default async function ActivityDetailPage({
               Τέλος
             </Link>
           ) : (
-            <Link
-              href={buildHref({ edit: "1" })}
-              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 flex-shrink-0"
-            >
-              <Pencil className="w-4 h-4" />
-              Επεξεργασία δραστηριότητας
-            </Link>
+            <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
+              {/* Same details and students, for a new date */}
+              <Link
+                href={`/${locale}/teacher/activities/new?from=${id}`}
+                className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50"
+              >
+                <Copy className="w-4 h-4" />
+                Αντιγραφή
+              </Link>
+              <Link
+                href={buildHref({ edit: "1" })}
+                className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50"
+              >
+                <Pencil className="w-4 h-4" />
+                Επεξεργασία δραστηριότητας
+              </Link>
+            </div>
           ))}
       </div>
 

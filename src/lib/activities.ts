@@ -39,3 +39,20 @@ export function conflictsForSelection(
     .map(({ studentIds, ...t }) => ({ ...t, affectedCount: studentIds.filter((id) => picked.has(id)).length }))
     .filter((t) => t.affectedCount > 0);
 }
+
+/**
+ * Step-1 values of «Νέα Δραστηριότητα» when copying an activity: what's in the
+ * URL wins (the teacher already confirmed it), else the copied activity's.
+ * The date is never copied — a copy is a new event.
+ */
+export function copyDefaults(
+  source: { name: string; startPeriod: number; endPeriod: number; location: string | null } | null,
+  url: { name?: string; startPeriod?: string; endPeriod?: string; location?: string },
+): { name?: string; startPeriod?: string; endPeriod?: string; location?: string } {
+  return {
+    name: url.name ?? source?.name,
+    startPeriod: url.startPeriod ?? (source ? String(source.startPeriod) : undefined),
+    endPeriod: url.endPeriod ?? (source ? String(source.endPeriod) : undefined),
+    location: url.location ?? source?.location ?? undefined,
+  };
+}

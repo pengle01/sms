@@ -57,3 +57,30 @@ describe("conflictsForSelection", () => {
     expect(conflictsForSelection(tests, [])).toEqual([]);
   });
 });
+
+import { copyDefaults } from "@/lib/activities";
+
+describe("copyDefaults", () => {
+  const source = { name: "Χορωδία", startPeriod: 6, endPeriod: 7, location: "Αίθουσα Μουσικής" };
+
+  it("uses the copied activity when the URL is empty", () => {
+    expect(copyDefaults(source, {})).toEqual({ name: "Χορωδία", startPeriod: "6", endPeriod: "7", location: "Αίθουσα Μουσικής" });
+  });
+
+  it("lets confirmed URL values win", () => {
+    expect(copyDefaults(source, { name: "Χορωδία Β", startPeriod: "3" })).toEqual({
+      name: "Χορωδία Β",
+      startPeriod: "3",
+      endPeriod: "7",
+      location: "Αίθουσα Μουσικής",
+    });
+  });
+
+  it("gives the plain values without a source", () => {
+    expect(copyDefaults(null, {})).toEqual({ name: undefined, startPeriod: undefined, endPeriod: undefined, location: undefined });
+  });
+
+  it("never carries a date", () => {
+    expect(Object.keys(copyDefaults(source, {}))).not.toContain("date");
+  });
+});

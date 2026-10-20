@@ -7,8 +7,8 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronLeft } from "lucide-react";
 import { createActivity } from "../actions";
-import { weeklyOccurrences, type ActivityTestConflict } from "@/lib/activities";
-import { localDateStr, normalizeIsoDate } from "@/lib/dates";
+import { weeklyOccurrences, copyDefaults, type ActivityTestConflict } from "@/lib/activities";
+import { localDateStr, normalizeIsoDate, fmtDisplayDate } from "@/lib/dates";
 import { getPeriodsPerDay, maxPeriodCount } from "@/lib/schoolConfig";
 import { utcMidnight } from "@/lib/dates";
 import { AlertTriangle } from "lucide-react";
@@ -27,18 +27,38 @@ export default async function NewActivityPage({
     endPeriod?: string;
     location?: string;
     repeatUntil?: string;
+    /** Copy this activity (the viewer's own): its details and students prefill the form. */
+    from?: string;
   }>;
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login/staff`);
 
-  const { name, date, startPeriod, endPeriod, location, repeatUntil } = await searchParams;
+  const sp = await searchParams;
+  const { date, repeatUntil, from } = sp;
+
+  // «Αντιγραφή»: only an activity the viewer created is copied.
+  const viewer = await db.staffProfile.findUnique({ where: { userId: session.user.id }, select: { id: true } });
+  const source = from
+    ? await db.activity.findFirst({
+        where: { id: from, filerId: viewer?.id ?? "-" },
+        select: {
+          name: true,
+          date: true,
+          startPeriod: true,
+          endPeriod: true,
+          location: true,
+          participants: { select: { studentId: true } },
+        },
+      })
+    : null;
+  const { name, startPeriod, endPeriod, location } = copyDefaults(source, sp);
 
   const todayStr = localDateStr();
 
   // Details are "confirmed" once they've been saved to the URL via the GET form
-  const detailsConfirmed = !!(name && date);
+  const detailsConfirmed = !!(sp.name && date);
 
   // Weekly repeat preview: how many activities will be created.
   const occurrences = date ? weeklyOccurrences(date, normalizeIsoDate(repeatUntil)) : [];
@@ -115,7 +135,14 @@ export default async function NewActivityPage({
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {source && (
+            <p className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
+              Αντίγραφο της «{source.name}» ({fmtDisplayDate(source.date)}) με {source.participants.length}{" "}
+              {source.participants.length === 1 ? "μαθητή/τρια" : "μαθητές"} — ελέγξτε την ημερομηνία.
+            </p>
+          )}
           <form method="GET" className="space-y-4">
+            {source && <input type="hidden" name="from" value={from} />}
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-slate-700">
                 Όνομα δραστηριότητας
@@ -261,7 +288,12 @@ export default async function NewActivityPage({
           )}
 
           {detailsConfirmed && (
-            <ActivityStudentsField groups={pickerGroups} formId="create-activity-form" tests={testConflicts} />
+            <ActivityStudentsField
+              groups={pickerGroups}
+              formId="create-activity-form"
+              tests={testConflicts}
+              initialSelected={source?.participants.map((p) => p.studentId)}
+            />
           )}
         </CardContent>
       </Card>
