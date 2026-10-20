@@ -201,3 +201,11 @@ export function rollCall(
         a.studentName.localeCompare(b.studentName, "el"),
     );
 }
+
+/**
+ * Who may open the attendance reports: the office and the admin, plus the
+ * headmaster and the Β.Δ.Α. (management overview of the whole school).
+ */
+export function canViewAttendanceReports(roles: readonly string[]): boolean {
+  return roles.some((r) => ["SCHOOL_ADMIN", "SUPER_ADMIN", "HEADMASTER", "HEADTEACHER_A"].includes(r));
+}

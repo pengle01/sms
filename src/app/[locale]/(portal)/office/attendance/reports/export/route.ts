@@ -1,55 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/server/auth";
-import { localDateStr, getNow } from "@/lib/dates";
-import { summarizeByStudent, toCsv } from "@/lib/attendanceReport";
-import { loadReportRows } from "@/server/attendanceReport";
-import { getTranslations } from "next-intl/server";
+import { NextRequest } from "next/server";
+import { attendanceReportXlsx } from "@/server/attendanceReportExport";
 
-// CSV export of the per-student attendance summary for the selected range.
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ locale: string }> },
-) {
+// Excel export of the attendance report for the selected range.
+export async function GET(req: NextRequest, { params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  // Explicit locale: a route handler has no rendered page to infer it from.
-  const t = await getTranslations({ locale, namespace: "officeReports" });
-  const session = await getServerSession(authOptions);
-  if (!session || !["SCHOOL_ADMIN", "SUPER_ADMIN"].includes(session.user.role)) {
-    return new NextResponse("Forbidden", { status: 403 });
-  }
-
-  const sp = req.nextUrl.searchParams;
-  const todayStr = localDateStr();
-  const fromStr = sp.get("from") ?? localDateStr(new Date(getNow().getTime() - 30 * 24 * 60 * 60 * 1000));
-  const toStr = sp.get("to") ?? todayStr;
-  const groupId = sp.get("groupId") ?? undefined;
-
-  const rows = await loadReportRows(fromStr, toStr, groupId || undefined);
-  const students = summarizeByStudent(rows);
-
-  const csv = toCsv(
-    [
-      t("colId"), t("colStudent"), t("colGroup"), t("colDays"), t("colAbsences"),
-      t("colAuto"), t("colLate"), t("colPermit"), t("colWaived"),
-    ],
-    students.map((s) => [
-      s.studentId,
-      s.studentName,
-      s.groupName,
-      s.days,
-      s.absences,
-      s.autoAbsent,
-      s.late,
-      s.withPermit,
-      s.waived,
-    ])
-  );
-
-  return new NextResponse(csv, {
-    headers: {
-      "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="absences_${fromStr}_${toStr}.csv"`,
-    },
-  });
+  return attendanceReportXlsx(req, locale);
 }

@@ -1055,7 +1055,6 @@
   "officeReports": {
     "title": "Absence Reports",
     "subtitle": "Summaries per group, student and period for the selected range.",
-    "exportCsv": "Export CSV",
     "from": "From",
     "to": "To",
     "group": "Group",
@@ -1080,7 +1079,10 @@
     "colDays": "Days",
     "colAuto": "Auto",
     "noData": "No entries in this range.",
-    "colWaived": "Erased"
+    "colWaived": "Erased",
+    "exportExcel": "Export Excel",
+    "sheetStudents": "By student",
+    "sheetGroups": "By group"
   },
   "officeAttendance": {
     "title": "Absences",

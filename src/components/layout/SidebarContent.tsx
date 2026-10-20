@@ -41,6 +41,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "maintenance",  href: "maintenance",       icon: Wrench,          roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "duty",         href: "duty",              icon: BellRing,        roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B"] },
   { key: "sms",          href: "sms",               icon: Send,            roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B"] },
+  { key: "reports",      href: "reports",           icon: BarChart3,       roles: ["HEADMASTER","HEADTEACHER_A"] },
   { key: "profile",      href: "profile",           icon: CircleUser,      roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
 
   // ── Office portal (/office) — student data & attendance ─────────────

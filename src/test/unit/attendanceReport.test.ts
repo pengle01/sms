@@ -183,3 +183,23 @@ describe("rollCall", () => {
     expect(rollCall([], sched)).toEqual([]);
   });
 });
+
+import { canViewAttendanceReports } from "@/lib/attendanceReport";
+
+describe("canViewAttendanceReports", () => {
+  it("allows the office, the admin, the headmaster and the Β.Δ.Α.", () => {
+    for (const r of ["SCHOOL_ADMIN", "SUPER_ADMIN", "HEADMASTER", "HEADTEACHER_A"]) {
+      expect(canViewAttendanceReports([r])).toBe(true);
+    }
+  });
+
+  it("refuses the Β.Δ., teachers, the counselor and families", () => {
+    for (const r of ["HEADTEACHER_B", "TEACHER", "STUDENT_COUNSELOR", "STUDENT", "PARENT"]) {
+      expect(canViewAttendanceReports([r])).toBe(false);
+    }
+  });
+
+  it("counts an extra role", () => {
+    expect(canViewAttendanceReports(["TEACHER", "SUPER_ADMIN"])).toBe(true);
+  });
+});
