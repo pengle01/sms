@@ -234,3 +234,11 @@ body:has(#mobile-nav-toggle:checked) { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .animate-hourglass { animation: none; }
 }
+
+/* Printing from inside a portal: the portal frame is one screen tall and clips
+   what's below it, so a multi-page document printed only its first page. Let
+   the frame grow when printing. */
+@media print {
+  .h-screen { height: auto !important; }
+  .overflow-hidden, .overflow-y-auto { overflow: visible !important; }
+}
