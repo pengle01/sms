@@ -102,3 +102,8 @@ export function monthEnd(year: number, month: number): Date {
   const nextYear = month === 12 ? year + 1 : year;
   return monthStart(nextYear, nextMonth);
 }
+
+/** Is the YYYY-MM-DD day after today? (Both ISO strings, compared as text.) */
+export function isFutureDay(iso: string, todayIso: string): boolean {
+  return iso.slice(0, 10) > todayIso.slice(0, 10);
+}

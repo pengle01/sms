@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { parseDisplayDate, displayDateText } from "@/lib/dateInput";
@@ -38,6 +38,17 @@ interface Props {
   className?: string;
 }
 
+// Touch screens (phones, tablets): the field itself opens the device calendar.
+// Typing there brought up a number pad, and showPicker() on a hidden input is
+// unreliable on mobile browsers.
+const COARSE = "(pointer: coarse)";
+function subscribeCoarse(onChange: () => void) {
+  const mq = window.matchMedia(COARSE);
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+}
+const isCoarse = () => window.matchMedia(COARSE).matches;
+
 const DEFAULT_CLS =
   "h-9 px-3 rounded-lg border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-50 disabled:text-slate-500";
 
@@ -56,6 +67,7 @@ export function DateInput({
   className,
 }: Props) {
   const t = useTranslations("common");
+  const touch = useSyncExternalStore(subscribeCoarse, isCoarse, () => false);
   const controlled = value !== undefined;
   const [internalIso, setInternalIso] = useState(defaultValue ?? "");
   const iso = controlled ? value : internalIso;
@@ -191,12 +203,20 @@ export function DateInput({
       <input
         ref={pickerRef}
         type="date"
-        tabIndex={-1}
-        aria-hidden
+        tabIndex={touch ? 0 : -1}
+        aria-hidden={!touch}
+        aria-label={touch ? t("openCalendar") : undefined}
+        value={touch ? iso || "" : undefined}
+        disabled={disabled}
         min={min}
         max={max}
         onChange={(e) => handlePick(e.target.value)}
-        className="absolute right-0 bottom-0 w-px h-px opacity-0 pointer-events-none"
+        className={
+          touch
+            ? // Laid over the whole field: a tap anywhere opens the calendar.
+              "absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            : "absolute right-0 bottom-0 w-px h-px opacity-0 pointer-events-none"
+        }
       />
       {name && <input ref={hiddenRef} type="hidden" name={name} defaultValue={iso} />}
     </span>

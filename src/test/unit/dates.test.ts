@@ -166,3 +166,18 @@ describe("getNow / testDateOverride", () => {
     }
   });
 });
+
+import { isFutureDay } from "@/lib/dates";
+
+describe("isFutureDay", () => {
+  it("is true only for days after today", () => {
+    expect(isFutureDay("2026-10-21", "2026-10-20")).toBe(true);
+    expect(isFutureDay("2026-10-20", "2026-10-20")).toBe(false);
+    expect(isFutureDay("2026-10-19", "2026-10-20")).toBe(false);
+    expect(isFutureDay("2025-12-31", "2026-01-01")).toBe(false);
+  });
+
+  it("ignores a time part", () => {
+    expect(isFutureDay("2026-10-20T23:00:00.000Z", "2026-10-20")).toBe(false);
+  });
+});
