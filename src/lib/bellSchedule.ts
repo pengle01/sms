@@ -143,3 +143,20 @@ export function normalizeBellSchedule(config: BellScheduleConfig): BellScheduleC
     days: { ...config.days },
   };
 }
+
+/**
+ * Start and end of the period shown on `row` of weekday `dow` (1–5). A day with
+ * an inserted homegroup period (Εμβόλιμη) follows the 8-period times; a row
+ * past the schedule's last period, or a weekend, has none.
+ */
+export function periodTime(
+  config: BellScheduleConfig,
+  dow: number,
+  row: number,
+  meeting?: { mode: "insert" | "replace" } | null,
+): BellPeriod | null {
+  if (dow < 1 || dow > 5) return null;
+  const id: BellScheduleId = meeting?.mode === "insert" ? "eight" : (config.days[dow] ?? "seven");
+  const per = config.schedules[id][row - 1];
+  return per ? { start: per.start, end: per.end } : null;
+}

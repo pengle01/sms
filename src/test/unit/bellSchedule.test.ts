@@ -106,3 +106,33 @@ describe("normalizeBellSchedule", () => {
     expect(normalizeBellSchedule(c).schedules.seven[0]).toEqual({ start: "07:40", end: "08:25" });
   });
 });
+
+import { periodTime } from "@/lib/bellSchedule";
+
+describe("periodTime", () => {
+  it("uses each day's own schedule", () => {
+    expect(periodTime(DEFAULT_BELL_SCHEDULE, 1, 3)).toEqual({ start: "09:15", end: "09:55" });
+    expect(periodTime(DEFAULT_BELL_SCHEDULE, 2, 3)).toEqual({ start: "09:30", end: "10:15" });
+  });
+
+  it("follows the 8-period times on a day with an inserted homegroup period", () => {
+    expect(periodTime(DEFAULT_BELL_SCHEDULE, 2, 3, { mode: "insert" })).toEqual({ start: "09:15", end: "09:55" });
+    expect(periodTime(DEFAULT_BELL_SCHEDULE, 2, 8, { mode: "insert" })).toEqual({ start: "12:55", end: "13:35" });
+    expect(periodTime(DEFAULT_BELL_SCHEDULE, 1, 9, { mode: "insert" })).toBeNull();
+  });
+
+  it("keeps the day's own times when the homegroup period replaces a lesson", () => {
+    expect(periodTime(DEFAULT_BELL_SCHEDULE, 2, 3, { mode: "replace" })).toEqual({ start: "09:30", end: "10:15" });
+  });
+
+  it("has no time past the last period or on a weekend", () => {
+    expect(periodTime(DEFAULT_BELL_SCHEDULE, 2, 8)).toBeNull();
+    expect(periodTime(DEFAULT_BELL_SCHEDULE, 6, 1)).toBeNull();
+    expect(periodTime(DEFAULT_BELL_SCHEDULE, 0, 1)).toBeNull();
+  });
+
+  it("follows a changed day mapping", () => {
+    const c = { ...DEFAULT_BELL_SCHEDULE, days: { ...DEFAULT_BELL_SCHEDULE.days, 2: "eight" as const } };
+    expect(periodTime(c, 2, 3)).toEqual({ start: "09:15", end: "09:55" });
+  });
+});

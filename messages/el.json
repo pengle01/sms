@@ -887,7 +887,12 @@
     "room": "Αίθ. {room}",
     "released": "Δεν θα γίνει — αποχώρηση",
     "roomChanged": "Αλλαγή αίθουσας",
-    "substituteLabel": "Αναπλήρωση"
+    "substituteLabel": "Αναπλήρωση",
+    "sevenDay": "Επτάωρο",
+    "eightDay": "Οκτάωρο",
+    "intercalaryDay": "Εμβόλιμη",
+    "homegroupPeriod": "Υπευθυνότητα Τμήματος",
+    "cancelledHomegroup": "Ακυρώνεται — Υπευθυνότητα Τμήματος"
   },
   "locate": {
     "title": "Εντοπισμός Μαθητή/τριας",

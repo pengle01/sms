@@ -887,7 +887,12 @@
     "room": "Room {room}",
     "released": "Cancelled — early release",
     "roomChanged": "Room change",
-    "substituteLabel": "Substitution"
+    "substituteLabel": "Substitution",
+    "sevenDay": "7 periods",
+    "eightDay": "8 periods",
+    "intercalaryDay": "Extra period",
+    "homegroupPeriod": "Homegroup period",
+    "cancelledHomegroup": "Cancelled — homegroup period"
   },
   "locate": {
     "title": "Locate Student",

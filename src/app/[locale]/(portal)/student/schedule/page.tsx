@@ -5,10 +5,13 @@ import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { CalendarDays } from "lucide-react";
 import { getTranslations } from "next-intl/server";
-import { getPeriodsPerDay } from "@/lib/schoolConfig";
-import { getNow, utcMidnight } from "@/lib/dates";
+import { getPeriodsPerDay, getBellSchedule } from "@/lib/schoolConfig";
+import { getNow, utcMidnight, localDateStr } from "@/lib/dates";
+import { getSpecialDaysInRange, buildDayMeetingMap } from "@/lib/calendar";
+import { rowsForDay, storedPeriodAt, isMeetingRow, isLessonCancelled } from "@/lib/homegroupPeriod";
+import { periodTime } from "@/lib/bellSchedule";
 import { getDayOverrides } from "@/server/substitutions";
-import { periodsForDow, maxPeriodCount, periodLabel } from "@/lib/periods";
+import { periodLabel } from "@/lib/periods";
 import { cn } from "@/lib/utils";
 import { PrintTimetableLink } from "@/components/timetable/PrintTimetableLink";
 
@@ -38,7 +41,19 @@ export default async function StudentSchedulePage({
     ]),
   ];
 
-  const [slots, periodsConfig] = await Promise.all([
+  // This week's dates (Mon–Fri): homegroup-period days shift or cancel lessons.
+  const monday = new Date(getNow());
+  const jsDay = monday.getDay();
+  monday.setDate(monday.getDate() + (jsDay === 0 ? -6 : 1 - jsDay));
+  const weekIso: Record<number, string> = {};
+  for (let d = 1; d <= 5; d++) {
+    const dt = new Date(monday);
+    dt.setDate(monday.getDate() + (d - 1));
+    weekIso[d] = localDateStr(dt);
+  }
+  const weekDates = [1, 2, 3, 4, 5].map((d) => utcMidnight(weekIso[d]!));
+
+  const [slots, periodsConfig, bell, specialDays] = await Promise.all([
     groupIds.length > 0
       ? db.timetableSlot.findMany({
           where: { groupId: { in: groupIds } },
@@ -50,7 +65,12 @@ export default async function StudentSchedulePage({
         })
       : Promise.resolve([]),
     getPeriodsPerDay(),
+    getBellSchedule(),
+    getSpecialDaysInRange(weekDates[0]!, weekDates[4]!),
   ]);
+  const meetings = buildDayMeetingMap(specialDays, weekDates);
+  const meetingOf = (d: number) => meetings.get(weekIso[d]!) ?? null;
+  const rowsOn = (d: number) => rowsForDay(periodsConfig[d] ?? 7, meetingOf(d));
 
   // Homegroup slots first, subject-group slots override the same cell.
   type Slot = (typeof slots)[number] & { isSubjectGroup?: boolean };
@@ -64,8 +84,13 @@ export default async function StudentSchedulePage({
 
   const teacherName = (s: Slot) => s.staff?.scheduleName ?? s.staffName ?? s.staff?.user?.name ?? null;
 
-  const allPeriods = Array.from({ length: maxPeriodCount(periodsConfig) }, (_, i) => i + 1);
   const days = [1, 2, 3, 4, 5];
+  const allPeriods = Array.from({ length: Math.max(...days.map(rowsOn)) }, (_, i) => i + 1);
+  const dayKind = (d: number) => {
+    const m = meetingOf(d);
+    if (m) return m.mode === "insert" ? t("intercalaryDay") : t("homegroupPeriod");
+    return bell.days[d] === "eight" ? t("eightDay") : t("sevenDay");
+  };
 
   // Highlight today's column (no highlight on weekends)
   const todayDow = getNow().getDay();
@@ -126,6 +151,14 @@ export default async function StudentSchedulePage({
                     >
                       {DOW[d]}
                       {d === todayDow && <span className="ml-1 text-emerald-500">●</span>}
+                      <span
+                        className={cn(
+                          "block mt-0.5 text-[10px] font-normal normal-case tracking-normal",
+                          meetingOf(d) ? "text-purple-600" : "text-slate-400",
+                        )}
+                      >
+                        {dayKind(d)}
+                      </span>
                     </th>
                   ))}
                 </tr>
@@ -139,13 +172,45 @@ export default async function StudentSchedulePage({
                     {days.map((d) => {
                       const isToday = d === todayDow;
                       const todayBg = isToday ? "bg-emerald-50/40" : undefined;
-                      const inDay = periodsForDow(periodsConfig, d).includes(p);
-                      const slot = grid.get(d * 100 + p);
-                      if (!inDay) return <td key={d} className={cn("px-3 py-2", isToday ? "bg-emerald-50/40" : "bg-slate-50/60")} />;
-                      if (!slot) return <td key={d} className={cn("px-3 py-2", todayBg)} />;
-                      const override = isToday ? todayOverride.get(p) : undefined;
+                      const meeting = meetingOf(d);
+                      if (p > rowsOn(d)) return <td key={d} className={cn("px-3 py-2", isToday ? "bg-emerald-50/40" : "bg-slate-50/60")} />;
+                      const time = periodTime(bell, d, p, meeting);
+                      const timeLine = time && (
+                        <p className="text-[10px] tabular-nums text-slate-400 mb-0.5">
+                          {time.start}–{time.end}
+                        </p>
+                      );
+                      // «Υπευθυνότητα Τμήματος»: the homegroup meets its teacher.
+                      if (isMeetingRow(p, meeting)) {
+                        return (
+                          <td key={d} className={cn("px-1.5 py-1.5 align-top", todayBg)}>
+                            {timeLine}
+                            <div className="rounded-lg px-2 py-1.5 border border-purple-200 bg-purple-50">
+                              <p className="font-medium text-purple-900 text-xs leading-snug">{t("homegroupPeriod")}</p>
+                              {student.group?.name && <p className="text-[11px] text-purple-600 mt-0.5">{student.group.name}</p>}
+                            </div>
+                          </td>
+                        );
+                      }
+                      // Lessons keep their stored period; on an inserted day they show one row later.
+                      const stored = storedPeriodAt(p, meeting);
+                      const slot = grid.get(d * 100 + stored);
+                      if (!slot) return <td key={d} className={cn("px-1.5 py-1.5 align-top", todayBg)}>{timeLine}</td>;
+                      if (isLessonCancelled(stored, meeting)) {
+                        return (
+                          <td key={d} className={cn("px-1.5 py-1.5 align-top", todayBg)}>
+                            {timeLine}
+                            <div className="rounded-lg px-2 py-1.5 border border-slate-200 bg-slate-50 opacity-70">
+                              <p className="font-medium text-slate-400 text-xs leading-snug line-through">{slot.course.name}</p>
+                              <p className="text-[11px] text-purple-600 mt-0.5">{t("cancelledHomegroup")}</p>
+                            </div>
+                          </td>
+                        );
+                      }
+                      const override = isToday ? todayOverride.get(stored) : undefined;
                       return (
                         <td key={d} className={cn("px-1.5 py-1.5 align-top", todayBg)}>
+                          {timeLine}
                           <div
                             className={cn(
                               "rounded-lg px-2 py-1.5 border",
