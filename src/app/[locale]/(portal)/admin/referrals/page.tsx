@@ -123,7 +123,7 @@ export default async function ReferralsPage({
             </CardTitle>
             <p className="text-xs text-slate-400">
               Βοηθός διευθυντής ζήτησε το ξεκλείδωμα μιας ολοκληρωμένης απόφασης. Με την έγκριση η απόφαση διαγράφεται και η
-              παραπομπή επιστρέφει σε εκκρεμότητα για νέα απόφαση· με την απόρριψη διατηρείται η αρχική.
+              καταγγελία επιστρέφει σε εκκρεμότητα για νέα απόφαση· με την απόρριψη διατηρείται η αρχική.
             </p>
           </CardHeader>
           <CardContent className="divide-y divide-slate-100 space-y-0">
@@ -192,7 +192,7 @@ export default async function ReferralsPage({
           defaultValue={searchTab}
           className="h-9 px-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
         >
-          <option value="number">Αρ. παραπομπής</option>
+          <option value="number">Αρ. καταγγελίας</option>
           <option value="student">Όνομα μαθητή/τριας</option>
           <option value="studentId">Αρ. μητρώου μαθητή/τριας</option>
           <option value="filer">Εκπαιδευτικός υποβολής</option>

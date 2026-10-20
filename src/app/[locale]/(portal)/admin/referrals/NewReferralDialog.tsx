@@ -22,7 +22,7 @@ export function NewReferralDialog({ students, locale }: { students: Student[]; l
 
   const { mutate, isPending } = trpc.referrals.create.useMutation({
     onSuccess: () => {
-      toast.success("Η παραπομπή υποβλήθηκε");
+      toast.success("Η καταγγελία υποβλήθηκε");
       setOpen(false);
       setStudentId("");
       setDescription("");
@@ -44,7 +44,7 @@ export function NewReferralDialog({ students, locale }: { students: Student[]; l
         className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
       >
         <Plus className="w-4 h-4" />
-        Νέα Παραπομπή
+        Νέα Καταγγελία
       </Button>
     );
   }
@@ -53,7 +53,7 @@ export function NewReferralDialog({ students, locale }: { students: Student[]; l
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-slate-900">Υποβολή Παραπομπής</h3>
+          <h3 className="text-lg font-semibold text-slate-900">Υποβολή Καταγγελίας</h3>
           <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-slate-600">
             <X className="w-5 h-5" />
           </button>
