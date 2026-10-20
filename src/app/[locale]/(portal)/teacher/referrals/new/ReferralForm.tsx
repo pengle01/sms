@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { Loader2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getNow } from "@/lib/dates";
-import { StudentPicker, type PickerGroup } from "./StudentPicker";
+import { StudentPicker, type PickerGroup } from "@/components/students/StudentPicker";
 
 type ReferralRecommendation =
   | "NO_RECOMMENDATION"

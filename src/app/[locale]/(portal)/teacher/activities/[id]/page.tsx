@@ -5,16 +5,16 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
+import { AddParticipants, RemoveParticipantButton } from "./AddParticipants";
+import { getPickerGroups } from "@/server/studentPicker";
+import type { PickerGroup } from "@/components/students/StudentPicker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, Users, X, Award, Pencil, Check, Repeat } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { fmtDisplayDate } from "@/lib/dates";
 import { getPeriodsPerDay, maxPeriodCount } from "@/lib/schoolConfig";
 import { ddkCategoryLabel } from "@/lib/ddk";
 import {
-  addParticipants,
-  removeParticipant,
   removeDdkAward,
   updateActivity,
   repeatActivity,
@@ -36,10 +36,10 @@ export default async function ActivityDetailPage({
   searchParams,
 }: {
   params: Promise<{ locale: string; id: string }>;
-  searchParams: Promise<{ edit?: string; ddk?: string; grade?: string; groupId?: string }>;
+  searchParams: Promise<{ edit?: string; ddk?: string }>;
 }) {
   const { locale, id } = await params;
-  const { edit, ddk, grade, groupId } = await searchParams;
+  const { edit, ddk } = await searchParams;
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login/staff`);
 
@@ -78,36 +78,20 @@ export default async function ActivityDetailPage({
     return s === e ? `Περίοδος ${s}` : `Περίοδοι ${s}–${e}`;
   }
 
-  // Edit-only data: period options + the participant picker candidates.
-  const gradeNum = grade ? parseInt(grade) : undefined;
+  // Edit-only data: period options + every active student for the picker.
   let periods: number[] = [];
-  let allGroups: { id: string; name: string; grade: number }[] = [];
-  let filteredGroups: typeof allGroups = [];
-  let candidateStudents: { id: string; user: { name: string | null } | null }[] = [];
+  let pickerGroups: PickerGroup[] = [];
   if (editing) {
     const periodsConfig = await getPeriodsPerDay();
     periods = Array.from({ length: maxPeriodCount(periodsConfig) }, (_, i) => i + 1);
-    allGroups = await db.group.findMany({
-      where: { students: { some: {} } },
-      orderBy: [{ grade: "asc" }, { name: "asc" }],
-      select: { id: true, name: true, grade: true },
-    });
-    filteredGroups = gradeNum ? allGroups.filter((g) => g.grade === gradeNum) : allGroups;
-    const participantIds = new Set(activity.participants.map((p) => p.studentId));
-    candidateStudents = groupId
-      ? await db.studentProfile.findMany({
-          where: { groupId, user: { isActive: true }, id: { notIn: Array.from(participantIds) } },
-          include: { user: { select: { name: true } } },
-          orderBy: { user: { name: "asc" } },
-        })
-      : [];
+    pickerGroups = await getPickerGroups();
   }
 
   const baseHref = `/${locale}/teacher/activities/${id}`;
   // Build a detail-page href, merging overrides onto the current params
   // (null clears a param) — lets the two edit modes coexist independently.
   function buildHref(overrides: Record<string, string | null>) {
-    const merged: Record<string, string | undefined | null> = { edit, ddk, grade, groupId, ...overrides };
+    const merged: Record<string, string | undefined | null> = { edit, ddk, ...overrides };
     const p = new URLSearchParams();
     for (const [k, v] of Object.entries(merged)) if (v) p.set(k, v);
     const qs = p.toString();
@@ -272,17 +256,7 @@ export default async function ActivityDetailPage({
                     </td>
                     {editing && (
                       <td className="px-5 py-3 text-right">
-                        <form action={removeParticipant}>
-                          <input type="hidden" name="activityId" value={id} />
-                          <input type="hidden" name="studentId" value={p.studentId} />
-                          <button
-                            type="submit"
-                            className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50"
-                            title="Αφαίρεση"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </form>
+                        <RemoveParticipantButton activityId={id} studentId={p.studentId} />
                       </td>
                     )}
                   </tr>
@@ -299,86 +273,12 @@ export default async function ActivityDetailPage({
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Προσθήκη Μαθητών</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Τάξη</p>
-              <div className="flex gap-2 flex-wrap">
-                {[1, 2, 3].map((g) => (
-                  <Link
-                    key={g}
-                    href={buildHref({ grade: String(g), groupId: null })}
-                    className={cn(
-                      "h-9 px-5 rounded-lg text-sm font-medium transition-colors border",
-                      grade === String(g)
-                        ? "bg-emerald-600 text-white border-emerald-600"
-                        : "bg-white text-slate-600 border-slate-200 hover:border-emerald-400 hover:text-emerald-700"
-                    )}
-                  >
-                    {g}η
-                  </Link>
-                ))}
-              </div>
-            </div>
-
-            {gradeNum && (
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Τμήμα</p>
-                <div className="flex gap-2 flex-wrap">
-                  {filteredGroups.map((g) => (
-                    <Link
-                      key={g.id}
-                      href={buildHref({ groupId: g.id })}
-                      className={cn(
-                        "h-9 px-5 rounded-lg text-sm font-medium transition-colors border",
-                        groupId === g.id
-                          ? "bg-emerald-600 text-white border-emerald-600"
-                          : "bg-white text-slate-600 border-slate-200 hover:border-emerald-400 hover:text-emerald-700"
-                      )}
-                    >
-                      {g.name}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {groupId && (
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Μαθητές</p>
-                <form action={addParticipants}>
-                  <input type="hidden" name="activityId" value={id} />
-                  {candidateStudents.length === 0 ? (
-                    <p className="text-sm text-slate-400 py-4 text-center">
-                      Όλοι οι μαθητές του τμήματος έχουν ήδη προστεθεί
-                    </p>
-                  ) : (
-                    <>
-                      <div className="border border-slate-200 rounded-lg divide-y divide-slate-100 max-h-72 overflow-y-auto">
-                        {candidateStudents.map((s) => (
-                          <label key={s.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              name="studentId"
-                              value={s.id}
-                              className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                            />
-                            <span className="flex-1 text-sm font-medium text-slate-900">{s.user?.name}</span>
-                          </label>
-                        ))}
-                      </div>
-                      <button
-                        type="submit"
-                        className="mt-3 h-9 px-5 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
-                      >
-                        Προσθήκη Επιλεγμένων
-                      </button>
-                    </>
-                  )}
-                </form>
-              </div>
-            )}
-
-            {!gradeNum && <p className="text-sm text-slate-400">Επιλέξτε τάξη για να ξεκινήσετε</p>}
+          <CardContent>
+            <AddParticipants
+              activityId={id}
+              groups={pickerGroups}
+              participantIds={activity.participants.map((p) => p.studentId)}
+            />
           </CardContent>
         </Card>
       )}

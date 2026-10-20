@@ -6,14 +6,14 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronLeft } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { createActivity } from "../actions";
-import { weeklyOccurrences } from "@/lib/activities";
+import { weeklyOccurrences, type ActivityTestConflict } from "@/lib/activities";
 import { localDateStr, normalizeIsoDate } from "@/lib/dates";
 import { getPeriodsPerDay, maxPeriodCount } from "@/lib/schoolConfig";
 import { utcMidnight } from "@/lib/dates";
 import { AlertTriangle } from "lucide-react";
-import { SelectAllButton } from "./SelectAllButton";
+import { ActivityStudentsField } from "./ActivityStudentsField";
+import { getPickerGroups } from "@/server/studentPicker";
 
 export default async function NewActivityPage({
   params,
@@ -27,19 +27,15 @@ export default async function NewActivityPage({
     endPeriod?: string;
     location?: string;
     repeatUntil?: string;
-    grade?: string;
-    groupId?: string;
   }>;
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login/staff`);
 
-  const { name, date, startPeriod, endPeriod, location, repeatUntil, grade, groupId } =
-    await searchParams;
+  const { name, date, startPeriod, endPeriod, location, repeatUntil } = await searchParams;
 
   const todayStr = localDateStr();
-  const gradeNum = grade ? parseInt(grade) : undefined;
 
   // Details are "confirmed" once they've been saved to the URL via the GET form
   const detailsConfirmed = !!(name && date);
@@ -47,88 +43,43 @@ export default async function NewActivityPage({
   // Weekly repeat preview: how many activities will be created.
   const occurrences = date ? weeklyOccurrences(date, normalizeIsoDate(repeatUntil)) : [];
 
-  const allGroups = await db.group.findMany({
-    where: { students: { some: {} } },
-    orderBy: [{ grade: "asc" }, { name: "asc" }],
-  });
-  const filteredGroups = gradeNum
-    ? allGroups.filter((g) => g.grade === gradeNum)
-    : [];
-
-  const students =
-    groupId && detailsConfirmed
-      ? await db.studentProfile.findMany({
-          where: { groupId, user: { isActive: true } },
-          include: { user: { select: { name: true } } },
-          orderBy: { user: { name: "asc" } },
-        })
-      : [];
-
-  // Test conflict check — find tests that overlap with this activity's period range
-  type TestWarning = {
-    courseName: string;
-    groupName: string;
-    staffName: string | null;
-    type: "BIG" | "SMALL";
-    periodLabel: string;
-    affectedCount: number;
-  };
-  let testWarnings: TestWarning[] = [];
-
-  if (groupId && detailsConfirmed && date && startPeriod && endPeriod && students.length > 0) {
+  // Step 2: every active student by homegroup, and that day's tests that
+  // overlap the activity's periods — each with the students it concerns, so
+  // the picker can warn about the students actually chosen.
+  const pickerGroups = detailsConfirmed ? await getPickerGroups() : [];
+  let testConflicts: ActivityTestConflict[] = [];
+  if (detailsConfirmed && date && startPeriod && endPeriod) {
     const actStart = Math.min(parseInt(startPeriod), parseInt(endPeriod));
     const actEnd = Math.max(parseInt(startPeriod), parseInt(endPeriod));
-
-    // All groups the homeroom students belong to
-    const studentsWithGroups = await db.studentProfile.findMany({
-      where: { groupId, user: { isActive: true } },
-      select: {
-        id: true,
-        groupId: true,
-        subjectGroups: { select: { groupId: true } },
-      },
-    });
-    const allGroupIds = [
-      ...new Set(
-        studentsWithGroups.flatMap((s) => [
-          ...(s.groupId ? [s.groupId] : []),
-          ...s.subjectGroups.map((sg) => sg.groupId),
-        ])
-      ),
-    ];
-
     const testsOnDate = await db.testSchedule.findMany({
-      where: {
-        date: utcMidnight(date),
-        groupId: { in: allGroupIds },
-      },
+      where: { date: utcMidnight(date) },
       include: {
         course: { select: { name: true } },
-        group: { select: { name: true, id: true } },
+        group: { select: { name: true } },
         staff: { include: { user: { select: { name: true } } } },
       },
     });
-
-    // Filter to tests that overlap the activity's period range
-    const overlapping = testsOnDate.filter(
-      (t) => t.period <= actEnd && t.period + t.periodCount - 1 >= actStart
-    );
-
-    // Count how many students are affected by each test
-    for (const t of overlapping) {
-      const affectedCount = studentsWithGroups.filter((s) =>
-        (s.groupId === t.groupId) ||
-        s.subjectGroups.some((sg) => sg.groupId === t.groupId)
-      ).length;
-
-      testWarnings.push({
+    const overlapping = testsOnDate.filter((t) => t.period <= actEnd && t.period + t.periodCount - 1 >= actStart);
+    if (overlapping.length > 0) {
+      const groupIds = [...new Set(overlapping.map((t) => t.groupId))];
+      const members = await db.studentProfile.findMany({
+        where: {
+          user: { isActive: true },
+          OR: [{ groupId: { in: groupIds } }, { subjectGroups: { some: { groupId: { in: groupIds } } } }],
+        },
+        select: { id: true, groupId: true, subjectGroups: { select: { groupId: true } } },
+      });
+      testConflicts = overlapping.map((t) => ({
+        id: t.id,
         courseName: t.course.name,
         groupName: t.group.name,
         staffName: t.staff?.scheduleName ?? t.staff?.user?.name ?? null,
         type: t.type,
         periodLabel: t.periodCount > 1 ? `P${t.period}–${t.period + t.periodCount - 1}` : `P${t.period}`,
-        affectedCount,
-      });
+        studentIds: members
+          .filter((m) => m.groupId === t.groupId || m.subjectGroups.some((sg) => sg.groupId === t.groupId))
+          .map((m) => m.id),
+      }));
     }
   }
 
@@ -140,31 +91,6 @@ export default async function NewActivityPage({
         select: { type: true, label: true, eventStartPeriod: true, eventEndPeriod: true },
       })
     : null;
-
-  // Build base URL params (activity details only, no grade/groupId)
-  function detailParams() {
-    const p = new URLSearchParams();
-    if (name) p.set("name", name);
-    if (date) p.set("date", date);
-    if (startPeriod) p.set("startPeriod", startPeriod);
-    if (endPeriod) p.set("endPeriod", endPeriod);
-    if (location) p.set("location", location);
-    if (repeatUntil) p.set("repeatUntil", repeatUntil);
-    return p;
-  }
-
-  function yearUrl(g: number) {
-    const p = detailParams();
-    p.set("grade", String(g));
-    return `?${p.toString()}`;
-  }
-
-  function groupUrl(gId: string) {
-    const p = detailParams();
-    if (gradeNum) p.set("grade", String(gradeNum));
-    p.set("groupId", gId);
-    return `?${p.toString()}`;
-  }
 
   const periodsConfig = await getPeriodsPerDay();
   const periods = Array.from({ length: maxPeriodCount(periodsConfig) }, (_, i) => i + 1);
@@ -335,136 +261,7 @@ export default async function NewActivityPage({
           )}
 
           {detailsConfirmed && (
-            <>
-              {/* Year */}
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                  Τάξη
-                </p>
-                <div className="flex gap-2">
-                  {[1, 2, 3].map((g) => (
-                    <Link
-                      key={g}
-                      href={yearUrl(g)}
-                      className={cn(
-                        "h-9 px-5 rounded-lg text-sm font-medium transition-colors border",
-                        gradeNum === g
-                          ? "bg-emerald-600 text-white border-emerald-600"
-                          : "bg-white text-slate-600 border-slate-200 hover:border-emerald-400 hover:text-emerald-700"
-                      )}
-                    >
-                      {g}η
-                    </Link>
-                  ))}
-                </div>
-              </div>
-
-              {/* Homegroup */}
-              {gradeNum && (
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                    Τμήμα
-                  </p>
-                  <div className="flex gap-2 flex-wrap">
-                    {filteredGroups.map((g) => (
-                      <Link
-                        key={g.id}
-                        href={groupUrl(g.id)}
-                        className={cn(
-                          "h-9 px-5 rounded-lg text-sm font-medium transition-colors border",
-                          groupId === g.id
-                            ? "bg-emerald-600 text-white border-emerald-600"
-                            : "bg-white text-slate-600 border-slate-200 hover:border-emerald-400 hover:text-emerald-700"
-                        )}
-                      >
-                        {g.name}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Test conflict warning */}
-              {testWarnings.length > 0 && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 overflow-hidden">
-                  <div className="flex items-center gap-2 px-4 py-3 border-b border-amber-200">
-                    <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                    <p className="text-sm font-semibold text-amber-800">
-                      Διαγωνίσματα προγραμματισμένα σε αυτές τις περιόδους
-                    </p>
-                  </div>
-                  <div className="divide-y divide-amber-100 px-4">
-                    {testWarnings.map((w, i) => (
-                      <div key={i} className="py-3 flex items-start justify-between gap-4 flex-wrap">
-                        <div>
-                          <p className="text-sm font-medium text-amber-900">
-                            {w.courseName}
-                            <span className={`ml-2 text-xs px-1.5 py-0.5 rounded font-semibold ${
-                              w.type === "BIG"
-                                ? "bg-slate-800 text-white"
-                                : "bg-slate-100 text-slate-600"
-                            }`}>
-                              {w.type === "BIG" ? "Μεγάλο" : "Μικρό"}
-                            </span>
-                          </p>
-                          <p className="text-xs text-amber-600 mt-0.5">
-                            {w.groupName} · {w.periodLabel}
-                            {w.staffName && ` · ${w.staffName}`}
-                          </p>
-                        </div>
-                        <span className="text-xs text-amber-700 bg-amber-100 rounded-full px-2 py-1 whitespace-nowrap">
-                          {w.affectedCount === 1
-                            ? "1 μαθητής/τρια επηρεάζεται"
-                            : `${w.affectedCount} μαθητές επηρεάζονται`}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="px-4 py-2.5 text-xs text-amber-600 border-t border-amber-200">
-                    Μπορείτε να δημιουργήσετε τη δραστηριότητα — αυτό είναι μόνο για ενημέρωσή σας.
-                  </p>
-                </div>
-              )}
-
-              {/* Students */}
-              {groupId && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-                      Μαθητές —{" "}
-                      {allGroups.find((g) => g.id === groupId)?.name}
-                    </p>
-                    {students.length > 0 && <SelectAllButton formId="create-activity-form" />}
-                  </div>
-                  <div className="border border-slate-200 rounded-lg divide-y divide-slate-100 max-h-64 overflow-y-auto">
-                    {students.length === 0 ? (
-                      <p className="px-4 py-6 text-center text-sm text-slate-400">
-                        Δεν υπάρχουν μαθητές σε αυτό το τμήμα
-                      </p>
-                    ) : (
-                      students.map((s) => (
-                        <label
-                          key={s.id}
-                          className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 cursor-pointer"
-                          id={`student-${s.id}`}
-                        >
-                          <input
-                            type="checkbox"
-                            form="create-activity-form"
-                            name="studentId"
-                            value={s.id}
-                            className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                          />
-                          <span className="text-sm font-medium text-slate-900">
-                            {s.user?.name}
-                          </span>
-                        </label>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-            </>
+            <ActivityStudentsField groups={pickerGroups} formId="create-activity-form" tests={testConflicts} />
           )}
         </CardContent>
       </Card>

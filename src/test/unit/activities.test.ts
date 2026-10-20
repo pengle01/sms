@@ -31,3 +31,29 @@ describe("weeklyOccurrences", () => {
     ]);
   });
 });
+
+import { conflictsForSelection } from "@/lib/activities";
+
+describe("conflictsForSelection", () => {
+  const tests = [
+    { id: "t1", courseName: "Μαθηματικά", groupName: "Α1", staffName: "ΠΑΠΑΣ", type: "BIG" as const, periodLabel: "P3", studentIds: ["s1", "s2", "s3"] },
+    { id: "t2", courseName: "Φυσική", groupName: "Β2", staffName: null, type: "SMALL" as const, periodLabel: "P4", studentIds: ["s9"] },
+  ];
+
+  it("counts only the selected students a test concerns", () => {
+    expect(conflictsForSelection(tests, ["s1", "s3", "s7"])).toEqual([
+      { id: "t1", courseName: "Μαθηματικά", groupName: "Α1", staffName: "ΠΑΠΑΣ", type: "BIG", periodLabel: "P3", affectedCount: 2 },
+    ]);
+  });
+
+  it("lists every test some selected student sits", () => {
+    expect(conflictsForSelection(tests, ["s2", "s9"]).map((t) => [t.id, t.affectedCount])).toEqual([
+      ["t1", 1],
+      ["t2", 1],
+    ]);
+  });
+
+  it("is empty when nobody is selected", () => {
+    expect(conflictsForSelection(tests, [])).toEqual([]);
+  });
+});

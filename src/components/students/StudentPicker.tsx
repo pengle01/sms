@@ -21,11 +21,18 @@ interface Props {
   groups: PickerGroup[];
   selectedIds: string[];
   onChange: (ids: string[]) => void;
+  /** Students that can't be picked (e.g. already in the activity) — shown ticked and greyed. */
+  disabledIds?: string[];
 }
 
 const GRADE_LABEL: Record<number, string> = { 1: "Α΄ Έτος", 2: "Β΄ Έτος", 3: "Γ΄ Έτος" };
 
-export function StudentPicker({ groups, selectedIds, onChange }: Props) {
+/**
+ * Year → homegroup → students. The selection is kept while switching
+ * homegroups, so students from several homegroups can be picked at once.
+ */
+export function StudentPicker({ groups, selectedIds, onChange, disabledIds = [] }: Props) {
+  const disabled = new Set(disabledIds);
   const [activeGrade, setActiveGrade] = useState<number | null>(null);
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
 
@@ -41,7 +48,7 @@ export function StudentPicker({ groups, selectedIds, onChange }: Props) {
 
   const toggleAll = () => {
     if (!activeGroup) return;
-    const gIds = activeGroup.students.map((s) => s.id);
+    const gIds = activeGroup.students.map((s) => s.id).filter((id) => !disabled.has(id));
     const allSelected = gIds.every((id) => selectedIds.includes(id));
     onChange(allSelected ? selectedIds.filter((id) => !gIds.includes(id)) : [...new Set([...selectedIds, ...gIds])]);
   };
@@ -52,8 +59,9 @@ export function StudentPicker({ groups, selectedIds, onChange }: Props) {
   };
 
   const groupSelected = (g: PickerGroup) => g.students.filter((s) => selectedIds.includes(s.id)).length;
-  const allSelected = activeGroup?.students.every((s) => selectedIds.includes(s.id)) ?? false;
-  const someSelected = (activeGroup?.students.some((s) => selectedIds.includes(s.id)) && !allSelected) ?? false;
+  const pickable = activeGroup?.students.filter((s) => !disabled.has(s.id)) ?? [];
+  const allSelected = pickable.length > 0 && pickable.every((s) => selectedIds.includes(s.id));
+  const someSelected = pickable.some((s) => selectedIds.includes(s.id)) && !allSelected;
 
   return (
     <div className="space-y-3">
@@ -150,31 +158,35 @@ export function StudentPicker({ groups, selectedIds, onChange }: Props) {
               />
               <span className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
                 <Users className="w-3.5 h-3.5" />
-                Επιλογή όλων ({activeGroup.students.length})
+                Επιλογή όλων ({pickable.length})
               </span>
             </label>
 
             {/* Student rows */}
             <div className="divide-y divide-slate-50 max-h-56 overflow-y-auto bg-white">
               {activeGroup.students.map((s) => {
-                const checked = selectedIds.includes(s.id);
+                const already = disabled.has(s.id);
+                const checked = already || selectedIds.includes(s.id);
                 return (
                   <label
                     key={s.id}
                     className={cn(
-                      "flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors",
-                      checked ? "bg-emerald-50" : "hover:bg-slate-50"
+                      "flex items-center gap-3 px-4 py-2.5 transition-colors",
+                      already ? "cursor-not-allowed opacity-60" : "cursor-pointer",
+                      !already && (checked ? "bg-emerald-50" : "hover:bg-slate-50")
                     )}
                   >
                     <input
                       type="checkbox"
                       checked={checked}
+                      disabled={already}
                       onChange={() => toggle(s.id)}
                       className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4"
                     />
-                    <span className={cn("text-sm", checked ? "font-medium text-emerald-900" : "text-slate-700")}>
+                    <span className={cn("text-sm", checked && !already ? "font-medium text-emerald-900" : "text-slate-700")}>
                       {s.name}
                     </span>
+                    {already && <span className="ml-auto text-[11px] text-slate-400">ήδη</span>}
                   </label>
                 );
               })}

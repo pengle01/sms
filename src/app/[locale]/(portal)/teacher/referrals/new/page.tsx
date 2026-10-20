@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { getPickerGroups } from "@/server/studentPicker";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
@@ -26,23 +27,8 @@ export default async function NewReferralPage({
   });
   const filerName = claim?.staffName ?? session.user.name ?? "";
 
-  // Fetch students grouped by homegroup (include grade for cascading picker)
-  const groups = await db.group.findMany({
-    where: {
-      students: { some: { user: { isActive: true } } },
-    },
-    select: {
-      id: true,
-      name: true,
-      grade: true,
-      students: {
-        where: { user: { isActive: true } },
-        include: { user: { select: { name: true } } },
-        orderBy: { user: { name: "asc" } },
-      },
-    },
-    orderBy: [{ grade: "asc" }, { name: "asc" }],
-  });
+  // Students grouped by homegroup, for the cascading picker
+  const groups = await getPickerGroups();
 
   return (
     <div className="space-y-5 max-w-2xl">
@@ -62,16 +48,7 @@ export default async function NewReferralPage({
         </CardHeader>
         <CardContent>
           <ReferralForm
-            groups={groups.map((g) => ({
-              id: g.id,
-              name: g.name,
-              grade: g.grade ?? 0,
-              students: g.students.map((s) => ({
-                id: s.id,
-                name: s.user?.name ?? "",
-                studentId: s.studentId,
-              })),
-            }))}
+            groups={groups}
             filerName={filerName}
             locale={locale}
           />
