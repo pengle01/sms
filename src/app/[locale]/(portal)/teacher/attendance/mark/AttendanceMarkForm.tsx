@@ -495,10 +495,12 @@ export function AttendanceMarkForm({
     {students.length > 0 && (
       <div className="hidden print:block text-[11px] text-black">
         <div className="mb-3 border-b-2 border-black pb-2">
-          <h1 className="text-base font-bold">{t("printTitle")}</h1>
+          <h1 className="text-base font-bold">
+            {t("printTitle")}
+            {sheetGroupName && <span className="ml-2 text-xl">{sheetGroupName}</span>}
+          </h1>
           <p>
             {[
-              sheetGroupName,
               slot?.course.name ?? (isExcursion ? t("excursionBanner") : intercalaryGroupId ? t("intercalaryBanner", { period: selectedPeriod }) : null),
               periodLabel(selectedPeriod, locale),
               attendanceDate ? fmtSheetDate(attendanceDate) : null,
