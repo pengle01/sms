@@ -805,6 +805,9 @@ model Referral {
 
   filerId        String
   filer          StaffProfile           @relation("ReferralFiler", fields: [filerId], references: [id])
+  // Short title of the offence («Παράπτωμα» on the parent letter). Null on
+  // referrals filed before it existed — the letter falls back to the description.
+  title          String?
   description    String                 @db.Text
   location       String?
   incidentTime   String?

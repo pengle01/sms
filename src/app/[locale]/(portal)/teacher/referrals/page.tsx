@@ -252,6 +252,12 @@ export default async function TeacherReferralsPage({
               {students[0]?.resolution ? resolutionSummary(students[0].resolution) : "Επιλύθηκε"}
             </span>
           )}
+          {/* Headteachers print the decision and the parent letter from here */}
+          {(isManagement || isHeadteacherB) && (
+            <div className="mt-1.5">
+              <PrintLinks r={r} />
+            </div>
+          )}
           {/* Ask to unlock resolutions this user made (admin approval needed) */}
           {students
             .filter((rs) => rs.resolution && rs.resolution.resolvedById === userId)
@@ -267,6 +273,25 @@ export default async function TeacherReferralsPage({
             ))}
         </td>
       </tr>
+    );
+  };
+
+  // The two documents of a resolved referral: the decision and the parent letter.
+  const PrintLinks = ({ r }: { r: Referral }) => {
+    if (!r.students.some((rs) => rs.status === "RESOLVED")) return null;
+    const cls =
+      "inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50 whitespace-nowrap";
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        <a href={`/${locale}/teacher/referrals/${r.id}/print`} target="_blank" rel="noopener noreferrer" className={cls}>
+          <Printer className="w-3.5 h-3.5" />
+          Απόφαση
+        </a>
+        <a href={`/${locale}/teacher/referrals/${r.id}/letter`} target="_blank" rel="noopener noreferrer" className={cls}>
+          <Printer className="w-3.5 h-3.5" />
+          Επιστολή γονέων
+        </a>
+      </div>
     );
   };
 
@@ -313,23 +338,14 @@ export default async function TeacherReferralsPage({
               {r.location && ` · ${r.location}`}
             </p>
             <div className="flex items-center gap-2">
-              {resolvedMine.length > 0 && (
-                <a
-                  href={`/${locale}/teacher/referrals/${r.id}/print`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  Εκτύπωση
-                </a>
-              )}
+              {resolvedMine.length > 0 && <PrintLinks r={r} />}
               {/* Badge reflects only this headteacher's own students */}
               <ReferralStatusBadge referral={r} scopeGroupIds={headGroupIds} />
             </div>
           </div>
           {/* When other homegroups are involved, show each headteacher's progress */}
           <ReferralGroupSignals referral={r} className="mt-2" />
+          {r.title && <p className="mt-2 text-sm font-semibold text-slate-900">{r.title}</p>}
           <p className="mt-2 text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">{r.description}</p>
           {/* Full incident details — visible to everyone who can see the referral */}
           {(r.incidentTime || r.extraInfo) && (

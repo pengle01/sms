@@ -5,10 +5,9 @@ import { getSpecialDaysInRange, buildDayTypeMap, isHolidayType } from "@/lib/cal
 import { missedLessons } from "@/lib/expulsionLessons";
 import { redirect } from "next/navigation";
 import { getActiveAuth } from "@/server/authz";
+import { canReadReferral } from "@/server/referralAccess";
 import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY, totalPeriodsForDays } from "@/lib/schoolConfig";
 import { PrintTrigger, PrintButton } from "./PrintTrigger";
-
-const FULL_ACCESS_ROLES = ["SUPER_ADMIN", "HEADMASTER", "HEADTEACHER_A", "STUDENT_COUNSELOR"];
 
 const ACTION_LABEL: Record<string, string> = {
   DETENTION: "Αποβολή",
@@ -81,21 +80,7 @@ export default async function PrintResolutionPage({
   // Authorization: full-access roles, the filer, or a headteacher of one of the
   // referral's students' groups. Other staff may not read arbitrary referrals.
   // Effective roles, so an admin-granted SUPER_ADMIN counts like a primary one.
-  let allowed = auth.roles.some((r) => FULL_ACCESS_ROLES.includes(r));
-  if (!allowed) {
-    const staff = await db.staffProfile.findUnique({
-      where: { userId: auth.userId },
-      include: { homeroomHeadGroups: { select: { id: true } } },
-    });
-    if (staff) {
-      if (referral.filerId === staff.id) {
-        allowed = true;
-      } else {
-        const headGroupIds = new Set(staff.homeroomHeadGroups.map((g) => g.id));
-        allowed = referral.students.some((rs) => rs.groupId && headGroupIds.has(rs.groupId));
-      }
-    }
-  }
+  const allowed = await canReadReferral(auth, referral);
   if (!allowed) redirect(`/${locale}/teacher/referrals`);
 
   // Students to print: everyone, or the one picked with ?student=.
@@ -230,6 +215,12 @@ export default async function PrintResolutionPage({
                       <td className={label}>Καταγγέλλων</td>
                       <td className="py-1.5 text-slate-900">{staffDisplayName(referral.filer)}</td>
                     </tr>
+                    {referral.title && (
+                      <tr className="border-b border-slate-100">
+                        <td className={label}>Παράπτωμα</td>
+                        <td className="py-1.5 text-slate-900 font-semibold">{referral.title}</td>
+                      </tr>
+                    )}
                     <tr className="border-b border-slate-100">
                       <td className={label}>Ημερ. Παραπτώματος</td>
                       <td className="py-1.5 text-slate-900">{fmt(referral.date)}</td>

@@ -7,7 +7,7 @@ import { trpc } from "@/trpc/client";
 import { toast } from "sonner";
 import { Loader2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getNow } from "@/lib/dates";
+import { getNow, localDateStr } from "@/lib/dates";
 import { StudentPicker, type PickerGroup } from "@/components/students/StudentPicker";
 
 type ReferralRecommendation =
@@ -37,16 +37,18 @@ const REC_LABELS: Record<RecommendationChoice, string> = {
   OTHER_RECOMMENDATION: "Άλλη εισήγηση",
 };
 
-const today = getNow().toISOString().split("T")[0]!;
 
 export function ReferralForm({ groups, filerName, locale }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  // Today in Cyprus, when the form opens — an incident is today or earlier.
+  const [today] = useState(() => localDateStr(getNow()));
   const [date, setDate] = useState(today);
   const [location, setLocation] = useState("");
   const [incidentTime, setIncidentTime] = useState("");
+  const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [extraInfo, setExtraInfo] = useState("");
   const [recommendations, setRecommendations] = useState<RecommendationChoice[]>([]);
@@ -62,12 +64,15 @@ export function ReferralForm({ groups, filerName, locale }: Props) {
   });
 
   const canSubmit = selectedIds.length > 0 && description.length >= 10;
+  // A filed referral needs a title (the parent letter's «Παράπτωμα»); a draft may wait.
+  const canFile = canSubmit && title.trim().length > 0;
 
   const submit = (isDraft: boolean) => {
-    if (!canSubmit) return;
+    if (!canSubmit || (!isDraft && !canFile)) return;
     startTransition(() => {
       createReferral({
         studentIds: selectedIds,
+        title: title.trim() || undefined,
         description,
         date,
         location: location || undefined,
@@ -114,6 +119,7 @@ export function ReferralForm({ groups, filerName, locale }: Props) {
           <DateInput
             value={date}
             onChange={setDate}
+            max={today}
             className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
@@ -140,6 +146,23 @@ export function ReferralForm({ groups, filerName, locale }: Props) {
             className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
+      </div>
+
+      {/* Title — the «Παράπτωμα» line of the parent letter */}
+      <div className="space-y-1.5">
+        <label htmlFor="referral-title" className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+          Τίτλος παραπτώματος
+        </label>
+        <input
+          id="referral-title"
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          maxLength={120}
+          placeholder="π.χ. Χρήση κινητού τηλεφώνου"
+          className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        />
+        <p className="text-xs text-slate-400">Σύντομος τίτλος — εμφανίζεται ως «Παράπτωμα» στην επιστολή προς τους γονείς.</p>
       </div>
 
       {/* Details */}
@@ -225,7 +248,7 @@ export function ReferralForm({ groups, filerName, locale }: Props) {
           </Button>
           <Button
             type="button"
-            disabled={isPending || !canSubmit}
+            disabled={isPending || !canFile}
             onClick={() => submit(false)}
             className="h-10 px-4 w-full bg-emerald-600 hover:bg-emerald-700 text-white sm:h-9 sm:w-auto"
           >

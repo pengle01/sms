@@ -5,7 +5,7 @@ import { DateInput } from "@/components/ui/date-input";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ChevronRight, Loader2, X, Printer, MessageSquare, CheckCircle2, Plus, CalendarDays } from "lucide-react";
+import { ChevronRight, Loader2, X, Printer, MessageSquare, CheckCircle2, Plus, CalendarDays, FileText } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { totalPeriodsForDays } from "@/lib/periods";
 import { recommendationsLabel } from "@/lib/referralLabels";
@@ -159,6 +159,12 @@ export function ResolveReferralDialog({
   };
 
   const handlePrint = () => window.open(`/${locale}/teacher/referrals/${referralId}/print?auto=1`, "_blank");
+  // The parent letter: just this student's, or every resolved one on a group resolve.
+  const handleLetter = () =>
+    window.open(
+      `/${locale}/teacher/referrals/${referralId}/letter?auto=1${!groupResolve && referralStudentId ? `&student=${referralStudentId}` : ""}`,
+      "_blank",
+    );
 
   const studentLabel = studentNames.length === 1 ? studentNames[0]! : `${studentNames.length} μαθητές`;
 
@@ -213,12 +219,18 @@ export function ResolveReferralDialog({
                 <span className="text-sm font-medium">Η απόφαση καταχωρήθηκε επιτυχώς</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <button onClick={handlePrint}
                   className="flex flex-col items-center gap-2 px-4 py-5 rounded-2xl border-2 border-slate-200 hover:border-slate-400 hover:bg-slate-50 transition-colors touch-manipulation">
                   <Printer className="w-7 h-7 text-slate-600" />
                   <span className="text-sm font-semibold text-slate-700">Εκτύπωση</span>
                   <span className="text-xs text-slate-400">Απόφαση παραπτώματος</span>
+                </button>
+                <button onClick={handleLetter}
+                  className="flex flex-col items-center gap-2 px-4 py-5 rounded-2xl border-2 border-slate-200 hover:border-slate-400 hover:bg-slate-50 transition-colors touch-manipulation">
+                  <FileText className="w-7 h-7 text-slate-600" />
+                  <span className="text-sm font-semibold text-slate-700">Επιστολή γονέων</span>
+                  <span className="text-xs text-slate-400">Ενημέρωση για τα μέτρα</span>
                 </button>
                 <button onClick={() => setShowSmsPanel((v) => !v)}
                   className="flex flex-col items-center gap-2 px-4 py-5 rounded-2xl border-2 border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50 transition-colors touch-manipulation">

@@ -8,7 +8,7 @@ import {
 } from "../init";
 import { TRPCError } from "@trpc/server";
 import { canViewAllReferrals, canViewCounselorNotes } from "@/lib/rbac";
-import { localDateStr } from "@/lib/dates";
+import { localDateStr, isFutureDay } from "@/lib/dates";
 import { expulsionDaysInPast } from "@/lib/periods";
 import { canDeleteReferral } from "@/lib/referralStatus";
 import { writeAudit } from "@/server/audit";
@@ -51,6 +51,8 @@ export const referralsRouter = createTRPCRouter({
     .input(
       z.object({
         studentIds: z.array(z.string()).min(1),
+        /** Short title of the offence — the parent letter's «Παράπτωμα». */
+        title: z.string().trim().max(120).optional(),
         description: z.string().min(10),
         date: z.string(),
         location: z.string().optional(),
@@ -61,6 +63,13 @@ export const referralsRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // An incident is reported for today or an earlier day, never a future one.
+      if (isFutureDay(input.date, localDateStr())) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Η ημερομηνία του παραπτώματος δεν μπορεί να είναι μελλοντική." });
+      }
+      if (!input.isDraft && !input.title) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Συμπληρώστε τον τίτλο του παραπτώματος." });
+      }
       const [staff, claim] = await Promise.all([
         ctx.db.staffProfile.findUnique({
           where: { userId: ctx.session.user.id },
@@ -89,6 +98,7 @@ export const referralsRouter = createTRPCRouter({
         const referral = await tx.referral.create({
           data: {
             filerId: staff.id,
+            title: input.title || null,
             description: input.description,
             location: input.location,
             incidentTime: input.incidentTime,
