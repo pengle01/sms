@@ -31,11 +31,13 @@ export function printTarget(q: { kind?: string; name?: string; id?: string }): P
  * Who may print what — the same people who can view that schedule:
  *  • a teacher's or a room's week: educators, the office and admin staff
  *    («Πού βρίσκεται», the admin timetable);
- *  • a student's week: educators, admin staff, and the student themself.
+ *  • a student's week: educators, the office, admin staff, and the student themself.
  */
 export function canPrintTimetable(kind: PrintKind, roles: Role[], opts: { selfStudent?: boolean } = {}): boolean {
   const staff = roles.some(isEducator) || roles.some(isAdminStaff);
-  if (kind === "student") return staff || (opts.selfStudent === true && roles.includes("STUDENT"));
+  if (kind === "student") {
+    return staff || roles.some(isOfficeAdmin) || (opts.selfStudent === true && roles.includes("STUDENT"));
+  }
   return staff || roles.some(isOfficeAdmin);
 }
 

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, MapPin, Pencil } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { AccessCodeCard } from "@/components/access/AccessCodeCard";
+import { StudentTimetableCard } from "@/components/students/StudentTimetableCard";
 import { SmsRecipientsCard } from "@/components/students/SmsRecipientsCard";
 import { DeleteStudentCard } from "@/components/students/DeleteStudentCard";
 import { pickQueryString } from "@/lib/listFilters";
@@ -30,6 +31,7 @@ export default async function OfficeStudentDetailPage({
     include: {
       user: { select: { name: true, isActive: true } },
       group: { select: { name: true } },
+      subjectGroups: { select: { groupId: true } },
       smsContacts: { orderBy: [{ isDefault: "desc" }, { active: "desc" }, { role: "asc" }] },
     },
   });
@@ -75,6 +77,12 @@ export default async function OfficeStudentDetailPage({
       </div>
 
       <AccessCodeCard studentProfileId={id} />
+
+      <StudentTimetableCard
+        studentProfileId={id}
+        homegroupId={student.groupId}
+        groupIds={[...(student.groupId ? [student.groupId] : []), ...student.subjectGroups.map((sg) => sg.groupId)]}
+      />
 
       <SmsRecipientsCard
         studentId={id}

@@ -38,14 +38,13 @@ describe("canPrintTimetable", () => {
     expect(canPrintTimetable("student", ["STUDENT"], { selfStudent: true })).toBe(true);
   });
 
-  it("refuses another student, a parent and the office a student", () => {
-    expect(canPrintTimetable("student", ["STUDENT"], { selfStudent: false })).toBe(false);
-    expect(canPrintTimetable("student", ["PARENT"], { selfStudent: true })).toBe(false);
-    expect(canPrintTimetable("student", ["SCHOOL_ADMIN"])).toBe(false);
+  it("lets the office print a student (it sees the timetable on the student page)", () => {
+    expect(canPrintTimetable("student", ["SCHOOL_ADMIN"])).toBe(true);
   });
 
-  it("counts an extra super-admin role", () => {
-    expect(canPrintTimetable("student", ["SCHOOL_ADMIN", "SUPER_ADMIN"])).toBe(true);
+  it("refuses another student and a parent a student", () => {
+    expect(canPrintTimetable("student", ["STUDENT"], { selfStudent: false })).toBe(false);
+    expect(canPrintTimetable("student", ["PARENT"], { selfStudent: true })).toBe(false);
   });
 });
 
