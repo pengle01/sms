@@ -62,6 +62,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "whereabouts",  href: "whereabouts",       icon: MapPin,          roles: ["SUPER_ADMIN"] },
   { key: "homegroups",   href: "homegroups",        icon: Home,            roles: ["SUPER_ADMIN"] },
   { key: "allGroups",    href: "groups",            icon: BookMarked,      roles: ["SUPER_ADMIN"] },
+  { key: "adminTests",   href: "tests",             icon: FileText,        roles: ["SUPER_ADMIN"] },
   { key: "checks",       href: "checks",            icon: ShieldAlert,     roles: ["SUPER_ADMIN"] },
   { key: "referrals",    href: "referrals",         icon: AlertTriangle,   roles: ["SUPER_ADMIN"] },
   { key: "permits",      href: "permits",           icon: LogOut,          roles: ["SUPER_ADMIN"] },

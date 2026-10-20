@@ -126,7 +126,8 @@
     "account": "My Account",
     "staffDirectory": "Staff Directory",
     "maintenance": "Equipment faults",
-    "breakDutyReports": "Duty reports"
+    "breakDutyReports": "Duty reports",
+    "adminTests": "Tests"
   },
   "appearance": {
     "title": "Appearance",
@@ -2345,5 +2346,30 @@
     "err_unknown": "That post or teacher isn't in today's programme.",
     "officeTitle": "Duty reports",
     "officeIntro": "The daily teachers' break-duty report, as recorded by the deputy heads."
+  },
+  "adminTests": {
+    "title": "Tests",
+    "intro": "Every scheduled test, past and upcoming. Deleting one also removes its grades.",
+    "from": "From",
+    "to": "To",
+    "group": "Group",
+    "allGroups": "All groups",
+    "search": "Search",
+    "searchPlaceholder": "Course or teacher…",
+    "filter": "Filter",
+    "clear": "Clear",
+    "count": "{total, plural, one {# test} other {# tests}}",
+    "none": "No tests found.",
+    "colDate": "Date",
+    "colPeriod": "Period",
+    "colCourse": "Course",
+    "colGroup": "Group",
+    "colTeacher": "Teacher",
+    "colType": "Type",
+    "colGrades": "Grades",
+    "upcoming": "upcoming",
+    "typeBig": "Big",
+    "typeSmall": "Small",
+    "page": "Page {page} of {pages}"
   }
 }
