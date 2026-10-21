@@ -14,13 +14,19 @@ import { ClipboardEdit, MessageSquare, ArrowRight, ExternalLink } from "lucide-r
 import { SUBSTITUTION_REQUESTS_IN_APP } from "@/lib/substitutionImport";
 import { RequestForm } from "./RequestForm";
 import { CancelRequestButton } from "./CancelRequestButton";
+import { ExchangeTab } from "./ExchangeTab";
+import { cn } from "@/lib/utils";
 
 export default async function SubstitutionsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ tab?: string; all?: string }>;
 }) {
   const { locale } = await params;
+  const { tab: tabParam, all } = await searchParams;
+  const tab = tabParam === "exchange" ? "exchange" : "requests";
   const auth = await getActiveAuth();
   if (!auth) redirect(`/${locale}/login/staff`);
   if (!isEducator(auth.role)) redirect(`/${locale}/teacher/dashboard`);
@@ -29,7 +35,7 @@ export default async function SubstitutionsPage({
 
   const staff = await db.staffProfile.findUnique({
     where: { userId: auth.userId },
-    select: { id: true, substitutionCoordinator: true, phone: true },
+    select: { id: true, substitutionCoordinator: true, phone: true, scheduleName: true },
   });
   if (!staff) redirect(`/${locale}/teacher/dashboard`);
 
@@ -46,6 +52,7 @@ export default async function SubstitutionsPage({
   ]);
 
   const today = utcMidnight();
+  const baseHref = `/${locale}/teacher/substitutions`;
   const maxPeriod = maxPeriodCount({ ...DEFAULT_PERIODS_PER_DAY, ...periodsConfig });
 
   const TYPE_LABEL: Record<string, string> = {
@@ -77,6 +84,31 @@ export default async function SubstitutionsPage({
         )}
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-1 border-b border-slate-200">
+        {(["requests", "exchange"] as const).map((key) => (
+          <Link
+            key={key}
+            href={key === "requests" ? baseHref : `${baseHref}?tab=exchange`}
+            className={cn(
+              "px-4 py-2 text-sm font-medium border-b-2 -mb-px",
+              tab === key ? "border-emerald-600 text-emerald-700" : "border-transparent text-slate-500 hover:text-slate-800"
+            )}
+          >
+            {key === "requests" ? t("tabRequests") : t("tabExchange")}
+          </Link>
+        ))}
+      </div>
+
+      {tab === "exchange" ? (
+        <ExchangeTab
+          locale={locale}
+          staffId={staff.id}
+          scheduleName={staff.scheduleName}
+          showAll={all === "1"}
+          baseHref={`${baseHref}?tab=exchange`}
+        />
+      ) : (
       <div className="grid gap-6 xl:grid-cols-2 items-start">
         {/* New request — or, while SchoolAbsence decides the plan, where to file instead */}
         {!SUBSTITUTION_REQUESTS_IN_APP ? (
@@ -155,6 +187,7 @@ export default async function SubstitutionsPage({
           </CardContent>
         </Card>
       </div>
+      )}
     </div>
   );
 }
