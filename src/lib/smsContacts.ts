@@ -38,3 +38,27 @@ export const SMS_FLAG_REASON_EL: Record<SmsFlagReason, string> = {
   EMPTY: "Δεν δόθηκε αριθμός SMS στο αρχείο.",
   NO_MATCH: "Ο αριθμός SMS δεν αντιστοιχεί σε γονέα ή κηδεμόνα.",
 };
+
+/** The import's name for the file's «τηλέφωνο SMS» contact. */
+export const SMS_PLACEHOLDER_NAME = "SMS";
+
+function isSmsPlaceholder(c: { name: string; role: string }): boolean {
+  return c.name.trim() === SMS_PLACEHOLDER_NAME && c.role === "OTHER";
+}
+
+/** The parents an exit-permit deputy can pick as "who agreed". The import's
+ *  nameless «SMS» contact is never offered: when its number is a named
+ *  parent's (however formatted) that parent takes its place — and its default
+ *  flag — otherwise it is hidden. Active or not doesn't matter: "active" picks
+ *  who receives SMS, not who the deputy may phone. Default first, then by name. */
+export function permitContactChoices<
+  T extends { name: string; phone: string; role: string; isDefault: boolean },
+>(contacts: T[]): T[] {
+  const named = contacts.filter((c) => !isSmsPlaceholder(c));
+  const defaultPhones = new Set(
+    contacts.filter((c) => isSmsPlaceholder(c) && c.isDefault).map((c) => normalizePhone(c.phone)).filter(Boolean)
+  );
+  return named
+    .map((c) => (defaultPhones.has(normalizePhone(c.phone)) && !c.isDefault ? { ...c, isDefault: true } : c))
+    .sort((a, b) => Number(b.isDefault) - Number(a.isDefault) || a.name.localeCompare(b.name, "el"));
+}

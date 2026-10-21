@@ -26,6 +26,7 @@ import { nicosiaHhmm } from "@/lib/toilet";
 import { DayPlanCard } from "./DayPlanCard";
 import { isRealDate } from "@/lib/substitutionImport";
 import { RefreshAfterAttendance } from "@/components/attendance/RefreshAfterAttendance";
+import { permitContactChoices } from "@/lib/smsContacts";
 
 export default async function TeacherDutyPage({
   params,
@@ -192,6 +193,10 @@ export default async function TeacherDutyPage({
         orderBy: { issuedAt: "desc" },
       })
     : [];
+
+  // The parents the deputy can pick (the import's nameless «SMS» number folded
+  // into its parent, or hidden) — the same list issueExitPermit validates.
+  const contactChoices = selectedStudent ? permitContactChoices(selectedStudent.smsContacts) : [];
 
   const suggestions = suggestionList(
     suggestionRows.map((s) => (tab === "name" ? s.user?.name : s.studentId))
@@ -423,13 +428,13 @@ export default async function TeacherDutyPage({
                   {/* Parent contacts — the deputy calls, then picks who agreed */}
                   <div>
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-                      {selectedStudent.smsContacts.length === 0 ? t("contacts") : t("contactsPick")}
+                      {contactChoices.length === 0 ? t("contacts") : t("contactsPick")}
                     </p>
-                    {selectedStudent.smsContacts.length === 0 ? (
+                    {contactChoices.length === 0 ? (
                       <p className="text-sm text-slate-400">{t("noContacts")}</p>
                     ) : (
                       <ul className="space-y-1.5">
-                        {selectedStudent.smsContacts.map((c) => (
+                        {contactChoices.map((c) => (
                           <li key={c.id}>
                             <label className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 cursor-pointer has-[:checked]:border-yellow-400 has-[:checked]:bg-yellow-50">
                               <span className="flex items-center gap-2.5 min-w-0">
@@ -480,7 +485,7 @@ export default async function TeacherDutyPage({
                     className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                   {/* Free-text contact only when the student has no contacts on record */}
-                  {selectedStudent.smsContacts.length === 0 && (
+                  {contactChoices.length === 0 && (
                     <input
                       name="contactNote"
                       required

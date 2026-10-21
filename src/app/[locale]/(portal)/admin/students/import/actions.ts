@@ -4,7 +4,7 @@ import { getSuperAdminAuth } from "@/server/authz";
 import { db } from "@/server/db";
 import * as XLSX from "xlsx";
 import { Gender, ParentRole, Role } from "@/generated/prisma/enums";
-import { normalizePhone, evaluateDefaultSms, SMS_FLAG_REASON_EL } from "@/lib/smsContacts";
+import { normalizePhone, evaluateDefaultSms, SMS_FLAG_REASON_EL, SMS_PLACEHOLDER_NAME } from "@/lib/smsContacts";
 import { revalidatePath } from "next/cache";
 import { writeAudit, requestMeta } from "@/server/audit";
 import { normRegistry } from "@/lib/studentImportSync";
@@ -207,7 +207,14 @@ export async function importStudents(_prev: ImportResult | null, formData: FormD
       // parent activates with the access code given to them (see
       // activate/actions.ts). Here we just record their phone as an SMS contact
       // (name + role) so messaging works before they have claimed an account.
+      // Phones compared normalised ("+357 99 123456" = "99123456"), so the
+      // file's SMS number doesn't become a second, nameless «SMS» contact for
+      // a parent already on record.
       const usedPhones = new Set<string>();
+      const existingPhones = new Set(
+        (await db.smsContact.findMany({ where: { studentId: studentId2 }, select: { phone: true } }))
+          .map((c) => normalizePhone(c.phone))
+      );
 
       async function addParentContact(
         pLastName: string, pFirstName: string,
@@ -215,10 +222,10 @@ export async function importStudents(_prev: ImportResult | null, formData: FormD
       ) {
         const pName = [pLastName, pFirstName].filter(Boolean).join(" ");
         const phone = pPhone.trim();
-        if (!pName || !phone || usedPhones.has(phone)) return;
-        usedPhones.add(phone);
-        const exists = await db.smsContact.findFirst({ where: { studentId: studentId2, phone } });
-        if (!exists) {
+        const norm = normalizePhone(phone);
+        if (!pName || !norm || usedPhones.has(norm)) return;
+        usedPhones.add(norm);
+        if (!existingPhones.has(norm)) {
           await db.smsContact.create({
             data: { studentId: studentId2, name: pName, phone, role, active: true },
           });
@@ -245,12 +252,12 @@ export async function importStudents(_prev: ImportResult | null, formData: FormD
 
       // Dedicated SMS number from the file = the default recipient.
       const smsPhone = str(row, COLS.smsPhone);
-      if (smsPhone && !usedPhones.has(smsPhone)) {
-        usedPhones.add(smsPhone);
-        const exists = await db.smsContact.findFirst({ where: { studentId: studentId2, phone: smsPhone } });
-        if (!exists) {
+      const smsNorm = normalizePhone(smsPhone);
+      if (smsNorm && !usedPhones.has(smsNorm)) {
+        usedPhones.add(smsNorm);
+        if (!existingPhones.has(smsNorm)) {
           await db.smsContact.create({
-            data: { studentId: studentId2, name: "SMS", phone: smsPhone, role: ParentRole.OTHER, active: true },
+            data: { studentId: studentId2, name: SMS_PLACEHOLDER_NAME, phone: smsPhone, role: ParentRole.OTHER, active: true },
           });
           smsContactsCreated++;
         }

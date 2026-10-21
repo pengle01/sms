@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { normalizePhone, evaluateDefaultSms } from "@/lib/smsContacts";
+import { normalizePhone, evaluateDefaultSms, permitContactChoices } from "@/lib/smsContacts";
 
 describe("normalizePhone", () => {
   it("strips spaces and punctuation", () => {
@@ -45,5 +45,45 @@ describe("evaluateDefaultSms", () => {
       flagged: false,
       reason: null,
     });
+  });
+});
+
+describe("permitContactChoices", () => {
+  const c = (id: string, name: string, phone: string, role: string, isDefault = false) =>
+    ({ id, name, phone, role, isDefault });
+
+  it("replaces an «SMS» duplicate of a parent's number with that parent, as the default", () => {
+    const out = permitContactChoices([
+      c("f", "ΓΕΩΡΓΙΟΥ ΑΝΔΡΕΑΣ", "99111111", "FATHER"),
+      c("m", "ΓΕΩΡΓΙΟΥ ΜΑΡΙΑ", "99222222", "MOTHER"),
+      c("s", "SMS", "+357 99 222222", "OTHER", true),
+    ]);
+    expect(out.map((x) => x.id)).toEqual(["m", "f"]);
+    expect(out[0].isDefault).toBe(true);
+  });
+
+  it("hides an «SMS» number that belongs to no parent", () => {
+    const out = permitContactChoices([
+      c("f", "ΓΕΩΡΓΙΟΥ ΑΝΔΡΕΑΣ", "99111111", "FATHER"),
+      c("s", "SMS", "99333333", "OTHER", true),
+    ]);
+    expect(out.map((x) => x.id)).toEqual(["f"]);
+    expect(out[0].isDefault).toBe(false);
+  });
+
+  it("offers every named parent, including the non-default (inactive) one", () => {
+    const out = permitContactChoices([
+      c("m", "ΓΕΩΡΓΙΟΥ ΜΑΡΙΑ", "99222222", "MOTHER", true),
+      c("f", "ΓΕΩΡΓΙΟΥ ΑΝΔΡΕΑΣ", "99111111", "FATHER"),
+    ]);
+    expect(out.map((x) => x.id)).toEqual(["m", "f"]);
+  });
+
+  it("keeps a genuinely named OTHER contact", () => {
+    expect(permitContactChoices([c("o", "ΠΑΠΠΟΥΣ", "99444444", "OTHER")]).map((x) => x.id)).toEqual(["o"]);
+  });
+
+  it("returns an empty list when there are no contacts", () => {
+    expect(permitContactChoices([])).toEqual([]);
   });
 });

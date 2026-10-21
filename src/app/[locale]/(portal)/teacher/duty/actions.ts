@@ -8,6 +8,7 @@ import { writeAudit, requestMeta } from "@/server/audit";
 import { dutyDowFor, isOnDuty } from "@/lib/dutyRoster";
 import { permitAbsenceSlots } from "@/lib/exitPermit";
 import { utcMidnight } from "@/lib/dates";
+import { permitContactChoices } from "@/lib/smsContacts";
 
 // Only TODAY'S rostered on-duty deputy may issue/cancel exit permits.
 async function requireOnDutyDeputy() {
@@ -67,15 +68,16 @@ export async function issueExitPermit(locale: string, formData: FormData) {
       id: true,
       groupId: true,
       subjectGroups: { select: { groupId: true } },
-      smsContacts: { where: { active: true }, select: { id: true } },
+      smsContacts: { select: { id: true, name: true, phone: true, role: true, isDefault: true } },
     },
   });
   if (!student) redirect(`${base}?${deskQs(formData, { error: "errStudent" })}`);
 
-  // The deputy must record who agreed: a picked contact when the student has
-  // contacts on record, otherwise the free-text note.
-  if (student.smsContacts.length > 0) {
-    if (!student.smsContacts.some((c) => c.id === smsContactId)) {
+  // The deputy must record who agreed: one of the parents the picker offers
+  // (any of them, active or not), otherwise the free-text note.
+  const choices = permitContactChoices(student.smsContacts);
+  if (choices.length > 0) {
+    if (!choices.some((c) => c.id === smsContactId)) {
       redirect(`${base}?${deskQs(formData, { student: studentId, error: "errContact" })}`);
     }
   } else if (!contactNote) {
