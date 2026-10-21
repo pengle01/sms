@@ -10,13 +10,18 @@ import { utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { getActiveTermInfo } from "@/lib/schoolConfig";
 import { getTranslations } from "next-intl/server";
 import { DeleteTestButton } from "./DeleteTestButton";
+import { StudentsTestsTab } from "./StudentsTestsTab";
+import { cn } from "@/lib/utils";
 
 export default async function TeacherTestsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { locale } = await params;
+  const tab = (await searchParams).tab === "students" ? "students" : "mine";
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login/staff`);
 
@@ -139,6 +144,26 @@ export default async function TeacherTestsPage({
         </Link>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-1 border-b border-slate-200">
+        {(["mine", "students"] as const).map((key) => (
+          <Link
+            key={key}
+            href={key === "mine" ? `/${locale}/teacher/tests` : `/${locale}/teacher/tests?tab=students`}
+            className={cn(
+              "px-4 py-2 text-sm font-medium border-b-2 -mb-px",
+              tab === key ? "border-emerald-600 text-emerald-700" : "border-transparent text-slate-500 hover:text-slate-800"
+            )}
+          >
+            {key === "mine" ? tTests("tabMine") : tTests("tabStudents")}
+          </Link>
+        ))}
+      </div>
+
+      {tab === "students" ? (
+        <StudentsTestsTab staffId={staff.id} today={today} />
+      ) : (
+      <>
       {upcoming.length === 0 && past.length === 0 && (
         <div className="text-center py-20 text-slate-400">
           <CalendarCheck className="w-12 h-12 mx-auto mb-3 opacity-30" />
@@ -159,6 +184,8 @@ export default async function TeacherTestsPage({
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{tTests("past30")}</p>
           <TestTable rows={past} faded />
         </div>
+      )}
+      </>
       )}
     </div>
   );
