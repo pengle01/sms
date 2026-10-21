@@ -75,6 +75,12 @@ describe("permitContactLabel", () => {
     ).toBe("X (AUNT) · 1");
   });
 
+  it("labels the import's SMS and home numbers and nameless parents without a role", () => {
+    expect(permitContactLabel({ name: "SMS", role: "OTHER", phone: "99333333" }, null)).toBe("Αριθμός SMS · 99333333");
+    expect(permitContactLabel({ name: "Τηλέφωνο οικίας", role: "OTHER", phone: "22123456" }, null)).toBe("Τηλέφωνο οικίας · 22123456");
+    expect(permitContactLabel({ name: "Πατέρας", role: "FATHER", phone: "99111111" }, null)).toBe("Πατέρας · 99111111");
+  });
+
   it("falls back to the free-text note, trimmed", () => {
     expect(permitContactLabel(null, "  Θείος — 99000000  ")).toBe("Θείος — 99000000");
     expect(permitContactLabel(undefined, "note")).toBe("note");

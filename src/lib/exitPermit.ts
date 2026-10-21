@@ -5,6 +5,8 @@
 // student ABSENT; the attendance record links to the permit so the office
 // admin can see the absence was covered (yellow in attendance views).
 
+import { isSmsPlaceholder, isHomePhone } from "./smsContacts";
+
 export interface PermitWindow {
   date: Date;
   fromPeriod: number;
@@ -19,6 +21,19 @@ export const PARENT_ROLE_EL: Record<string, string> = {
   OTHER: "Άλλο",
 };
 
+/** A contact's name as shown to staff: the import's «SMS» contact reads
+ *  «Αριθμός SMS»; everything else (a parent, «Τηλέφωνο οικίας», a nameless
+ *  parent stored as «Πατέρας») shows its stored name. */
+export function contactDisplayName(c: { name: string; role: string }): string {
+  return isSmsPlaceholder(c) ? "Αριθμός SMS" : c.name;
+}
+
+/** Is the role worth showing next to the name? Not when the name already says
+ *  what it is (the SMS/home numbers, or a nameless parent named by the role). */
+export function showsContactRole(c: { name: string; role: string }): boolean {
+  return !isSmsPlaceholder(c) && !isHomePhone(c) && c.name.trim() !== PARENT_ROLE_EL[c.role];
+}
+
 /**
  * Display label for who the deputy spoke with: the picked contact (name, role,
  * phone), falling back to the free-text note for students without contacts.
@@ -28,7 +43,8 @@ export function permitContactLabel(
   contactNote: string | null | undefined
 ): string | null {
   if (smsContact) {
-    return `${smsContact.name} (${PARENT_ROLE_EL[smsContact.role] ?? smsContact.role}) · ${smsContact.phone}`;
+    const role = showsContactRole(smsContact) ? ` (${PARENT_ROLE_EL[smsContact.role] ?? smsContact.role})` : "";
+    return `${contactDisplayName(smsContact)}${role} · ${smsContact.phone}`;
   }
   const note = contactNote?.trim();
   return note ? note : null;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { normalizePhone, evaluateDefaultSms, permitContactChoices } from "@/lib/smsContacts";
+import { normalizePhone, evaluateDefaultSms, permitContactChoices, importContactsFromRow } from "@/lib/smsContacts";
 
 describe("normalizePhone", () => {
   it("strips spaces and punctuation", () => {
@@ -62,13 +62,21 @@ describe("permitContactChoices", () => {
     expect(out[0].isDefault).toBe(true);
   });
 
-  it("hides an «SMS» number that belongs to no parent", () => {
+  it("keeps an «SMS» number that belongs to no parent", () => {
     const out = permitContactChoices([
       c("f", "ΓΕΩΡΓΙΟΥ ΑΝΔΡΕΑΣ", "99111111", "FATHER"),
       c("s", "SMS", "99333333", "OTHER", true),
     ]);
-    expect(out.map((x) => x.id)).toEqual(["f"]);
-    expect(out[0].isDefault).toBe(false);
+    expect(out.map((x) => x.id)).toEqual(["s", "f"]);
+  });
+
+  it("lists people first, then the home phone, then a non-default SMS number", () => {
+    const out = permitContactChoices([
+      c("s", "SMS", "99333333", "OTHER"),
+      c("h", "Τηλέφωνο οικίας", "22123456", "OTHER"),
+      c("m", "ΓΕΩΡΓΙΟΥ ΜΑΡΙΑ", "99222222", "MOTHER"),
+    ]);
+    expect(out.map((x) => x.id)).toEqual(["m", "h", "s"]);
   });
 
   it("offers every named parent, including the non-default (inactive) one", () => {
@@ -85,5 +93,44 @@ describe("permitContactChoices", () => {
 
   it("returns an empty list when there are no contacts", () => {
     expect(permitContactChoices([])).toEqual([]);
+  });
+});
+
+describe("importContactsFromRow", () => {
+  const row = {
+    fatherName: "ΓΕΩΡΓΙΟΥ ΑΝΔΡΕΑΣ", fatherPhone: "99111111",
+    motherName: "ΓΕΩΡΓΙΟΥ ΜΑΡΙΑ", motherPhone: "99222222",
+    guardianName: "", homePhone: "22123456", smsPhone: "99222222",
+  };
+
+  it("yields every phone column, once per number", () => {
+    expect(importContactsFromRow(row)).toEqual([
+      { name: "ΓΕΩΡΓΙΟΥ ΑΝΔΡΕΑΣ", phone: "99111111", role: "FATHER" },
+      { name: "ΓΕΩΡΓΙΟΥ ΜΑΡΙΑ", phone: "99222222", role: "MOTHER" },
+      { name: "Τηλέφωνο οικίας", phone: "22123456", role: "OTHER" },
+    ]);
+  });
+
+  it("keeps a parent's number when the file leaves the name empty", () => {
+    const out = importContactsFromRow({ ...row, fatherName: "" });
+    expect(out[0]).toEqual({ name: "Πατέρας", phone: "99111111", role: "FATHER" });
+  });
+
+  it("gives «Τηλέφωνο (1)» to the guardian when the row names one", () => {
+    const out = importContactsFromRow({ ...row, guardianName: "ΠΑΠΑ ΝΙΚΟΣ" });
+    expect(out[2]).toEqual({ name: "ΠΑΠΑ ΝΙΚΟΣ", phone: "22123456", role: "GUARDIAN" });
+  });
+
+  it("adds the SMS number only when it is nobody else's (formatting ignored)", () => {
+    expect(importContactsFromRow({ ...row, smsPhone: "+357 99 222222" })).toHaveLength(3);
+    expect(importContactsFromRow({ ...row, smsPhone: "99555555" }).at(-1)).toEqual(
+      { name: "SMS", phone: "99555555", role: "OTHER" }
+    );
+  });
+
+  it("skips empty columns", () => {
+    expect(importContactsFromRow({ ...row, fatherPhone: "", homePhone: " ", smsPhone: "" })).toEqual([
+      { name: "ΓΕΩΡΓΙΟΥ ΜΑΡΙΑ", phone: "99222222", role: "MOTHER" },
+    ]);
   });
 });

@@ -4,7 +4,7 @@ import { getSuperAdminAuth } from "@/server/authz";
 import { db } from "@/server/db";
 import * as XLSX from "xlsx";
 import { Gender, ParentRole, Role } from "@/generated/prisma/enums";
-import { normalizePhone, evaluateDefaultSms, SMS_FLAG_REASON_EL, SMS_PLACEHOLDER_NAME } from "@/lib/smsContacts";
+import { normalizePhone, evaluateDefaultSms, SMS_FLAG_REASON_EL, HOME_PHONE_NAME, importContactsFromRow } from "@/lib/smsContacts";
 import { revalidatePath } from "next/cache";
 import { writeAudit, requestMeta } from "@/server/audit";
 import { normRegistry } from "@/lib/studentImportSync";
@@ -207,60 +207,29 @@ export async function importStudents(_prev: ImportResult | null, formData: FormD
       // parent activates with the access code given to them (see
       // activate/actions.ts). Here we just record their phone as an SMS contact
       // (name + role) so messaging works before they have claimed an account.
-      // Phones compared normalised ("+357 99 123456" = "99123456"), so the
-      // file's SMS number doesn't become a second, nameless «SMS» contact for
-      // a parent already on record.
-      const usedPhones = new Set<string>();
+      // Every phone column becomes a contact, once per number (compared
+      // normalised, so "+357 99 123456" = "99123456" and the file's SMS number
+      // doesn't duplicate a parent already on record) — see importContactsFromRow.
       const existingPhones = new Set(
         (await db.smsContact.findMany({ where: { studentId: studentId2 }, select: { phone: true } }))
           .map((c) => normalizePhone(c.phone))
       );
-
-      async function addParentContact(
-        pLastName: string, pFirstName: string,
-        pPhone: string,    role: ParentRole,
-      ) {
-        const pName = [pLastName, pFirstName].filter(Boolean).join(" ");
-        const phone = pPhone.trim();
-        const norm = normalizePhone(phone);
-        if (!pName || !norm || usedPhones.has(norm)) return;
-        usedPhones.add(norm);
-        if (!existingPhones.has(norm)) {
-          await db.smsContact.create({
-            data: { studentId: studentId2, name: pName, phone, role, active: true },
-          });
-          smsContactsCreated++;
-        }
-      }
-
-      await addParentContact(
-        str(row, COLS.fatherLastName), str(row, COLS.fatherFirstName),
-        str(row, COLS.fatherPhone), ParentRole.FATHER,
-      );
-      await addParentContact(
-        str(row, COLS.motherLastName), str(row, COLS.motherFirstName),
-        str(row, COLS.motherPhone), ParentRole.MOTHER,
-      );
-
       const guardianName = [str(row, COLS.guardianLastName), str(row, COLS.guardianFirstName)].filter(Boolean).join(" ");
-      if (guardianName) {
-        await addParentContact(
-          str(row, COLS.guardianLastName), str(row, COLS.guardianFirstName),
-          str(row, COLS.homePhone), ParentRole.GUARDIAN,
-        );
-      }
-
-      // Dedicated SMS number from the file = the default recipient.
       const smsPhone = str(row, COLS.smsPhone);
-      const smsNorm = normalizePhone(smsPhone);
-      if (smsNorm && !usedPhones.has(smsNorm)) {
-        usedPhones.add(smsNorm);
-        if (!existingPhones.has(smsNorm)) {
-          await db.smsContact.create({
-            data: { studentId: studentId2, name: SMS_PLACEHOLDER_NAME, phone: smsPhone, role: ParentRole.OTHER, active: true },
-          });
-          smsContactsCreated++;
-        }
+      for (const c of importContactsFromRow({
+        fatherName: [str(row, COLS.fatherLastName), str(row, COLS.fatherFirstName)].filter(Boolean).join(" "),
+        fatherPhone: str(row, COLS.fatherPhone),
+        motherName: [str(row, COLS.motherLastName), str(row, COLS.motherFirstName)].filter(Boolean).join(" "),
+        motherPhone: str(row, COLS.motherPhone),
+        guardianName,
+        homePhone: str(row, COLS.homePhone),
+        smsPhone,
+      })) {
+        if (existingPhones.has(normalizePhone(c.phone))) continue;
+        await db.smsContact.create({
+          data: { studentId: studentId2, name: c.name, phone: c.phone, role: ParentRole[c.role], active: true },
+        });
+        smsContactsCreated++;
       }
 
       // Decide the default recipient and flag the student when the file's SMS
@@ -289,10 +258,15 @@ export async function importStudents(_prev: ImportResult | null, formData: FormD
           });
         }
       } else {
-        // No usable default (flagged) → keep everyone active so SMS still go out.
+        // No usable default (flagged) → keep everyone active so SMS still go
+        // out — except the home landline, which can't receive them.
         await db.smsContact.updateMany({
           where: { studentId: studentId2 },
           data: { isDefault: false, active: true },
+        });
+        await db.smsContact.updateMany({
+          where: { studentId: studentId2, name: HOME_PHONE_NAME, role: ParentRole.OTHER },
+          data: { active: false },
         });
       }
 

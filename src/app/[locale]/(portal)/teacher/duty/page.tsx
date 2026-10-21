@@ -10,7 +10,7 @@ import { dutyDowFor, isDutyEligible, canViewDutyDesk, isOnDuty } from "@/lib/dut
 import { locateHref, parseLocateTab, studentSearchWhere, type LocateTab, type LocateParams } from "@/lib/studentSearch";
 import { suggestionList } from "@/lib/textSearch";
 import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY } from "@/lib/schoolConfig";
-import { permitContactLabel } from "@/lib/exitPermit";
+import { permitContactLabel, contactDisplayName, showsContactRole } from "@/lib/exitPermit";
 import { getDayOverrides } from "@/server/substitutions";
 import { periodsForDow } from "@/lib/periods";
 import { SuggestInput } from "@/components/SuggestInput";
@@ -447,8 +447,10 @@ export default async function TeacherDutyPage({
                                   className="accent-yellow-500"
                                 />
                                 <span className="min-w-0">
-                                  <span className="block text-sm font-medium text-slate-800 truncate">{c.name}</span>
-                                  <span className="block text-xs text-slate-400">{t(`parentRoles.${c.role}` as Parameters<typeof t>[0])}</span>
+                                  <span className="block text-sm font-medium text-slate-800 truncate">{contactDisplayName(c)}</span>
+                                  {showsContactRole(c) && (
+                                    <span className="block text-xs text-slate-400">{t(`parentRoles.${c.role}` as Parameters<typeof t>[0])}</span>
+                                  )}
                                 </span>
                               </span>
                               <a
