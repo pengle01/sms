@@ -149,7 +149,8 @@ export function activationWelcomeEmail(
   studentName: string,
   baseUrl: string
 ): { subject: string; text: string } {
-  const login = baseUrl ? `${baseUrl.replace(/\/+$/, "")}/el/login` : "";
+  // Each audience has its own login page: students /login/student, guardians /login/parent.
+  const login = baseUrl ? `${baseUrl.replace(/\/+$/, "")}/el/login/${kind === "student" ? "student" : "parent"}` : "";
   const loginLineEl = login ? `Σελίδα σύνδεσης: ${login}\n` : "";
   const loginLineEn = login ? `Sign-in page: ${login}\n` : "";
   const nameEl = studentName ? ` ${studentName}` : "";

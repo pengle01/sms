@@ -1,50 +1,55 @@
-import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
-import { authOptions } from "@/server/auth";
-import { getPortalForRole } from "@/lib/rbac";
-import type { Role } from "@/generated/prisma/client";
-import { LoginForm } from "./LoginForm";
+import Link from "next/link";
 import { getTranslations } from "next-intl/server";
+import { Users, GraduationCap, Briefcase, ChevronRight } from "lucide-react";
+import { LoginShell, LOGIN_BACKGROUNDS, redirectIfSignedIn } from "./LoginShell";
 
-// Family portal — parents & students. Staff sign in at /login/staff.
-export default async function LoginPage({
+// The chooser: parents, students and staff each have their own login page.
+// Old links and bookmarks to /login land here.
+export default async function LoginChooserPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ error?: string; callbackUrl?: string; reason?: string }>;
 }) {
   const { locale } = await params;
-  const { error, reason } = await searchParams;
-  const session = await getServerSession(authOptions);
-
-  if (session?.user) {
-    const portal = getPortalForRole(session.user.role as Role);
-    redirect(`/${locale}/${portal}`);
-  }
-
+  await redirectIfSignedIn(locale);
   const t = await getTranslations("auth");
+  const otherLocale = locale === "el" ? "en" : "el";
+
+  const choices = [
+    { href: "parent", label: t("parentLogin"), icon: Users, tone: "border-sky-300/40 bg-sky-400/15 hover:bg-sky-400/25" },
+    { href: "student", label: t("studentLogin"), icon: GraduationCap, tone: "border-lime-300/40 bg-lime-400/10 hover:bg-lime-400/20" },
+    { href: "staff", label: t("staffLogin"), icon: Briefcase, tone: "border-white/20 bg-white/10 hover:bg-white/15" },
+  ] as const;
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4"
-         style={{ background: "linear-gradient(135deg, #052e16 0%, #14532d 50%, #064e3b 100%)" }}>
-      <div className="w-full max-w-md">
-        {/* Logo / Title */}
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-lime-400 shadow-lg shadow-emerald-900/50 mb-5">
-            <svg className="w-9 h-9 text-emerald-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
-            </svg>
-          </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">
-            {t("login")}
-          </h1>
-          <p className="text-emerald-300/70 mt-2 text-sm">School Management System</p>
+    <LoginShell title={t("chooseTitle")} background={LOGIN_BACKGROUNDS.chooser}>
+      <div className="space-y-5">
+        <div className="flex justify-end gap-1">
+          <span className="text-xs px-3 py-1.5 rounded-full bg-white/20 text-white font-semibold">
+            {locale === "el" ? "ΕΛ" : "EN"}
+          </span>
+          <a
+            href={`/${otherLocale}/login`}
+            className="text-xs px-3 py-1.5 rounded-full text-emerald-300/70 hover:text-white hover:bg-white/10 transition-colors"
+          >
+            {locale === "el" ? "EN" : "ΕΛ"}
+          </a>
         </div>
-
-        <LoginForm locale={locale} urlError={error} reason={reason} variant="family" />
+        <p className="text-center text-sm text-emerald-200/80">{t("chooseHint")}</p>
+        <div className="space-y-3">
+          {choices.map(({ href, label, icon: Icon, tone }) => (
+            <Link
+              key={href}
+              href={`/${locale}/login/${href}`}
+              className={`flex items-center gap-4 rounded-2xl border px-5 py-4 text-white font-semibold transition-colors ${tone}`}
+            >
+              <Icon className="w-6 h-6 flex-shrink-0" />
+              <span className="flex-1">{label}</span>
+              <ChevronRight className="w-5 h-5 opacity-60" />
+            </Link>
+          ))}
+        </div>
       </div>
-    </div>
+    </LoginShell>
   );
 }

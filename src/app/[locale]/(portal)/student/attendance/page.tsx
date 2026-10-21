@@ -24,7 +24,7 @@ export default async function StudentAttendancePage({
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
-  if (!session) redirect(`/${locale}/login`);
+  if (!session) redirect(`/${locale}/login/student`);
 
   const { month: monthStr, q, status: statusParam } = await searchParams;
   const query = (q ?? "").trim();
@@ -34,7 +34,7 @@ export default async function StudentAttendancePage({
     where: { userId: session.user.id },
     include: { group: true },
   });
-  if (!student) redirect(`/${locale}/login`);
+  if (!student) redirect(`/${locale}/login/student`);
 
   const t = await getTranslations("myAttendance");
   const tGrades = await getTranslations("grades");

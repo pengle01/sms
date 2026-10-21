@@ -6,7 +6,7 @@ describe("activationWelcomeEmail", () => {
     const mail = activationWelcomeEmail("student", "Νικολάου Μαρία", "https://sms.school.cy");
     expect(mail.subject).toContain("Ο λογαριασμός σας δημιουργήθηκε");
     expect(mail.text).toContain("μαθητικός σας λογαριασμός ενεργοποιήθηκε");
-    expect(mail.text).toContain("https://sms.school.cy/el/login");
+    expect(mail.text).toContain("https://sms.school.cy/el/login/student");
     expect(mail.text).toContain("Your student account has been activated");
   });
 
@@ -16,6 +16,7 @@ describe("activationWelcomeEmail", () => {
     expect(mail.text).toContain("Νικολάου Μαρία");
     expect(mail.text).toContain("άλλο παιδί");
     expect(mail.text).toContain("To link another child");
+    expect(mail.text).toContain("https://sms.school.cy/el/login/parent");
   });
 
   it("omits the sign-in line when no base URL is configured", () => {
@@ -26,7 +27,7 @@ describe("activationWelcomeEmail", () => {
 
   it("strips trailing slashes from the base URL", () => {
     const mail = activationWelcomeEmail("guardian", "", "https://sms.school.cy/");
-    expect(mail.text).toContain("https://sms.school.cy/el/login");
+    expect(mail.text).toContain("https://sms.school.cy/el/login/parent");
     expect(mail.text).not.toContain("cy//el");
   });
 

@@ -14,7 +14,7 @@ export default async function ParentPortalLayout({
   const auth = await getActiveAuth();
 
   if (!auth || auth.role !== "PARENT") {
-    redirect(`/${locale}/login`);
+    redirect(`/${locale}/login/parent`);
   }
 
   const { session } = auth;

@@ -20,7 +20,7 @@ export default async function ParentChildTestsPage({
 }) {
   const { locale, studentId } = await params;
   const session = await getServerSession(authOptions);
-  if (!session) redirect(`/${locale}/login`);
+  if (!session) redirect(`/${locale}/login/parent`);
 
   // Verify parent is linked to this student
   const parent = await db.parentProfile.findUnique({

@@ -19,7 +19,7 @@ export default async function ParentChildAttendancePage({
   const { locale, studentId } = await params;
   const t = await getTranslations("parentAttendance");
   const session = await getServerSession(authOptions);
-  if (!session) redirect(`/${locale}/login`);
+  if (!session) redirect(`/${locale}/login/parent`);
 
   // Verify parent is linked to this student
   const parent = await db.parentProfile.findUnique({

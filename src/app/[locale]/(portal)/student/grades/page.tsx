@@ -19,13 +19,13 @@ export default async function StudentGradesPage({
   const { q } = await searchParams;
   const query = (q ?? "").trim();
   const session = await getServerSession(authOptions);
-  if (!session) redirect(`/${locale}/login`);
+  if (!session) redirect(`/${locale}/login/student`);
 
   const student = await db.studentProfile.findUnique({
     where: { userId: session.user.id },
     include: { group: true },
   });
-  if (!student) redirect(`/${locale}/login`);
+  if (!student) redirect(`/${locale}/login/student`);
 
   const t = await getTranslations("grades");
 

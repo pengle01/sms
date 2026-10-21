@@ -14,7 +14,7 @@ export default async function StudentPortalLayout({
   const auth = await getActiveAuth();
 
   if (!auth || auth.role !== "STUDENT") {
-    redirect(`/${locale}/login`);
+    redirect(`/${locale}/login/student`);
   }
 
   const { session } = auth;

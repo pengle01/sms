@@ -28,7 +28,7 @@ async function createSession(userId: string, email: string, name: string | null,
   (await cookies()).set(cookie.name, cookie.value, cookie.options);
 }
 
-// The two login portals share one credential check; each only admits its own
+// The three login pages share one credential check; each only admits its own
 // audience. `errorPath` keeps failures on the page the user was actually on.
 async function loginWith(
   formData: FormData,
@@ -62,9 +62,14 @@ async function loginWith(
   redirect(`/${locale}/${getPortalForRole(user.role)}`);
 }
 
-/** Parents & students — the family portal at /login. */
-export async function familyLoginAction(formData: FormData) {
-  await loginWith(formData, "/login", (role) => role === "PARENT" || role === "STUDENT");
+/** Parents & guardians — /login/parent. */
+export async function parentLoginAction(formData: FormData) {
+  await loginWith(formData, "/login/parent", (role) => role === "PARENT");
+}
+
+/** Students — /login/student. */
+export async function studentLoginAction(formData: FormData) {
+  await loginWith(formData, "/login/student", (role) => role === "STUDENT");
 }
 
 /** Teachers, office, chaperones, admins — the staff portal at /login/staff. */

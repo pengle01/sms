@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
-import { familyLoginAction, staffLoginAction } from "./actions";
+import { parentLoginAction, studentLoginAction, staffLoginAction } from "./actions";
 import { PasswordInput } from "@/components/ui/password-input";
 
 interface LoginFormProps {
@@ -16,7 +16,7 @@ interface LoginFormProps {
   urlError?: string;
   /** Why the user was logged out (idle timer / maximum length). */
   reason?: string;
-  variant: "family" | "staff";
+  variant: "parent" | "student" | "staff";
 }
 
 export async function LoginForm({ locale, urlError, reason, variant }: LoginFormProps) {
@@ -30,8 +30,10 @@ export async function LoginForm({ locale, urlError, reason, variant }: LoginForm
   const errorMessage = urlError ? (errorMessages[urlError] ?? `Error: ${urlError}`) : null;
   const otherLocale = locale === "el" ? "en" : "el";
   const otherLocaleLabel = locale === "el" ? "EN" : "ΕΛ";
-  const path = variant === "staff" ? "/login/staff" : "/login";
+  const path = `/login/${variant}`;
   const isStaff = variant === "staff";
+  const action = { parent: parentLoginAction, student: studentLoginAction, staff: staffLoginAction }[variant];
+  const heading = { parent: t("parentLogin"), student: t("studentLogin"), staff: t("staffLogin") }[variant];
 
   return (
     <div className="space-y-5">
@@ -70,12 +72,12 @@ export async function LoginForm({ locale, urlError, reason, variant }: LoginForm
             {t("emailPassword")}
           </p>
           <h2 className="text-xl font-bold text-white">
-            {isStaff ? t("staffLogin") : t("familyLogin")}
+            {heading}
           </h2>
           <p className="text-sm text-lime-300/70 mt-1">{t("parentLoginDesc")}</p>
         </div>
 
-        <form action={isStaff ? staffLoginAction : familyLoginAction} className="space-y-4">
+        <form action={action} className="space-y-4">
           <input type="hidden" name="locale" value={locale} />
           <div className="space-y-1.5">
             <Label htmlFor="email" className="text-lime-200 text-sm">{t("email")}</Label>
@@ -136,18 +138,29 @@ export async function LoginForm({ locale, urlError, reason, variant }: LoginForm
         </>
       ) : (
         <>
-          <p className="text-center text-sm text-emerald-300/60 mt-2">
-            <Link href={`/${locale}/activate`} className="text-lime-400 hover:text-lime-300 font-medium">
+          {variant === "parent" ? (
+            // Parents most often arrive with a slip in hand — make activation obvious.
+            <Link
+              href={`/${locale}/activate`}
+              className="flex items-center justify-center w-full h-11 rounded-xl border border-sky-300/40 bg-sky-400/15 text-sky-100 font-semibold text-sm hover:bg-sky-400/25"
+            >
               {tActivate("haveCode")}
             </Link>
-          </p>
-          <p className="text-center text-sm text-emerald-300/60 mt-1">
-            <Link href={`/${locale}/login/staff`} className="text-lime-400 hover:text-lime-300 font-medium">
-              {t("toStaffLogin")}
-            </Link>
-          </p>
+          ) : (
+            <p className="text-center text-sm text-emerald-300/60 mt-2">
+              <Link href={`/${locale}/activate`} className="text-lime-400 hover:text-lime-300 font-medium">
+                {tActivate("haveCode")}
+              </Link>
+            </p>
+          )}
         </>
       )}
+
+      <p className="text-center text-sm mt-1">
+        <Link href={`/${locale}/login`} className="text-emerald-300/70 hover:text-white">
+          {t("otherAccountType")}
+        </Link>
+      </p>
     </div>
   );
 }

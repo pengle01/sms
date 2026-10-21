@@ -87,7 +87,7 @@ export function ActivateForm({ locale, labels }: { locale: string; labels: Label
         <p className="text-lg font-semibold text-slate-900">{t("done")}</p>
         <p className="text-sm text-slate-500">{t("doneHint")}</p>
         <Link
-          href={`/${locale}/login`}
+          href={`/${locale}/login/${role === "student" ? "student" : "parent"}`}
           className="mt-2 inline-flex items-center h-11 px-6 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
         >
           {t("goToLogin")}

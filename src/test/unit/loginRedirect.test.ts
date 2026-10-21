@@ -3,9 +3,9 @@ import { loginPathFor, loginPathForPortal } from "@/lib/loginRedirect";
 import { redirectTo, publicOrigin } from "@/lib/redirect";
 
 describe("loginPathFor", () => {
-  it("sends parents and students to the family login", () => {
-    expect(loginPathFor("PARENT", "el")).toBe("/el/login");
-    expect(loginPathFor("STUDENT", "en")).toBe("/en/login");
+  it("sends parents and students to their own login pages", () => {
+    expect(loginPathFor("PARENT", "el")).toBe("/el/login/parent");
+    expect(loginPathFor("STUDENT", "en")).toBe("/en/login/student");
   });
 
   it("sends every staff role, chaperones included, to the staff login", () => {
@@ -16,7 +16,7 @@ describe("loginPathFor", () => {
 
   it("sends an expired session to the staff login and defaults to Greek", () => {
     expect(loginPathFor(undefined, null)).toBe("/el/login/staff");
-    expect(loginPathFor("PARENT", "fr")).toBe("/el/login");
+    expect(loginPathFor("PARENT", "fr")).toBe("/el/login/parent");
   });
 });
 
@@ -28,9 +28,10 @@ describe("loginPathForPortal", () => {
     expect(loginPathForPortal("/el/chaperone/students")).toBe("/el/login/staff");
   });
 
-  it("family portals → family login", () => {
-    expect(loginPathForPortal("/el/parent/children")).toBe("/el/login");
-    expect(loginPathForPortal("/student")).toBe("/el/login");
+  it("parent and student portals → their own login pages", () => {
+    expect(loginPathForPortal("/el/parent/children")).toBe("/el/login/parent");
+    expect(loginPathForPortal("/en/student/grades")).toBe("/en/login/student");
+    expect(loginPathForPortal("/student")).toBe("/el/login/student");
   });
 });
 

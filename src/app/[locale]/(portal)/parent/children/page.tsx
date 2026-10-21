@@ -17,7 +17,7 @@ export default async function ParentChildrenPage({
   const { locale } = await params;
   const t = await getTranslations("parentChildren");
   const session = await getServerSession(authOptions);
-  if (!session) redirect(`/${locale}/login`);
+  if (!session) redirect(`/${locale}/login/parent`);
 
   const parent = await db.parentProfile.findUnique({
     where: { userId: session.user.id },

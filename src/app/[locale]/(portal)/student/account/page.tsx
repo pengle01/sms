@@ -11,8 +11,8 @@ export default async function AccountPage({
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) redirect(`/${locale}/login`);
-  if (!["STUDENT"].includes(session.user.role)) redirect(`/${locale}/login`);
+  if (!session?.user?.id) redirect(`/${locale}/login/student`);
+  if (!["STUDENT"].includes(session.user.role)) redirect(`/${locale}/login/student`);
 
   return <AccountPanel userId={session.user.id} />;
 }

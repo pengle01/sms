@@ -11,7 +11,7 @@ export default async function StudentNotificationsPage({
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
-  if (!session) redirect(`/${locale}/login`);
+  if (!session) redirect(`/${locale}/login/student`);
 
   const t = await getTranslations("notifications");
 

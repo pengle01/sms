@@ -25,7 +25,7 @@ export default async function StudentTestsPage({
   const { q } = await searchParams;
   const query = (q ?? "").trim();
   const session = await getServerSession(authOptions);
-  if (!session) redirect(`/${locale}/login`);
+  if (!session) redirect(`/${locale}/login/student`);
 
   const student = await db.studentProfile.findUnique({
     where: { userId: session.user.id },
@@ -33,7 +33,7 @@ export default async function StudentTestsPage({
       subjectGroups: { select: { groupId: true } },
     },
   });
-  if (!student) redirect(`/${locale}/login`);
+  if (!student) redirect(`/${locale}/login/student`);
 
   const t = await getTranslations("myTests");
   const tShared = await getTranslations("tests");

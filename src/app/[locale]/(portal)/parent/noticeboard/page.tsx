@@ -12,7 +12,7 @@ export default async function ParentNotificationsPage({
   const { locale } = await params;
   const t = await getTranslations("notifications");
   const session = await getServerSession(authOptions);
-  if (!session) redirect(`/${locale}/login`);
+  if (!session) redirect(`/${locale}/login/parent`);
 
   return (
     <div className="space-y-5">

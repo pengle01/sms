@@ -22,13 +22,13 @@ export default async function StudentSchedulePage({
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
-  if (!session) redirect(`/${locale}/login`);
+  if (!session) redirect(`/${locale}/login/student`);
 
   const student = await db.studentProfile.findUnique({
     where: { userId: session.user.id },
     include: { group: true, subjectGroups: { select: { groupId: true } } },
   });
-  if (!student) redirect(`/${locale}/login`);
+  if (!student) redirect(`/${locale}/login/student`);
 
   const t = await getTranslations("mySchedule");
   const tShared = await getTranslations("tests");
