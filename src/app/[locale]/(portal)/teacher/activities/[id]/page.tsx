@@ -10,7 +10,7 @@ import { getPickerGroups } from "@/server/studentPicker";
 import type { PickerGroup } from "@/components/students/StudentPicker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, Users, X, Award, Pencil, Check, Repeat, Copy } from "lucide-react";
+import { ChevronLeft, Users, X, Award, Pencil, Check, Repeat, Copy, Printer } from "lucide-react";
 import { fmtDisplayDate } from "@/lib/dates";
 import { getPeriodsPerDay, maxPeriodCount } from "@/lib/schoolConfig";
 import { ddkCategoryLabel } from "@/lib/ddk";
@@ -113,6 +113,15 @@ export default async function ActivityDetailPage({
           </p>
           <p className="text-slate-400 text-xs mt-0.5">Διοργάνωση από {staffDisplayName(activity.filer)}</p>
         </div>
+        {!editing && activity.participants.length > 0 && (
+          <Link
+            href={`${baseHref}/print`}
+            className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 flex-shrink-0"
+          >
+            <Printer className="w-4 h-4" />
+            Εκτύπωση
+          </Link>
+        )}
         {isOwner &&
           (editing ? (
             <Link

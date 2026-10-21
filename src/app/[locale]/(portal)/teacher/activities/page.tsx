@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Users, Pencil } from "lucide-react";
+import { Plus, Users, Pencil, Printer } from "lucide-react";
 import { utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { DeleteActivityButton } from "./DeleteActivityButton";
 
@@ -95,6 +95,16 @@ export default async function ActivitiesPage({
                     {a._count.participants}
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
+                    {a._count.participants > 0 && (
+                      <Link
+                        href={`/${locale}/teacher/activities/${a.id}/print`}
+                        title="Εκτύπωση καταλόγου μαθητών"
+                        aria-label="Εκτύπωση καταλόγου μαθητών"
+                        className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                      </Link>
+                    )}
                     <Link
                       href={`/${locale}/teacher/activities/${a.id}?edit=1`}
                       className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-slate-200 text-slate-600 text-xs font-medium hover:bg-slate-50"
