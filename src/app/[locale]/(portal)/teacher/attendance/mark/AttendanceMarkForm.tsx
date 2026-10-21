@@ -11,6 +11,7 @@ import { EditBreakDialog } from "@/components/toilet/EditBreakDialog";
 import { trpc } from "@/trpc/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { CheckCircle, XCircle, Clock, Loader2, MapPin, CalendarRange, LogOut, DoorOpen, Printer } from "lucide-react";
 import { markAttendanceSaved } from "@/lib/attendanceRefresh";
@@ -318,14 +319,18 @@ export function AttendanceMarkForm({
 
           <Card>
             <CardContent className="p-0">
-              <div className="divide-y divide-slate-50">
+              <div className="divide-y divide-slate-200">
                 {students.map((student, idx) => {
                   const rec = records[student.id] ?? { status: "PRESENT" as AttendanceStatus, minutesDelayed: 0 };
                   const loc = studentLocations[student.id];
                   return (
                     <div
                       key={student.id}
-                      className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center"
+                      className={cn(
+                        "flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center",
+                        // Alternate shading so each student's line is easy to follow.
+                        idx % 2 === 1 && "bg-slate-100"
+                      )}
                     >
                       {/* Name + location + period history */}
                       <div className="flex-1 min-w-0">
@@ -520,7 +525,7 @@ export function AttendanceMarkForm({
           </thead>
           <tbody>
             {students.map((student, idx) => (
-              <tr key={student.id} className="break-inside-avoid">
+              <tr key={student.id} className={cn("break-inside-avoid", idx % 2 === 1 && "bg-gray-200")}>
                 <td className="border border-black px-1 py-0.5 text-right tabular-nums">{idx + 1}</td>
                 <td className="border border-black px-1 py-0.5">{student.user?.name}</td>
                 <td className="border border-black px-1 py-0.5">{student.group?.name ?? ""}</td>
@@ -535,6 +540,8 @@ export function AttendanceMarkForm({
           @media print {
             @page { size: A4; margin: 12mm; }
             html, body { background: white !important; }
+            /* Keep the alternate-row shading — browsers drop backgrounds by default. */
+            tr { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .h-screen { height: auto !important; }
             .overflow-hidden, .overflow-y-auto { overflow: visible !important; }
             main { padding: 0 !important; }
