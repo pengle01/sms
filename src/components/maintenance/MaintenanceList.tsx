@@ -18,6 +18,7 @@ import {
   isEquipment,
   isStatus,
   resolveTab,
+  seesAll,
   sortRequests,
   unresolvedCount,
   type MaintenanceTab,
@@ -35,8 +36,9 @@ export interface MaintenanceListParams {
 /**
  * The maintenance list, shared by the teacher, office and admin portals.
  *
- * Tabs: "My requests" for everyone, "My rooms" for IT maintainers (their rooms
- * plus every room nobody maintains), "All" for the admin. Everything shown has
+ * Tabs: "My requests" for everyone; for IT maintainers and the IT manager
+ * "My rooms" (their own) and "No maintainer" (rooms nobody maintains); "All"
+ * for the admin and the IT manager. Everything shown has
  * already been restricted to what this viewer may see.
  */
 export async function MaintenanceList({ basePath, params }: { basePath: string; params: MaintenanceListParams }) {
@@ -51,7 +53,7 @@ export async function MaintenanceList({ basePath, params }: { basePath: string; 
   const tab = resolveTab(params.tab, viewer);
   const tabs = availableTabs(viewer);
 
-  // Every tab's rows, for the counts on the tabs — at most three small queries.
+  // Every tab's rows, for the counts on the tabs — at most four small queries.
   const byTab = new Map<MaintenanceTab, Awaited<ReturnType<typeof listRequests>>>();
   await Promise.all(tabs.map(async (k) => byTab.set(k, await listRequests(viewer, k, assigned))));
   const all = byTab.get(tab) ?? [];
@@ -67,8 +69,8 @@ export async function MaintenanceList({ basePath, params }: { basePath: string; 
     pickQueryString({ ...current, ...over }, MAINTENANCE_KEYS) || "?";
   const rowQuery = pickQueryString(current, MAINTENANCE_KEYS);
 
-  // The admin also sees which rooms have no IT maintainer, so gaps are visible.
-  const uncovered = viewer.isAdmin
+  // The admin and the IT manager also see which rooms have no IT maintainer, so gaps are visible.
+  const uncovered = seesAll(viewer)
     ? (await getRooms()).map((r) => r.name).filter((name) => !assigned.has(name))
     : [];
 
@@ -132,6 +134,7 @@ export async function MaintenanceList({ basePath, params }: { basePath: string; 
             : t("roomsTabHintNone")}
         </p>
       )}
+      {tab === "unassigned" && <p className="text-sm text-slate-500">{t("unassignedTabHint")}</p>}
 
       <div className="flex flex-wrap items-end gap-4">
         <div className="space-y-1.5">
@@ -211,7 +214,7 @@ export async function MaintenanceList({ basePath, params }: { basePath: string; 
         </CardContent>
       </Card>
 
-      {viewer.isAdmin && uncovered.length > 0 && (
+      {seesAll(viewer) && uncovered.length > 0 && (
         <details className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
           <summary className="cursor-pointer font-medium text-amber-800 flex items-center gap-1.5">
             <MapPin className="w-4 h-4" />

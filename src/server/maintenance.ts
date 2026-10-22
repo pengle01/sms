@@ -3,6 +3,7 @@ import type { Prisma, Role } from "@/generated/prisma/client";
 import { isAdminStaff } from "@/lib/rbac";
 import {
   canViewRequest,
+  seesAll,
   type MaintenanceViewer,
   type MaintenanceTab,
   type MaintenanceRow,
@@ -21,17 +22,23 @@ export async function getMaintenanceViewer(auth: {
     where: { userId: auth.userId },
     select: {
       itMaintenance: true,
+      itManager: true,
       roomsMaintained: { select: { room: { select: { name: true } } } },
     },
   });
   const isIt = !!staff?.itMaintenance;
+  const isManager = !!staff?.itManager;
   return {
     userId: auth.userId,
     isAdmin: auth.roles.some(isAdminStaff),
+    isManager,
     isIt,
-    myRooms: new Set(isIt ? staff!.roomsMaintained.map((m) => m.room.name) : []),
+    myRooms: new Set(isIt || isManager ? staff!.roomsMaintained.map((m) => m.room.name) : []),
   };
 }
+
+/** An active room maintainer: an IT maintainer, or an IT manager given rooms. */
+const MAINTAINS = { OR: [{ itMaintenance: true }, { itManager: true }] };
 
 /**
  * Rooms that have an active maintainer. A maintainer whose designation was
@@ -40,10 +47,35 @@ export async function getMaintenanceViewer(auth: {
  */
 export async function assignedRoomNames(): Promise<Set<string>> {
   const rows = await db.roomMaintainer.findMany({
-    where: { staffProfile: { itMaintenance: true } },
+    where: { staffProfile: MAINTAINS },
     select: { room: { select: { name: true } } },
   });
   return new Set(rows.map((r) => r.room.name));
+}
+
+/**
+ * Each maintained room with the names of its maintainers — what the person
+ * filing a request is shown. Same rule as assignedRoomNames: a room missing
+ * here has no maintainer, so every IT maintainer sees its requests.
+ */
+export async function roomMaintainerNames(): Promise<Record<string, string[]>> {
+  const rows = await db.roomMaintainer.findMany({
+    where: { staffProfile: MAINTAINS },
+    select: {
+      room: { select: { name: true } },
+      staffProfile: { select: { scheduleName: true, user: { select: { name: true } } } },
+    },
+  });
+  const byRoom: Record<string, string[]> = {};
+  for (const r of rows) {
+    const name = personName({
+      name: r.staffProfile.user?.name ?? null,
+      staffProfile: { scheduleName: r.staffProfile.scheduleName },
+    });
+    if (name) (byRoom[r.room.name] ??= []).push(name);
+  }
+  for (const names of Object.values(byRoom)) names.sort((a, b) => a.localeCompare(b, "el"));
+  return byRoom;
 }
 
 const PERSON = {
@@ -64,10 +96,12 @@ export async function listRequests(
   assigned: ReadonlySet<string>,
 ): Promise<MaintenanceRow[]> {
   let where: Prisma.MaintenanceRequestWhereInput;
-  if (tab === "all" && viewer.isAdmin) {
+  if (tab === "all" && seesAll(viewer)) {
     where = {};
-  } else if (tab === "rooms" && viewer.isIt) {
-    where = { OR: [{ room: { in: [...viewer.myRooms] } }, { room: { notIn: [...assigned] } }] };
+  } else if (tab === "rooms" && (viewer.isIt || viewer.isManager)) {
+    where = { room: { in: [...viewer.myRooms] } };
+  } else if (tab === "unassigned" && (viewer.isIt || viewer.isManager)) {
+    where = { room: { notIn: [...assigned] } };
   } else {
     where = { createdById: viewer.userId };
   }
@@ -116,7 +150,7 @@ export async function roomMaintainerUserIds(room: string): Promise<string[]> {
   const rows = await db.roomMaintainer.findMany({
     where: {
       room: { name: room },
-      staffProfile: { itMaintenance: true, userId: { not: null }, user: { isActive: true } },
+      staffProfile: { ...MAINTAINS, userId: { not: null }, user: { isActive: true } },
     },
     select: { staffProfile: { select: { userId: true } } },
   });
@@ -127,6 +161,15 @@ export async function roomMaintainerUserIds(room: string): Promise<string[]> {
 export async function allItUserIds(): Promise<string[]> {
   const rows = await db.staffProfile.findMany({
     where: { itMaintenance: true, userId: { not: null }, user: { isActive: true } },
+    select: { userId: true },
+  });
+  return rows.flatMap((r) => (r.userId ? [r.userId] : []));
+}
+
+/** User ids of every active IT manager — told about every new request. */
+export async function itManagerUserIds(): Promise<string[]> {
+  const rows = await db.staffProfile.findMany({
+    where: { itManager: true, userId: { not: null }, user: { isActive: true } },
     select: { userId: true },
   });
   return rows.flatMap((r) => (r.userId ? [r.userId] : []));

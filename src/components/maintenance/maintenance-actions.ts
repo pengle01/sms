@@ -26,6 +26,7 @@ import {
   allItUserIds,
   assignedRoomNames,
   getMaintenanceViewer,
+  itManagerUserIds,
   roomMaintainerUserIds,
 } from "@/server/maintenance";
 
@@ -107,8 +108,12 @@ async function greekLabels() {
 }
 
 async function itSideRecipients(room: string, actorId: string) {
-  const [maintainers, allIt] = await Promise.all([roomMaintainerUserIds(room), allItUserIds()]);
-  return itRecipients(maintainers, allIt, actorId);
+  const [maintainers, allIt, managers] = await Promise.all([
+    roomMaintainerUserIds(room),
+    allItUserIds(),
+    itManagerUserIds(),
+  ]);
+  return itRecipients(maintainers, allIt, managers, actorId);
 }
 
 /** File a new request. Notifies the room's IT maintainers (or all of them, if it has none). */

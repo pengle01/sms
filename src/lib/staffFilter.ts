@@ -30,6 +30,7 @@ export interface StaffRow {
   ddkCoordinator: boolean;
   substitutionCoordinator: boolean;
   itMaintenance: boolean;
+  itManager: boolean;
   parentMessaging: boolean;
   /** Role the admin planned before sign-up (StaffProfile.plannedRole). */
   plannedRole: Role | null;
@@ -77,13 +78,14 @@ export function staffRowLabel(row: StaffRow): string {
 }
 
 /** The extra hats an admin grants on top of the role. Keys are URL values. */
-export type StaffPost = "specialEd" | "ddk" | "subCoord" | "itMaint" | "parentMsg" | "homeroom" | "extraAdmin";
+export type StaffPost = "specialEd" | "ddk" | "subCoord" | "itMaint" | "itManager" | "parentMsg" | "homeroom" | "extraAdmin";
 
 const POST_PREDICATE: Record<StaffPost, (r: StaffRow) => boolean> = {
   specialEd:  (r) => r.specialEducation,
   ddk:        (r) => r.ddkCoordinator,
   subCoord:   (r) => r.substitutionCoordinator,
   itMaint:    (r) => r.itMaintenance,
+  itManager:  (r) => r.itManager,
   parentMsg:  (r) => r.parentMessaging,
   homeroom:   (r) => r.homerooms.length > 0,
   extraAdmin: (r) => r.extraAdmin,

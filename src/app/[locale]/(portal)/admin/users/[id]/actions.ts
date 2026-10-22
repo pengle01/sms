@@ -363,6 +363,39 @@ export async function setItMaintenance(
 }
 
 /**
+ * Toggle the "IT manager" designation: sees and handles every IT maintenance
+ * request, like the admin, and is told about every new one.
+ */
+export async function setItManager(
+  targetUserId: string,
+  value: boolean
+): Promise<ActionResult> {
+  const auth = await getSuperAdminAuth();
+  if (!auth) return { ok: false, error: "Δεν επιτρέπεται" };
+
+  const target = await db.user.findUnique({
+    where: { id: targetUserId },
+    select: { staffProfile: { select: { id: true } } },
+  });
+  if (!target?.staffProfile) return { ok: false, error: "Δεν υπάρχει συνδεδεμένο προφίλ προσωπικού" };
+
+  await db.staffProfile.update({
+    where: { id: target.staffProfile.id },
+    data: { itManager: value },
+  });
+  await writeAudit({
+    userId: auth.userId,
+    action: "staff.itManager",
+    resource: "StaffProfile",
+    resourceId: target.staffProfile.id,
+    details: { value },
+    ...(await requestMeta()),
+  });
+  revalidateUsers();
+  return { ok: true };
+}
+
+/**
  * Toggle parent messaging for a staff member (off by default). Turning it off
  * keeps their threads readable but closes them to replies on both sides.
  */

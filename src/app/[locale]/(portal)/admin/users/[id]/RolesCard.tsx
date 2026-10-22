@@ -15,11 +15,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ShieldCheck, ShieldOff, HeartHandshake, ArrowLeftRight, Award, Wrench, MessageSquare, Loader2 } from "lucide-react";
+import { ShieldCheck, ShieldOff, HeartHandshake, ArrowLeftRight, Award, Wrench, MonitorCog, MessageSquare, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { Role } from "@/generated/prisma/client";
 import { STAFF_PROFILE_ROLES } from "@/lib/staffRole";
-import { grantSuperAdmin, revokeSuperAdmin, setSpecialEducation, setSubstitutionCoordinator, setDdkCoordinator, setItMaintenance, setParentMessaging, setUserRole } from "./actions";
+import { grantSuperAdmin, revokeSuperAdmin, setSpecialEducation, setSubstitutionCoordinator, setDdkCoordinator, setItMaintenance, setItManager, setParentMessaging, setUserRole } from "./actions";
 
 interface Props {
   userId: string;
@@ -38,6 +38,7 @@ interface Props {
   substitutionCoordinator: boolean;
   ddkCoordinator: boolean;
   itMaintenance: boolean;
+  itManager: boolean;
   parentMessaging: boolean;
   /** The account's primary role (changeable here between educator roles). */
   currentRole: Role;
@@ -55,6 +56,7 @@ export function RolesCard({
   substitutionCoordinator,
   ddkCoordinator,
   itMaintenance,
+  itManager,
   parentMessaging,
   currentRole,
 }: Props) {
@@ -276,6 +278,29 @@ export function RolesCard({
     </button>
   );
 
+  // ── IT manager designation ─────────────────────────────────────────────────
+  const itManagerControl = !hasStaffProfile ? (
+    <span className="text-xs text-slate-400">{t("noStaffProfile")}</span>
+  ) : (
+    <button
+      disabled={pending}
+      onClick={() =>
+        run(
+          () => setItManager(userId, !itManager),
+          itManager ? t("designationRemoved") : t("designationSet")
+        )
+      }
+      className={
+        itManager
+          ? "inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700 disabled:opacity-50"
+          : "inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-slate-200 text-slate-600 text-xs font-medium hover:bg-slate-50 disabled:opacity-50"
+      }
+    >
+      <MonitorCog className="w-3.5 h-3.5" />
+      {itManager ? t("itManagerOn") : t("itManagerOff")}
+    </button>
+  );
+
   // ── Parent messaging (off by default) ────────────────────────────────────
   const messagingControl = !hasStaffProfile ? (
     <span className="text-xs text-slate-400">{t("noStaffProfile")}</span>
@@ -314,6 +339,7 @@ export function RolesCard({
         {row(t("rowSubCoord"), coordinatorControl, t("rowSubCoordHint"))}
         {row(t("rowDdk"), ddkControl, t("rowDdkHint"))}
         {row(t("rowIt"), itControl, t("rowItHint"))}
+        {row(t("rowItManager"), itManagerControl, t("rowItManagerHint"))}
         {row(t("rowParentMsg"), messagingControl, t("rowParentMsgHint"))}
       </CardContent>
     </Card>

@@ -207,11 +207,12 @@ export default async function UserDetailPage({
         substitutionCoordinator={sp?.substitutionCoordinator ?? false}
         ddkCoordinator={sp?.ddkCoordinator ?? false}
         itMaintenance={sp?.itMaintenance ?? false}
+        itManager={sp?.itManager ?? false}
         parentMessaging={sp?.parentMessaging ?? false}
         currentRole={user.role}
       />
 
-      {sp?.itMaintenance && (await maintainedRoomsCard(user.id, sp.id))}
+      {(sp?.itMaintenance || sp?.itManager) && (await maintainedRoomsCard(user.id, sp.id))}
 
       <Card>
         <CardHeader className="pb-2">
@@ -265,7 +266,7 @@ async function maintainedRoomsCard(userId: string, staffProfileId: string) {
   const [rooms, assignments] = await Promise.all([
     getRooms(),
     db.roomMaintainer.findMany({
-      where: { staffProfile: { itMaintenance: true } },
+      where: { staffProfile: { OR: [{ itMaintenance: true }, { itManager: true }] } },
       select: {
         roomId: true,
         staffProfileId: true,

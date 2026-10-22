@@ -71,6 +71,7 @@ export async function StaffDirectory({ params }: { params: StaffDirectoryParams 
       ddkCoordinator: false,
       substitutionCoordinator: false,
       itMaintenance: false,
+      itManager: false,
       parentMessaging: false,
       plannedRole: null,
       homerooms: [

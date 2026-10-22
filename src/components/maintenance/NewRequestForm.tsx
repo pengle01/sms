@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Loader2, Send } from "lucide-react";
+import { Loader2, Send, UserCheck, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EQUIPMENT, DESCRIPTION_MAX, type Equipment } from "@/lib/maintenance";
 import { EquipmentIcon } from "./ui";
@@ -12,10 +12,13 @@ import { createMaintenanceRequest } from "./maintenance-actions";
 
 export function NewRequestForm({
   rooms,
+  maintainers,
   basePath,
   defaultRoom,
 }: {
   rooms: string[];
+  /** Room → names of its IT maintainers; a room missing here has none. */
+  maintainers: Record<string, string[]>;
   basePath: string;
   defaultRoom?: string;
 }) {
@@ -59,6 +62,18 @@ export function NewRequestForm({
             <option key={r} value={r}>{r}</option>
           ))}
         </select>
+        {room !== "" &&
+          (maintainers[room]?.length ? (
+            <p className="mt-2 flex items-start gap-1.5 text-sm text-emerald-700">
+              <UserCheck className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              {t("roomSupportedBy", { names: maintainers[room].join(", ") })}
+            </p>
+          ) : (
+            <p className="mt-2 flex items-start gap-1.5 text-sm text-amber-700">
+              <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              {t("roomUnsupported")}
+            </p>
+          ))}
       </div>
 
       <fieldset>

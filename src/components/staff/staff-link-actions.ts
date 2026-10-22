@@ -121,6 +121,7 @@ export async function deleteStaffProfile(staffProfileId: string): Promise<Delete
       substitutionCoordinator: true,
       ddkCoordinator: true,
       itMaintenance: true,
+      itManager: true,
       _count: {
         select: {
           homeroomGroups: true, homeroomHeadGroups: true, homeroomCounselorGroups: true,
@@ -152,7 +153,7 @@ export async function deleteStaffProfile(staffProfileId: string): Promise<Delete
       c.testSchedules, c.grades, c.dutyDays, c.substitutionRequests, c.substitutionAbsences,
       c.substitutionAssignments, c.toiletBreaks, c.ddkAwards, c.conversations, c.roomsMaintained,
     ],
-    designations: [sp.specialEducation, sp.substitutionCoordinator, sp.ddkCoordinator, sp.itMaintenance],
+    designations: [sp.specialEducation, sp.substitutionCoordinator, sp.ddkCoordinator, sp.itMaintenance, sp.itManager],
   });
   if (reasons.length > 0) return { ok: false, reasons };
 

@@ -5,6 +5,7 @@ import { ChevronLeft } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { getActiveAuth } from "@/server/authz";
 import { getRooms } from "@/server/rooms";
+import { roomMaintainerNames } from "@/server/maintenance";
 import { canFileMaintenance } from "@/lib/maintenance";
 import { NewRequestForm } from "./NewRequestForm";
 
@@ -14,7 +15,10 @@ export async function NewRequestView({ basePath, room }: { basePath: string; roo
   if (!auth || !canFileMaintenance(auth.roles)) notFound();
 
   const t = await getTranslations("maintenance");
-  const rooms = (await getRooms()).map((r) => r.name);
+  const [rooms, maintainers] = await Promise.all([
+    getRooms().then((rs) => rs.map((r) => r.name)),
+    roomMaintainerNames(),
+  ]);
 
   return (
     <div className="space-y-5 max-w-2xl">
@@ -28,7 +32,7 @@ export async function NewRequestView({ basePath, room }: { basePath: string; roo
       </div>
       <Card>
         <CardContent className="p-5">
-          <NewRequestForm rooms={rooms} basePath={basePath} defaultRoom={room} />
+          <NewRequestForm rooms={rooms} maintainers={maintainers} basePath={basePath} defaultRoom={room} />
         </CardContent>
       </Card>
     </div>

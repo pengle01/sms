@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   canFileMaintenance,
   isHandler,
+  seesAll,
   canViewRequest,
   allowedTransitions,
   noteRequired,
@@ -22,7 +23,7 @@ import {
 } from "@/lib/maintenance";
 
 function viewer(over: Partial<MaintenanceViewer> = {}): MaintenanceViewer {
-  return { userId: "u1", isAdmin: false, isIt: false, myRooms: new Set(), ...over };
+  return { userId: "u1", isAdmin: false, isManager: false, isIt: false, myRooms: new Set(), ...over };
 }
 
 // Β61 belongs to "me", Β62 to another maintainer, ΒΙΒΛ to nobody.
@@ -183,35 +184,43 @@ describe("notifiesFiler", () => {
 
 describe("itRecipients", () => {
   it("notifies the room's maintainers when it has some", () => {
-    expect(itRecipients(["it1"], ["it1", "it2"], "teacher")).toEqual(["it1"]);
+    expect(itRecipients(["it1"], ["it1", "it2"], [], "teacher")).toEqual(["it1"]);
   });
 
   it("falls back to every IT maintainer for an unassigned room", () => {
-    expect(itRecipients([], ["it1", "it2"], "teacher")).toEqual(["it1", "it2"]);
+    expect(itRecipients([], ["it1", "it2"], [], "teacher")).toEqual(["it1", "it2"]);
   });
 
   it("never notifies the person who acted, and never twice", () => {
-    expect(itRecipients(["it1", "it1", "it2"], [], "it1")).toEqual(["it2"]);
+    expect(itRecipients(["it1", "it1", "it2"], [], [], "it1")).toEqual(["it2"]);
+  });
+
+  it("always adds the IT managers, once, but never the actor", () => {
+    expect(itRecipients(["it1"], ["it1", "it2"], ["mgr"], "teacher")).toEqual(["it1", "mgr"]);
+    expect(itRecipients([], ["it1"], ["mgr", "it1"], "teacher")).toEqual(["it1", "mgr"]);
+    expect(itRecipients(["it1"], [], ["mgr"], "mgr")).toEqual(["it1"]);
   });
 });
 
 describe("availableTabs / resolveTab", () => {
   it("everyone has 'mine'; IT adds 'rooms'; the admin adds 'all'", () => {
-    expect(availableTabs({ isAdmin: false, isIt: false })).toEqual(["mine"]);
-    expect(availableTabs({ isAdmin: false, isIt: true })).toEqual(["mine", "rooms"]);
-    expect(availableTabs({ isAdmin: true, isIt: false })).toEqual(["mine", "all"]);
+    expect(availableTabs({ isAdmin: false, isManager: false, isIt: false })).toEqual(["mine"]);
+    expect(availableTabs({ isAdmin: false, isManager: false, isIt: true })).toEqual(["mine", "rooms", "unassigned"]);
+    expect(availableTabs({ isAdmin: true, isManager: false, isIt: false })).toEqual(["mine", "all"]);
   });
 
   it("defaults to the most useful tab", () => {
-    expect(resolveTab(undefined, { isAdmin: false, isIt: false })).toBe("mine");
-    expect(resolveTab(undefined, { isAdmin: false, isIt: true })).toBe("rooms");
-    expect(resolveTab(undefined, { isAdmin: true, isIt: false })).toBe("all");
+    expect(resolveTab(undefined, { isAdmin: false, isManager: false, isIt: false })).toBe("mine");
+    expect(resolveTab(undefined, { isAdmin: false, isManager: false, isIt: true })).toBe("rooms");
+    expect(resolveTab(undefined, { isAdmin: true, isManager: false, isIt: false })).toBe("all");
   });
 
   it("honours an allowed tab and ignores a forbidden one", () => {
-    expect(resolveTab("mine", { isAdmin: false, isIt: true })).toBe("mine");
-    expect(resolveTab("all", { isAdmin: false, isIt: false })).toBe("mine");
-    expect(resolveTab("rooms", { isAdmin: false, isIt: false })).toBe("mine");
+    expect(resolveTab("mine", { isAdmin: false, isManager: false, isIt: true })).toBe("mine");
+    expect(resolveTab("all", { isAdmin: false, isManager: false, isIt: false })).toBe("mine");
+    expect(resolveTab("rooms", { isAdmin: false, isManager: false, isIt: false })).toBe("mine");
+    expect(resolveTab("unassigned", { isAdmin: false, isManager: false, isIt: false })).toBe("mine");
+    expect(resolveTab("unassigned", { isAdmin: false, isManager: false, isIt: true })).toBe("unassigned");
   });
 });
 
@@ -254,5 +263,29 @@ describe("filterRequests / sortRequests / unresolvedCount", () => {
 
   it("counts what is not yet resolved", () => {
     expect(unresolvedCount(rows)).toBe(2);
+  });
+});
+
+describe("IT manager", () => {
+  const mgr = viewer({ isManager: true });
+
+  it("sees all, like the admin", () => {
+    expect(seesAll(mgr)).toBe(true);
+    expect(seesAll(viewer({ isIt: true }))).toBe(false);
+  });
+
+  it("handles and sees a room someone else maintains", () => {
+    expect(isHandler(mgr, "Β62", ASSIGNED)).toBe(true);
+    expect(canViewRequest(mgr, { room: "Β62", createdById: "other" }, ASSIGNED)).toBe(true);
+  });
+
+  it("gets every tab and lands on 'all'", () => {
+    expect(availableTabs({ isAdmin: false, isManager: true, isIt: false })).toEqual(["mine", "rooms", "unassigned", "all"]);
+    expect(resolveTab(undefined, { isAdmin: false, isManager: true, isIt: false })).toBe("all");
+  });
+
+  it("who is also an IT maintainer keeps the rooms inbox as default", () => {
+    expect(availableTabs({ isAdmin: false, isManager: true, isIt: true })).toEqual(["mine", "rooms", "unassigned", "all"]);
+    expect(resolveTab(undefined, { isAdmin: false, isManager: true, isIt: true })).toBe("rooms");
   });
 });

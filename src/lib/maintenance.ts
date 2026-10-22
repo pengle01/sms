@@ -42,16 +42,23 @@ export interface MaintenanceViewer {
   userId: string;
   /** SUPER_ADMIN (primary or granted): sees and handles everything. */
   isAdmin: boolean;
+  /** Holds the IT-manager designation: sees and handles everything, like the admin. */
+  isManager: boolean;
   /** Holds the IT-maintenance designation. */
   isIt: boolean;
   /** Names of the rooms assigned to this IT maintainer. */
   myRooms: ReadonlySet<string>;
 }
 
+/** The admin and the IT manager see — and handle — every request. */
+export function seesAll(viewer: Pick<MaintenanceViewer, "isAdmin" | "isManager">): boolean {
+  return viewer.isAdmin || viewer.isManager;
+}
+
 /**
  * May this viewer handle (and therefore see) requests for this room?
  *
- * The admin always. An IT maintainer for their own rooms — and for any room
+ * The admin and the IT manager always. An IT maintainer for their own rooms — and for any room
  * nobody maintains, so a request is never stranded while assignments are
  * incomplete. `assignedRooms` is the set of rooms that have an active maintainer.
  */
@@ -60,7 +67,7 @@ export function isHandler(
   room: string,
   assignedRooms: ReadonlySet<string>,
 ): boolean {
-  if (viewer.isAdmin) return true;
+  if (seesAll(viewer)) return true;
   if (!viewer.isIt) return false;
   return viewer.myRooms.has(room) || !assignedRooms.has(room);
 }
@@ -158,41 +165,45 @@ export function notifiesFiler(to: Status): boolean {
 
 /**
  * Who hears about activity on the IT side: the room's maintainers, or every IT
- * maintainer when the room has none. Never the person who acted.
+ * maintainer when the room has none — and the IT managers always. Never the
+ * person who acted.
  */
 export function itRecipients(
   roomMaintainerUserIds: readonly string[],
   allItUserIds: readonly string[],
+  managerUserIds: readonly string[],
   actorId: string,
 ): string[] {
   const pool = roomMaintainerUserIds.length > 0 ? roomMaintainerUserIds : allItUserIds;
-  return [...new Set(pool)].filter((id) => id !== actorId);
+  return [...new Set([...pool, ...managerUserIds])].filter((id) => id !== actorId);
 }
 
 // ─── The list page ───────────────────────────────────────────────────────────
 
-export type MaintenanceTab = "mine" | "rooms" | "all";
+/** "rooms": the IT maintainer's own rooms; "unassigned": rooms nobody maintains. */
+export type MaintenanceTab = "mine" | "rooms" | "unassigned" | "all";
 
 /** Tabs this viewer may open, in display order. */
-export function availableTabs(viewer: Pick<MaintenanceViewer, "isAdmin" | "isIt">): MaintenanceTab[] {
+export function availableTabs(viewer: Pick<MaintenanceViewer, "isAdmin" | "isManager" | "isIt">): MaintenanceTab[] {
   const tabs: MaintenanceTab[] = ["mine"];
-  if (viewer.isIt) tabs.push("rooms");
-  if (viewer.isAdmin) tabs.push("all");
+  if (viewer.isIt || viewer.isManager) tabs.push("rooms", "unassigned");
+  if (seesAll(viewer)) tabs.push("all");
   return tabs;
 }
 
 /**
  * The requested tab if allowed, otherwise the most useful default: the IT
- * inbox for a maintainer, everything for the admin, "mine" for everyone else.
+ * inbox for a maintainer, everything for the admin and the IT manager, "mine"
+ * for everyone else.
  */
 export function resolveTab(
   requested: string | undefined,
-  viewer: Pick<MaintenanceViewer, "isAdmin" | "isIt">,
+  viewer: Pick<MaintenanceViewer, "isAdmin" | "isManager" | "isIt">,
 ): MaintenanceTab {
   const tabs = availableTabs(viewer);
   if (requested && (tabs as string[]).includes(requested)) return requested as MaintenanceTab;
   if (viewer.isIt) return "rooms";
-  if (viewer.isAdmin) return "all";
+  if (seesAll(viewer)) return "all";
   return "mine";
 }
 
