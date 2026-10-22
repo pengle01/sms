@@ -35,6 +35,14 @@ describe("loginPathForPortal", () => {
   });
 });
 
+describe("loginPathForPortal — the bare site address", () => {
+  it("opens the chooser, keeping the locale", () => {
+    expect(loginPathForPortal("/")).toBe("/el/login");
+    expect(loginPathForPortal("/el")).toBe("/el/login");
+    expect(loginPathForPortal("/en/")).toBe("/en/login");
+  });
+});
+
 describe("redirectTo", () => {
   it("redirects with a relative Location, never a host", () => {
     const res = redirectTo("/el/login/staff");

@@ -97,8 +97,9 @@ export default async function proxy(request: NextRequest) {
     }
 
     if (!token) {
-      // Family portals → family login; staff portals (chaperone included) →
-      // staff login. Built on the browser's address (forwarded headers), never
+      // The bare site address → the login chooser; parent / student portals →
+      // their own login; staff portals (chaperone included) → staff login
+      // (loginPathForPortal). Built on the browser's address (forwarded headers), never
       // the reverse proxy's internal one, which sent users to localhost.
       const loginUrl = new URL(loginPathForPortal(pathname), publicOrigin(request.headers, request.url));
       loginUrl.searchParams.set("callbackUrl", pathname);
