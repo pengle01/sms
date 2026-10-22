@@ -18,10 +18,11 @@ export default async function TeacherTestsPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; group?: string; range?: string; type?: string; partial?: string }>;
 }) {
   const { locale } = await params;
-  const tab = (await searchParams).tab === "students" ? "students" : "mine";
+  const sp = await searchParams;
+  const tab = sp.tab === "students" ? "students" : "mine";
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login/staff`);
 
@@ -161,7 +162,7 @@ export default async function TeacherTestsPage({
       </div>
 
       {tab === "students" ? (
-        <StudentsTestsTab staffId={staff.id} today={today} />
+        <StudentsTestsTab staffId={staff.id} today={today} params={sp} baseHref={`/${locale}/teacher/tests`} />
       ) : (
       <>
       {upcoming.length === 0 && past.length === 0 && (
