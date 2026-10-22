@@ -4,10 +4,10 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { FileUp, Loader2, AlertTriangle, CheckCircle2, Info } from "lucide-react";
+import { FileUp, Loader2, AlertTriangle, CheckCircle2, Info, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fmtDisplayDate, fmtDisplayDateTime } from "@/lib/dates";
-import { IMPORT_MAX_BYTES, type ImportIssue, type ImportKind } from "@/lib/substitutionImport";
+import { IMPORT_MAX_BYTES, SCHOOL_ABSENCE_URL, type ImportIssue, type ImportKind } from "@/lib/substitutionImport";
 import { previewImportAction, importPlanAction, type ImportPreview } from "./actions";
 
 const KINDS: ImportKind[] = ["COVER", "SWAP", "SUPPORT_MERGE", "RELEASE", "ROOM_CHANGE", "STUDY_HALL", "CHAPERONE_HALL"];
@@ -86,6 +86,15 @@ export function ImportCard({ locale }: { locale: string }) {
             {pending ? t("checking") : t("chooseFile")}
           </button>
           {fileName && <span className="text-sm text-slate-500 truncate max-w-xs">{fileName}</span>}
+          <a
+            href={SCHOOL_ABSENCE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-sm text-sky-700 underline hover:text-sky-900"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            {t("openSchoolAbsence")}
+          </a>
         </div>
 
         {preview && !preview.ok && (

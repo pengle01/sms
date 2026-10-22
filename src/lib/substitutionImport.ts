@@ -17,6 +17,9 @@ import { z } from "zod";
  */
 export const SUBSTITUTION_REQUESTS_IN_APP = false;
 
+/** Where teachers file those requests, and the coordinator exports the plan. */
+export const SCHOOL_ABSENCE_URL = "https://www.schoolabsencecy.net/";
+
 export const SCHOOL_ABSENCE_SOURCE = "SCHOOL_ABSENCE";
 
 /** Largest file accepted — the sample export is ~15 KB. */

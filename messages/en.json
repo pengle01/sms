@@ -1046,6 +1046,7 @@
     "errPastCancel": "Past requests cannot be cancelled.",
     "requestsElsewhere": "Requests are filed in SchoolAbsence",
     "requestsElsewhereHint": "Absences, exemptions from covering and room changes are now filed in the SchoolAbsence program. The day's plan appears in the app once the substitution coordinator finalizes it.",
+    "openSchoolAbsence": "Open SchoolAbsence",
     "errRequestsElsewhere": "Requests are now filed in the SchoolAbsence program.",
     "dayPlanTitle": "Substitution plan — {date}",
     "dayPlanShow": "Show",
@@ -2206,6 +2207,7 @@
   "substitutionImport": {
     "title": "Import from SchoolAbsence",
     "hint": "Choose the .json file exported by SchoolAbsence. It is checked against the timetable first and imported as a draft for you to finalize.",
+    "openSchoolAbsence": "Open SchoolAbsence",
     "chooseFile": "Choose file",
     "checking": "Checking…",
     "previewFor": "Plan for {date} ({day})",

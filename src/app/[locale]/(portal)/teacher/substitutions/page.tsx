@@ -11,7 +11,7 @@ import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY } from "@/lib/schoolConfig";
 import { maxPeriodCount } from "@/lib/periods";
 import { getRooms } from "@/server/rooms";
 import { ClipboardEdit, MessageSquare, ArrowRight, ExternalLink } from "lucide-react";
-import { SUBSTITUTION_REQUESTS_IN_APP } from "@/lib/substitutionImport";
+import { SUBSTITUTION_REQUESTS_IN_APP, SCHOOL_ABSENCE_URL } from "@/lib/substitutionImport";
 import { RequestForm } from "./RequestForm";
 import { CancelRequestButton } from "./CancelRequestButton";
 import { ExchangeTab } from "./ExchangeTab";
@@ -119,8 +119,17 @@ export default async function SubstitutionsPage({
                 {t("requestsElsewhere")}
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
               <p className="text-sm text-slate-600">{t("requestsElsewhereHint")}</p>
+              <a
+                href={SCHOOL_ABSENCE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-sky-600 text-white text-sm font-semibold hover:bg-sky-700"
+              >
+                <ExternalLink className="w-4 h-4" />
+                {t("openSchoolAbsence")}
+              </a>
             </CardContent>
           </Card>
         ) : (

@@ -9,6 +9,7 @@ import {
   weekdayOf,
   isRealDate,
   readImportMeta,
+  SCHOOL_ABSENCE_URL,
   type ImportLookups,
   type SchoolAbsenceFile,
   type StaffRef,
@@ -296,5 +297,13 @@ describe("helpers", () => {
   it("readImportMeta tolerates anything malformed", () => {
     expect(readImportMeta(null)).toBeNull();
     expect(readImportMeta({ absences: "x" })).toEqual({ exportedAt: null, absences: [], exemptions: [], duty: [] });
+  });
+});
+
+describe("SCHOOL_ABSENCE_URL", () => {
+  it("is the https address of SchoolAbsence", () => {
+    const url = new URL(SCHOOL_ABSENCE_URL);
+    expect(url.protocol).toBe("https:");
+    expect(url.hostname).toBe("www.schoolabsencecy.net");
   });
 });
