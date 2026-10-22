@@ -104,3 +104,20 @@ export function referralGroupSignals(
     color: referralColor({ isDraft: false, openedAt: r.openedAt, students }),
   }));
 }
+
+/**
+ * Who resolves a referral: each student's homegroup headteacher (Β.Δ.), once
+ * each, with whether any of their students is still pending. A student whose
+ * homegroup has no Β.Δ. assigned shows as `name: null` — nobody can resolve
+ * them until the admin assigns one.
+ */
+export function responsibleHeadteachers(
+  students: { status: string; headteacher: string | null }[]
+): { name: string | null; pending: boolean }[] {
+  const byName = new Map<string | null, boolean>();
+  for (const s of students) {
+    const pending = s.status === "PENDING";
+    byName.set(s.headteacher, (byName.get(s.headteacher) ?? false) || pending);
+  }
+  return [...byName.entries()].map(([name, pending]) => ({ name, pending }));
+}

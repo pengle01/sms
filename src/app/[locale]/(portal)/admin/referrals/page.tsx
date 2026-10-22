@@ -8,6 +8,7 @@ import { AlertTriangle } from "lucide-react";
 import { NewReferralDialog } from "./NewReferralDialog";
 import { ReferralStatusBadge, ReferralGroupSignals, referralLeftAccentClass } from "@/components/referrals/ReferralStatusBadge";
 import { StudentsDropdown } from "@/components/referrals/StudentsDropdown";
+import { ResponsibleHeadteachers } from "@/components/referrals/ResponsibleHeadteachers";
 import { ReferralInfo } from "@/components/referrals/ReferralInfo";
 import { fmtDisplayDate, fmtDisplayDateTime } from "@/lib/dates";
 import { getTranslations } from "next-intl/server";
@@ -75,7 +76,7 @@ export default async function ReferralsPage({
         students: {
           include: {
             student: { include: { user: { select: { name: true } } } },
-            group: { select: { name: true } },
+            group: { select: { name: true, homeroomHeadteacher: { select: { scheduleName: true, user: { select: { name: true } } } } } },
             resolution: true,
           },
           orderBy: { student: { user: { name: "asc" as const } } },
@@ -252,6 +253,7 @@ export default async function ReferralsPage({
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{tCommon("student")}</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("description")}</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("filedBy")}</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Υπεύθυνος/η Β.Δ.</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("status")}</th>
               </tr>
             </thead>
@@ -285,6 +287,14 @@ export default async function ReferralsPage({
                       <ReferralInfo referral={r} />
                     </td>
                     <td className="px-5 py-3.5 text-slate-500 text-sm">{staffDisplayName(r.filer)}</td>
+                    <td className="px-5 py-3.5 text-sm">
+                      <ResponsibleHeadteachers
+                        students={r.students.map((rs) => ({
+                          status: rs.status,
+                          headteacher: rs.group?.homeroomHeadteacher ? staffDisplayName(rs.group.homeroomHeadteacher) : null,
+                        }))}
+                      />
+                    </td>
                     <td className="px-5 py-3.5">
                       <ReferralStatusBadge referral={r} />
                       <ReferralGroupSignals referral={r} className="mt-1.5" />
@@ -294,7 +304,7 @@ export default async function ReferralsPage({
               })}
               {referrals.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-5 py-16 text-center text-slate-400">
+                  <td colSpan={7} className="px-5 py-16 text-center text-slate-400">
                     <AlertTriangle className="w-10 h-10 mx-auto mb-2 opacity-30" />
                     {t("noReferrals")}
                   </td>

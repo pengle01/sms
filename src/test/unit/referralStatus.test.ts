@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { overallStatus, referralColor, referralColorScoped, referralGroupSignals, canDeleteReferral } from "@/lib/referralStatus";
+import { overallStatus, referralColor, referralColorScoped, referralGroupSignals, canDeleteReferral, responsibleHeadteachers } from "@/lib/referralStatus";
 
 const students = (statuses: string[]) => statuses.map((status) => ({ status }));
 
@@ -177,5 +177,36 @@ describe("canDeleteReferral", () => {
         if (canDeleteReferral(r, ME)) expect(colour).toBe("RED");
       }
     }
+  });
+});
+
+describe("responsibleHeadteachers", () => {
+  it("lists each homegroup Β.Δ. once, pending if any of their students is", () => {
+    expect(
+      responsibleHeadteachers([
+        { status: "RESOLVED", headteacher: "ΗΥ-ΜΑΣΙΑ Μ. ΒΔ" },
+        { status: "PENDING", headteacher: "Μ-ΠΑΠΑΣ Α. ΒΔ" },
+        { status: "PENDING", headteacher: "ΗΥ-ΜΑΣΙΑ Μ. ΒΔ" },
+      ])
+    ).toEqual([
+      { name: "ΗΥ-ΜΑΣΙΑ Μ. ΒΔ", pending: true },
+      { name: "Μ-ΠΑΠΑΣ Α. ΒΔ", pending: true },
+    ]);
+  });
+
+  it("marks a fully resolved Β.Δ. as not pending and keeps an unassigned homegroup as null", () => {
+    expect(
+      responsibleHeadteachers([
+        { status: "RESOLVED", headteacher: "ΗΥ-ΜΑΣΙΑ Μ. ΒΔ" },
+        { status: "PENDING", headteacher: null },
+      ])
+    ).toEqual([
+      { name: "ΗΥ-ΜΑΣΙΑ Μ. ΒΔ", pending: false },
+      { name: null, pending: true },
+    ]);
+  });
+
+  it("returns nothing for a referral without students", () => {
+    expect(responsibleHeadteachers([])).toEqual([]);
   });
 });

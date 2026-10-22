@@ -14,6 +14,7 @@ import { DeleteReferralButton } from "./DeleteReferralButton";
 import { ReferralStatusBadge, ReferralGroupSignals, referralBorderClass, referralLeftAccentClass } from "@/components/referrals/ReferralStatusBadge";
 import { StudentInfoDialog } from "@/components/referrals/StudentInfoDialog";
 import { StudentsDropdown } from "@/components/referrals/StudentsDropdown";
+import { ResponsibleHeadteachers } from "@/components/referrals/ResponsibleHeadteachers";
 import { ReferralInfo } from "@/components/referrals/ReferralInfo";
 import { ReferralTabs } from "@/components/referrals/ReferralTabs";
 import { canDeleteReferral, overallStatus } from "@/lib/referralStatus";
@@ -28,7 +29,8 @@ const referralInclude = {
   students: {
     include: {
       student: { include: { user: { select: { name: true } } } },
-      group: { select: { name: true } },
+      // The homegroup's Β.Δ. resolves this student — shown as «Υπεύθυνος/η Β.Δ.».
+      group: { select: { name: true, homeroomHeadteacher: { select: { scheduleName: true, user: { select: { name: true } } } } } },
       resolution: {
         include: {
           expulsionDays: { orderBy: { date: "asc" as const } },
@@ -228,6 +230,14 @@ export default async function TeacherReferralsPage({
           />
         </td>
         <td className="px-4 py-3 text-sm">
+          <ResponsibleHeadteachers
+            students={students.map((rs) => ({
+              status: rs.status,
+              headteacher: rs.group?.homeroomHeadteacher ? staffDisplayName(rs.group.homeroomHeadteacher) : null,
+            }))}
+          />
+        </td>
+        <td className="px-4 py-3 text-sm">
           <ReferralStatusBadge referral={r} />
           <ReferralGroupSignals referral={r} className="mt-1.5" />
         </td>
@@ -303,6 +313,7 @@ export default async function TeacherReferralsPage({
         {showFiler && <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Καταγγέλλων</th>}
         <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Λεπτομέρειες</th>
         <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Μαθητές</th>
+        <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Υπεύθυνος/η Β.Δ.</th>
         <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Κατάσταση</th>
         <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Ενέργειες</th>
       </tr>
@@ -491,7 +502,7 @@ export default async function TeacherReferralsPage({
               <ReferralRow key={r.id} r={r} showFiler={false} />
             ))}
             {myReferrals.length === 0 && (
-              <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">
+              <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400">
                 <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-30" />
                 Δεν έχετε υποβάλει καταγγελίες
               </td></tr>
@@ -579,7 +590,7 @@ export default async function TeacherReferralsPage({
                   <ReferralRow key={r.id} r={r} showFiler={true} />
                 ))}
                 {allReferrals.length === 0 && (
-                  <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400">
+                  <tr><td colSpan={8} className="px-4 py-12 text-center text-slate-400">
                     <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-30" />
                     Δεν βρέθηκαν καταγγελίες
                   </td></tr>
