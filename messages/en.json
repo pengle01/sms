@@ -2328,6 +2328,10 @@
   },
   "timetablePrint": {
     "print": "Print timetable",
+    "specialty": "Specialty",
+    "specialtyPick": "— choose —",
+    "specialtyOption": "{code} ({count, plural, one {# teacher} other {# teachers}})",
+    "printSpecialty": "Print all",
     "titleTeacher": "Teacher timetable",
     "titleStudent": "Student timetable",
     "titleRoom": "Room timetable",

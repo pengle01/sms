@@ -4,6 +4,8 @@ import Link from "next/link";
 import { Upload, CalendarDays } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { PrintTimetableLink } from "@/components/timetable/PrintTimetableLink";
+import { PrintSpecialtyPicker } from "@/components/timetable/PrintSpecialtyPicker";
+import { specialtyGroups } from "@/lib/timetablePrint";
 
 const PERIODS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
 
@@ -137,6 +139,11 @@ export default async function TimetablePage({
             )}
             {view === "teacher" && selectedTeacher && (
               <PrintTimetableLink kind="teacher" value={selectedTeacher} />
+            )}
+            {view === "teacher" && (
+              <PrintSpecialtyPicker
+                specialties={specialtyGroups(teacherNames.map((tn) => tn.staffName!)).map((g) => ({ code: g.code, count: g.names.length }))}
+              />
             )}
           </div>
 

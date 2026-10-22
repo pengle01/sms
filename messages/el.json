@@ -2328,6 +2328,10 @@
   },
   "timetablePrint": {
     "print": "Εκτύπωση προγράμματος",
+    "specialty": "Ειδικότητα",
+    "specialtyPick": "— επιλέξτε —",
+    "specialtyOption": "{code} ({count, plural, one {# εκπαιδευτικός} other {# εκπαιδευτικοί}})",
+    "printSpecialty": "Εκτύπωση όλων",
     "titleTeacher": "Πρόγραμμα εκπαιδευτικού",
     "titleStudent": "Πρόγραμμα μαθητή/τριας",
     "titleRoom": "Πρόγραμμα αίθουσας",

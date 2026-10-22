@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { printTarget, canPrintTimetable, safeBack, timetablePrintHref } from "@/lib/timetablePrint";
+import { printTarget, canPrintTimetable, safeBack, timetablePrintHref, specialtyCode, specialtyGroups } from "@/lib/timetablePrint";
 import { weekGrid, cell } from "@/lib/whereabouts";
 
 describe("printTarget", () => {
@@ -82,5 +82,27 @@ describe("weekGrid", () => {
     expect(cell(grid, 1, 2).map((s) => s.id)).toEqual(["a", "b"]);
     expect(cell(grid, 3, 5).map((s) => s.id)).toEqual(["c"]);
     expect(cell(grid, 2, 1)).toEqual([]);
+  });
+});
+
+describe("specialty printing", () => {
+  it("parses a specialty target and allows it to the same people as a teacher's", () => {
+    expect(printTarget({ kind: "specialty", name: " ΗΥ " })).toEqual({ kind: "specialty", key: "ΗΥ" });
+    expect(printTarget({ kind: "specialty" })).toBeNull();
+    expect(canPrintTimetable("specialty", ["TEACHER"])).toBe(true);
+    expect(canPrintTimetable("specialty", ["STUDENT"])).toBe(false);
+  });
+
+  it("reads the specialty code from a timetable name", () => {
+    expect(specialtyCode("ΗΥ-ΜΑΣΙΑ Μ. ΒΔ")).toBe("ΗΥ");
+    expect(specialtyCode(" Μ - ΠΑΠΑΣ Α. ")).toBe("Μ");
+    expect(specialtyCode("ΓΕΩΡΓΙΟΥ Μ.")).toBeNull();
+  });
+
+  it("groups names by code, each name once, in Greek order", () => {
+    expect(specialtyGroups(["Μ-ΠΑΠΑΣ Α.", "ΗΥ-ΜΑΣΙΑ Μ. ΒΔ", "Μ-ΑΡΝΟΣ Σ.", " Μ-ΠΑΠΑΣ Α. ", "ΓΕΩΡΓΙΟΥ Μ."])).toEqual([
+      { code: "ΗΥ", names: ["ΗΥ-ΜΑΣΙΑ Μ. ΒΔ"] },
+      { code: "Μ", names: ["Μ-ΑΡΝΟΣ Σ.", "Μ-ΠΑΠΑΣ Α."] },
+    ]);
   });
 });

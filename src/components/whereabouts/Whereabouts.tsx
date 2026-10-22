@@ -22,6 +22,8 @@ import {
 } from "@/lib/whereabouts";
 import { RoomSelect } from "./RoomSelect";
 import { PrintTimetableLink } from "@/components/timetable/PrintTimetableLink";
+import { PrintSpecialtyPicker } from "@/components/timetable/PrintSpecialtyPicker";
+import { specialtyGroups } from "@/lib/timetablePrint";
 
 export interface WhereaboutsParams {
   tab?: string;
@@ -136,26 +138,34 @@ async function TeachersTab({
     if (name && !byName.has(name)) byName.set(name, { scheduleName: name, accountName: null, phone: null });
   }
   const roster = [...byName.values()];
+  // Only names that actually teach can be printed by specialty.
+  const specialties = specialtyGroups(slots.flatMap((s) => (s.staffName ? [s.staffName] : []))).map((g) => ({
+    code: g.code,
+    count: g.names.length,
+  }));
   const matches = findTeachers(roster, query);
   const chosen = matches.length === 1 ? matches[0]! : null;
   const week = chosen ? teacherWeek(slots, chosen.scheduleName) : null;
 
   return (
     <div className="space-y-4">
-      <form method="GET" className="flex items-end gap-2">
-        <input type="hidden" name="tab" value="teachers" />
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <SuggestInput
-            name="teacher"
-            defaultValue={query}
-            minChars={2}
-            placeholder={t("searchPlaceholder")}
-            suggestions={suggestionList(roster.map((r) => r.scheduleName))}
-            className="h-9 w-72 max-w-full pl-9 pr-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-        </div>
-      </form>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <form method="GET" className="flex items-end gap-2">
+          <input type="hidden" name="tab" value="teachers" />
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <SuggestInput
+              name="teacher"
+              defaultValue={query}
+              minChars={2}
+              placeholder={t("searchPlaceholder")}
+              suggestions={suggestionList(roster.map((r) => r.scheduleName))}
+              className="h-9 w-72 max-w-full pl-9 pr-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+        </form>
+        <PrintSpecialtyPicker specialties={specialties} />
+      </div>
 
       {!query ? (
         <p className="text-sm text-slate-500">{t("searchHint")}</p>
