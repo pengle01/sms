@@ -9,6 +9,16 @@ import {
   validateNewRequest,
   validateComment,
   validateStatusChange,
+  timeRequired,
+  minutesFrom,
+  isValidMinutes,
+  statsWindow,
+  maintenanceStats,
+  averageMinutes,
+  splitMinutes,
+  isStatsRange,
+  MINUTES_MAX,
+  type Resolution,
   itRecipients,
   notifiesFiler,
   availableTabs,
@@ -167,7 +177,16 @@ describe("validateStatusChange", () => {
 
   it("accepts a valid change, with or without an optional note", () => {
     expect(validateStatusChange(["handler"], "OPEN", "IN_PROGRESS", "")).toBeNull();
-    expect(validateStatusChange(["handler"], "IN_PROGRESS", "RESOLVED", "Άλλαξα λάμπα")).toBeNull();
+    expect(validateStatusChange(["handler"], "IN_PROGRESS", "RESOLVED", "Άλλαξα λάμπα", 30)).toBeNull();
+  });
+
+  it("requires the time spent to resolve, and only to resolve", () => {
+    expect(validateStatusChange(["handler"], "IN_PROGRESS", "RESOLVED", "Άλλαξα λάμπα")).toBe("errTimeRequired");
+    expect(validateStatusChange(["handler"], "IN_PROGRESS", "RESOLVED", "Άλλαξα λάμπα", 0)).toBe("errTimeRequired");
+    expect(validateStatusChange(["handler"], "IN_PROGRESS", "RESOLVED", "x", MINUTES_MAX + 1)).toBe("errTimeRequired");
+    expect(validateStatusChange(["filer"], "RESOLVED", "OPEN", "Δεν δουλεύει")).toBeNull();
+    expect(timeRequired("RESOLVED")).toBe(true);
+    expect(timeRequired("IN_PROGRESS")).toBe(false);
   });
 });
 
@@ -287,5 +306,103 @@ describe("IT manager", () => {
   it("who is also an IT maintainer keeps the rooms inbox as default", () => {
     expect(availableTabs({ isAdmin: false, isManager: true, isIt: true })).toEqual(["mine", "rooms", "unassigned", "all"]);
     expect(resolveTab(undefined, { isAdmin: false, isManager: true, isIt: true })).toBe("rooms");
+  });
+});
+
+describe("time spent", () => {
+  it("reads hours and minutes as typed", () => {
+    expect(minutesFrom("1", "30")).toBe(90);
+    expect(minutesFrom("", "45")).toBe(45);
+    expect(minutesFrom("2", "")).toBe(120);
+  });
+
+  it("rejects nothing, zero, fractions, negatives and minutes over 59", () => {
+    expect(minutesFrom("", "")).toBeNull();
+    expect(minutesFrom("0", "0")).toBeNull();
+    expect(minutesFrom("1.5", "")).toBeNull();
+    expect(minutesFrom("-1", "30")).toBeNull();
+    expect(minutesFrom("0", "75")).toBeNull();
+    expect(minutesFrom("101", "")).toBeNull();
+  });
+
+  it("validates a minutes value", () => {
+    expect(isValidMinutes(1)).toBe(true);
+    expect(isValidMinutes(MINUTES_MAX)).toBe(true);
+    expect(isValidMinutes(0)).toBe(false);
+    expect(isValidMinutes(2.5)).toBe(false);
+    expect(isValidMinutes("30")).toBe(false);
+    expect(isValidMinutes(null)).toBe(false);
+  });
+
+  it("splits minutes into hours and minutes", () => {
+    expect(splitMinutes(95)).toEqual({ h: 1, m: 35 });
+    expect(splitMinutes(45)).toEqual({ h: 0, m: 45 });
+  });
+});
+
+describe("statsWindow", () => {
+  const today = new Date(Date.UTC(2026, 9, 22)); // Thu 22/10/2026
+
+  it("this month and last month", () => {
+    expect(statsWindow("month", today)).toEqual({ from: new Date(Date.UTC(2026, 9, 1)), to: null });
+    expect(statsWindow("lastMonth", today)).toEqual({
+      from: new Date(Date.UTC(2026, 8, 1)),
+      to: new Date(Date.UTC(2026, 9, 1)),
+    });
+  });
+
+  it("last month across a new year", () => {
+    expect(statsWindow("lastMonth", new Date(Date.UTC(2027, 0, 10))).from).toEqual(new Date(Date.UTC(2026, 11, 1)));
+  });
+
+  it("the last 30 days include today", () => {
+    expect(statsWindow("30days", today).from).toEqual(new Date(Date.UTC(2026, 8, 23)));
+  });
+
+  it("the school year starts on 1 September", () => {
+    expect(statsWindow("schoolYear", today).from).toEqual(new Date(Date.UTC(2026, 8, 1)));
+    expect(statsWindow("schoolYear", new Date(Date.UTC(2027, 2, 16))).from).toEqual(new Date(Date.UTC(2026, 8, 1)));
+  });
+
+  it("all is unbounded; unknown ranges are refused", () => {
+    expect(statsWindow("all", today)).toEqual({ from: null, to: null });
+    expect(isStatsRange("all")).toBe(true);
+    expect(isStatsRange("year")).toBe(false);
+  });
+});
+
+describe("maintenanceStats", () => {
+  const r = (personId: string, requestId: string, minutes: number | null, equipment: Resolution["equipment"] = "PROJECTOR"): Resolution =>
+    ({ personId, personName: personId.toUpperCase(), requestId, equipment, minutes });
+
+  it("counts jobs per person and sums their time", () => {
+    const s = maintenanceStats([r("a", "1", 30), r("a", "2", 60), r("b", "3", 15)]);
+    expect(s.byPerson.map((p) => [p.personId, p.jobs, p.minutes])).toEqual([["a", 2, 90], ["b", 1, 15]]);
+    expect(s.total).toMatchObject({ jobs: 3, minutes: 105, untimed: 0 });
+  });
+
+  it("counts a reopened job once but adds every bit of time logged", () => {
+    const s = maintenanceStats([r("a", "1", 30), r("a", "1", 20)]);
+    expect(s.byPerson[0]).toMatchObject({ jobs: 1, minutes: 50 });
+    expect(averageMinutes(s.byPerson[0]!)).toBe(50);
+  });
+
+  it("leaves untimed resolutions out of the average", () => {
+    const s = maintenanceStats([r("a", "1", null), r("a", "2", 40)]);
+    expect(s.total).toMatchObject({ jobs: 2, minutes: 40, untimed: 1, timedJobs: 1 });
+    expect(averageMinutes(s.total)).toBe(40);
+    expect(averageMinutes(maintenanceStats([r("a", "1", null)]).total)).toBeNull();
+  });
+
+  it("groups by equipment in the usual order", () => {
+    const s = maintenanceStats([r("a", "1", 10, "NETWORK"), r("a", "2", 20, "LAPTOP"), r("b", "3", 5, "LAPTOP")]);
+    expect(s.byEquipment.map((e) => [e.equipment, e.jobs, e.minutes])).toEqual([["LAPTOP", 2, 25], ["NETWORK", 1, 10]]);
+  });
+
+  it("is empty for no resolutions", () => {
+    const s = maintenanceStats([]);
+    expect(s.total).toMatchObject({ jobs: 0, minutes: 0 });
+    expect(s.byPerson).toEqual([]);
+    expect(s.byEquipment).toEqual([]);
   });
 });

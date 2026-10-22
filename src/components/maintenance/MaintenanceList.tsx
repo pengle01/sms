@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { Wrench, Plus, Search, MapPin } from "lucide-react";
+import { Wrench, Plus, Search, MapPin, BarChart3 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { getActiveAuth } from "@/server/authz";
@@ -93,13 +93,24 @@ export async function MaintenanceList({ basePath, params }: { basePath: string; 
           </h2>
           <p className="text-slate-500 text-sm mt-1">{t("subtitle")}</p>
         </div>
-        <Link
-          href={`${basePath}/new`}
-          className="inline-flex items-center gap-1.5 h-9 px-4 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
-        >
-          <Plus className="w-4 h-4" />
-          {t("newRequest")}
-        </Link>
+        <div className="flex items-center gap-2 flex-wrap">
+          {seesAll(viewer) && (
+            <Link
+              href={`${basePath}/stats`}
+              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-xl border border-slate-300 text-slate-700 text-sm font-medium hover:bg-slate-50"
+            >
+              <BarChart3 className="w-4 h-4" />
+              {t("statsTitle")}
+            </Link>
+          )}
+          <Link
+            href={`${basePath}/new`}
+            className="inline-flex items-center gap-1.5 h-9 px-4 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
+          >
+            <Plus className="w-4 h-4" />
+            {t("newRequest")}
+          </Link>
+        </div>
       </div>
 
       {tabs.length > 1 && (

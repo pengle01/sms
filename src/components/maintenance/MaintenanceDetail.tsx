@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { ChevronLeft, CircleDot, ArrowRight } from "lucide-react";
+import { ChevronLeft, CircleDot, ArrowRight, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getActiveAuth } from "@/server/authz";
 import { fmtDisplayDateTime } from "@/lib/dates";
@@ -9,6 +9,7 @@ import {
   allowedTransitions,
   canFileMaintenance,
   isHandler,
+  splitMinutes,
   type MaintenanceActor,
   type Status,
 } from "@/lib/maintenance";
@@ -114,6 +115,12 @@ export async function MaintenanceDetail({
                       </span>
                     )}
                     <span className="text-xs text-slate-400">· {when}</span>
+                    {e.minutesSpent !== null && (
+                      <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+                        <Clock className="w-3 h-3" />
+                        {t("duration", splitMinutes(e.minutesSpent))}
+                      </span>
+                    )}
                   </div>
                   {e.body && (
                     <p className="ml-5 mt-1.5 rounded-xl bg-slate-50 border border-slate-100 px-3.5 py-2 text-slate-800 whitespace-pre-wrap">

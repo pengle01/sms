@@ -20,6 +20,8 @@ export type Status = (typeof STATUSES)[number];
 
 export const DESCRIPTION_MAX = 2000;
 export const COMMENT_MAX = 2000;
+/** The most time one resolution may record: 100 hours. */
+export const MINUTES_MAX = 6000;
 
 export function isEquipment(v: unknown): v is Equipment {
   return typeof v === "string" && (EQUIPMENT as readonly string[]).includes(v);
@@ -138,18 +140,39 @@ export function validateComment(body: string): CommentError | null {
   return null;
 }
 
-export type StatusChangeError = "errTransition" | "errNoteRequired" | "errCommentLong";
+export type StatusChangeError = "errTransition" | "errNoteRequired" | "errCommentLong" | "errTimeRequired";
+
+/** Resolving records the time spent on the job — the IT statistics come from it. */
+export function timeRequired(to: Status): boolean {
+  return to === "RESOLVED";
+}
+
+/** A whole number of minutes, 1 … MINUTES_MAX; anything else is "not given". */
+export function isValidMinutes(v: unknown): v is number {
+  return typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= MINUTES_MAX;
+}
+
+/** Hours and minutes as typed ("1", "30"; either may be blank) → minutes, or null. */
+export function minutesFrom(hours: string, minutes: string): number | null {
+  const h = hours.trim() === "" ? 0 : Number(hours);
+  const m = minutes.trim() === "" ? 0 : Number(minutes);
+  if (!Number.isInteger(h) || !Number.isInteger(m) || h < 0 || m < 0 || m > 59) return null;
+  const total = h * 60 + m;
+  return isValidMinutes(total) ? total : null;
+}
 
 export function validateStatusChange(
   actors: readonly MaintenanceActor[],
   from: Status,
   to: Status,
   note: string,
+  minutes: number | null = null,
 ): StatusChangeError | null {
   if (!allowedTransitions(actors, from).includes(to)) return "errTransition";
   const trimmed = note.trim();
   if (noteRequired(from, to) && !trimmed) return "errNoteRequired";
   if (trimmed.length > COMMENT_MAX) return "errCommentLong";
+  if (timeRequired(to) && !isValidMinutes(minutes)) return "errTimeRequired";
   return null;
 }
 
@@ -255,3 +278,98 @@ export function unresolvedCount(rows: readonly { status: Status }[]): number {
 
 /** URL keys the list page owns — shared by the pills and the row links. */
 export const MAINTENANCE_KEYS = ["tab", "status", "equipment", "q"] as const;
+
+// ─── Statistics (IT manager and admin) ──────────────────────────────────────
+
+export const STATS_RANGES = ["month", "lastMonth", "30days", "schoolYear", "all"] as const;
+export type StatsRange = (typeof STATS_RANGES)[number];
+
+export function isStatsRange(v: unknown): v is StatsRange {
+  return typeof v === "string" && (STATS_RANGES as readonly string[]).includes(v);
+}
+
+/**
+ * The [from, to) window of a range, in UTC, relative to `today` (UTC midnight).
+ * The school year starts on 1 September. Null bounds are open.
+ */
+export function statsWindow(range: StatsRange, today: Date): { from: Date | null; to: Date | null } {
+  const y = today.getUTCFullYear();
+  const m = today.getUTCMonth();
+  switch (range) {
+    case "month":
+      return { from: new Date(Date.UTC(y, m, 1)), to: null };
+    case "lastMonth":
+      return { from: new Date(Date.UTC(y, m - 1, 1)), to: new Date(Date.UTC(y, m, 1)) };
+    case "30days":
+      return { from: new Date(today.getTime() - 29 * 86_400_000), to: null };
+    case "schoolYear":
+      return { from: new Date(Date.UTC(m >= 8 ? y : y - 1, 8, 1)), to: null };
+    default:
+      return { from: null, to: null };
+  }
+}
+
+/** One resolution: who closed which request, for what equipment, and the time logged. */
+export interface Resolution {
+  personId: string;
+  personName: string;
+  requestId: string;
+  equipment: Equipment;
+  minutes: number | null;
+}
+
+export interface StatsRow {
+  /** Distinct requests resolved. A request reopened and resolved again counts once. */
+  jobs: number;
+  /** Every minute logged, re-resolutions included. */
+  minutes: number;
+  /** Resolutions with no time — recorded before the time was asked for. */
+  untimed: number;
+  /** Distinct requests with at least one timed resolution — the average's divisor. */
+  timedJobs: number;
+}
+
+export interface MaintenanceStats {
+  total: StatsRow;
+  byPerson: (StatsRow & { personId: string; personName: string })[];
+  byEquipment: (StatsRow & { equipment: Equipment })[];
+}
+
+function tally(rs: readonly Resolution[]): StatsRow {
+  return {
+    jobs: new Set(rs.map((r) => r.requestId)).size,
+    minutes: rs.reduce((sum, r) => sum + (r.minutes ?? 0), 0),
+    untimed: rs.filter((r) => r.minutes === null).length,
+    timedJobs: new Set(rs.filter((r) => r.minutes !== null).map((r) => r.requestId)).size,
+  };
+}
+
+function groupBy<K>(rs: readonly Resolution[], key: (r: Resolution) => K): Map<K, Resolution[]> {
+  const m = new Map<K, Resolution[]>();
+  for (const r of rs) {
+    const k = key(r);
+    if (!m.has(k)) m.set(k, []);
+    m.get(k)!.push(r);
+  }
+  return m;
+}
+
+/** People by jobs then time (most first); equipment in its usual order. */
+export function maintenanceStats(rs: readonly Resolution[]): MaintenanceStats {
+  const byPerson = [...groupBy(rs, (r) => r.personId).values()]
+    .map((list) => ({ personId: list[0]!.personId, personName: list[0]!.personName, ...tally(list) }))
+    .sort((a, b) => b.jobs - a.jobs || b.minutes - a.minutes || a.personName.localeCompare(b.personName, "el"));
+  const eq = groupBy(rs, (r) => r.equipment);
+  const byEquipment = EQUIPMENT.filter((e) => eq.has(e)).map((e) => ({ equipment: e, ...tally(eq.get(e)!) }));
+  return { total: tally(rs), byPerson, byEquipment };
+}
+
+/** Average minutes per timed job, rounded; null when nothing was timed. */
+export function averageMinutes(row: StatsRow): number | null {
+  return row.timedJobs > 0 ? Math.round(row.minutes / row.timedJobs) : null;
+}
+
+/** 95 → { h: 1, m: 35 }. */
+export function splitMinutes(total: number): { h: number; m: number } {
+  return { h: Math.floor(total / 60), m: total % 60 };
+}

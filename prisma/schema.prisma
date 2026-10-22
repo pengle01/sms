@@ -1416,9 +1416,13 @@ model MaintenanceEvent {
   fromStatus MaintenanceStatus?
   toStatus   MaintenanceStatus?
   body       String?
+  // Time the handler spent, in minutes — recorded with each resolution (null on
+  // other events and on resolutions from before it was asked for).
+  minutesSpent Int?
   createdAt  DateTime             @default(now())
 
   @@index([requestId, createdAt])
+  @@index([toStatus, createdAt])
 }
 
 // Which IT maintainer looks after which room. Many-to-many: a room may have

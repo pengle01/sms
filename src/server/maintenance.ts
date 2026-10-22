@@ -4,6 +4,8 @@ import { isAdminStaff } from "@/lib/rbac";
 import {
   canViewRequest,
   seesAll,
+  type Equipment,
+  type Resolution,
   type MaintenanceViewer,
   type MaintenanceTab,
   type MaintenanceRow,
@@ -173,4 +175,33 @@ export async function itManagerUserIds(): Promise<string[]> {
     select: { userId: true },
   });
   return rows.flatMap((r) => (r.userId ? [r.userId] : []));
+}
+
+/**
+ * Every resolution in a window, for the statistics: who resolved which request
+ * and the time they logged. A resolution whose author was deleted is skipped.
+ */
+export async function resolutionsIn(window: { from: Date | null; to: Date | null }): Promise<Resolution[]> {
+  const rows = await db.maintenanceEvent.findMany({
+    where: {
+      kind: "STATUS_CHANGE",
+      toStatus: "RESOLVED",
+      authorId: { not: null },
+      createdAt: { ...(window.from ? { gte: window.from } : {}), ...(window.to ? { lt: window.to } : {}) },
+    },
+    select: {
+      requestId: true,
+      minutesSpent: true,
+      authorId: true,
+      author: PERSON,
+      request: { select: { equipment: true } },
+    },
+  });
+  return rows.map((r) => ({
+    personId: r.authorId!,
+    personName: personName(r.author) ?? "—",
+    requestId: r.requestId,
+    equipment: r.request.equipment as Equipment,
+    minutes: r.minutesSpent,
+  }));
 }

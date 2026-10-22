@@ -16,6 +16,7 @@ import {
   isStatus,
   itRecipients,
   notifiesFiler,
+  timeRequired,
   validateComment,
   validateNewRequest,
   validateStatusChange,
@@ -43,6 +44,7 @@ export type MaintenanceActionError =
   | "errTransition"
   | "errNoteRequired"
   | "errConflict"
+  | "errTimeRequired"
   | "errGeneric";
 export type MaintenanceResult = { ok: true } | { ok: false; error: MaintenanceActionError };
 export type CreateMaintenanceResult = { ok: true; id: string } | { ok: false; error: MaintenanceActionError };
@@ -207,13 +209,14 @@ export async function addMaintenanceComment(requestId: string, body: string): Pr
 
 /**
  * Move a request to another status, with a note (required to resolve or
- * reopen). The change only applies if the request is still in the status the
+ * reopen) and, when resolving, the minutes spent on it. The change only applies if the request is still in the status the
  * person saw, so two people acting at once cannot overwrite each other.
  */
 export async function changeMaintenanceStatus(
   requestId: string,
   to: string,
   note: string,
+  minutes: number | null = null,
 ): Promise<MaintenanceResult> {
   const auth = await authorize();
   if (!auth) return { ok: false, error: "errNotAllowed" };
@@ -226,10 +229,11 @@ export async function changeMaintenanceStatus(
   if (request.createdById === auth.userId) actors.push("filer");
   if (isHandler(viewer, request.room, assigned)) actors.push("handler");
 
-  const error = validateStatusChange(actors, request.status, to, note);
+  const error = validateStatusChange(actors, request.status, to, note, minutes);
   if (error) return { ok: false, error };
   const text = note.trim() || null;
   const from = request.status;
+  const minutesSpent = timeRequired(to) ? minutes : null;
 
   const applied = await db.$transaction(async (tx) => {
     const updated = await tx.maintenanceRequest.updateMany({
@@ -238,7 +242,9 @@ export async function changeMaintenanceStatus(
     });
     if (updated.count === 0) return false;
     await tx.maintenanceEvent.create({
-      data: { requestId, authorId: auth.userId, kind: "STATUS_CHANGE", fromStatus: from, toStatus: to, body: text },
+      data: {
+        requestId, authorId: auth.userId, kind: "STATUS_CHANGE", fromStatus: from, toStatus: to, body: text, minutesSpent,
+      },
     });
     return true;
   });
@@ -249,7 +255,7 @@ export async function changeMaintenanceStatus(
     action: "maintenance.status",
     resource: "MaintenanceRequest",
     resourceId: requestId,
-    details: { from, to },
+    details: { from, to, ...(minutesSpent !== null ? { minutes: minutesSpent } : {}) },
     ...(await requestMeta()),
   });
 
