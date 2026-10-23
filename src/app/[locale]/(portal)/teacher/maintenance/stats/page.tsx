@@ -5,9 +5,9 @@ export default async function MaintenanceStatsPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ range?: string }>;
+  searchParams: Promise<{ range?: string; person?: string }>;
 }) {
   const { locale } = await params;
-  const { range } = await searchParams;
-  return <MaintenanceStats basePath={`/${locale}/teacher/maintenance`} range={range} />;
+  const { range, person } = await searchParams;
+  return <MaintenanceStats basePath={`/${locale}/teacher/maintenance`} range={range} person={person} />;
 }

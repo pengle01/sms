@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { BarChart3, ChevronLeft } from "lucide-react";
+import { BarChart3, ChevronLeft, Users, User } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { getActiveAuth } from "@/server/authz";
@@ -12,6 +12,7 @@ import {
   canFileMaintenance,
   isStatsRange,
   maintenanceStats,
+  resolutionsOf,
   seesAll,
   splitMinutes,
   statsWindow,
@@ -24,8 +25,17 @@ import { EquipmentIcon } from "./ui";
  * «Στατιστικά»: jobs finished and time spent, per IT person and per kind of
  * equipment — for the IT manager and the admin. Built from the resolutions in
  * the chosen period; the time is what each person logged when resolving.
+ * Collectively (everyone, with a table per person), or for one person.
  */
-export async function MaintenanceStats({ basePath, range: rawRange }: { basePath: string; range?: string }) {
+export async function MaintenanceStats({
+  basePath,
+  range: rawRange,
+  person: rawPerson,
+}: {
+  basePath: string;
+  range?: string;
+  person?: string;
+}) {
   const auth = await getActiveAuth();
   if (!auth || !canFileMaintenance(auth.roles)) notFound();
   const viewer = await getMaintenanceViewer(auth);
@@ -36,12 +46,27 @@ export async function MaintenanceStats({ basePath, range: rawRange }: { basePath
   // The window is on the app's timeline (the faked "today" in testing); the
   // events' createdAt are real, so map the bounds back before querying.
   const w = statsWindow(range, utcMidnight());
-  const stats = maintenanceStats(
-    await resolutionsIn({
-      from: w.from && fromAppTimeline(w.from),
-      to: w.to && fromAppTimeline(w.to),
-    }),
-  );
+  const resolutions = await resolutionsIn({
+    from: w.from && fromAppTimeline(w.from),
+    to: w.to && fromAppTimeline(w.to),
+  });
+  const everyone = maintenanceStats(resolutions);
+  const { personId, rows } = resolutionsOf(resolutions, rawPerson);
+  const stats = personId ? maintenanceStats(rows) : everyone;
+  const personName = personId ? everyone.byPerson.find((p) => p.personId === personId)?.personName : null;
+  const href = (q: { range?: string; person?: string | null }) => {
+    const sp = new URLSearchParams({ range: q.range ?? range });
+    const p = q.person === undefined ? personId : q.person;
+    if (p) sp.set("person", p);
+    return `${basePath}/stats?${sp.toString()}`;
+  };
+  const pill = (active: boolean) =>
+    cn(
+      "h-9 px-3 rounded-xl text-sm font-medium transition-colors border inline-flex items-center gap-1.5",
+      active
+        ? "bg-emerald-600 text-white border-emerald-600"
+        : "bg-white text-slate-600 border-slate-200 hover:border-emerald-400 hover:text-emerald-700",
+    );
 
   const dur = (min: number | null) => (min === null ? "—" : t("duration", splitMinutes(min)));
   const th = "text-left px-4 py-2.5 text-xs font-semibold text-slate-400 uppercase tracking-wide";
@@ -80,20 +105,34 @@ export async function MaintenanceStats({ basePath, range: rawRange }: { basePath
 
       <div className="flex gap-2 flex-wrap">
         {STATS_RANGES.map((r) => (
-          <Link
-            key={r}
-            href={`${basePath}/stats?range=${r}`}
-            className={cn(
-              "h-9 px-3 rounded-xl text-sm font-medium transition-colors border inline-flex items-center",
-              r === range
-                ? "bg-emerald-600 text-white border-emerald-600"
-                : "bg-white text-slate-600 border-slate-200 hover:border-emerald-400 hover:text-emerald-700",
-            )}
-          >
+          <Link key={r} href={href({ range: r })} className={pill(r === range)}>
             {t(`statsRange_${r}` as Parameters<typeof t>[0])}
           </Link>
         ))}
       </div>
+
+      {everyone.byPerson.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("statsView")}</p>
+          <div className="flex gap-2 flex-wrap">
+            <Link href={href({ person: null })} className={pill(!personId)}>
+              <Users className="w-4 h-4" />
+              {t("statsEveryone")}
+            </Link>
+            {everyone.byPerson.map((p) => (
+              <Link key={p.personId} href={href({ person: p.personId })} className={pill(p.personId === personId)}>
+                <User className="w-4 h-4" />
+                {p.personName}
+                <span className="text-xs opacity-70">{p.jobs}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <h3 className="text-base font-semibold text-slate-800">
+        {personName ? t("statsFor", { name: personName }) : t("statsCollective")}
+      </h3>
 
       <div className="grid gap-3 sm:grid-cols-3">
         {[
@@ -114,6 +153,7 @@ export async function MaintenanceStats({ basePath, range: rawRange }: { basePath
         <p className="text-center py-12 text-slate-400">{t("statsEmpty")}</p>
       ) : (
         <>
+          {!personId && (
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base">{t("statsByPerson")}</CardTitle>
@@ -124,7 +164,11 @@ export async function MaintenanceStats({ basePath, range: rawRange }: { basePath
                 <tbody className="divide-y divide-slate-100">
                   {stats.byPerson.map((p) => (
                     <tr key={p.personId}>
-                      <td className="px-4 py-2.5 font-medium text-slate-800">{p.personName}</td>
+                      <td className="px-4 py-2.5 font-medium text-slate-800">
+                        <Link href={href({ person: p.personId })} className="hover:text-emerald-700 hover:underline">
+                          {p.personName}
+                        </Link>
+                      </td>
                       {cells(p)}
                     </tr>
                   ))}
@@ -132,6 +176,7 @@ export async function MaintenanceStats({ basePath, range: rawRange }: { basePath
               </table>
             </CardContent>
           </Card>
+          )}
 
           <Card>
             <CardHeader className="pb-2">

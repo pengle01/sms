@@ -14,6 +14,7 @@ import {
   isValidMinutes,
   statsWindow,
   maintenanceStats,
+  resolutionsOf,
   averageMinutes,
   splitMinutes,
   isStatsRange,
@@ -404,5 +405,23 @@ describe("maintenanceStats", () => {
     expect(s.total).toMatchObject({ jobs: 0, minutes: 0 });
     expect(s.byPerson).toEqual([]);
     expect(s.byEquipment).toEqual([]);
+  });
+});
+
+describe("resolutionsOf", () => {
+  const rs: Resolution[] = [
+    { personId: "a", personName: "A", requestId: "1", equipment: "TV", minutes: 10 },
+    { personId: "b", personName: "B", requestId: "2", equipment: "TV", minutes: 20 },
+  ];
+
+  it("narrows to one person", () => {
+    const v = resolutionsOf(rs, "a");
+    expect(v.personId).toBe("a");
+    expect(v.rows.map((r) => r.requestId)).toEqual(["1"]);
+  });
+
+  it("is everyone with no person, or one with no resolutions in the period", () => {
+    expect(resolutionsOf(rs, null)).toEqual({ personId: null, rows: rs });
+    expect(resolutionsOf(rs, "gone")).toEqual({ personId: null, rows: rs });
   });
 });

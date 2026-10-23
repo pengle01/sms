@@ -364,6 +364,18 @@ export function maintenanceStats(rs: readonly Resolution[]): MaintenanceStats {
   return { total: tally(rs), byPerson, byEquipment };
 }
 
+/**
+ * One person's resolutions, or everyone's when `personId` is null or not among
+ * them (a stale link falls back to the collective view rather than to nothing).
+ */
+export function resolutionsOf(rs: readonly Resolution[], personId: string | null | undefined): {
+  personId: string | null;
+  rows: readonly Resolution[];
+} {
+  if (!personId || !rs.some((r) => r.personId === personId)) return { personId: null, rows: rs };
+  return { personId, rows: rs.filter((r) => r.personId === personId) };
+}
+
 /** Average minutes per timed job, rounded; null when nothing was timed. */
 export function averageMinutes(row: StatsRow): number | null {
   return row.timedJobs > 0 ? Math.round(row.minutes / row.timedJobs) : null;
