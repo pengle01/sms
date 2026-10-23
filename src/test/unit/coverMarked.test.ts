@@ -65,6 +65,13 @@ describe("adHocCovers", () => {
     expect(covers.get("2026-03-16:3")).toHaveLength(1);
   });
 
+  it("carries the subject I taught instead («Δικό μου μάθημα»); a plain cover has none", () => {
+    const covers = adHocCovers([row({ addedCourseName: "Φυσική" }), row({ slotId: "s2", groupId: "g2" })], "me", new Set());
+    const [own, plain] = covers.get("2026-03-16:3")!;
+    expect(own).toMatchObject({ slotId: "s1", addedCourseName: "Φυσική" });
+    expect(plain).not.toHaveProperty("addedCourseName");
+  });
+
   it("stacks two classes covered in the same period", () => {
     const covers = adHocCovers([row(), row({ slotId: "s2", groupId: "g2", groupName: "Α2" })], "me", new Set());
     expect(covers.get("2026-03-16:3")!.map((c) => c.groupName)).toEqual(["Α1", "Α2"]);

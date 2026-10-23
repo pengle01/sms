@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { withTaughtCourses } from "@/server/addedLessons";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { redirect, notFound } from "next/navigation";
@@ -112,10 +113,11 @@ export default async function StudentRecordsPage({
             isAutoAbsent: true,
             exitPermitId: true,
             intercalaryPeriod: true,
+            timetableSlotId: true,
             timetableSlot: { select: { period: true, course: { select: { nameEl: true, name: true } } } },
           },
           orderBy: [{ date: "desc" }],
-        })
+        }).then(withTaughtCourses)
       : Promise.resolve([]),
     wantRef
       ? db.referralStudent.findMany({

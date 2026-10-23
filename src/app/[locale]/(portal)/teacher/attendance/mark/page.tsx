@@ -6,24 +6,26 @@ import { redirect } from "next/navigation";
 import { utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { isDutyEligible } from "@/lib/dutyRoster";
 import type { Role } from "@/generated/prisma/client";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { AttendanceMarkForm } from "./AttendanceMarkForm";
 import { LessonNoteCard } from "../../lesson-notes/LessonNoteCard";
+import { ClaimPicker, LessonSwitcher, ScrollIntoViewOnMount, type ClaimOption } from "./ClaimPicker";
+import { myCoursesWithGroup, type TeachingSlot } from "@/lib/addedLesson";
 
 export default async function TeacherMarkAttendancePage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ groupId?: string; period?: string; date?: string; intercalary?: string; excursion?: string; claim?: string; claimGroupId?: string }>;
+  searchParams: Promise<{ groupId?: string; period?: string; date?: string; intercalary?: string; excursion?: string; claim?: string; claimGroupId?: string; courseId?: string }>;
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login/staff`);
 
-  const { groupId, period: periodStr, date: dateParam, intercalary: intercalaryParam, excursion: excursionParam, claim, claimGroupId } = await searchParams;
+  const { groupId, period: periodStr, date: dateParam, intercalary: intercalaryParam, excursion: excursionParam, claim, claimGroupId, courseId } = await searchParams;
   const period = periodStr ? parseInt(periodStr) : 1;
   const isIntercalary = intercalaryParam === "1";
   const isExcursion = excursionParam === "1";
@@ -219,17 +221,30 @@ export default async function TeacherMarkAttendancePage({
     } // end else (non-intercalary)
   }
 
-  // ── Ad-hoc claim (Κάλυψη): cover/merge another group in the same period ──
+  // ── Ad-hoc claim (Αναπλήρωση): cover/merge another group in the same period ──
   // The claim is an intentional act: a picker step lists the period's lessons
   // (with the scheduled teacher) and the records land on the claimed group's
-  // own slot, marked in the claimer's name.
+  // own slot, marked in the claimer's name. On one of my own groups the picker
+  // also offers «Δικό μου μάθημα»: same slot, but the subject taught is mine.
   const isClaiming = claim === "1" && !isIntercalary && !isExcursion && !!period;
   const claimDow = new Date(attendanceDateStr + "T12:00:00").getDay();
+  const showPicker = !isIntercalary && !isExcursion && !!period && !claimGroupId && (isClaiming || (!!groupId && !!slot));
+
+  // Every lesson of mine (any day): which groups are mine, and my subjects with each.
+  const mySlots: TeachingSlot[] =
+    showPicker || claimGroupId
+      ? (
+          await db.timetableSlot.findMany({
+            where: { staffId: staff.id },
+            select: { staffId: true, groupId: true, courseId: true, course: { select: { name: true } } },
+          })
+        ).map((m) => ({ ...m, courseName: m.course.name }))
+      : [];
 
   // Picker options: every lesson happening this day/period except my current group
-  const claimOptions =
-    isClaiming && !claimGroupId
-      ? await db.timetableSlot.findMany({
+  const claimOptions: ClaimOption[] = showPicker
+    ? (
+        await db.timetableSlot.findMany({
           where: { period, dayOfWeek: claimDow, ...(groupId ? { groupId: { not: groupId } } : {}) },
           include: {
             group: { select: { id: true, name: true } },
@@ -238,7 +253,17 @@ export default async function TeacherMarkAttendancePage({
           },
           orderBy: { group: { name: "asc" } },
         })
-      : [];
+      ).map((s) => ({
+        slotId: s.id,
+        groupId: s.group.id,
+        groupName: s.group.name,
+        courseName: s.course.name,
+        teacherName: s.staff?.scheduleName ?? s.staffName ?? s.staff?.user?.name ?? "—",
+        room: s.room,
+        // «Δικό μου μάθημα» only replaces someone else's lesson
+        myCourses: s.staffId === staff.id ? [] : myCoursesWithGroup(mySlots, staff.id, s.group.id),
+      }))
+    : [];
 
   // The claimed group's own slot + students + existing marks for that date
   let claimed: {
@@ -247,6 +272,10 @@ export default async function TeacherMarkAttendancePage({
     teacherLabel: string | null;
     students: { id: string; user: { name: string | null }; studentId: string }[];
     existing: Record<string, { status: "PRESENT" | "ABSENT" | "LATE"; minutesDelayed: number }>;
+    /** «Δικό μου μάθημα»: the subject of mine taught instead of the timetable's. */
+    added: { id: string; name: string } | null;
+    /** All my subjects with this group — to switch between them. */
+    myCourses: { id: string; name: string }[];
   } | null = null;
   if (claimGroupId && !isIntercalary && !isExcursion && period) {
     const claimedSlot = await db.timetableSlot.findFirst({
@@ -258,7 +287,7 @@ export default async function TeacherMarkAttendancePage({
       },
     });
     if (claimedSlot) {
-      const [claimedStudents, claimedMarked] = await Promise.all([
+      const [claimedStudents, claimedMarked, savedAdded] = await Promise.all([
         db.studentProfile.findMany({
           where: {
             OR: [{ groupId: claimGroupId }, { subjectGroups: { some: { groupId: claimGroupId } } }],
@@ -271,7 +300,16 @@ export default async function TeacherMarkAttendancePage({
           where: { timetableSlotId: claimedSlot.id, date: attendanceDateObj },
           select: { studentId: true, status: true, minutesDelayed: true },
         }),
+        db.addedLesson.findUnique({
+          where: { timetableSlotId_date: { timetableSlotId: claimedSlot.id, date: attendanceDateObj } },
+          select: { staffId: true, courseId: true },
+        }),
       ]);
+      // The subject chosen in the picker, else the one already saved by me —
+      // only ever one of my subjects with this group, on someone else's lesson.
+      const myCourses = claimedSlot.staffId === staff.id ? [] : myCoursesWithGroup(mySlots, staff.id, claimGroupId);
+      const wanted = courseId ?? (savedAdded?.staffId === staff.id ? savedAdded.courseId : undefined);
+      const added = myCourses.find((c) => c.id === wanted) ?? null;
       const existing: Record<string, { status: "PRESENT" | "ABSENT" | "LATE"; minutesDelayed: number }> = {};
       for (const r of claimedMarked) {
         existing[r.studentId] = {
@@ -285,6 +323,8 @@ export default async function TeacherMarkAttendancePage({
         teacherLabel: claimedSlot.staff?.scheduleName ?? claimedSlot.staffName ?? claimedSlot.staff?.user?.name ?? null,
         students: claimedStudents,
         existing,
+        added,
+        myCourses,
       };
     }
   }
@@ -419,59 +459,51 @@ export default async function TeacherMarkAttendancePage({
         </div>
       )}
 
-      {/* Quiet entry to cover/merge a second group in the same period */}
-      {groupId && slot && !isClaiming && !claimed && (
-        <Link
-          href={`?groupId=${groupId}&period=${period}&date=${attendanceDateStr}&claim=1`}
-          className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-emerald-700 transition-colors print:hidden"
-        >
-          <Plus className="w-4 h-4" />
-          {t("claimAddSecond")}
-        </Link>
-      )}
-
-      {/* The intention gate: pick which class to cover */}
-      {isClaiming && !claimGroupId && (
-        <div className="rounded-2xl border border-amber-200 bg-white overflow-hidden max-w-2xl print:hidden">
-          <div className="px-5 py-3 bg-amber-50 border-b border-amber-100">
-            <p className="text-sm font-semibold text-amber-900">
-              {t("claimPickerTitle", { period })}
-            </p>
-            <p className="text-xs text-amber-700 mt-0.5">{t("claimPickerHint")}</p>
-          </div>
-          {claimOptions.length === 0 ? (
-            <p className="px-5 py-4 text-sm text-slate-400">{t("claimNone")}</p>
-          ) : (
-            <div className="divide-y divide-slate-50">
-              {claimOptions.map((s) => (
-                <Link
-                  key={s.id}
-                  href={`?${new URLSearchParams({
-                    ...(groupId ? { groupId } : {}),
-                    period: String(period),
-                    date: attendanceDateStr,
-                    claimGroupId: s.group.id,
-                  }).toString()}`}
-                  className="flex items-center justify-between gap-3 px-5 py-2.5 text-sm hover:bg-amber-50/40 transition-colors"
-                >
-                  <span className="font-medium text-slate-900">{s.group.name}</span>
-                  <span className="flex items-center gap-3 text-xs text-slate-500">
-                    <span>{s.course.name}</span>
-                    <span className="text-slate-400">
-                      {s.staff?.scheduleName ?? s.staffName ?? s.staff?.user?.name ?? "—"}
-                    </span>
-                    {s.room && <span className="font-mono text-slate-400">{s.room}</span>}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
+      {/* Quiet entry to cover/merge a second group in the same period — the
+          picker opens in place; ?claim=1 opens it straight away */}
+      {showPicker && (
+        <ClaimPicker
+          options={claimOptions}
+          base={{ ...(groupId ? { groupId } : {}), period: String(period), date: attendanceDateStr }}
+          period={period}
+          initialOpen={isClaiming}
+        />
       )}
 
       {/* The claimed group — its own clearly-labelled marking sheet */}
       {claimed && (
-        <div className="rounded-2xl border-2 border-amber-200 overflow-hidden print:border-0 print:break-before-page">
+        <ScrollIntoViewOnMount key={claimGroupId}>
+        <div className={claimed.added
+          ? "rounded-2xl border-2 border-emerald-200 overflow-hidden print:border-0 print:break-before-page"
+          : "rounded-2xl border-2 border-amber-200 overflow-hidden print:border-0 print:break-before-page"}>
+          {claimed.added ? (
+            <div className="px-5 py-3 bg-emerald-50 border-b border-emerald-100 flex items-center justify-between gap-3 print:hidden">
+              <div>
+                <p className="text-sm font-semibold text-emerald-900">
+                  {t("addedOf", { group: claimed.groupName })}
+                  <span className="ml-2 font-normal text-emerald-700">{claimed.added.name}</span>
+                </p>
+                <p className="text-xs text-emerald-700 mt-0.5">
+                  {t("addedHint", { course: claimed.slot.course.name, teacher: claimed.teacherLabel ?? "—" })}
+                </p>
+                <div className="mt-2">
+                  <LessonSwitcher
+                    courses={claimed.myCourses}
+                    current={claimed.added.id}
+                    base={{
+                      ...(groupId ? { groupId } : {}),
+                      period: String(period),
+                      date: attendanceDateStr,
+                      claimGroupId: claimGroupId!,
+                    }}
+                  />
+                </div>
+              </div>
+              <span className="inline-flex items-center rounded-full bg-emerald-100 border border-emerald-300 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+                {t("claimOwnLesson")}
+              </span>
+            </div>
+          ) : (
           <div className="px-5 py-3 bg-amber-50 border-b border-amber-100 flex items-center justify-between gap-3 print:hidden">
             <p className="text-sm font-semibold text-amber-900">
               {t("claimOf", { group: claimed.groupName })}
@@ -484,10 +516,12 @@ export default async function TeacherMarkAttendancePage({
               {t("claimBadge")}
             </span>
           </div>
+          )}
           <div className="p-4 bg-white">
             <AttendanceMarkForm
               students={claimed.students}
-              slot={claimed.slot}
+              slot={claimed.added ? { ...claimed.slot, course: { name: claimed.added.name } } : claimed.slot}
+              addedCourseId={claimed.added?.id}
               staffId={staff.id}
               selectedGroupId={claimGroupId}
               selectedPeriod={period}
@@ -500,6 +534,7 @@ export default async function TeacherMarkAttendancePage({
             />
           </div>
         </div>
+        </ScrollIntoViewOnMount>
       )}
     </div>
   );

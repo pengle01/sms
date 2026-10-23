@@ -60,6 +60,7 @@ export async function GET(
     SWAP: t("subTeacher"),
     STUDY_HALL: t("subHeadteacher"),
     CLAIM: t("subClaim"),
+    ADDED_LESSON: t("subAdded"),
     HOMEGROUP_COVER: t("subHomegroup"),
   } as const;
   const lessonText = (id: string) => {

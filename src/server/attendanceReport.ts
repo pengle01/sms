@@ -5,6 +5,8 @@ import type { Role } from "@/generated/prisma/enums";
 import { getSpecialDaysInRange } from "@/lib/calendar";
 import { effectiveStaffRole } from "@/lib/staffRole";
 import { managementTag, markKind, registerLabel, type MarkKind, type RegisterLabel } from "@/lib/attendanceMarker";
+import { addedLessonsFor } from "@/server/addedLessons";
+import { markedKey } from "@/lib/coverMarked";
 
 /** Loads the non-present attendance rows for a date range (and optional group),
  *  shaped for the pure summarizers — shared by the reports page and the CSV export. */
@@ -137,14 +139,17 @@ export async function markerDetails(rows: MarkerSource[]): Promise<Map<string, M
   const out = new Map<string, MarkerDetail>();
   if (rows.length === 0) return out;
 
-  const planned = await substitutionKinds(
-    rows.map((a) => ({
-      date: a.date,
-      timetableSlotId: a.timetableSlotId,
-      markerStaffId: a.staffId,
-      slotStaffId: a.timetableSlot?.staffId ?? null,
-    })),
-  );
+  const [planned, added] = await Promise.all([
+    substitutionKinds(
+      rows.map((a) => ({
+        date: a.date,
+        timetableSlotId: a.timetableSlotId,
+        markerStaffId: a.staffId,
+        slotStaffId: a.timetableSlot?.staffId ?? null,
+      })),
+    ),
+    addedLessonsFor(rows),
+  ]);
 
   const homegroupIds = [...new Set(rows.map((r) => r.intercalaryGroupId).filter((x): x is string => !!x))];
   const hgRows = homegroupIds.length
@@ -170,15 +175,19 @@ export async function markerDetails(rows: MarkerSource[]): Promise<Map<string, M
   for (const a of rows) {
     const slot = a.timetableSlot;
     const p = planned.get(`${a.date.toISOString().slice(0, 10)}:${a.timetableSlotId}`);
+    // «Δικό μου μάθημα»: the subject the marker taught replaces the timetable's.
+    const own = a.timetableSlotId ? added.get(markedKey(a.timetableSlotId, a.date)) : undefined;
+    const ownByMarker = own?.staffId === a.staffId ? own : undefined;
     const kind = markKind({
       markerStaffId: a.staffId,
       slotStaffId: slot?.staffId ?? null,
       plannedKind: p && p !== "CLAIM" ? p : null,
       homegroupStaffIds: a.intercalaryGroupId ? homegroupStaff.get(a.intercalaryGroupId) ?? [] : null,
+      addedLesson: !!ownByMarker,
     });
     out.set(a.id, {
       lesson: registerLabel({ hasSlot: !!slot, dayType: dayType.get(a.id) }),
-      courseName: slot?.course.name ?? null,
+      courseName: ownByMarker?.courseName ?? slot?.course.name ?? null,
       marker: a.staff.scheduleName ?? a.staff.user?.name ?? "—",
       tag: managementTag(
         effectiveStaffRole({ accountRole: a.staff.user?.role, plannedRole: a.staff.plannedRole, scheduleName: a.staff.scheduleName }),

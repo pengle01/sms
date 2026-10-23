@@ -128,7 +128,7 @@ export async function deleteStaffProfile(staffProfileId: string): Promise<Delete
           courseAssignments: true, filedReferrals: true, attendanceRecords: true, issuedPermits: true,
           filedActivities: true, testSchedules: true, grades: true, dutyDays: true,
           substitutionRequests: true, substitutionAbsences: true, substitutionAssignments: true,
-          toiletBreaks: true, ddkAwards: true, conversations: true, roomsMaintained: true,
+          toiletBreaks: true, ddkAwards: true, conversations: true, roomsMaintained: true, addedLessons: true,
         },
       },
     },
@@ -151,7 +151,7 @@ export async function deleteStaffProfile(staffProfileId: string): Promise<Delete
     historyCounts: [
       c.courseAssignments, c.filedReferrals, c.attendanceRecords, c.issuedPermits, c.filedActivities,
       c.testSchedules, c.grades, c.dutyDays, c.substitutionRequests, c.substitutionAbsences,
-      c.substitutionAssignments, c.toiletBreaks, c.ddkAwards, c.conversations, c.roomsMaintained,
+      c.substitutionAssignments, c.toiletBreaks, c.ddkAwards, c.conversations, c.roomsMaintained, c.addedLessons,
     ],
     designations: [sp.specialEducation, sp.substitutionCoordinator, sp.ddkCoordinator, sp.itMaintenance, sp.itManager],
   });

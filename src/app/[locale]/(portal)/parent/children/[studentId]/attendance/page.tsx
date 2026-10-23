@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { withTaughtCourses } from "@/server/addedLessons";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
@@ -47,7 +48,7 @@ export default async function ParentChildAttendancePage({
   const start = monthStart(year, month);
   const end = monthEnd(year, month);
 
-  const records = await db.attendance.findMany({
+  const records = await withTaughtCourses(await db.attendance.findMany({
     where: {
       studentId,
       date: { gte: start, lt: end },
@@ -55,7 +56,7 @@ export default async function ParentChildAttendancePage({
     },
     include: { timetableSlot: { include: { course: true } } },
     orderBy: [{ date: "desc" }, { timetableSlot: { period: "asc" } }],
-  });
+  }));
 
   // Exit permits covering this month — the deputy issues these after phoning the
   // guardian, so the parent gets a record of every early departure.

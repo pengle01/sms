@@ -5,7 +5,7 @@
 import type { Role } from "@/generated/prisma/enums";
 
 /** How the register was taken when it wasn't the lesson's own teacher. */
-export type MarkKind = "COVER" | "SWAP" | "STUDY_HALL" | "CLAIM" | "HOMEGROUP_COVER";
+export type MarkKind = "COVER" | "SWAP" | "STUDY_HALL" | "CLAIM" | "ADDED_LESSON" | "HOMEGROUP_COVER";
 
 /** Management tag shown next to the marker's name (Δ. / Β.Δ.Α. / Β.Δ.), else null. */
 export function managementTag(role: Role | null | undefined): "HEADMASTER" | "HEADTEACHER_A" | "HEADTEACHER_B" | null {
@@ -23,7 +23,8 @@ export function registerLabel(o: { hasSlot: boolean; dayType: string | null | un
 /**
  * How the marker took this register, or null when it was their own:
  *   • a lesson marked by someone else → the substitution kind (planned
- *     COVER/SWAP/STUDY_HALL) or an ad-hoc CLAIM;
+ *     COVER/SWAP/STUDY_HALL) or an ad-hoc CLAIM — or ADDED_LESSON when the
+ *     marker held their own subject with the group instead («Δικό μου μάθημα»);
  *   • a homegroup register marked by someone other than the homegroup's
  *     teacher, deputy or counselor → HOMEGROUP_COVER.
  */
@@ -32,8 +33,11 @@ export function markKind(o: {
   slotStaffId: string | null;
   plannedKind: "COVER" | "SWAP" | "STUDY_HALL" | null;
   homegroupStaffIds: (string | null)[] | null;
+  /** The marker recorded this lesson as their own subject («Δικό μου μάθημα»). */
+  addedLesson?: boolean;
 }): MarkKind | null {
   if (o.homegroupStaffIds) return o.homegroupStaffIds.includes(o.markerStaffId) ? null : "HOMEGROUP_COVER";
   if (!o.slotStaffId || o.slotStaffId === o.markerStaffId) return null;
+  if (o.addedLesson) return "ADDED_LESSON";
   return o.plannedKind ?? "CLAIM";
 }

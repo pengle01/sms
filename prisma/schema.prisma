@@ -273,6 +273,7 @@ model StaffProfile {
   ddkAwards               DdkAward[]              @relation("DdkAwarder")
   conversations           Conversation[]
   roomsMaintained         RoomMaintainer[]
+  addedLessons            AddedLesson[]
   breakDutyPosts          DutyPostAssignment[]
   breakDutyChecked        DutyCheck[]          @relation("DutyCheckChecker")
   breakDutyCheckedAt      DutyCheck[]          @relation("DutyCheckTeacher")
@@ -453,6 +454,7 @@ model Course {
   grades         Grade[]
   timetableSlots TimetableSlot[]
   testSchedules  TestSchedule[]
+  addedLessons   AddedLesson[]
 }
 
 model CourseAssignment {
@@ -489,6 +491,7 @@ model TimetableSlot {
 
   attendance              Attendance[]
   substitutionPlanEntries SubstitutionPlanEntry[]
+  addedLessons            AddedLesson[]
 
   @@unique([groupId, dayOfWeek, period])
   @@index([removedAt])
@@ -529,6 +532,25 @@ model Attendance {
   @@unique([studentId, intercalaryGroupId, intercalaryPeriod, date])
   @@index([date])
   @@index([studentId, date])
+}
+
+// «Δικό μου μάθημα»: a lesson a teacher holds with one of their own groups in a
+// period that, on the timetable, belongs to another teacher (e.g. they are
+// absent). The register is still kept on that period's slot, as for a cover,
+// but the subject taught is the teacher's own. One per slot and date.
+model AddedLesson {
+  id              String        @id @default(cuid())
+  timetableSlotId String
+  timetableSlot   TimetableSlot @relation(fields: [timetableSlotId], references: [id], onDelete: Cascade)
+  date            DateTime      @db.Date
+  staffId         String
+  staff           StaffProfile  @relation(fields: [staffId], references: [id])
+  courseId        String
+  course          Course        @relation(fields: [courseId], references: [id])
+  createdAt       DateTime      @default(now())
+
+  @@unique([timetableSlotId, date])
+  @@index([staffId, date])
 }
 
 // ─── Substitutions (Αναπληρώσεις) ─────────────────────────────────────────────

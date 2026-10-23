@@ -27,6 +27,13 @@ describe("attendance marker", () => {
     expect(markKind({ markerStaffId: "b", slotStaffId: "a", plannedKind: null, homegroupStaffIds: null })).toBe("CLAIM");
   });
 
+  it("names my own lesson held in someone else's period, over a plan or a claim", () => {
+    expect(markKind({ markerStaffId: "b", slotStaffId: "a", plannedKind: null, homegroupStaffIds: null, addedLesson: true })).toBe("ADDED_LESSON");
+    expect(markKind({ markerStaffId: "b", slotStaffId: "a", plannedKind: "COVER", homegroupStaffIds: null, addedLesson: true })).toBe("ADDED_LESSON");
+    // never for the lesson's own teacher
+    expect(markKind({ markerStaffId: "a", slotStaffId: "a", plannedKind: null, homegroupStaffIds: null, addedLesson: true })).toBeNull();
+  });
+
   it("flags a homegroup register taken by someone outside the homegroup's staff", () => {
     expect(markKind({ markerStaffId: "t", slotStaffId: null, plannedKind: null, homegroupStaffIds: ["t", "d", null] })).toBeNull();
     expect(markKind({ markerStaffId: "d", slotStaffId: null, plannedKind: null, homegroupStaffIds: ["t", "d", null] })).toBeNull();

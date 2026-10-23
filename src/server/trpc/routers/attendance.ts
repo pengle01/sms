@@ -9,10 +9,12 @@ import { isWithinSchoolYear } from "@/lib/schoolYear";
 import { getPendingAttendance, type PendingLesson } from "@/server/attendanceLock";
 import { sendAbsenceSms } from "@/server/absenceSms";
 import { getSpecialDayForDate, getHomegroupMeetingForDate } from "@/lib/calendar";
+import { canAddLesson } from "@/lib/addedLesson";
 
 const OUT_OF_YEAR_MSG = "Η ημερομηνία είναι εκτός των ορίων του σχολικού έτους.";
 const NO_HOMEGROUP_PERIOD_MSG = "Δεν υπάρχει Υπευθυνότητα Τμήματος σε αυτή την ημέρα και περίοδο.";
 const REMOVED_LESSON_MSG = "Το μάθημα αυτό δεν υπάρχει πλέον στο ωρολόγιο πρόγραμμα. Ανανεώστε τη σελίδα.";
+const NOT_MY_COURSE_MSG = "Μπορείτε να καταχωρίσετε μόνο δικό σας μάθημα με δικό σας τμήμα.";
 
 export const attendanceRouter = createTRPCRouter({
   // Attendance-completion lock status for the current teacher. Drives the
@@ -42,6 +44,9 @@ export const attendanceRouter = createTRPCRouter({
             minutesDelayed: z.number().int().min(0).default(0),
           })
         ),
+        // «Δικό μου μάθημα»: the register is on another teacher's slot, but the
+        // lesson held was this subject of mine with that (my own) group.
+        addedCourseId: z.string().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -80,9 +85,26 @@ export const attendanceRouter = createTRPCRouter({
         }
       }
 
+      // «Δικό μου μάθημα» only on someone else's lesson, with a subject I teach
+      // that group (one slot, so the whole register is the same lesson).
+      const addedCourseId = input.addedCourseId;
+      if (addedCourseId) {
+        if (!slot || slot.staffId === staff.id || slotIds.length !== 1) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: NOT_MY_COURSE_MSG });
+        }
+        const mySlots = await ctx.db.timetableSlot.findMany({
+          where: { staffId: staff.id, groupId: slot.groupId },
+          select: { staffId: true, groupId: true, courseId: true, course: { select: { name: true } } },
+        });
+        const teaching = mySlots.map((m) => ({ ...m, courseName: m.course.name }));
+        if (!canAddLesson(teaching, staff.id, slot.groupId, addedCourseId)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: NOT_MY_COURSE_MSG });
+        }
+      }
+
       // Ad-hoc claim visibility: marking a slot that is neither mine nor a
-      // finalized-substitution assignment is a Κάλυψη — leave an audit trail
-      // so management can trace who covered which class.
+      // finalized-substitution assignment is an Αναπλήρωση (or my own lesson in its
+      // place) — leave an audit trail so management can trace who took which class.
       if (slot && slot.staffId !== staff.id) {
         const assignment = await ctx.db.substitutionPlanEntry.findFirst({
           where: {
@@ -94,10 +116,15 @@ export const attendanceRouter = createTRPCRouter({
         if (!assignment) {
           await writeAudit({
             userId: ctx.session.user.id,
-            action: "attendance.claimMark",
+            action: addedCourseId ? "attendance.addedLesson" : "attendance.claimMark",
             resource: "timetableSlot",
             resourceId: slot.id,
-            details: { groupId: slot.groupId, period: slot.period, date: input.records[0]!.date },
+            details: {
+              groupId: slot.groupId,
+              period: slot.period,
+              date: input.records[0]!.date,
+              ...(addedCourseId ? { courseId: addedCourseId } : {}),
+            },
           });
         }
       }
@@ -115,13 +142,27 @@ export const attendanceRouter = createTRPCRouter({
         : [];
       const permitFor = slot ? permitByStudent(permits, date, slot.period) : {};
 
-      const upserted = await ctx.db.$transaction(
-        input.records.map((r) => {
+      const upserted = await ctx.db.$transaction(async (tx) => {
+        // The subject taught on this slot and date: mine for «Δικό μου μάθημα»,
+        // the timetable's otherwise (a later plain Αναπλήρωση undoes an earlier one).
+        if (slot && slot.staffId !== staff.id && input.records.length > 0) {
+          const lessonDate = utcMidnight(input.records[0]!.date);
+          if (addedCourseId) {
+            await tx.addedLesson.upsert({
+              where: { timetableSlotId_date: { timetableSlotId: slot.id, date: lessonDate } },
+              create: { timetableSlotId: slot.id, date: lessonDate, staffId: staff.id, courseId: addedCourseId },
+              update: { staffId: staff.id, courseId: addedCourseId },
+            });
+          } else {
+            await tx.addedLesson.deleteMany({ where: { timetableSlotId: slot.id, date: lessonDate } });
+          }
+        }
+        return Promise.all(input.records.map((r) => {
           const isAutoAbsent = r.minutesDelayed > threshold;
           const status = isAutoAbsent ? "ABSENT" : r.status;
           const exitPermitId = permitFor[r.studentId]?.id ?? null;
 
-          return ctx.db.attendance.upsert({
+          return tx.attendance.upsert({
             where: {
               studentId_timetableSlotId_date: {
                 studentId: r.studentId,
@@ -147,8 +188,8 @@ export const attendanceRouter = createTRPCRouter({
               exitPermitId,
             },
           });
-        })
-      );
+        }));
+      });
 
       // Notify parents of a first-period absence. Never allowed to fail the
       // save: a register must record even when the gateway is unreachable.

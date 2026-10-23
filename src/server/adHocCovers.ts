@@ -3,12 +3,12 @@ import { slotTeacherName } from "@/lib/staffName";
 import { adHocCovers, markedKey, type AdHocCover } from "@/lib/coverMarked";
 
 /**
- * The classes this teacher covered ad hoc («Κάλυψη τμήματος») between two
+ * The classes this teacher covered ad hoc («Αναπλήρωση τμήματος») between two
  * dates (inclusive): registers they took on someone else's lesson that no
  * finalized plan assigned. Keyed "YYYY-MM-DD:period" (the stored period).
  */
 export async function loadAdHocCovers(staffId: string, from: Date, to: Date): Promise<Map<string, AdHocCover[]>> {
-  const [rows, planEntries] = await Promise.all([
+  const [rows, planEntries, added] = await Promise.all([
     db.attendance.findMany({
       where: {
         staffId,
@@ -36,10 +36,16 @@ export async function loadAdHocCovers(staffId: string, from: Date, to: Date): Pr
       where: { plan: { status: "FINAL", date: { gte: from, lte: to } }, timetableSlotId: { not: null } },
       select: { timetableSlotId: true, plan: { select: { date: true } } },
     }),
+    // «Δικό μου μάθημα»: the lessons where I taught my own subject instead.
+    db.addedLesson.findMany({
+      where: { staffId, date: { gte: from, lte: to } },
+      select: { timetableSlotId: true, date: true, course: { select: { name: true } } },
+    }),
   ]);
   if (rows.length === 0) return new Map();
 
   const planSlots = new Set(planEntries.map((e) => markedKey(e.timetableSlotId!, e.plan.date)));
+  const addedCourse = new Map(added.map((a) => [markedKey(a.timetableSlotId, a.date), a.course.name]));
   return adHocCovers(
     rows.flatMap(({ date, timetableSlot: s }) =>
       s
@@ -52,6 +58,7 @@ export async function loadAdHocCovers(staffId: string, from: Date, to: Date): Pr
             groupName: s.group.name,
             courseName: s.course.name,
             teacherName: slotTeacherName(s),
+            addedCourseName: addedCourse.get(markedKey(s.id, date)),
           }]
         : [],
     ),

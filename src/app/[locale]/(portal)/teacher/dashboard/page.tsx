@@ -173,7 +173,7 @@ export default async function TeacherDashboardPage({
         })
       : [],
   );
-  // Classes I covered ad hoc today («Κάλυψη τμήματος»)
+  // Classes I covered ad hoc today («Αναπλήρωση τμήματος»)
   const todayIso = today.toISOString().slice(0, 10);
   const adHoc = staff && !isWeekend && !isTodayExcursion ? await loadAdHocCovers(staff.id, today, today) : new Map<string, AdHocCover[]>();
   const meetingMarked = new Set(meetingMarkedRows.map((r) => r.intercalaryGroupId));
@@ -326,9 +326,11 @@ export default async function TeacherDashboardPage({
                     >
                       <span className="w-5 flex-shrink-0 text-center text-sm font-bold text-amber-400">{period}</span>
                       <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-medium text-slate-900">{c.courseName}</span>
+                        <span className="text-sm font-medium text-slate-900">{c.addedCourseName ?? c.courseName}</span>
                         <span className="text-sm text-slate-400">{c.groupName}</span>
-                        <span className="text-xs font-semibold text-amber-700">{t("claimBadge")}</span>
+                        {c.addedCourseName
+                          ? <span className="text-xs font-semibold text-emerald-700">{t("claimOwnLesson")}</span>
+                          : <span className="text-xs font-semibold text-amber-700">{t("claimBadge")}</span>}
                         <span className="text-xs text-slate-400">{t("insteadOf", { name: c.teacherName })}</span>
                       </div>
                       <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-500" />

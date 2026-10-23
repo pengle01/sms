@@ -44,6 +44,8 @@ interface Props {
   /** The register's group and the teacher — for the printed sheet's header. */
   sheetGroupName?: string | null;
   teacherName?: string;
+  /** «Δικό μου μάθημα»: my subject taught on someone else's lesson — saved with the register. */
+  addedCourseId?: string;
 }
 
 const fmtTime = (iso: string) =>
@@ -129,6 +131,7 @@ export function AttendanceMarkForm({
   isExcursion,
   sheetGroupName = null,
   teacherName,
+  addedCourseId,
 }: Props) {
   const router = useRouter();
   const t = useTranslations("attendance");
@@ -227,6 +230,7 @@ export function AttendanceMarkForm({
     }
     if (!slot || !selectedGroupId) return;
     markAttendance({
+      ...(addedCourseId ? { addedCourseId } : {}),
       records: students.map((s) => ({
         studentId: s.id,
         timetableSlotId: slot.id,

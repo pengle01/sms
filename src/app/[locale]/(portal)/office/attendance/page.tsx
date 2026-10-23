@@ -141,6 +141,7 @@ export default async function OfficeAttendancePage({
     SWAP: t("subTeacher"),
     STUDY_HALL: t("subHeadteacher"),
     CLAIM: t("subClaim"),
+    ADDED_LESSON: t("subAdded"),
     HOMEGROUP_COVER: t("subHomegroup"),
   } as const;
   const lessonText = (m: MarkerDetail | undefined) =>
@@ -158,7 +159,9 @@ export default async function OfficeAttendancePage({
             className={
               m.kind === "CLAIM" || m.kind === "HOMEGROUP_COVER"
                 ? "ml-1.5 bg-amber-50 text-amber-700 border-amber-200"
-                : "ml-1.5 bg-sky-50 text-sky-700 border-sky-200"
+                : m.kind === "ADDED_LESSON"
+                  ? "ml-1.5 bg-emerald-50 text-emerald-700 border-emerald-200"
+                  : "ml-1.5 bg-sky-50 text-sky-700 border-sky-200"
             }
           >
             {KIND_LABEL[m.kind]}

@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { withTaughtCourses } from "@/server/addedLessons";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
@@ -46,7 +47,7 @@ export default async function StudentAttendancePage({
   const start = monthStart(year, month);
   const end = monthEnd(year, month);
 
-  const records = await db.attendance.findMany({
+  const records = await withTaughtCourses(await db.attendance.findMany({
     where: {
       studentId: student.id,
       date: { gte: start, lt: end },
@@ -54,7 +55,7 @@ export default async function StudentAttendancePage({
     },
     include: { timetableSlot: { include: { course: true } } },
     orderBy: [{ date: "desc" }, { timetableSlot: { period: "asc" } }],
-  });
+  }));
 
   // Exit permits (Άδεια Εξόδου) covering this month — the student sees a record
   // of every early departure the on-duty deputy issued for them.

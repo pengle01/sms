@@ -15,7 +15,7 @@ export function coverMarkedKeys(rows: { timetableSlotId: string | null; date: Da
   return keys;
 }
 
-/** A class I covered ad hoc («Κάλυψη τμήματος») — its register is in my name. */
+/** A class I covered ad hoc («Αναπλήρωση τμήματος») — its register is in my name. */
 export interface AdHocCover {
   slotId: string;
   period: number;
@@ -24,6 +24,8 @@ export interface AdHocCover {
   courseName: string;
   /** The lesson's timetable teacher — the one I covered for. */
   teacherName: string;
+  /** «Δικό μου μάθημα»: the subject of mine I taught instead of covering. */
+  addedCourseName?: string;
 }
 
 /**
@@ -52,6 +54,7 @@ export function adHocCovers(
       groupName: r.groupName,
       courseName: r.courseName,
       teacherName: r.teacherName,
+      ...(r.addedCourseName ? { addedCourseName: r.addedCourseName } : {}),
     };
     const list = out.get(key);
     if (list) list.push(cover);

@@ -234,7 +234,7 @@ export default async function TeacherSchedulePage({
     for (const k of coverMarkedKeys(rows)) markedSet.add(k);
   }
 
-  // Classes I covered ad hoc this week («Κάλυψη τμήματος»), up to today
+  // Classes I covered ad hoc this week («Αναπλήρωση τμήματος»), up to today
   const adHoc =
     staff && !isFutureWeek
       ? await loadAdHocCovers(staff.id, utcMidnight(weekStartStr), utcMidnight(isCurrentWeek ? todayStr : weekEndStr))
@@ -649,10 +649,12 @@ export default async function TeacherSchedulePage({
                         href={`/${locale}/teacher/attendance/mark?period=${c.period}&date=${dateStr}&claimGroupId=${c.groupId}`}
                         className="group block"
                       >
-                        <div className="rounded-lg px-3 py-2.5 border border-amber-200 bg-amber-50 group-hover:border-amber-400">
-                          <p className="text-xs font-semibold leading-snug text-slate-900">{c.courseName}</p>
-                          <p className="mt-0.5 text-xs text-amber-700 font-medium">
-                            {t("claimBadge")} · {c.groupName}
+                        <div className={c.addedCourseName
+                          ? "rounded-lg px-3 py-2.5 border border-emerald-200 bg-emerald-50 group-hover:border-emerald-400"
+                          : "rounded-lg px-3 py-2.5 border border-amber-200 bg-amber-50 group-hover:border-amber-400"}>
+                          <p className="text-xs font-semibold leading-snug text-slate-900">{c.addedCourseName ?? c.courseName}</p>
+                          <p className={c.addedCourseName ? "mt-0.5 text-xs text-emerald-700 font-medium" : "mt-0.5 text-xs text-amber-700 font-medium"}>
+                            {c.addedCourseName ? t("claimOwnLesson") : t("claimBadge")} · {c.groupName}
                           </p>
                           <p className="text-[11px] text-slate-500">{t("insteadOf", { name: c.teacherName })}</p>
                           <div className="mt-1.5 flex items-center gap-1">
