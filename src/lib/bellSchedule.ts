@@ -160,3 +160,30 @@ export function periodTime(
   const per = config.schedules[id][row - 1];
   return per ? { start: per.start, end: per.end } : null;
 }
+
+/** Minutes since midnight, Cyprus wall clock (DST-aware), of an instant. */
+export function nicosiaMinutes(at: Date): number {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Nicosia", hourCycle: "h23", hour: "2-digit", minute: "2-digit",
+  }).formatToParts(at);
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
+  return get("hour") * 60 + get("minute");
+}
+
+/** The periods of a weekday (1–5) by its schedule — 7 or 8 of them. */
+export function bellPeriodsFor(config: BellScheduleConfig, dow: number): BellPeriod[] {
+  return config.schedules[config.days[dow] ?? "seven"] ?? [];
+}
+
+/**
+ * The first period a student leaving now misses — the exit permit's «from
+ * period»: the period under way; in a break, the one after it; before the day
+ * starts, period 1; after it ends, the last. 1 when the schedule is empty.
+ */
+export function permitStartPeriod(periods: BellPeriod[], minutes: number): number {
+  for (let i = 0; i < periods.length; i++) {
+    const end = normalizeTime(periods[i]!.end);
+    if (end && minutes < toMinutes(end)) return i + 1;
+  }
+  return Math.max(1, periods.length);
+}

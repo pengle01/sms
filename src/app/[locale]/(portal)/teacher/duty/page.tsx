@@ -9,13 +9,14 @@ import { utcMidnight, localDateStr } from "@/lib/dates";
 import { dutyDowFor, isDutyEligible, canViewDutyDesk, isOnDuty } from "@/lib/dutyRoster";
 import { locateHref, parseLocateTab, studentSearchWhere, type LocateTab, type LocateParams } from "@/lib/studentSearch";
 import { suggestionList } from "@/lib/textSearch";
-import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY } from "@/lib/schoolConfig";
+import { getPeriodsPerDay, getBellSchedule, DEFAULT_PERIODS_PER_DAY } from "@/lib/schoolConfig";
+import { bellPeriodsFor, nicosiaMinutes, permitStartPeriod } from "@/lib/bellSchedule";
 import { permitContactLabel, contactDisplayName, showsContactRole } from "@/lib/exitPermit";
 import { getDayOverrides } from "@/server/substitutions";
 import { periodsForDow } from "@/lib/periods";
 import { SuggestInput } from "@/components/SuggestInput";
 import { cn } from "@/lib/utils";
-import { BellOff, CheckCircle2, LogOut, Phone, Printer, Search, X } from "lucide-react";
+import { BellOff, CheckCircle2, LogOut, Phone, Printer, Search, Star, X } from "lucide-react";
 import { issueExitPermit, cancelExitPermit } from "./actions";
 import { ReferralTabs } from "@/components/referrals/ReferralTabs";
 import { ToiletPanel } from "./ToiletPanel";
@@ -26,7 +27,7 @@ import { nicosiaHhmm } from "@/lib/toilet";
 import { DayPlanCard } from "./DayPlanCard";
 import { isRealDate } from "@/lib/substitutionImport";
 import { RefreshAfterAttendance } from "@/components/attendance/RefreshAfterAttendance";
-import { permitContactChoices } from "@/lib/smsContacts";
+import { parentAccountPhones, permitPhoneChoices, preferredPhone, splitPhones } from "@/lib/smsContacts";
 
 export default async function TeacherDutyPage({
   params,
@@ -174,6 +175,10 @@ export default async function TeacherDutyPage({
                   select: { id: true, name: true, phone: true, role: true, isDefault: true },
                   orderBy: [{ isDefault: "desc" }, { name: "asc" }],
                 },
+                // Parents who signed up in the app — their own phone may differ.
+                parents: {
+                  select: { parentProfile: { select: { id: true, phone: true, role: true, user: { select: { name: true } } } } },
+                },
               },
             })
           : Promise.resolve(null),
@@ -196,7 +201,9 @@ export default async function TeacherDutyPage({
 
   // The parents the deputy can pick (the import's nameless «SMS» number folded
   // into its parent, or hidden) — the same list issueExitPermit validates.
-  const contactChoices = selectedStudent ? permitContactChoices(selectedStudent.smsContacts) : [];
+  const contactChoices = selectedStudent
+    ? permitPhoneChoices(selectedStudent.smsContacts, parentAccountPhones(selectedStudent.parents))
+    : [];
 
   const suggestions = suggestionList(
     suggestionRows.map((s) => (tab === "name" ? s.user?.name : s.studentId))
@@ -204,6 +211,11 @@ export default async function TeacherDutyPage({
   const periods = todayDow
     ? periodsForDow({ ...DEFAULT_PERIODS_PER_DAY, ...(periodsConfig ?? {}) }, todayDow)
     : [];
+  // «Από την περίοδο»: preselect the period a student leaving now misses first,
+  // by today's bell schedule (7- or 8-period day) — the deputy can still change it.
+  const permitFrom = todayDow
+    ? Math.min(Math.max(1, permitStartPeriod(bellPeriodsFor(await getBellSchedule(), todayDow), nicosiaMinutes(new Date()))), Math.max(1, periods.length))
+    : 1;
   const issueAction = issueExitPermit.bind(null, locale);
   const selectedGroup = groupId ? homeroomGroups.find((g) => g.id === groupId) ?? null : null;
 
@@ -434,35 +446,71 @@ export default async function TeacherDutyPage({
                       <p className="text-sm text-slate-400">{t("noContacts")}</p>
                     ) : (
                       <ul className="space-y-1.5">
-                        {contactChoices.map((c) => (
-                          <li key={c.id}>
-                            <label className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 cursor-pointer has-[:checked]:border-yellow-400 has-[:checked]:bg-yellow-50">
+                        {contactChoices.map((c) => {
+                          const phones = splitPhones(c.phone);
+                          // The family's SMS number is the one to call first.
+                          const preferred = c.isDefault ? preferredPhone(phones, c.smsPhone) ?? phones[0] ?? null : null;
+                          return (
+                          <li key={c.value}>
+                            <label
+                              className={cn(
+                                "flex items-center justify-between gap-3 rounded-lg border bg-white px-3 py-2 cursor-pointer has-[:checked]:border-yellow-400 has-[:checked]:bg-yellow-50",
+                                c.isDefault ? "border-amber-300" : "border-slate-200",
+                              )}
+                            >
                               <span className="flex items-center gap-2.5 min-w-0">
                                 <input
                                   type="radio"
                                   name="smsContactId"
-                                  value={c.id}
+                                  value={c.value}
                                   required
                                   defaultChecked={c.isDefault}
                                   className="accent-yellow-500"
                                 />
                                 <span className="min-w-0">
-                                  <span className="block text-sm font-medium text-slate-800 truncate">{contactDisplayName(c)}</span>
-                                  {showsContactRole(c) && (
+                                  <span className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-sm font-medium text-slate-800 truncate">{contactDisplayName(c)}</span>
+                                    {c.isDefault && (
+                                      <span
+                                        title={t("preferredHint")}
+                                        className="inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-300 px-2 py-0.5 text-[11px] font-semibold text-amber-800"
+                                      >
+                                        <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                                        {t("preferredNumber")}
+                                      </span>
+                                    )}
+                                    {c.kind === "account" && (
+                                      <span className="rounded-full bg-sky-50 border border-sky-200 px-2 py-0.5 text-[11px] font-medium text-sky-700">
+                                        {t("parentAccount")}
+                                      </span>
+                                    )}
+                                  </span>
+                                  {(c.kind === "account" || showsContactRole(c)) && (
                                     <span className="block text-xs text-slate-400">{t(`parentRoles.${c.role}` as Parameters<typeof t>[0])}</span>
                                   )}
                                 </span>
                               </span>
-                              <a
-                                href={`tel:${c.phone}`}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-medium hover:bg-emerald-100 whitespace-nowrap"
-                              >
-                                <Phone className="w-3.5 h-3.5" />
-                                {c.phone}
-                              </a>
+                              <span className="flex flex-col items-end gap-1">
+                                {phones.map((p) => (
+                                  <a
+                                    key={p}
+                                    href={`tel:${p}`}
+                                    className={cn(
+                                      "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-sm font-medium whitespace-nowrap",
+                                      p === preferred
+                                        ? "bg-emerald-600 border-emerald-600 text-white hover:bg-emerald-700"
+                                        : "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100",
+                                    )}
+                                  >
+                                    <Phone className="w-3.5 h-3.5" />
+                                    {p}
+                                  </a>
+                                ))}
+                              </span>
                             </label>
                           </li>
-                        ))}
+                          );
+                        })}
                       </ul>
                     )}
                   </div>
@@ -472,6 +520,7 @@ export default async function TeacherDutyPage({
                     <select
                       id="fromPeriod"
                       name="fromPeriod"
+                      defaultValue={permitFrom}
                       className="h-8 px-2 rounded-lg border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     >
                       {periods.map((p) => (

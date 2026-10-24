@@ -7,6 +7,10 @@ import {
   dayMismatches,
   parseBellSchedule,
   normalizeBellSchedule,
+  toMinutes,
+  permitStartPeriod,
+  bellPeriodsFor,
+  nicosiaMinutes,
   type BellScheduleConfig,
 } from "@/lib/bellSchedule";
 
@@ -134,5 +138,43 @@ describe("periodTime", () => {
   it("follows a changed day mapping", () => {
     const c = { ...DEFAULT_BELL_SCHEDULE, days: { ...DEFAULT_BELL_SCHEDULE.days, 2: "eight" as const } };
     expect(periodTime(c, 2, 3)).toEqual({ start: "09:15", end: "09:55" });
+  });
+});
+
+describe("permitStartPeriod", () => {
+  const seven = DEFAULT_BELL_SCHEDULE.schedules.seven; // 07:40 … 13:35, breaks after P2, P4, P6
+  const eight = DEFAULT_BELL_SCHEDULE.schedules.eight;
+  const at = (hhmm: string) => toMinutes(hhmm);
+
+  it("is the period under way", () => {
+    expect(permitStartPeriod(seven, at("08:00"))).toBe(1);
+    expect(permitStartPeriod(seven, at("10:30"))).toBe(4);
+    expect(permitStartPeriod(eight, at("10:30"))).toBe(4); // 09:55–10:35 on an 8-period day
+    expect(permitStartPeriod(eight, at("12:56"))).toBe(8);
+  });
+
+  it("is the next period during a break, or right at a period's end", () => {
+    expect(permitStartPeriod(seven, at("09:15"))).toBe(3); // break 09:10–09:30
+    expect(permitStartPeriod(seven, at("08:25"))).toBe(2);
+    expect(permitStartPeriod(eight, at("10:40"))).toBe(5); // break 10:35–10:50
+  });
+
+  it("is period 1 before school and the last period after it", () => {
+    expect(permitStartPeriod(seven, at("07:00"))).toBe(1);
+    expect(permitStartPeriod(seven, at("15:00"))).toBe(7);
+    expect(permitStartPeriod(eight, at("15:00"))).toBe(8);
+    expect(permitStartPeriod([], at("10:00"))).toBe(1);
+  });
+});
+
+describe("bellPeriodsFor / nicosiaMinutes", () => {
+  it("picks the weekday's schedule", () => {
+    expect(bellPeriodsFor(DEFAULT_BELL_SCHEDULE, 1)).toHaveLength(8); // Monday: 8-period day
+    expect(bellPeriodsFor(DEFAULT_BELL_SCHEDULE, 2)).toHaveLength(7);
+  });
+
+  it("reads the Cyprus wall clock, summer and winter", () => {
+    expect(nicosiaMinutes(new Date("2026-10-23T07:30:00Z"))).toBe(10 * 60 + 30); // UTC+3
+    expect(nicosiaMinutes(new Date("2026-12-01T07:30:00Z"))).toBe(9 * 60 + 30); // UTC+2
   });
 });

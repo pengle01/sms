@@ -4,7 +4,7 @@ import { getSuperAdminAuth } from "@/server/authz";
 import { db } from "@/server/db";
 import * as XLSX from "xlsx";
 import { Gender, ParentRole, Role } from "@/generated/prisma/enums";
-import { normalizePhone, evaluateDefaultSms, SMS_FLAG_REASON_EL, HOME_PHONE_NAME, importContactsFromRow } from "@/lib/smsContacts";
+import { normalizePhone, evaluateDefaultSms, SMS_FLAG_REASON_EL, HOME_PHONE_NAME, importContactsFromRow, planContactImport } from "@/lib/smsContacts";
 import { revalidatePath } from "next/cache";
 import { writeAudit, requestMeta } from "@/server/audit";
 import { normRegistry } from "@/lib/studentImportSync";
@@ -22,6 +22,8 @@ export interface ImportResult {
   studentsUpdated: number;
   groupsCreated: number;
   smsContactsCreated: number;
+  /** Numbers already on record that took the file's parent name/role. */
+  smsContactsUpdated: number;
   flaggedStudents: number;
   flagged: { studentId: string; name: string; reason: string }[];
   skipped: number;
@@ -35,7 +37,7 @@ export interface ImportResult {
   activeCount: number;
 }
 
-const EMPTY = { studentsCreated: 0, studentsUpdated: 0, groupsCreated: 0, smsContactsCreated: 0, flaggedStudents: 0, flagged: [], skipped: 0, studentsReactivated: 0, missing: [], fileCount: 0, activeCount: 0 };
+const EMPTY = { studentsCreated: 0, studentsUpdated: 0, groupsCreated: 0, smsContactsCreated: 0, smsContactsUpdated: 0, flaggedStudents: 0, flagged: [], skipped: 0, studentsReactivated: 0, missing: [], fileCount: 0, activeCount: 0 };
 
 const COLS = {
   group:             "Τμήμα",
@@ -99,6 +101,7 @@ export async function importStudents(_prev: ImportResult | null, formData: FormD
   let studentsUpdated = 0;
   let groupsCreated = 0;
   let smsContactsCreated = 0;
+  let smsContactsUpdated = 0;
   let flaggedStudents = 0;
   const flaggedList: { studentId: string; name: string; reason: string }[] = [];
   let skipped = 0;
@@ -210,13 +213,15 @@ export async function importStudents(_prev: ImportResult | null, formData: FormD
       // Every phone column becomes a contact, once per number (compared
       // normalised, so "+357 99 123456" = "99123456" and the file's SMS number
       // doesn't duplicate a parent already on record) — see importContactsFromRow.
-      const existingPhones = new Set(
-        (await db.smsContact.findMany({ where: { studentId: studentId2 }, select: { phone: true } }))
-          .map((c) => normalizePhone(c.phone))
-      );
+      // A number already on record takes the file's name and role (the file
+      // wins) — see planContactImport.
+      const existingContacts = await db.smsContact.findMany({
+        where: { studentId: studentId2 },
+        select: { id: true, name: true, phone: true, role: true },
+      });
       const guardianName = [str(row, COLS.guardianLastName), str(row, COLS.guardianFirstName)].filter(Boolean).join(" ");
       const smsPhone = str(row, COLS.smsPhone);
-      for (const c of importContactsFromRow({
+      const plan = planContactImport(existingContacts, importContactsFromRow({
         fatherName: [str(row, COLS.fatherLastName), str(row, COLS.fatherFirstName)].filter(Boolean).join(" "),
         fatherPhone: str(row, COLS.fatherPhone),
         motherName: [str(row, COLS.motherLastName), str(row, COLS.motherFirstName)].filter(Boolean).join(" "),
@@ -224,8 +229,12 @@ export async function importStudents(_prev: ImportResult | null, formData: FormD
         guardianName,
         homePhone: str(row, COLS.homePhone),
         smsPhone,
-      })) {
-        if (existingPhones.has(normalizePhone(c.phone))) continue;
+      }));
+      for (const c of plan.update) {
+        await db.smsContact.update({ where: { id: c.id }, data: { name: c.name, role: ParentRole[c.role] } });
+        smsContactsUpdated++;
+      }
+      for (const c of plan.create) {
         await db.smsContact.create({
           data: { studentId: studentId2, name: c.name, phone: c.phone, role: ParentRole[c.role], active: true },
         });
@@ -288,7 +297,7 @@ export async function importStudents(_prev: ImportResult | null, formData: FormD
   const [missing, activeCount] = await Promise.all([findMissingStudents(fileRegistries), countActiveStudents()]);
 
   return {
-    success: true, studentsCreated, studentsUpdated, groupsCreated, smsContactsCreated, flaggedStudents,
+    success: true, studentsCreated, studentsUpdated, groupsCreated, smsContactsCreated, smsContactsUpdated, flaggedStudents,
     flagged: flaggedList, skipped, errors,
     studentsReactivated, missing, fileCount: fileRegistries.size, activeCount,
   };

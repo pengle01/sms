@@ -6,9 +6,9 @@ import { db } from "@/server/db";
 import { getActiveAuth } from "@/server/authz";
 import { writeAudit, requestMeta } from "@/server/audit";
 import { dutyDowFor, isOnDuty } from "@/lib/dutyRoster";
-import { permitAbsenceSlots } from "@/lib/exitPermit";
+import { permitAbsenceSlots, permitAccountNote } from "@/lib/exitPermit";
 import { utcMidnight } from "@/lib/dates";
-import { permitContactChoices } from "@/lib/smsContacts";
+import { parentAccountPhones, permitPhoneChoices } from "@/lib/smsContacts";
 
 // Only TODAY'S rostered on-duty deputy may issue/cancel exit permits.
 async function requireOnDutyDeputy() {
@@ -69,17 +69,24 @@ export async function issueExitPermit(locale: string, formData: FormData) {
       groupId: true,
       subjectGroups: { select: { groupId: true } },
       smsContacts: { select: { id: true, name: true, phone: true, role: true, isDefault: true } },
+      parents: { select: { parentProfile: { select: { id: true, phone: true, role: true, user: { select: { name: true } } } } } },
     },
   });
   if (!student) redirect(`${base}?${deskQs(formData, { error: "errStudent" })}`);
 
-  // The deputy must record who agreed: one of the parents the picker offers
-  // (any of them, active or not), otherwise the free-text note.
-  const choices = permitContactChoices(student.smsContacts);
+  // The deputy must record who agreed: one of the numbers the picker offers —
+  // an imported contact (any of them, active or not) or a linked parent
+  // account's phone — otherwise the free-text note.
+  const choices = permitPhoneChoices(student.smsContacts, parentAccountPhones(student.parents));
+  const picked = choices.find((c) => c.value === smsContactId);
+  let savedContactId: string | null = null;
+  let savedNote: string | null = contactNote || null;
   if (choices.length > 0) {
-    if (!choices.some((c) => c.id === smsContactId)) {
+    if (!picked) {
       redirect(`${base}?${deskQs(formData, { student: studentId, error: "errContact" })}`);
     }
+    if (picked.kind === "account") savedNote = permitAccountNote(picked);
+    else savedContactId = picked.value;
   } else if (!contactNote) {
     redirect(`${base}?${deskQs(formData, { student: studentId, error: "errContact" })}`);
   }
@@ -110,8 +117,8 @@ export async function issueExitPermit(locale: string, formData: FormData) {
         date: ctx.today,
         fromPeriod,
         reason,
-        smsContactId: smsContactId || null,
-        contactNote: contactNote || null,
+        smsContactId: savedContactId,
+        contactNote: savedNote,
       },
     });
     for (const slot of absenceSlots) {

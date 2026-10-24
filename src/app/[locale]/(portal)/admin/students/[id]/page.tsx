@@ -5,9 +5,10 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  ChevronLeft, Pencil, User, Phone, Users, BookOpen, Clock, Layers,
+  ChevronLeft, Pencil, User, Phone, Users, BookOpen, Clock, Layers, Star,
 } from "lucide-react";
 import { SmsRecipientsCard } from "@/components/students/SmsRecipientsCard";
+import { parentCard } from "@/lib/smsContacts";
 import { AccountsCard, type StudentAccount } from "@/components/students/AccountsCard";
 import { DeleteStudentCard } from "@/components/students/DeleteStudentCard";
 import { historyBlockers } from "@/lib/studentDelete";
@@ -118,13 +119,11 @@ export default async function StudentDetailPage({
   ];
   const guardianClaims = student.accessCode?.guardianClaims ?? parents.length;
 
-  // Parents/guardians as recorded by the import (SMS contacts). They become
-  // login accounts only when they activate their access code, so show the
-  // contacts here rather than an empty "no parents" — the actual login accounts
-  // are listed in the Accounts card below.
-  const parentContacts = smsContacts.filter(
-    (c) => c.role === "FATHER" || c.role === "MOTHER" || c.role === "GUARDIAN",
-  );
+  // Parents/guardians as recorded by the import (SMS contacts) — people with a
+  // name and a role. They become login accounts only when they activate their
+  // access code; those are listed in the Accounts card below. The SMS number
+  // is not a person: it marks which parent's phone is preferred (parentCard).
+  const card = parentCard(smsContacts);
 
   const absentCount  = attendance.filter((a) => a.status === "ABSENT").length;
   const lateCount    = attendance.filter((a) => a.status === "LATE").length;
@@ -211,42 +210,63 @@ export default async function StudentDetailPage({
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              {parentContacts.length === 0 ? (
+              {card.parents.length === 0 ? (
                 <p className="px-5 py-8 text-sm text-slate-400 text-center">{t("noParentsOnRecord")}</p>
               ) : (
-                <>
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-100">
-                        <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("name")}</th>
-                        <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("role")}</th>
-                        <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">{t("phone")}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                      {parentContacts.map((c) => (
-                        <tr key={c.id}>
-                          <td className="px-5 py-3 font-medium text-slate-900">{c.name}</td>
-                          <td className="px-5 py-3">
-                            <Badge variant="outline" className="text-xs capitalize">
-                              {c.role === "FATHER" ? t("father") : c.role === "MOTHER" ? t("mother") : t("guardian")}
-                            </Badge>
-                          </td>
-                          <td className="px-5 py-3 text-slate-600">
-                            {c.phone
-                              ? <a href={`tel:${c.phone}`} className="flex items-center gap-1 hover:text-emerald-600">
-                                  <Phone className="w-3 h-3" />{c.phone}
-                                </a>
-                              : <span className="text-slate-400">—</span>}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <p className="px-5 py-3 text-xs text-slate-400 border-t border-slate-50">
-                    {t("parentsImportNote")}
-                  </p>
-                </>
+                <ul className="divide-y divide-slate-100">
+                  {card.parents.map((p) => (
+                    <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-900">{p.name}</p>
+                        <Badge variant="outline" className="mt-0.5 text-xs">
+                          {p.role === "FATHER" ? t("father") : p.role === "MOTHER" ? t("mother") : t("guardian")}
+                        </Badge>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        {p.phones.length === 0 ? (
+                          <span className="text-sm text-slate-400">—</span>
+                        ) : (
+                          p.phones.map(({ phone, preferred }) => (
+                            <span key={phone} className="flex items-center gap-2">
+                              {preferred && (
+                                <span
+                                  title={t("preferredHint")}
+                                  className="inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-300 px-2 py-0.5 text-[11px] font-semibold text-amber-800"
+                                >
+                                  <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                                  {t("preferredNumber")}
+                                </span>
+                              )}
+                              <a href={`tel:${phone}`} className="flex items-center gap-1 text-sm text-slate-700 hover:text-emerald-600">
+                                <Phone className="w-3 h-3" />
+                                {phone}
+                              </a>
+                            </span>
+                          ))
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {(card.homePhones.length > 0 || card.unmatchedSms) && (
+                <div className="px-5 py-3 border-t border-slate-100 space-y-1 text-sm text-slate-500">
+                  {card.homePhones.map(({ phone, preferred }) => (
+                    <p key={phone} className="flex items-center gap-2">
+                      {t("homePhoneLine", { phone })}
+                      {preferred && (
+                        <span title={t("preferredHint")} className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700">
+                          <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                          {t("preferredNumber")}
+                        </span>
+                      )}
+                    </p>
+                  ))}
+                  {card.unmatchedSms && <p className="text-amber-700">{t("smsUnmatched", { phone: card.unmatchedSms })}</p>}
+                </div>
+              )}
+              {card.parents.length > 0 && (
+                <p className="px-5 py-3 text-xs text-slate-400 border-t border-slate-50">{t("parentsImportNote")}</p>
               )}
             </CardContent>
           </Card>

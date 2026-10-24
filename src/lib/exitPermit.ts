@@ -34,6 +34,12 @@ export function showsContactRole(c: { name: string; role: string }): boolean {
   return !isSmsPlaceholder(c) && !isHomePhone(c) && c.name.trim() !== PARENT_ROLE_EL[c.role];
 }
 
+/** What a permit records when the deputy reached a parent's app-account phone:
+ *  «Όνομα (Μητέρα) · 99123456», kept as the permit's contact note. */
+export function permitAccountNote(a: { name: string; role: string; phone: string }): string {
+  return `${a.name.trim()} (${PARENT_ROLE_EL[a.role] ?? a.role}) · ${a.phone}`;
+}
+
 /**
  * Display label for who the deputy spoke with: the picked contact (name, role,
  * phone), falling back to the free-text note for students without contacts.

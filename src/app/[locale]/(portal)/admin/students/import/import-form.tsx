@@ -63,6 +63,7 @@ export function ImportForm() {
                   <Stat label={t("statStudentsUpdated")} value={result.studentsUpdated} />
                   <Stat label={t("statGroupsCreated")}   value={result.groupsCreated} />
                   <Stat label={t("statSmsContacts")}     value={result.smsContactsCreated} />
+                  <Stat label={t("statSmsContactsUpdated")} value={result.smsContactsUpdated} />
                   <Stat label={t("statFlaggedSms")}      value={result.flaggedStudents} />
                   <Stat label={t("statRowsSkipped")}     value={result.skipped} />
                   <Stat label={t("statReactivated")}     value={result.studentsReactivated} />
