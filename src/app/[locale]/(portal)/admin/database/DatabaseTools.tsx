@@ -15,6 +15,9 @@ export function DatabaseTools({ locale }: { locale: string }) {
   const [wipePhrase, setWipePhrase] = useState("");
   const [restorePhrase, setRestorePhrase] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  // The last restore's outcome, kept on screen: what did not fit as it was, or why it failed.
+  const [restoreNotes, setRestoreNotes] = useState<string[] | null>(null);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
 
   const doWipe = () =>
     startTransition(async () => {
@@ -33,19 +36,23 @@ export function DatabaseTools({ locale }: { locale: string }) {
   async function doRestore() {
     if (!file) return toast.error("Επιλέξτε πρώτα ένα αρχείο .sql.");
     setBusy(true);
+    setRestoreNotes(null);
+    setRestoreError(null);
     try {
       const fd = new FormData();
       fd.set("confirm", restorePhrase);
       fd.set("file", file);
       const res = await fetch(`/${locale}/admin/database/import`, { method: "POST", body: fd });
-      const j = (await res.json()) as { ok: boolean; message?: string; error?: string };
+      const j = (await res.json()) as { ok: boolean; message?: string; error?: string; notes?: string[] };
       if (j.ok) {
         toast.success(j.message ?? "Η επαναφορά ολοκληρώθηκε.");
+        setRestoreNotes(j.notes ?? []);
         setRestorePhrase("");
         setFile(null);
         router.refresh();
       } else {
-        toast.error(j.error ?? "Η εισαγωγή απέτυχε.");
+        toast.error("Η επαναφορά απέτυχε — η βάση έμεινε όπως ήταν.");
+        setRestoreError(j.error ?? "Η εισαγωγή απέτυχε.");
       }
     } catch (e) {
       toast.error((e as Error).message);
@@ -91,8 +98,13 @@ export function DatabaseTools({ locale }: { locale: string }) {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-slate-600">
-            Εφαρμογή ενός αντιγράφου <code>.sql</code> (από την Εξαγωγή). Αυτό <strong>αντικαθιστά ολόκληρη τη βάση δεδομένων</strong>.
+            Εφαρμογή ενός αντιγράφου <code>.sql</code> (από την Εξαγωγή). Αυτό <strong>αντικαθιστά όλα τα δεδομένα</strong>.
             Ενδέχεται να αποσυνδεθείτε αν το αντίγραφο περιέχει διαφορετικό/ή διαχειριστή/τρια.
+          </p>
+          <p className="text-xs text-slate-500">
+            Η δομή της βάσης μένει πάντα αυτή της τρέχουσας έκδοσης: από ένα παλαιότερο αντίγραφο μπαίνουν μόνο τα δεδομένα.
+            Πίνακες ή στήλες που δεν υπάρχουν πια παραλείπονται, οι νέες στήλες παίρνουν την προεπιλεγμένη τιμή τους, και
+            όλες οι διαφορές εμφανίζονται εδώ μετά την επαναφορά. Αν κάτι δεν χωράει, δεν αλλάζει τίποτα.
           </p>
           <input
             type="file"
@@ -112,6 +124,27 @@ export function DatabaseTools({ locale }: { locale: string }) {
             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
             Επαναφορά βάσης
           </button>
+          {restoreNotes && (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 space-y-1">
+              <p className="font-semibold">Η επαναφορά ολοκληρώθηκε.</p>
+              {restoreNotes.length === 0 ? (
+                <p>Το αντίγραφο ταιριάζει ακριβώς με την τρέχουσα δομή.</p>
+              ) : (
+                <>
+                  <p>Διαφορές από την τρέχουσα δομή ({restoreNotes.length}):</p>
+                  <ul className="list-disc pl-5 max-h-64 overflow-y-auto font-mono text-xs space-y-0.5">
+                    {restoreNotes.map((n, i) => <li key={i}>{n}</li>)}
+                  </ul>
+                </>
+              )}
+            </div>
+          )}
+          {restoreError && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 space-y-1">
+              <p className="font-semibold">Η επαναφορά απέτυχε — δεν άλλαξε τίποτα στη βάση.</p>
+              <pre className="whitespace-pre-wrap break-words font-mono text-xs max-h-64 overflow-y-auto">{restoreError}</pre>
+            </div>
+          )}
         </CardContent>
       </Card>
 

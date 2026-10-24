@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSuperAdminAuth } from "@/server/authz";
 import { writeAudit, requestMeta } from "@/server/audit";
 import { runPsqlRestore } from "@/server/dbAdmin";
+import { restoreNotices } from "@/lib/dataRestore";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Restores an uploaded .sql dump via psql (a full DROP/CREATE replace).
+// Restores an uploaded .sql dump's data into the current schema via psql: the
+// tables keep this version's structure however old the dump is, and the
+// differences met (left-out tables/columns, new columns) are reported back.
 // SUPER_ADMIN only, guarded by a typed confirmation phrase. POST (not a server
 // action) so large dumps aren't capped by the server-action body limit.
 export async function POST(req: NextRequest) {
@@ -37,7 +40,14 @@ export async function POST(req: NextRequest) {
     if (res.code !== 0) {
       return NextResponse.json({ ok: false, error: `psql exited ${res.code}: ${res.stderr.slice(-800)}` }, { status: 500 });
     }
-    return NextResponse.json({ ok: true, message: "Restore complete. You may need to sign in again." });
+    // What did not fit as it was: tables/columns this version no longer has
+    // (left out) and new columns (filled with their defaults).
+    const notes = restoreNotices(res.stderr);
+    return NextResponse.json({
+      ok: true,
+      message: "Η επαναφορά ολοκληρώθηκε — τα δεδομένα μπήκαν στην τρέχουσα δομή της βάσης.",
+      notes,
+    });
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 });
   }

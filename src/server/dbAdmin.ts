@@ -4,6 +4,7 @@
 
 import { spawn } from "node:child_process";
 import { Client } from "pg";
+import { dataRestoreScript } from "@/lib/dataRestore";
 
 function dbUrl(): string {
   const url = process.env.DATABASE_URL;
@@ -41,12 +42,18 @@ export function runPgDump(): Promise<CmdResult> {
 }
 
 /**
- * Apply an uploaded .sql dump. `--single-transaction` makes the whole restore
- * atomic (a failure rolls back instead of leaving a half-restored DB) and
- * `ON_ERROR_STOP` aborts on the first error.
+ * Restore an uploaded .sql dump's DATA into the current schema — the live
+ * tables keep this version's structure however old the dump is (see
+ * src/lib/dataRestore.ts). `--single-transaction` makes it atomic (any error
+ * rolls back to the database as it was) and `ON_ERROR_STOP` aborts on the
+ * first error. The differences it met come back as NOTICE lines on stderr.
  */
 export function runPsqlRestore(sql: Buffer): Promise<CmdResult> {
-  return run("psql", [dbUrl(), "--single-transaction", "-v", "ON_ERROR_STOP=1"], sql);
+  return run(
+    "psql",
+    [dbUrl(), "--single-transaction", "-v", "ON_ERROR_STOP=1"],
+    Buffer.from(dataRestoreScript(sql.toString("utf8"))),
+  );
 }
 
 /**
