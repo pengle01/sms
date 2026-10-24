@@ -199,6 +199,7 @@ model User {
   substitutionPlansFinalized SubstitutionPlan[]          @relation("SubstitutionPlanFinalizer")
   notifications              Notification[]
   sentNotifications          Notification[]              @relation("SentNotifications")
+  recipientGroups            StaffRecipientGroup[]       @relation("RecipientGroupOwner")
   attendanceExports          AttendanceExport[]
   waivedAttendance           Attendance[]                @relation("AttendanceWaiver")
   auditLogs                  AuditLog[]
@@ -992,6 +993,21 @@ model ToiletBreak {
 }
 
 // ─── Notifications ────────────────────────────────────────────────────────────
+
+// A sender's own saved list of staff recipients («Οι ομάδες μου»). Private to
+// its owner. Members are user ids; anyone no longer an active educator is
+// simply skipped when the group is used.
+model StaffRecipientGroup {
+  id        String   @id @default(cuid())
+  ownerId   String
+  owner     User     @relation("RecipientGroupOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  name      String
+  memberIds String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([ownerId, name])
+}
 
 model Notification {
   id        String       @id @default(cuid())

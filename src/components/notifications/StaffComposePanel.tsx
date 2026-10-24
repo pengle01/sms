@@ -5,6 +5,8 @@ import { getActiveAuth } from "@/server/authz";
 import { EDUCATOR_ROLES } from "@/lib/rbac";
 import { canSendStaffNotifications, composeErrorKey } from "@/lib/staffNotifications";
 import { specialtyPrefix } from "@/lib/substitutions";
+import { isHomegroupWhere } from "@/lib/homegroupFilter";
+import { homegroupTeacherUserIds, keepAvailable } from "@/lib/recipientGroups";
 import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
@@ -73,6 +75,35 @@ export async function StaffComposePanel({
     };
   });
 
+  const recipientIds = recipients.map((r) => r.id);
+
+  // «Οι ομάδες μου» — the sender's own saved groups, members still available.
+  // «Καθηγητές τμήματος» — per homegroup, everyone who teaches any of its students.
+  const [myGroups, homegroups, students, slots] = await Promise.all([
+    db.staffRecipientGroup.findMany({
+      where: { ownerId: auth.userId },
+      select: { id: true, name: true, memberIds: true },
+      orderBy: { name: "asc" },
+    }),
+    db.group.findMany({ where: isHomegroupWhere(), select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    db.studentProfile.findMany({
+      where: { user: { isActive: true }, groupId: { not: null } },
+      select: { groupId: true, subjectGroups: { select: { groupId: true } } },
+    }),
+    db.timetableSlot.findMany({ select: { groupId: true, staff: { select: { userId: true } } } }),
+  ]);
+  const studentRows = students.map((s) => ({ homegroupId: s.groupId, groupIds: s.subjectGroups.map((g) => g.groupId) }));
+  const slotRows = slots.map((s) => ({ groupId: s.groupId, userId: s.staff?.userId ?? null }));
+  const groups = myGroups.map((g) => ({ id: g.id, name: g.name, memberIds: keepAvailable(g.memberIds, recipientIds) }));
+  const homegroupTeachers = homegroups
+    .map((h) => ({
+      id: h.id,
+      name: h.name,
+      teacherIds: keepAvailable(homegroupTeacherUserIds(h.id, studentRows, slotRows), recipientIds),
+    }))
+    .filter((h) => h.teacherIds.length > 0)
+    .sort((a, b) => a.name.localeCompare(b.name, "el", { numeric: true }));
+
   return (
     <div className="space-y-6">
       <div>
@@ -103,7 +134,7 @@ export async function StaffComposePanel({
           <CardTitle className="text-base">{t("newMessage")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <StaffNotificationForm recipients={recipients} action={sendStaffNotification.bind(null, locale, `${hub}/compose`)} />
+          <StaffNotificationForm recipients={recipients} groups={groups} homegroups={homegroupTeachers} action={sendStaffNotification.bind(null, locale, `${hub}/compose`)} />
         </CardContent>
       </Card>
     </div>

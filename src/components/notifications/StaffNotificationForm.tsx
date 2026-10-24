@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { Send, Loader2 } from "lucide-react";
+import { Send, Loader2, Save, MoreHorizontal, Users } from "lucide-react";
+import { saveRecipientGroup, deleteRecipientGroup } from "./recipient-group-actions";
 import { AttachmentPicker, uploadAttachments } from "@/components/attachments/AttachmentPicker";
 
 type Recipient = {
@@ -14,14 +17,26 @@ type Recipient = {
   homeroomGrades: number[];
 };
 
+/** One of the sender's saved groups («Οι ομάδες μου»). */
+type SavedGroup = { id: string; name: string; memberIds: string[] };
+/** «Καθηγητές τμήματος»: everyone who teaches any student of the homegroup. */
+type HomegroupTeachers = { id: string; name: string; teacherIds: string[] };
+
 export function StaffNotificationForm({
   recipients,
+  groups = [],
+  homegroups = [],
   action,
 }: {
   recipients: Recipient[];
+  groups?: SavedGroup[];
+  homegroups?: HomegroupTeachers[];
   action: (formData: FormData) => Promise<void>;
 }) {
   const t = useTranslations("staffNotify");
+  const router = useRouter();
+  const [homegroupId, setHomegroupId] = useState("");
+  const [groupBusy, startGroup] = useTransition();
   const ta = useTranslations("attachments");
   const [mode, setMode] = useState<"all" | "pick">("all");
   const [files, setFiles] = useState<File[]>([]);
@@ -78,6 +93,25 @@ export function StaffNotificationForm({
       return next;
     });
   const isSetSelected = (ids: string[]) => ids.length > 0 && ids.every((id) => selected.has(id));
+  const addSet = (ids: string[]) => setSelected((prev) => new Set([...prev, ...ids]));
+
+  // Saving / updating / deleting a group keeps the current selection; the page
+  // refreshes so the chips show the stored groups.
+  const groupAction = (run: () => Promise<{ ok: boolean; error?: string }>, done: string) =>
+    startGroup(async () => {
+      const res = await run();
+      if (res.ok) {
+        toast.success(done);
+        router.refresh();
+      } else {
+        toast.error(t(res.error as "err_groupName"));
+      }
+    });
+  const saveAsGroup = () => {
+    const name = window.prompt(t("groupNamePrompt"));
+    if (name === null) return;
+    groupAction(() => saveRecipientGroup(name, [...selected]), t("groupSaved"));
+  };
 
   const chip = (label: string, ids: string[]) => (
     <button
@@ -158,6 +192,81 @@ export function StaffNotificationForm({
                 )
               )}
               {specialties.map((sp) => chip(sp, chipSet((r) => r.specialty === sp)))}
+            </div>
+
+            {/* «Καθηγητές τμήματος» — everyone who teaches any student of a homegroup */}
+            {homegroups.length > 0 && (
+              <div className="px-3 py-2 border-b border-slate-100 bg-slate-50/60 flex flex-wrap items-center gap-2">
+                <span className="text-[11px] uppercase tracking-wide text-slate-400 mr-1">{t("homegroupTeachers")}</span>
+                <select
+                  value={homegroupId}
+                  onChange={(e) => setHomegroupId(e.target.value)}
+                  className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
+                >
+                  <option value="">{t("chooseHomegroup")}</option>
+                  {homegroups.map((h) => (
+                    <option key={h.id} value={h.id}>{`${h.name} · ${h.teacherIds.length}`}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  disabled={!homegroupId}
+                  onClick={() => addSet(homegroups.find((h) => h.id === homegroupId)?.teacherIds ?? [])}
+                  className="inline-flex items-center gap-1 h-8 rounded-lg border border-emerald-300 bg-white px-2.5 text-xs font-medium text-emerald-700 hover:bg-emerald-50 disabled:opacity-40"
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  {t("addTeachers")}
+                </button>
+              </div>
+            )}
+
+            {/* «Οι ομάδες μου» — the sender's own saved groups */}
+            <div className="px-3 py-2 border-b border-slate-100 bg-slate-50/60 flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] uppercase tracking-wide text-slate-400 mr-1">{t("myGroups")}</span>
+              {groups.map((g) => (
+                <span key={g.id} className="inline-flex items-center">
+                  {chip(g.name, g.memberIds)}
+                  <details className="relative">
+                    <summary
+                      aria-label={g.name}
+                      className="list-none cursor-pointer px-1 text-slate-400 hover:text-slate-700 [&::-webkit-details-marker]:hidden"
+                    >
+                      <MoreHorizontal className="w-3.5 h-3.5" />
+                    </summary>
+                    <div className="absolute z-10 mt-1 w-56 rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
+                      <button
+                        type="button"
+                        disabled={groupBusy || selected.size === 0}
+                        onClick={() => groupAction(() => saveRecipientGroup(g.name, [...selected], g.id), t("groupSaved"))}
+                        className="w-full rounded px-2 py-1.5 text-left text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+                      >
+                        {t("updateGroup")}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={groupBusy}
+                        onClick={() => {
+                          if (window.confirm(t("deleteGroupConfirm", { name: g.name }))) {
+                            groupAction(() => deleteRecipientGroup(g.id), t("groupDeleted"));
+                          }
+                        }}
+                        className="w-full rounded px-2 py-1.5 text-left text-xs text-red-600 hover:bg-red-50 disabled:opacity-40"
+                      >
+                        {t("deleteGroup")}
+                      </button>
+                    </div>
+                  </details>
+                </span>
+              ))}
+              <button
+                type="button"
+                disabled={groupBusy || selected.size === 0}
+                onClick={saveAsGroup}
+                className="inline-flex items-center gap-1 rounded-full border border-dashed border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-600 hover:border-emerald-400 hover:text-emerald-700 disabled:opacity-40"
+              >
+                {groupBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                {t("saveAsGroup")}
+              </button>
             </div>
             <div className="p-2 border-b border-slate-100 bg-slate-50/60 flex items-center gap-3">
               <input
