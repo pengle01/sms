@@ -249,8 +249,8 @@ export default async function StudentSchedulePage({
   const backUrl = from === "homegroup"
     ? `/${locale}/teacher/homegroup${groupId ? `?groupId=${groupId}` : ""}`
     : student.group
-      ? `/${locale}/teacher/attendance/locate?grade=${student.group.grade}&groupId=${student.groupId}`
-      : `/${locale}/teacher/attendance/locate`;
+      ? `/${locale}/teacher/whereabouts/students?grade=${student.group.grade}&groupId=${student.groupId}`
+      : `/${locale}/teacher/whereabouts/students`;
 
   const dayUrl = `/${locale}/teacher/students/${studentId}`;
   const weekUrl = `/${locale}/teacher/students/${studentId}?view=week`;

@@ -9,7 +9,7 @@ import type { Role } from "@/generated/prisma/client";
 import {
   LayoutDashboard, ClipboardList, AlertTriangle, BookOpen,
   Calendar, CalendarRange, FileText, Bell, Users, Settings, Shield,
-  Search, GraduationCap, Home, Backpack, Plus, BookMarked, ShieldAlert,
+  GraduationCap, Home, Backpack, Plus, BookMarked, ShieldAlert,
   CircleUser, BellRing, LogOut, ArrowLeftRight, BarChart3, Award, MessageSquare,
   ScrollText, Send, Database, Megaphone, Wrench, MapPin, NotebookPen,
 } from "lucide-react";
@@ -29,7 +29,6 @@ const NAV_ITEMS: NavItem[] = [
   { key: "homegroupStaff", href: "homegroups",        icon: Users,           roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "timetable",    href: "attendance/schedule", icon: Calendar,        roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "lessonNotes",  href: "lesson-notes",        icon: NotebookPen,     roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
-  { key: "locate",       href: "attendance/locate",   icon: Search,          roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "whereabouts",  href: "whereabouts",         icon: MapPin,          roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "referrals",    href: "referrals",           icon: AlertTriangle,   roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","STUDENT_COUNSELOR","TEACHER"] },
   { key: "grades",       href: "grades",              icon: BookOpen,        roles: ["HEADMASTER","HEADTEACHER_A","HEADTEACHER_B","TEACHER"] },

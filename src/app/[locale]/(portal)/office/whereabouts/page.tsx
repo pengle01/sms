@@ -15,5 +15,11 @@ export default async function OfficeWhereaboutsPage({
   const auth = await getActiveAuth();
   if (!auth || !isOfficeAdmin(auth.role)) redirect(`/${locale}/login/staff`);
 
-  return <Whereabouts params={await searchParams} showPhone={canViewStaffDirectory(auth.roles)} />;
+  return (
+    <Whereabouts
+      params={await searchParams}
+      showPhone={canViewStaffDirectory(auth.roles)}
+      basePath={`/${locale}/office/whereabouts`}
+    />
+  );
 }

@@ -14,5 +14,5 @@ export default async function AdminWhereaboutsPage({
   const auth = await getSuperAdminAuth();
   if (!auth) redirect(`/${locale}/login/staff`);
 
-  return <Whereabouts params={await searchParams} showPhone />;
+  return <Whereabouts params={await searchParams} showPhone basePath={`/${locale}/admin/whereabouts`} />;
 }

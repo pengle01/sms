@@ -1,13 +1,11 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { DoorOpen, MapPin, Phone, Search } from "lucide-react";
+import { Phone, Search } from "lucide-react";
 import { db } from "@/server/db";
 import { getRooms } from "@/server/rooms";
 import { getPeriodsPerDay } from "@/lib/schoolConfig";
 import { maxPeriodCount, type PeriodsPerDay } from "@/lib/periods";
 import { cn } from "@/lib/utils";
-import { SuggestInput } from "@/components/SuggestInput";
-import { suggestionList } from "@/lib/textSearch";
 import {
   WEEK_DAYS,
   cell,
@@ -24,11 +22,21 @@ import { RoomSelect } from "./RoomSelect";
 import { PrintTimetableLink } from "@/components/timetable/PrintTimetableLink";
 import { PrintSpecialtyPicker } from "@/components/timetable/PrintSpecialtyPicker";
 import { specialtyGroups } from "@/lib/timetablePrint";
+import { filterGroups, parseGroupFilters, type GroupKind } from "@/lib/groupList";
+import { groupListAccess, loadGroupDetail, loadGroupIndex } from "@/server/groupList";
+import { PrintGroupLink } from "./PrintGroupLink";
+import { TeacherPicker } from "./TeacherPicker";
+import { WhereaboutsTabs } from "./WhereaboutsTabs";
 
 export interface WhereaboutsParams {
   tab?: string;
   teacher?: string;
   room?: string;
+  /** «Τμήματα»: the chosen group's id, and the list's filters. */
+  group?: string;
+  gq?: string;
+  grade?: string;
+  kind?: string;
 }
 
 /**
@@ -39,9 +47,21 @@ export interface WhereaboutsParams {
  * `showPhone` is for secretarial/management/admin (canViewStaffDirectory):
  * the teacher's phone is shown next to their week.
  */
-export async function Whereabouts({ params, showPhone }: { params: WhereaboutsParams; showPhone: boolean }) {
+export async function Whereabouts({
+  params,
+  showPhone,
+  basePath,
+  studentsHref,
+}: {
+  params: WhereaboutsParams;
+  showPhone: boolean;
+  /** This portal's «Πού βρίσκεται;» page. */
+  basePath: string;
+  /** The live student locator, where this portal has one (teachers). */
+  studentsHref?: string;
+}) {
   const t = await getTranslations("whereabouts");
-  const tab = params.tab === "rooms" ? "rooms" : "teachers";
+  const tab = params.tab === "rooms" ? "rooms" : params.tab === "groups" ? "groups" : "teachers";
 
   const [rawSlots, periodsPerDay] = await Promise.all([
     db.timetableSlot.findMany({
@@ -65,42 +85,176 @@ export async function Whereabouts({ params, showPhone }: { params: WhereaboutsPa
     courseName: s.course.nameEl || s.course.name,
   }));
 
-  const tabLink = (key: "teachers" | "rooms") =>
-    cn(
-      "h-9 px-4 inline-flex items-center gap-2 rounded-xl text-sm font-medium border transition-colors",
-      tab === key
-        ? "bg-emerald-600 text-white border-emerald-600"
-        : "bg-white text-slate-600 border-slate-200 hover:border-emerald-400 hover:text-emerald-700",
-    );
-
   return (
     <div className="space-y-5">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-          <MapPin className="w-6 h-6" />
-          {t("title")}
-        </h2>
-        <p className="text-slate-500 text-sm mt-1">{t("subtitle")}</p>
-      </div>
-
-      <div className="flex gap-2">
-        <Link href="?tab=teachers" className={tabLink("teachers")}>
-          <Search className="w-4 h-4" />
-          {t("tabTeachers")}
-        </Link>
-        <Link href="?tab=rooms" className={tabLink("rooms")}>
-          <DoorOpen className="w-4 h-4" />
-          {t("tabRooms")}
-        </Link>
-      </div>
+      <WhereaboutsTabs active={tab} basePath={basePath} studentsHref={studentsHref} />
 
       {tab === "teachers" ? (
         await TeachersTab({ slots, periodsPerDay, query: params.teacher?.trim() ?? "", showPhone })
-      ) : (
+      ) : tab === "rooms" ? (
         await RoomsTab({ slots, periodsPerDay, room: params.room?.trim() ?? "" })
+      ) : (
+        await GroupsTab({ params })
       )}
 
       <p className="text-xs text-slate-400">{t("regularWeekNote")}</p>
+    </div>
+  );
+}
+
+// ── Groups ──────────────────────────────────────────────────────────────────
+
+/**
+ * Every group — homegroups, lesson/elective groups, support groups — as pills,
+ * narrowed by year, kind and a name filter; the chosen one shows its students
+ * and a printable list. Support groups only for full special-ed access
+ * (groupListAccess).
+ */
+async function GroupsTab({ params }: { params: WhereaboutsParams }) {
+  const t = await getTranslations("whereabouts");
+  const [canSee, index] = await Promise.all([groupListAccess(), loadGroupIndex()]);
+  const groups = canSee ? index.filter((g) => canSee(g.kind)) : [];
+  const supportVisible = groups.some((g) => g.kind === "support");
+
+  const filters = parseGroupFilters({ q: params.gq, grade: params.grade, kind: params.kind });
+  const shown = filterGroups(groups, filters);
+  const chosenId = groups.some((g) => g.id === params.group) ? params.group! : null;
+  const detail = chosenId ? await loadGroupDetail(chosenId) : null;
+
+  // Links keep every other choice: filters stay when a group is picked, and the
+  // picked group stays while the filters change (if it is still listed).
+  const href = (o: { grade?: number | null; kind?: GroupKind | null; group?: string | null }) => {
+    const sp = new URLSearchParams({ tab: "groups" });
+    const grade = o.grade === undefined ? filters.grade : o.grade;
+    const kind = o.kind === undefined ? filters.kind : o.kind;
+    const group = o.group === undefined ? chosenId : o.group;
+    if (filters.q) sp.set("gq", filters.q);
+    if (grade) sp.set("grade", String(grade));
+    if (kind) sp.set("kind", kind);
+    if (group) sp.set("group", group);
+    return `?${sp.toString()}`;
+  };
+  const pill = (active: boolean) =>
+    cn(
+      "h-8 px-3 inline-flex items-center gap-1.5 rounded-lg border text-sm transition-colors",
+      active
+        ? "bg-emerald-600 text-white border-emerald-600"
+        : "bg-white text-slate-700 border-slate-200 hover:border-emerald-400 hover:text-emerald-700",
+    );
+  const caption = "text-xs font-semibold text-slate-400 uppercase tracking-wide";
+  const kinds: GroupKind[] = supportVisible ? ["homegroup", "lesson", "support"] : ["homegroup", "lesson"];
+
+  const kindBadge = (kind: GroupKind) => (
+    <span
+      className={cn(
+        "rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+        kind === "homegroup" && "bg-emerald-50 border-emerald-200 text-emerald-700",
+        kind === "lesson" && "bg-sky-50 border-sky-200 text-sky-700",
+        kind === "support" && "bg-violet-50 border-violet-200 text-violet-700",
+      )}
+    >
+      {t(`groupKind_${kind}`)}
+    </span>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-end gap-4">
+        <div className="space-y-1.5">
+          <p className={caption}>{t("filterGrade")}</p>
+          <div className="flex gap-2">
+            <Link href={href({ grade: null })} className={pill(filters.grade === null)}>{t("filterAll")}</Link>
+            {[1, 2, 3].map((g) => (
+              <Link key={g} href={href({ grade: g })} className={pill(filters.grade === g)}>
+                {t(`grade_${g}`)}
+              </Link>
+            ))}
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <p className={caption}>{t("filterKind")}</p>
+          <div className="flex flex-wrap gap-2">
+            <Link href={href({ kind: null })} className={pill(filters.kind === null)}>{t("filterAll")}</Link>
+            {kinds.map((k) => (
+              <Link key={k} href={href({ kind: k })} className={pill(filters.kind === k)}>
+                {t(`groupKindPlural_${k}`)}
+              </Link>
+            ))}
+          </div>
+        </div>
+        <form method="GET" className="space-y-1.5">
+          <p className={caption}>{t("filterName")}</p>
+          <input type="hidden" name="tab" value="groups" />
+          {filters.grade && <input type="hidden" name="grade" value={filters.grade} />}
+          {filters.kind && <input type="hidden" name="kind" value={filters.kind} />}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              name="gq"
+              defaultValue={filters.q}
+              autoComplete="off"
+              placeholder={t("groupSearchPlaceholder")}
+              className="h-8 w-56 max-w-full pl-9 pr-3 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+        </form>
+      </div>
+
+      {shown.length === 0 ? (
+        <p className="text-sm text-slate-500">{t("noGroupFiltered")}</p>
+      ) : (
+        <div className="space-y-1.5">
+          <p className="text-xs text-slate-500">{t("groupsShown", { count: shown.length })}</p>
+          <div className="flex flex-wrap gap-2 max-h-72 overflow-y-auto">
+            {shown.map((g) => (
+              <Link key={g.id} href={href({ group: g.id })} className={pill(g.id === chosenId)}>
+                {g.name}
+                <span className="text-xs opacity-60">{g.count}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {detail && (
+        <div className="space-y-3 border-t border-slate-200 pt-4">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <h3 className="text-lg font-semibold text-slate-900">{detail.name}</h3>
+            {kindBadge(detail.kind)}
+            <span className="text-sm text-slate-500">{t("studentCount", { count: detail.students.length })}</span>
+            {detail.students.length > 0 && <PrintGroupLink groupId={detail.id} />}
+          </div>
+          {detail.lessons.length > 0 && (
+            <p className="text-xs text-slate-500">{detail.lessons.join(" · ")}</p>
+          )}
+          {detail.students.length === 0 ? (
+            <p className="text-sm text-slate-400">{t("noStudents")}</p>
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+              <table className="w-full text-sm min-w-[420px]">
+                <thead>
+                  <tr className="border-b border-slate-100 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    <th className="px-3 py-2 w-10 text-right">#</th>
+                    <th className="px-3 py-2 w-28">{t("colRegistry")}</th>
+                    <th className="px-3 py-2">{t("colStudent")}</th>
+                    {detail.kind !== "homegroup" && <th className="px-3 py-2 w-24">{t("colHomegroup")}</th>}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {detail.students.map((s, i) => (
+                    <tr key={s.id} className={i % 2 === 1 ? "bg-slate-50" : undefined}>
+                      <td className="px-3 py-1.5 text-right tabular-nums text-slate-400">{i + 1}</td>
+                      <td className="px-3 py-1.5 tabular-nums text-slate-600">{s.studentId}</td>
+                      <td className="px-3 py-1.5 text-slate-900">{s.name}</td>
+                      {detail.kind !== "homegroup" && <td className="px-3 py-1.5 text-slate-600">{s.homegroup ?? "—"}</td>}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -149,44 +303,14 @@ async function TeachersTab({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <form method="GET" className="flex items-end gap-2">
-          <input type="hidden" name="tab" value="teachers" />
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <SuggestInput
-              name="teacher"
-              defaultValue={query}
-              minChars={2}
-              placeholder={t("searchPlaceholder")}
-              suggestions={suggestionList(roster.map((r) => r.scheduleName))}
-              className="h-9 w-72 max-w-full pl-9 pr-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-          </div>
-        </form>
-        <PrintSpecialtyPicker specialties={specialties} />
-      </div>
+      <TeacherPicker
+        roster={roster.map((r) => ({ scheduleName: r.scheduleName, accountName: r.accountName }))}
+        initialQuery={query}
+        selected={chosen?.scheduleName ?? null}
+        aside={<PrintSpecialtyPicker specialties={specialties} />}
+      />
 
-      {!query ? (
-        <p className="text-sm text-slate-500">{t("searchHint")}</p>
-      ) : matches.length === 0 ? (
-        <p className="text-sm text-slate-500">{t("noTeacher", { query })}</p>
-      ) : !chosen ? (
-        <div className="space-y-2">
-          <p className="text-sm text-slate-500">{t("pickOne", { count: matches.length })}</p>
-          <div className="flex flex-wrap gap-2">
-            {matches.slice(0, 30).map((m) => (
-              <Link
-                key={m.scheduleName}
-                href={`?tab=teachers&teacher=${encodeURIComponent(m.scheduleName)}`}
-                className="h-8 px-3 inline-flex items-center rounded-lg border border-slate-200 bg-white text-sm text-slate-700 hover:border-emerald-400 hover:text-emerald-700"
-              >
-                {m.scheduleName}
-              </Link>
-            ))}
-          </div>
-        </div>
-      ) : (
+      {chosen && (
         <div className="space-y-3">
           <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
             <h3 className="text-lg font-semibold text-slate-900">{chosen.scheduleName}</h3>
