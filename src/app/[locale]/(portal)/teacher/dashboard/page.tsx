@@ -5,7 +5,8 @@ import { db } from "@/server/db";
 import type { Role } from "@/generated/prisma/client";
 import { getNow, utcMidnight, fmtDisplayDate } from "@/lib/dates";
 import { profileIncomplete } from "@/lib/profile";
-import { getSpecialDayForDate, getOnDutyDeputies, getHomegroupMeetingForDate } from "@/lib/calendar";
+import { getSpecialDayForDate, getOnDutyDeputies, getHomegroupMeetingForDate, isHolidayType } from "@/lib/calendar";
+import { myDutyDays, type MyDutyPost } from "@/lib/breakDuty";
 import { rowsForDay, storedPeriodAt, isMeetingRow, isLessonCancelled } from "@/lib/homegroupPeriod";
 import { getHomegroupOptions, ownHomegroups } from "@/server/homegroupPeriod";
 import { getPeriodsPerDay } from "@/lib/schoolConfig";
@@ -17,7 +18,7 @@ import { getAnnouncementsForDay } from "@/server/announcements";
 import { AnnouncementsCard } from "@/components/announcements/AnnouncementsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, AlertCircle, CalendarRange, ShieldCheck } from "lucide-react";
+import { CheckCircle2, AlertCircle, CalendarRange, ShieldCheck, Megaphone } from "lucide-react";
 import Link from "next/link";
 import { Fragment } from "react";
 import { groupByPeriod } from "@/lib/periods";
@@ -210,10 +211,20 @@ export default async function TeacherDashboardPage({
 
   // On-duty deputies for today + active announcements (pushed by management;
   // composed under Ειδοποιήσεις, shown read-only here).
-  const [onDuty, announcements] = await Promise.all([
+  const [onDuty, announcements, dutyAssignments] = await Promise.all([
     isWeekend ? Promise.resolve([]) : getOnDutyDeputies(today),
     getAnnouncementsForDay(today),
+    // «Η εφημερία μου» — this teacher's break-duty posts from the duty programme
+    staff
+      ? db.dutyPostAssignment.findMany({
+          select: { dayOfWeek: true, staffProfileId: true, teacherName: true, post: { select: { code: true, name: true, order: true } } },
+        })
+      : Promise.resolve([]),
   ]);
+  const dutyDays = staff ? myDutyDays(dutyAssignments, { id: staff.id, scheduleName: staff.scheduleName }) : new Map<number, MyDutyPost[]>();
+  // No break duty on a weekend or a day the school is closed.
+  const dutyToday = !isWeekend && !isHolidayType(todaySpecialDay) ? dutyDays.get(todayDow) ?? [] : [];
+  const dowNames = t.raw("dowFull") as string[];
 
   return (
     <div className="space-y-6">
@@ -226,6 +237,38 @@ export default async function TeacherDashboardPage({
       </div>
 
       <AnnouncementsCard announcements={announcements} />
+
+      {/* «Η εφημερία μου» — that they have break duty today, and where; otherwise the week's duty days */}
+      {dutyToday.length > 0 ? (
+        <div className="rounded-xl border-2 border-amber-300 bg-amber-50 px-5 py-4 space-y-2">
+          <p className="flex items-center gap-2 font-semibold text-amber-900">
+            <Megaphone className="w-5 h-5" />
+            {t("myDutyToday")}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {dutyToday.map((p) => (
+              <span key={p.code} className="rounded-lg bg-white border border-amber-200 px-2.5 py-1 text-sm text-amber-900">
+                {/* The post's number in the duty programme («Α/Α»), then its place */}
+                <span className="font-bold">{t("dutyPost", { code: p.code })}</span>
+                <span className="mx-1.5 text-amber-400">·</span>
+                {p.name}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : dutyDays.size > 0 ? (
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-600">
+          <Megaphone className="w-4 h-4 text-slate-400" />
+          <span className="font-medium">{t("myDutyWeek")}</span>
+          {[...dutyDays.entries()]
+            .sort(([a], [b]) => a - b)
+            .map(([dow, posts]) => (
+              <span key={dow} className="rounded-md bg-slate-100 px-2 py-0.5">
+                {dowNames[dow]} · {posts.map((p) => t("dutyPost", { code: p.code })).join(", ")}
+              </span>
+            ))}
+        </p>
+      ) : null}
 
       {allSlots.length === 0 ? (
         <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">

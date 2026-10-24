@@ -233,3 +233,37 @@ export function breakProgress(rows: GridRow[], breakNo: number): { checked: numb
   }
   return { checked, total: rows.length, absent };
 }
+
+export interface MyDutyPost {
+  code: string;
+  name: string;
+  order: number;
+}
+
+/**
+ * A teacher's break-duty posts by weekday (1–5), from the duty programme: the
+ * assignments linked to their staff record, or — when the import could not
+ * link one — written with their timetable name (compared as dutyNameKey).
+ * Posts in the programme's order.
+ */
+export function myDutyDays(
+  assignments: readonly {
+    dayOfWeek: number;
+    staffProfileId: string | null;
+    teacherName: string;
+    post: MyDutyPost;
+  }[],
+  staff: { id: string; scheduleName: string | null },
+): Map<number, MyDutyPost[]> {
+  const key = staff.scheduleName ? dutyNameKey(staff.scheduleName) : null;
+  const out = new Map<number, MyDutyPost[]>();
+  for (const a of assignments) {
+    const mine = a.staffProfileId === staff.id || (!a.staffProfileId && key !== null && dutyNameKey(a.teacherName) === key);
+    if (!mine) continue;
+    const list = out.get(a.dayOfWeek) ?? [];
+    if (!list.some((p) => p.code === a.post.code)) list.push(a.post);
+    out.set(a.dayOfWeek, list);
+  }
+  for (const list of out.values()) list.sort((a, b) => a.order - b.order);
+  return out;
+}

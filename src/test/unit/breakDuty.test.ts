@@ -9,6 +9,7 @@ import {
   reportGrid,
   breakProgress,
 } from "@/lib/breakDuty";
+import { myDutyDays } from "@/lib/breakDuty";
 import { DEFAULT_BELL_SCHEDULE } from "@/lib/bellSchedule";
 
 describe("splitTeachers", () => {
@@ -154,5 +155,36 @@ describe("reportGrid", () => {
   it("keeps checks of a teacher no longer in the programme", () => {
     const rows = reportGrid(posts, [{ breakNo: 1, postCode: "5", teacherName: "Α-ΑΛΛΟΣ Β.", present: false, comment: null }], breaks);
     expect(rows.map((r) => r.teacherName)).toEqual(["Τ-ΚΟΚΟΝΗΣ Κ.", "Ε-ΖΩΓΡΑΦΟΥ Α.", "Α-ΑΛΛΟΣ Β."]);
+  });
+});
+
+describe("myDutyDays", () => {
+  const post = (code: string, order: number) => ({ code, name: `Θέση ${code}`, order });
+  const rows = [
+    { dayOfWeek: 2, staffProfileId: "me", teacherName: "ΗΥ-ΜΑΣΙΑ Μ.", post: post("5Α", 6) },
+    { dayOfWeek: 2, staffProfileId: "me", teacherName: "ΗΥ-ΜΑΣΙΑ Μ.", post: post("1", 1) },
+    { dayOfWeek: 4, staffProfileId: null, teacherName: "ΗΥ- ΜΑΣΙΑ Μ", post: post("3", 3) }, // unlinked, same name
+    { dayOfWeek: 4, staffProfileId: "other", teacherName: "Φ-ΑΛΛΟΣ Α.", post: post("2", 2) },
+    { dayOfWeek: 5, staffProfileId: "someoneElse", teacherName: "ΗΥ-ΜΑΣΙΑ Μ.", post: post("4", 4) }, // linked to another record
+  ];
+
+  it("collects my posts per weekday, in the programme's order", () => {
+    const days = myDutyDays(rows, { id: "me", scheduleName: "ΗΥ-ΜΑΣΙΑ Μ. ΒΔ" });
+    expect(days.get(2)!.map((p) => p.code)).toEqual(["1", "5Α"]);
+  });
+
+  it("also finds an assignment the import could not link, by my timetable name", () => {
+    const days = myDutyDays(rows, { id: "me", scheduleName: "ΗΥ-ΜΑΣΙΑ Μ. ΒΔ" });
+    expect(days.get(4)!.map((p) => p.code)).toEqual(["3"]);
+  });
+
+  it("never takes another teacher's linked assignment", () => {
+    const days = myDutyDays(rows, { id: "me", scheduleName: "ΗΥ-ΜΑΣΙΑ Μ." });
+    expect(days.has(5)).toBe(false);
+    expect([...days.keys()].sort()).toEqual([2, 4]);
+  });
+
+  it("is empty for a teacher with no duty", () => {
+    expect(myDutyDays(rows, { id: "nobody", scheduleName: null }).size).toBe(0);
   });
 });

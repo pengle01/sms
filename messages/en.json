@@ -232,6 +232,18 @@
     "breakDutyTab": "Teachers' break duty"
   },
   "dashboard": {
+    "myDutyToday": "You have break duty today",
+    "myDutyWeek": "Your break duties:",
+    "dutyPost": "Post {code}",
+    "dowFull": [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday"
+    ],
     "welcome": "Welcome, {name}",
     "integrityWarning": "{count, plural, one {# data integrity issue found} other {# data integrity issues found}}",
     "viewChecks": "View checks",
