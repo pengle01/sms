@@ -11,6 +11,9 @@ import { periodLabel } from "@/lib/periods";
 import { matchesSearch, suggestionList } from "@/lib/textSearch";
 import { SuggestInput } from "@/components/SuggestInput";
 import { gradeColorClass } from "@/lib/grades";
+import { getSpecialDaysInRange, isHolidayType } from "@/lib/calendar";
+import { byDay, closedDays, monthBounds, monthParam, monthWeeks, parseMonth, shiftMonth } from "@/lib/testCalendar";
+import { TestsCalendar, TestsViewToggle } from "@/components/tests/TestsCalendar";
 
 const gradeColor = (v: number) => `${gradeColorClass(v)} font-bold`;
 
@@ -19,10 +22,11 @@ export default async function StudentTestsPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; view?: string; month?: string }>;
 }) {
   const { locale } = await params;
-  const { q } = await searchParams;
+  const { q, view: viewParam, month: monthRaw } = await searchParams;
+  const view = viewParam === "calendar" ? "calendar" : "list";
   const query = (q ?? "").trim();
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login/student`);
@@ -156,14 +160,70 @@ export default async function StudentTestsPage({
     </Card>
   );
 
+  // «Ημερολόγιο»: the month's tests on a school-day grid; the search applies too.
+  const href = (o: { view?: string; month?: string | null }) => {
+    const sp = new URLSearchParams();
+    if (query) sp.set("q", query);
+    const v = o.view ?? view;
+    if (v === "calendar") sp.set("view", "calendar");
+    const m = o.month === undefined ? (v === "calendar" ? monthRaw : null) : o.month;
+    if (m) sp.set("month", m);
+    const qs = sp.toString();
+    return qs ? `?${qs}` : "?";
+  };
+  let calendar: React.ReactNode = null;
+  if (view === "calendar") {
+    const ym = parseMonth(monthRaw, today);
+    const { from, to } = monthBounds(ym);
+    const specials = await getSpecialDaysInRange(from, to);
+    calendar = (
+      <TestsCalendar
+        weeks={monthWeeks(ym)}
+        monthLabel={from.toLocaleDateString(locale === "el" ? "el-GR" : "en-GB", { month: "long", year: "numeric", timeZone: "UTC" })}
+        prevHref={href({ month: monthParam(shiftMonth(ym, -1)) })}
+        nextHref={href({ month: monthParam(shiftMonth(ym, 1)) })}
+        todayIso={today.toISOString().slice(0, 10)}
+        closed={closedDays(specials.filter((s) => isHolidayType(s.type)), from, to)}
+        entries={byDay(
+          visible
+            .filter((r) => r.date >= from && r.date <= to)
+            .map((r) => ({
+              id: r.id,
+              date: r.date,
+              title: r.course.name,
+              period: fmtPeriod(r.period, r.periodCount),
+              type: r.type,
+            })),
+          (e) => e.date,
+        )}
+        dayNames={DOW.slice(1, 6)}
+        labels={{
+          prev: tShared("calPrev"),
+          next: tShared("calNext"),
+          holiday: tShared("calHoliday"),
+          big: tShared("typeBigShort"),
+          small: tShared("typeSmallShort"),
+        }}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>
+        <TestsViewToggle
+          view={view}
+          listHref={href({ view: "list", month: null })}
+          calendarHref={href({ view: "calendar" })}
+          labels={{ list: tShared("viewList"), calendar: tShared("viewCalendar") }}
+        />
       </div>
 
       {/* Subject search */}
       <form method="GET" className="flex gap-2 flex-wrap">
+        {view === "calendar" && <input type="hidden" name="view" value="calendar" />}
+        {view === "calendar" && monthRaw && <input type="hidden" name="month" value={monthRaw} />}
         <div className="relative flex-1 min-w-48 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <SuggestInput
@@ -176,6 +236,7 @@ export default async function StudentTestsPage({
         </div>
       </form>
 
+      {view === "calendar" ? calendar : <>
       {upcoming.length === 0 && past.length === 0 && (
         <div className="flex flex-col items-center justify-center py-24 text-slate-400">
           <CalendarCheck className="w-12 h-12 mb-3 opacity-30" />
@@ -196,6 +257,7 @@ export default async function StudentTestsPage({
           <PastTable rows={past} />
         </div>
       )}
+      </>}
     </div>
   );
 }
