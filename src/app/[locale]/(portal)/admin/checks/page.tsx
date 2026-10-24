@@ -13,6 +13,7 @@ import { FixStudentGroupsDialog, type GroupOption } from "./FixStudentGroupsDial
 import { CleanupRedundantButton } from "./CleanupRedundantButton";
 import { RelinkLessonsButton } from "./RelinkLessonsButton";
 import { misattachedSlots } from "@/server/staffLink";
+import { DeleteGroupButton } from "@/components/groups/DeleteGroupButton";
 
 export default async function ChecksPage({
   params,
@@ -233,10 +234,14 @@ export default async function ChecksPage({
                       </Link>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {g.hasTimetable && (
+                      {g.hasTimetable ? (
                         <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
                           {t("hasLeftoverTimetable")}
                         </Badge>
+                      ) : (
+                        // Not in the timetable either — an artifact of a wrong import; the
+                        // server still refuses if the group has any history.
+                        <DeleteGroupButton groupId={g.groupId} name={g.groupName} />
                       )}
                     </td>
                   </tr>

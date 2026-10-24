@@ -9,6 +9,8 @@ import { GraduationCap, Users, ArrowLeft, ClipboardList } from "lucide-react";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { utcMidnight } from "@/lib/dates";
+import { DeleteGroupButton } from "@/components/groups/DeleteGroupButton";
+import { looksDeletable } from "@/lib/groupDelete";
 
 export default async function GroupDetailPage({
   params,
@@ -94,6 +96,9 @@ export default async function GroupDetailPage({
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
+          {looksDeletable({ students: group.students.length, enrolled: group.studentGroups.length, lessons: group.timetableSlots.length }) && (
+            <DeleteGroupButton groupId={group.id} name={group.name} afterHref={`/${locale}/admin/groups`} withLabel />
+          )}
           <div className="text-center px-4 py-2 bg-red-50 rounded-xl">
             <p className="text-xl font-bold text-red-600">{todayAbsences}</p>
             <p className="text-xs text-slate-500">{t("absentToday")}</p>

@@ -540,7 +540,7 @@
     "smsFlagged": "SMS recipients to review",
     "smsFlaggedHint": "The default SMS number is missing or doesn't match a parent/guardian.",
     "emptyGroups": "Groups without students",
-    "emptyGroupsHint": "These groups have no students at all — either enrol students or remove the group's leftover timetable.",
+    "emptyGroupsHint": "These groups have no students — either enrol students or remove the leftover timetable. Those with no lessons in the timetable either (leftovers of a wrong import) can be deleted with 🗑.",
     "hasLeftoverTimetable": "Has timetable slots",
     "coverageIssues": "Students with schedule coverage issues",
     "coverageHint": "Every student must have exactly one lesson in every period of the week. Missing periods mean the student belongs to no group with a lesson then; overlaps mean two of their groups have a lesson at the same time. Use Fix to move the student between groups.",
@@ -684,6 +684,17 @@
     "submitting": "Sending…"
   },
   "groups": {
+    "deleteGroup": "Delete group",
+    "deleteGroupConfirm": "Delete the group «{name}»? It has no students and no lessons in the timetable.",
+    "deleteGroupDone": "The group «{name}» was deleted.",
+    "deleteGroupRefused": "It cannot be deleted: {reasons}",
+    "deleteGroupWhy": {
+      "students": "it has students",
+      "enrolled": "it has enrolled students",
+      "inTimetable": "it has lessons in the timetable",
+      "history": "it has history (attendance, tests, reports or substitutions)",
+      "notFound": "not found"
+    },
     "title": "Homeroom Groups",
     "teachers": "Teachers",
     "headteachersB": "Headteachers B",

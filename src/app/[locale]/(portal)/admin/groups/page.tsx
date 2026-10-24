@@ -11,6 +11,8 @@ import { isHomegroupWhere } from "@/lib/homegroupFilter";
 import { suggestionList } from "@/lib/textSearch";
 import { SuggestInput } from "@/components/SuggestInput";
 import { AutoSubmitSelect } from "@/components/AutoSubmitSelect";
+import { DeleteGroupButton } from "@/components/groups/DeleteGroupButton";
+import { looksDeletable } from "@/lib/groupDelete";
 
 export default async function GroupsDirectoryPage({
   params,
@@ -47,7 +49,8 @@ export default async function GroupsDirectoryPage({
     db.group.findMany({
       where,
       include: {
-        _count: { select: { students: true, studentGroups: true } },
+        // Current lessons only (nested reads are not filtered by db.ts).
+        _count: { select: { students: true, studentGroups: true, timetableSlots: { where: { removedAt: null } } } },
         homeroomTeacher: { include: { user: { select: { name: true } } } },
       },
       orderBy: [{ grade: "asc" }, { name: "asc" }],
@@ -134,7 +137,7 @@ export default async function GroupsDirectoryPage({
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colType")}</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colStudents")}</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colEnrolled")}</th>
-                <th className="w-10" />
+                <th className="w-16" />
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -167,12 +170,18 @@ export default async function GroupsDirectoryPage({
                     <td className="px-4 py-3 text-slate-500">{g._count.students}</td>
                     <td className="px-4 py-3 text-slate-500">{g._count.studentGroups}</td>
                     <td className="px-3 py-3">
+                      <span className="flex items-center gap-3 justify-end">
+                      {/* Unused groups — artifacts of a wrong import — can be deleted here */}
+                      {looksDeletable({ students: g._count.students, enrolled: g._count.studentGroups, lessons: g._count.timetableSlots }) && (
+                        <DeleteGroupButton groupId={g.id} name={g.name} />
+                      )}
                       <Link
                         href={`/${locale}/admin/groups/${g.id}`}
                         className="text-slate-300 hover:text-slate-600 transition-colors"
                       >
                         <ChevronRight className="w-4 h-4" />
                       </Link>
+                      </span>
                     </td>
                   </tr>
                 );
