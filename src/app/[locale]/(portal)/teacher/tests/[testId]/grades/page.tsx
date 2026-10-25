@@ -106,6 +106,7 @@ export default async function TestGradesPage({
             return {
               id: s.id,
               name: s.user?.name ?? s.id,
+              registryNo: s.studentId,
               existingValue: g?.value != null ? String(Number(g.value)) : "",
             };
           })}
@@ -113,6 +114,7 @@ export default async function TestGradesPage({
             saveAll: t("saveAll"),
             saved: t("saved"),
             colStudent: t("colStudent"),
+            colRegistry: t("colRegistry"),
             colScore: t("colScore"),
             invalidGrade: t("invalidGrade"),
           }}

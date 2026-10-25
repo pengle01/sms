@@ -133,6 +133,7 @@ export default async function LessonGradesPage({
             return {
               id: s.id,
               name: s.user?.name ?? s.id,
+              registryNo: s.studentId,
               existingValue: v != null ? String(Number(v)) : "",
             };
           })}
@@ -140,6 +141,7 @@ export default async function LessonGradesPage({
             saveAll: t("saveAll"),
             saved: t("saved"),
             colStudent: t("colStudent"),
+            colRegistry: t("colRegistry"),
             colScore: t("colScore"),
             invalidGrade: t("invalidGrade"),
           }}

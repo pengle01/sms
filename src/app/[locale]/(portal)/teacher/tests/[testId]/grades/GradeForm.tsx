@@ -9,6 +9,8 @@ import { GRADE_MIN, GRADE_MAX, isValidGradeValue } from "@/lib/grades";
 type Student = {
   id: string;
   name: string;
+  /** Αρ. Μητρώου */
+  registryNo: string;
   existingValue: string;
 };
 
@@ -26,6 +28,7 @@ export function GradeForm({
     saveAll: string;
     saved: string;
     colStudent: string;
+    colRegistry: string;
     colScore: string;
     invalidGrade: string;
   };
@@ -68,6 +71,9 @@ export function GradeForm({
         <table className="w-full text-sm min-w-[520px]">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50/60">
+              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide w-32">
+                {labels.colRegistry}
+              </th>
               <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">
                 {labels.colStudent}
               </th>
@@ -76,9 +82,10 @@ export function GradeForm({
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-50">
+          <tbody className="divide-y divide-slate-100">
             {students.map((s) => (
-              <tr key={s.id} className="hover:bg-slate-50/50">
+              <tr key={s.id} className="odd:bg-white even:bg-slate-50 hover:bg-emerald-50/40">
+                <td className="px-5 py-3 font-mono text-slate-500">{s.registryNo}</td>
                 <td className="px-5 py-3 font-medium text-slate-900">{s.name}</td>
                 <td className="px-5 py-3">
                   <input
