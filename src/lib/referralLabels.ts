@@ -56,3 +56,20 @@ export function resolutionSummary(resolution: {
   const days = resolution.expulsionDays?.length ?? 0;
   return days > 0 ? `${base} · ${days} ημέρ${days === 1 ? "α" : "ες"}` : base;
 }
+
+export const COMPACT_DESCRIPTION_CHARS = 90;
+
+/**
+ * What the compact referral list shows as the referral's title: its title, or
+ * — for one filed without a title — the start of its description, on one line.
+ */
+export function compactReferralTitle(r: { title: string | null; description: string }): { text: string; fromTitle: boolean } {
+  const title = r.title?.trim();
+  if (title) return { text: title, fromTitle: true };
+  const desc = r.description.replace(/\s+/g, " ").trim();
+  if (!desc) return { text: "—", fromTitle: false };
+  return {
+    text: desc.length > COMPACT_DESCRIPTION_CHARS ? `${desc.slice(0, COMPACT_DESCRIPTION_CHARS - 1).trimEnd()}…` : desc,
+    fromTitle: false,
+  };
+}

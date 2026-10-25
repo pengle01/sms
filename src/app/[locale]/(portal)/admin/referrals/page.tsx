@@ -15,13 +15,14 @@ import { getTranslations } from "next-intl/server";
 import { resolutionSummary, actionLabel } from "@/lib/referralLabels";
 import { parseReferralSearchTab, referralSearchWhere } from "@/lib/referralSearch";
 import { decideResolutionUnlock } from "./actions";
+import { CompactReferralTable, ReferralViewToggle } from "@/components/referrals/CompactReferrals";
 
 export default async function ReferralsPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ status?: string; group?: string; page?: string; stype?: string; q?: string }>;
+  searchParams: Promise<{ status?: string; group?: string; page?: string; stype?: string; q?: string; view?: string }>;
 }) {
   const { locale } = await params;
   const auth = await getSuperAdminAuth();
@@ -30,7 +31,9 @@ export default async function ReferralsPage({
   const t = await getTranslations("referrals");
   const tCommon = await getTranslations("common");
 
-  const { status: statusFilter, group: groupFilter, page: pageStr, stype, q } = await searchParams;
+  const { status: statusFilter, group: groupFilter, page: pageStr, stype, q, view } = await searchParams;
+  // «Συμπαγής»: one line per referral — student(s), filer, title.
+  const compact = view === "compact";
   const page = Math.max(1, parseInt(pageStr ?? "1"));
   const limit = 20;
   const searchTab = parseReferralSearchTab(stype);
@@ -97,7 +100,10 @@ export default async function ReferralsPage({
 
   const buildHref = (overrides: Record<string, string | undefined>) => {
     const p = new URLSearchParams();
-    const merged = { status: statusFilter, group: groupFilter, stype: searchQuery ? searchTab : undefined, q: searchQuery || undefined, ...overrides };
+    const merged = {
+      status: statusFilter, group: groupFilter, stype: searchQuery ? searchTab : undefined, q: searchQuery || undefined,
+      view: compact ? "compact" : undefined, ...overrides,
+    };
     for (const [k, v] of Object.entries(merged)) {
       if (v && v !== "ALL") p.set(k, v);
     }
@@ -112,7 +118,10 @@ export default async function ReferralsPage({
           <h2 className="text-2xl font-bold text-slate-900">{t("title")}</h2>
           <p className="text-slate-500 text-sm mt-1">{t("total", { count: total })}</p>
         </div>
-        <NewReferralDialog students={students} locale={locale} />
+        <div className="flex items-center gap-2 flex-wrap">
+          <ReferralViewToggle compact={compact} fullHref={buildHref({ view: undefined })} compactHref={buildHref({ view: "compact" })} />
+          <NewReferralDialog students={students} locale={locale} />
+        </div>
       </div>
 
       {/* Pending resolution-unlock requests */}
@@ -188,6 +197,7 @@ export default async function ReferralsPage({
       {/* Filters */}
       <form method="GET" className="flex gap-3 flex-wrap items-center">
         {groupFilter && <input type="hidden" name="group" value={groupFilter} />}
+        {compact && <input type="hidden" name="view" value="compact" />}
         <select
           name="stype"
           defaultValue={searchTab}
@@ -245,6 +255,13 @@ export default async function ReferralsPage({
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
+          {compact ? (
+            <CompactReferralTable
+              referrals={referrals}
+              numberHref={(n) => buildHref({ view: undefined, stype: "number", q: String(n), page: undefined, status: undefined, group: undefined })}
+              empty={t("noReferrals")}
+            />
+          ) : (
           <table className="w-full text-sm min-w-[700px]">
             <thead>
               <tr className="border-b border-slate-100">
@@ -312,6 +329,7 @@ export default async function ReferralsPage({
               )}
             </tbody>
           </table>
+          )}
         </CardContent>
       </Card>
 

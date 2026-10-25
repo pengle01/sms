@@ -21,6 +21,7 @@ import { canDeleteReferral, overallStatus } from "@/lib/referralStatus";
 import { referralRecommendations, recommendationsLabel, resolutionSummary } from "@/lib/referralLabels";
 import { parseReferralSearchTab, referralSearchWhere } from "@/lib/referralSearch";
 import { UnlockResolutionDialog } from "./UnlockResolutionDialog";
+import { CompactReferralTable, ReferralViewToggle } from "@/components/referrals/CompactReferrals";
 import type { Role } from "@/generated/prisma/client";
 
 // Include shape — same as in router
@@ -48,7 +49,7 @@ export default async function TeacherReferralsPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ status?: string; group?: string; page?: string; stype?: string; q?: string }>;
+  searchParams: Promise<{ status?: string; group?: string; page?: string; stype?: string; q?: string; view?: string }>;
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
@@ -61,6 +62,8 @@ export default async function TeacherReferralsPage({
   const statusFilter = sp.status;
   const groupFilter = sp.group;
   const page = Math.max(1, parseInt(sp.page ?? "1"));
+  // «Συμπαγής»: one line per referral — student(s), filer, title.
+  const compact = sp.view === "compact";
   const limit = 25;
   // Search by referral no. / student name / student ID / filing teacher
   const searchTab = parseReferralSearchTab(sp.stype);
@@ -167,13 +170,21 @@ export default async function TeacherReferralsPage({
 
   const buildHref = (overrides: Record<string, string | undefined>) => {
     const p = new URLSearchParams();
-    const merged = { status: statusFilter, group: groupFilter, stype: searchQuery ? searchTab : undefined, q: searchQuery || undefined, ...overrides };
+    const merged = {
+      status: statusFilter, group: groupFilter, stype: searchQuery ? searchTab : undefined, q: searchQuery || undefined,
+      view: compact ? "compact" : undefined, ...overrides,
+    };
     for (const [k, v] of Object.entries(merged)) if (v && v !== "ALL") p.set(k, v);
     const qs = p.toString();
     return qs ? `?${qs}` : "?";
   };
 
   type Referral = (typeof myReferrals)[number];
+
+  // A number in the compact view opens that referral in the full view (by search).
+  const numberHref = canSearch
+    ? (n: number) => buildHref({ view: undefined, stype: "number", q: String(n), page: undefined, status: undefined, group: undefined })
+    : undefined;
 
   // Render one referral as a table row — students shown inline
   const ReferralRow = ({
@@ -463,7 +474,13 @@ export default async function TeacherReferralsPage({
     );
   };
 
-  const examineContent = (
+  const examineContent = compact ? (
+    <Card>
+      <CardContent className="p-0 overflow-x-auto">
+        <CompactReferralTable referrals={groupReferrals} numberHref={numberHref} scopeGroupIds={headGroupIds} empty="Δεν υπάρχουν καταγγελίες προς εξέταση" />
+      </CardContent>
+    </Card>
+  ) : (
     <div className="space-y-3">
       {groupReferrals.length === 0 ? (
         <div className="rounded-2xl border border-slate-200 bg-white px-4 py-12 text-center text-slate-400">
@@ -476,7 +493,13 @@ export default async function TeacherReferralsPage({
     </div>
   );
 
-  const historyContent = (
+  const historyContent = compact ? (
+    <Card>
+      <CardContent className="p-0 overflow-x-auto">
+        <CompactReferralTable referrals={groupHistory} numberHref={numberHref} scopeGroupIds={headGroupIds} empty="Δεν υπάρχουν επιλυμένες καταγγελίες" />
+      </CardContent>
+    </Card>
+  ) : (
     <div className="space-y-3">
       {groupHistory.length === 0 ? (
         <div className="rounded-2xl border border-slate-200 bg-white px-4 py-12 text-center text-slate-400">
@@ -495,6 +518,9 @@ export default async function TeacherReferralsPage({
         <CardTitle className="text-base">Δελτία που υπέβαλα ({myTotal})</CardTitle>
       </CardHeader>
       <CardContent className="p-0 overflow-x-auto">
+        {compact ? (
+          <CompactReferralTable referrals={myReferrals} numberHref={numberHref} empty="Δεν έχετε υποβάλει καταγγελίες" />
+        ) : (
         <table className="w-full text-sm min-w-[680px]">
           <TableHead showFiler={false} />
           <tbody className="divide-y divide-slate-50">
@@ -509,6 +535,7 @@ export default async function TeacherReferralsPage({
             )}
           </tbody>
         </table>
+        )}
       </CardContent>
       <Pagination total={myTotal} label="Δελτία" />
     </Card>
@@ -518,6 +545,12 @@ export default async function TeacherReferralsPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h2 className="text-2xl font-bold text-slate-900">Καταγγελίες</h2>
+        <div className="flex items-center gap-2 flex-wrap">
+        <ReferralViewToggle
+          compact={compact}
+          fullHref={buildHref({ view: undefined })}
+          compactHref={buildHref({ view: "compact" })}
+        />
         <Link
           href={`/${locale}/teacher/referrals/new`}
           className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
@@ -525,12 +558,14 @@ export default async function TeacherReferralsPage({
           <Plus className="w-4 h-4" />
           Νέα Καταγγελία
         </Link>
+        </div>
       </div>
 
       {/* Search — referral no. / student name / student ID / filing teacher */}
       {canSearch && (
         <form method="GET" className="flex gap-2 flex-wrap items-center">
           {statusFilter && <input type="hidden" name="status" value={statusFilter} />}
+          {compact && <input type="hidden" name="view" value="compact" />}
           {groupFilter && <input type="hidden" name="group" value={groupFilter} />}
           <select
             name="stype"
@@ -566,6 +601,7 @@ export default async function TeacherReferralsPage({
             <div className="flex items-center justify-between flex-wrap gap-3">
               <CardTitle className="text-base">Όλες οι Καταγγελίες ({allTotal})</CardTitle>
               <form method="GET" className="flex gap-2 flex-wrap">
+                {compact && <input type="hidden" name="view" value="compact" />}
                 <select name="status" defaultValue={statusFilter ?? "ALL"}
                   className="h-8 px-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
                   <option value="ALL">Όλες</option>
@@ -583,6 +619,9 @@ export default async function TeacherReferralsPage({
             </div>
           </CardHeader>
           <CardContent className="p-0 overflow-x-auto">
+            {compact ? (
+              <CompactReferralTable referrals={allReferrals} numberHref={numberHref} empty="Δεν βρέθηκαν καταγγελίες" />
+            ) : (
             <table className="w-full text-sm min-w-[700px]">
               <TableHead showFiler={true} />
               <tbody className="divide-y divide-slate-50">
@@ -597,6 +636,7 @@ export default async function TeacherReferralsPage({
                 )}
               </tbody>
             </table>
+            )}
           </CardContent>
           <Pagination total={allTotal} label="Καταγγελίες" />
         </Card>
