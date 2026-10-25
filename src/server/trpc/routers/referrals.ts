@@ -13,6 +13,7 @@ import { expulsionDaysInPast } from "@/lib/periods";
 import { canDeleteReferral } from "@/lib/referralStatus";
 import { writeAudit } from "@/server/audit";
 import type { Role } from "@/generated/prisma/client";
+import { parentCard } from "@/lib/smsContacts";
 
 function reqMeta(req?: Request) {
   const fwd = req?.headers.get("x-forwarded-for");
@@ -672,8 +673,9 @@ export const referralsRouter = createTRPCRouter({
         include: {
           user: { select: { name: true } },
           group: { select: { name: true } },
+          // Every contact on record — "active" only decides who receives SMS,
+          // not who the deputy may call (see parentCard).
           smsContacts: {
-            where: { active: true },
             select: { id: true, name: true, phone: true, role: true, isDefault: true },
             orderBy: [{ isDefault: "desc" }, { name: "asc" }],
           },
@@ -699,7 +701,8 @@ export const referralsRouter = createTRPCRouter({
       return {
         name: student.user?.name ?? "—",
         group: student.group?.name ?? null,
-        contacts: student.smsContacts,
+        // The parents by name and role with every phone; the SMS number only marks the preferred one.
+        contactCard: parentCard(student.smsContacts),
         pastReferrals: student.referralStudents.map((rs) => ({
           id: rs.referral.id,
           number: rs.referral.number,

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { trpc } from "@/trpc/client";
-import { Info, Phone, X, Loader2, FileWarning } from "lucide-react";
+import { Info, Phone, X, Loader2, FileWarning, Star } from "lucide-react";
 import { fmtDisplayDate } from "@/lib/dates";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -71,37 +71,69 @@ export function StudentInfoDialog({ studentId, excludeReferralId, studentName }:
 
               {data && (
                 <>
-                  {/* Contacts */}
+                  {/* Contacts — every parent/guardian with all their phones; the
+                      family's SMS number is marked as the preferred one */}
                   <section>
                     <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
                       Τηλέφωνα επικοινωνίας
                     </h4>
-                    {data.contacts.length === 0 ? (
+                    {data.contactCard.parents.length === 0 &&
+                    data.contactCard.homePhones.length === 0 &&
+                    !data.contactCard.unmatchedSms ? (
                       <p className="text-sm text-slate-400">Δεν υπάρχουν καταχωρημένα τηλέφωνα.</p>
                     ) : (
                       <ul className="space-y-1.5">
-                        {data.contacts.map((c) => (
-                          <li key={c.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                        {data.contactCard.parents.map((p) => (
+                          <li key={p.id} className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                             <div className="min-w-0 flex-1">
-                              <p className="text-sm font-medium text-slate-800 flex items-center gap-1.5 min-w-0">
-                                <span className="truncate">{c.name}</span>
-                                {c.isDefault && (
-                                  <span className="flex-shrink-0 text-[10px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1 py-0.5">
-                                    SMS
-                                  </span>
-                                )}
-                              </p>
-                              <p className="text-xs text-slate-400">{ROLE_LABEL[c.role] ?? c.role}</p>
+                              <p className="text-sm font-semibold text-slate-800 truncate">{p.name}</p>
+                              <p className="text-xs text-slate-500">{ROLE_LABEL[p.role] ?? p.role}</p>
                             </div>
-                            <a
-                              href={`tel:${c.phone}`}
-                              className="flex-shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-medium hover:bg-emerald-100 whitespace-nowrap"
-                            >
+                            <div className="flex flex-col items-end gap-1">
+                              {p.phones.map(({ phone, preferred }) => (
+                                <span key={phone} className="flex items-center gap-1.5">
+                                  {preferred && (
+                                    <span
+                                      title="Ο προτιμώμενος τρόπος επικοινωνίας της οικογένειας (αριθμός SMS)"
+                                      className="inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-300 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800"
+                                    >
+                                      <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                                      Προτιμώμενο
+                                    </span>
+                                  )}
+                                  <a
+                                    href={`tel:${phone}`}
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-medium hover:bg-emerald-100 whitespace-nowrap"
+                                  >
+                                    <Phone className="w-3.5 h-3.5" />
+                                    {phone}
+                                  </a>
+                                </span>
+                              ))}
+                            </div>
+                          </li>
+                        ))}
+                        {data.contactCard.homePhones.map(({ phone, preferred }) => (
+                          <li key={`home-${phone}`} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2">
+                            <span className="text-sm text-slate-600">
+                              Τηλέφωνο οικίας
+                              {preferred && <span className="ml-1.5 text-[10px] font-semibold text-amber-700">★ Προτιμώμενο</span>}
+                            </span>
+                            <a href={`tel:${phone}`} className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 hover:underline">
                               <Phone className="w-3.5 h-3.5" />
-                              {c.phone}
+                              {phone}
                             </a>
                           </li>
                         ))}
+                        {data.contactCard.unmatchedSms && (
+                          <li className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                            <span className="text-xs text-amber-800">Προτιμώμενος αριθμός SMS (δεν αντιστοιχεί σε γονέα/κηδεμόνα)</span>
+                            <a href={`tel:${data.contactCard.unmatchedSms}`} className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-800 hover:underline">
+                              <Phone className="w-3.5 h-3.5" />
+                              {data.contactCard.unmatchedSms}
+                            </a>
+                          </li>
+                        )}
                       </ul>
                     )}
                   </section>
