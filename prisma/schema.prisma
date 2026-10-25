@@ -60,6 +60,7 @@ enum ResolutionAction {
   PEDAGOGICAL_DIALOGUE
   WRITTEN_AGREEMENT
   WARNING
+  SUSPENDED_EXPULSION // «Αποβολή με Αναστολή»: a length (suspendedDays / suspendedPeriods), no dates
   OTHER
 }
 
@@ -899,6 +900,9 @@ model ReferralStudentResolution {
   resolvedById        String
   resolvedBy          User             @relation("ReferralStudentResolver", fields: [resolvedById], references: [id])
   resolvedAt          DateTime         @default(now())
+  // «Αποβολή με Αναστολή» only: its length, served if the student re-offends.
+  suspendedDays       Int?
+  suspendedPeriods    Int?
 
   expulsionDays ReferralExpulsionDay[]
 }
@@ -937,6 +941,9 @@ model ReferralExpulsionDay {
   resolutionId String
   resolution   ReferralStudentResolution @relation(fields: [resolutionId], references: [id], onDelete: Cascade)
   date         DateTime                  @db.Date
+  // A part of the day: periods fromPeriod–toPeriod (inclusive). Both null = the whole day.
+  fromPeriod   Int?
+  toPeriod     Int?
 
   @@unique([resolutionId, date])
   @@index([resolutionId])

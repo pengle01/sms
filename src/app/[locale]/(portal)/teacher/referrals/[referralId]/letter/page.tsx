@@ -3,6 +3,7 @@ import { db } from "@/server/db";
 import { getActiveAuth } from "@/server/authz";
 import { canReadReferral } from "@/server/referralAccess";
 import { measureSummary, expulsionWhere, letterOffence, parentLines, letterDate } from "@/lib/referralLetter";
+import { expulsionLength } from "@/lib/referralLabels";
 import { PrintBar } from "@/app/[locale]/(portal)/teacher/substitutions/plan/[date]/print/PrintBar";
 
 /**
@@ -48,7 +49,9 @@ export default async function ReferralParentLetterPage({
               action: true,
               actionDetails: true,
               resolvedAt: true,
-              expulsionDays: { select: { id: true } },
+              suspendedDays: true,
+              suspendedPeriods: true,
+              expulsionDays: { select: { id: true, fromPeriod: true, toPeriod: true } },
               resolvedBy: { select: { name: true, staffProfile: { select: { scheduleName: true } } } },
             },
           },
@@ -92,8 +95,17 @@ export default async function ReferralParentLetterPage({
       ) : (
         shown.map((rs) => {
           const res = rs.resolution!;
-          const days = res.action === "DETENTION" ? res.expulsionDays.length : 0;
-          const where = expulsionWhere(days);
+          // The measure's length: an expulsion's whole days and periods, or a
+          // suspended expulsion's stored length.
+          const length =
+            res.action === "DETENTION"
+              ? expulsionLength(res.expulsionDays)
+              : res.action === "SUSPENDED_EXPULSION"
+                ? { days: res.suspendedDays ?? 0, periods: res.suspendedPeriods ?? 0 }
+                : { days: 0, periods: 0 };
+          // Where it is served: by whole days; periods only → at school; suspended → nowhere.
+          const where =
+            res.action === "DETENTION" ? expulsionWhere(length.days > 0 ? length.days : length.periods > 0 ? 1 : 0) : null;
           const parents = parentLines(rs.student.smsContacts);
           const signer = res.resolvedBy?.staffProfile?.scheduleName ?? res.resolvedBy?.name ?? "";
           return (
@@ -121,7 +133,7 @@ export default async function ReferralParentLetterPage({
                 <p className="mt-6">
                   Με το σημείωμα αυτό σας πληροφορώ ότι επιβλήθηκαν στο παιδί σας τα πιο κάτω παιδαγωγικά μέτρα:
                 </p>
-                <p className="font-bold">{measureSummary(res.action, days, res.actionDetails)}</p>
+                <p className="font-bold">{measureSummary(res.action, length, res.actionDetails)}</p>
 
                 {where && (
                   <p className="mt-6">

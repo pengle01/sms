@@ -10,10 +10,10 @@ import { ChevronLeft, FileWarning, CalendarX, DoorOpen, FlaskConical } from "luc
 import { fmtDisplayDate, utcMidnight, localDateStr, normalizeIsoDate, getNow } from "@/lib/dates";
 import { getSchoolYear } from "@/lib/schoolConfig";
 import { breakMinutes } from "@/lib/toilet";
-import { actionLabel } from "@/lib/referralLabels";
 import { GRADE_PASS } from "@/lib/grades";
 import { RecordsFilter } from "./RecordsFilter";
 import type { Role } from "@/generated/prisma/client";
+import { resolutionSummary } from "@/lib/referralLabels";
 
 const ABSENCE_BADGE: Record<string, { label: string; cls: string }> = {
   ABSENT: { label: "Απουσία", cls: "text-red-700 bg-red-50 border-red-200" },
@@ -255,9 +255,7 @@ export default async function StudentRecordsPage({
                       </Link>
                       {rs.status === "RESOLVED" ? (
                         <span className="text-[11px] font-medium text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded">
-                          {rs.resolution ? actionLabel(rs.resolution.action) : "Επιλύθηκε"}
-                          {rs.resolution && rs.resolution.expulsionDays.length > 0 &&
-                            ` · ${rs.resolution.expulsionDays.length}η`}
+                          {rs.resolution ? resolutionSummary(rs.resolution) : "Επιλύθηκε"}
                         </span>
                       ) : (
                         <span className="text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">

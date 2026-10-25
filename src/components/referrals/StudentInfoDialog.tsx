@@ -12,13 +12,6 @@ const ROLE_LABEL: Record<string, string> = {
   OTHER: "Άλλο",
 };
 
-const ACTION_LABEL: Record<string, string> = {
-  DETENTION: "Αποβολή",
-  PEDAGOGICAL_DIALOGUE: "Παιδαγωγικός Διάλογος",
-  WRITTEN_AGREEMENT: "Γραπτή Συμφωνία",
-  WARNING: "Προειδοποίηση",
-  OTHER: "Άλλο",
-};
 
 type Props = {
   studentId: string;
@@ -158,8 +151,7 @@ export function StudentInfoDialog({ studentId, excludeReferralId, studentName }:
                               </span>
                               {r.status === "RESOLVED" ? (
                                 <span className="text-[11px] font-medium text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded">
-                                  {r.action ? ACTION_LABEL[r.action] ?? r.action : "Επιλύθηκε"}
-                                  {r.expulsionCount > 0 && ` · ${r.expulsionCount}η`}
+                                  {r.summary ?? "Επιλύθηκε"}
                                 </span>
                               ) : (
                                 <span className="text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">

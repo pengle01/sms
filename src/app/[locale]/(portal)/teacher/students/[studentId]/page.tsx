@@ -14,7 +14,6 @@ import { cn } from "@/lib/utils";
 import { getPeriodsPerDay, periodsForDow, maxPeriodCount, getSchoolYear } from "@/lib/schoolConfig";
 import { ddkTotal, ddkRating, schoolYearLabel, summarizeBySection, ddkCategoryLabel } from "@/lib/ddk";
 import { fullAttendanceAwardForStudent } from "@/server/ddk";
-import { actionLabel } from "@/lib/referralLabels";
 import { canViewAccessCode } from "@/lib/rbac";
 import { canViewSpecialEdFull } from "@/lib/specialEd";
 import { getSpecialEdRecord, getStudentSupport, teachesStudent } from "@/server/specialEd";
@@ -22,6 +21,7 @@ import { AccessCodeCard } from "@/components/access/AccessCodeCard";
 import { SpecialEdCard } from "@/components/special-ed/SpecialEdCard";
 import type { Role } from "@/generated/prisma/client";
 import { PrintTimetableLink } from "@/components/timetable/PrintTimetableLink";
+import { resolutionSummary } from "@/lib/referralLabels";
 
 function Field({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;
@@ -402,9 +402,8 @@ export default async function StudentSchedulePage({
                           </Link>
                           {rs.status === "RESOLVED" ? (
                             <span className="text-[11px] font-medium text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded">
-                              {rs.resolution ? actionLabel(rs.resolution.action) : t("resolved")}
-                              {rs.resolution && rs.resolution.expulsionDays.length > 0 &&
-                                ` · ${t("expulsionDays", { count: rs.resolution.expulsionDays.length })}`}
+                              {/* «Αποβολή · 1 ημέρα + 3 περίοδοι», «Αποβολή με Αναστολή · 2 ημέρες», … */}
+                              {rs.resolution ? resolutionSummary(rs.resolution) : t("resolved")}
                             </span>
                           ) : (
                             <span className="text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">

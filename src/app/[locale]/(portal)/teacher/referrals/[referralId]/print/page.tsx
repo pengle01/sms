@@ -8,14 +8,8 @@ import { getActiveAuth } from "@/server/authz";
 import { canReadReferral } from "@/server/referralAccess";
 import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY, totalPeriodsForDays } from "@/lib/schoolConfig";
 import { PrintTrigger, PrintButton } from "./PrintTrigger";
-
-const ACTION_LABEL: Record<string, string> = {
-  DETENTION: "Αποβολή",
-  PEDAGOGICAL_DIALOGUE: "Παιδαγωγικός Διάλογος",
-  WRITTEN_AGREEMENT: "Γραπτή Συμφωνία",
-  WARNING: "Προειδοποίηση",
-  OTHER: "Άλλο",
-};
+import { expulsionDayPeriods, isPartialDay } from "@/lib/periods";
+import { actionLabel, expulsionLength, lengthLabel, resolutionSummary } from "@/lib/referralLabels";
 
 function fmt(date: Date | null | undefined): string {
   if (!date) return "—";
@@ -71,8 +65,8 @@ export default async function PrintResolutionPage({
   ]);
   const periodsConfig = { ...DEFAULT_PERIODS_PER_DAY, ...periodsPerDay };
 
-  function totalExpulsionPeriods(days: { date: Date }[]): number {
-    return totalPeriodsForDays(periodsConfig, days.map((d) => d.date));
+  function totalExpulsionPeriods(days: { date: Date; fromPeriod: number | null; toPeriod: number | null }[]): number {
+    return totalPeriodsForDays(periodsConfig, days);
   }
 
   if (!referral) redirect(`/${locale}/teacher/referrals`);
@@ -100,6 +94,7 @@ export default async function PrintResolutionPage({
           select: {
             groupId: true,
             dayOfWeek: true,
+            period: true,
             staffName: true,
             course: { select: { name: true } },
             staff: { select: { scheduleName: true, user: { select: { name: true } } } },
@@ -120,8 +115,9 @@ export default async function PrintResolutionPage({
     return missedLessons(
       slots
         .filter((s) => groups.has(s.groupId))
-        .map((s) => ({ dayOfWeek: s.dayOfWeek, courseName: s.course.name, teacherName: slotTeacherName(s) })),
-      rs.resolution!.expulsionDays.map((d) => d.date),
+        .map((s) => ({ dayOfWeek: s.dayOfWeek, period: s.period, courseName: s.course.name, teacherName: slotTeacherName(s) })),
+      // A partial day: only the lessons of its periods.
+      rs.resolution!.expulsionDays,
       noSchool,
     );
   };
@@ -246,7 +242,10 @@ export default async function PrintResolutionPage({
                     <tbody>
                       <tr className="border-b border-slate-100">
                         <td className={label}>Μέτρο</td>
-                        <td className="py-1.5 text-slate-900 font-semibold">{ACTION_LABEL[res.action] ?? res.action}</td>
+                        <td className="py-1.5 text-slate-900 font-semibold">
+                          {/* A suspended expulsion shows its length: «Αποβολή με Αναστολή · 2 ημέρες» */}
+                          {res.action === "SUSPENDED_EXPULSION" ? resolutionSummary(res) : actionLabel(res.action)}
+                        </td>
                       </tr>
                       {res.actionDetails && (
                         <tr className="border-b border-slate-100">
@@ -260,18 +259,22 @@ export default async function PrintResolutionPage({
                           <td className="py-1.5 text-slate-900">
                             <div className="space-y-0.5">
                               {res.expulsionDays.map((d) => {
-                                const dow = d.date.getDay();
-                                const periods = dow >= 1 && dow <= 5 ? (periodsConfig[dow] ?? 7) : 0;
+                                const periods = expulsionDayPeriods(periodsConfig, d);
                                 return (
                                   <div key={d.id} className="flex items-center justify-between gap-4">
                                     <span>{fmt(d.date)}</span>
-                                    <span className="text-slate-500 text-xs">{periods} περίοδοι</span>
+                                    <span className="text-slate-500 text-xs">
+                                      {isPartialDay(d) ? `Περίοδοι ${d.fromPeriod}–${d.toPeriod}` : "Όλη η μέρα"} · {periods} περίοδοι
+                                    </span>
                                   </div>
                                 );
                               })}
                               <div className="border-t border-slate-200 pt-1 flex items-center justify-between gap-4 font-semibold">
                                 <span>
-                                  Σύνολο ({res.expulsionDays.length} {res.expulsionDays.length === 1 ? "ημέρα" : "ημέρες"})
+                                  Σύνολο ({(() => {
+                                    const l = expulsionLength(res.expulsionDays);
+                                    return lengthLabel(l.days, l.periods);
+                                  })()})
                                 </span>
                                 <span>{totalExpulsionPeriods(res.expulsionDays)} περίοδοι</span>
                               </div>

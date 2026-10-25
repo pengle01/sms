@@ -37,24 +37,78 @@ export const ACTION_LABEL: Record<string, string> = {
   PEDAGOGICAL_DIALOGUE: "Παιδαγωγικός Διάλογος",
   WRITTEN_AGREEMENT: "Γραπτή Συμφωνία",
   WARNING: "Προειδοποίηση",
+  SUSPENDED_EXPULSION: "Αποβολή με Αναστολή",
   OTHER: "Άλλο",
 };
+
+/** The punishments in the order the resolve dialog offers them. */
+export const ACTION_ORDER = [
+  "PEDAGOGICAL_DIALOGUE",
+  "WARNING",
+  "WRITTEN_AGREEMENT",
+  "SUSPENDED_EXPULSION",
+  "DETENTION",
+  "OTHER",
+] as const;
+export type ResolutionActionValue = (typeof ACTION_ORDER)[number];
 
 export function actionLabel(value: string): string {
   return ACTION_LABEL[value] ?? value;
 }
 
+const daysWord = (n: number) => `${n} ημέρ${n === 1 ? "α" : "ες"}`;
+const periodsWord = (n: number) => `${n} περίοδο${n === 1 ? "ς" : "ι"}`;
+
+/** «2 ημέρες», «3 περίοδοι», «1 ημέρα + 3 περίοδοι»; empty when nothing. */
+export function lengthLabel(days: number, periods: number): string {
+  return [days > 0 ? daysWord(days) : null, periods > 0 ? periodsWord(periods) : null].filter(Boolean).join(" + ");
+}
+
 /**
- * Compact one-line summary of a resolved punishment, e.g.
- * "Αποβολή · 2 ημέρες" or "Προειδοποίηση". Details/notes are shown separately.
+ * The length of an expulsion: whole days counted as days, period ranges as
+ * periods (their size).
+ */
+export function expulsionLength(days: readonly { fromPeriod?: number | null; toPeriod?: number | null }[]): {
+  days: number;
+  periods: number;
+} {
+  let whole = 0;
+  let periods = 0;
+  for (const d of days) {
+    if (d.fromPeriod != null && d.toPeriod != null) periods += Math.max(0, d.toPeriod - d.fromPeriod + 1);
+    else whole += 1;
+  }
+  return { days: whole, periods };
+}
+
+/**
+ * Compact one-line summary of a resolved punishment, e.g. «Αποβολή · 2 ημέρες»,
+ * «Αποβολή · 1 ημέρα + 3 περίοδοι», «Αποβολή με Αναστολή · 2 ημέρες» or
+ * «Προειδοποίηση». Details/notes are shown separately.
  */
 export function resolutionSummary(resolution: {
   action: string;
-  expulsionDays?: { date: Date }[] | null;
+  expulsionDays?: { date: Date; fromPeriod?: number | null; toPeriod?: number | null }[] | null;
+  suspendedDays?: number | null;
+  suspendedPeriods?: number | null;
 }): string {
   const base = actionLabel(resolution.action);
-  const days = resolution.expulsionDays?.length ?? 0;
-  return days > 0 ? `${base} · ${days} ημέρ${days === 1 ? "α" : "ες"}` : base;
+  const length =
+    resolution.action === "SUSPENDED_EXPULSION"
+      ? lengthLabel(resolution.suspendedDays ?? 0, resolution.suspendedPeriods ?? 0)
+      : (() => {
+          const l = expulsionLength(resolution.expulsionDays ?? []);
+          return lengthLabel(l.days, l.periods);
+        })();
+  return length ? `${base} · ${length}` : base;
+}
+
+/** «16/03/26» for a whole day, «16/03/26 · Π3–Π5» for part of one. */
+export function expulsionDayLabel(
+  d: { date: Date; fromPeriod?: number | null; toPeriod?: number | null },
+  fmt: (date: Date) => string,
+): string {
+  return d.fromPeriod != null && d.toPeriod != null ? `${fmt(d.date)} · Π${d.fromPeriod}–Π${d.toPeriod}` : fmt(d.date);
 }
 
 export const COMPACT_DESCRIPTION_CHARS = 90;

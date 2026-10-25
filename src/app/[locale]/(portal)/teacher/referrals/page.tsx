@@ -18,7 +18,7 @@ import { ResponsibleHeadteachers } from "@/components/referrals/ResponsibleHeadt
 import { ReferralInfo } from "@/components/referrals/ReferralInfo";
 import { ReferralTabs } from "@/components/referrals/ReferralTabs";
 import { canDeleteReferral, overallStatus } from "@/lib/referralStatus";
-import { referralRecommendations, recommendationsLabel, resolutionSummary } from "@/lib/referralLabels";
+import { referralRecommendations, recommendationsLabel, resolutionSummary, expulsionDayLabel } from "@/lib/referralLabels";
 import { parseReferralSearchTab, referralSearchWhere } from "@/lib/referralSearch";
 import { UnlockResolutionDialog } from "./UnlockResolutionDialog";
 import { CompactReferralTable, ReferralViewToggle } from "@/components/referrals/CompactReferrals";
@@ -438,7 +438,7 @@ export default async function TeacherReferralsPage({
                     {rs.resolution.actionDetails && <p>{rs.resolution.actionDetails}</p>}
                     {rs.resolution.expulsionDays.length > 0 && (
                       <p>
-                        Ημέρες: {rs.resolution.expulsionDays.map((d) => fmtDisplayDate(d.date)).join(", ")}
+                        Ημέρες: {rs.resolution.expulsionDays.map((d) => expulsionDayLabel(d, fmtDisplayDate)).join(", ")}
                       </p>
                     )}
                     <p className="text-slate-400">

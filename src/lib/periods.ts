@@ -24,17 +24,66 @@ export function expulsionDaysInPast(days: string[], todayIso: string): string[] 
   return days.filter((d) => d < todayIso);
 }
 
-// Total school periods across a set of expulsion days.
-// Weekend days (Sat/Sun) contribute zero. Accepts Date objects or ISO date strings.
+/** One expulsion day: the whole day, or periods fromPeriod–toPeriod (inclusive). */
+export interface ExpulsionDayInput {
+  date: Date | string;
+  fromPeriod?: number | null;
+  toPeriod?: number | null;
+}
+
+/** The weekday (0 Sun … 6 Sat) of a date-only value — Date or "YYYY-MM-DD". */
+function dowOf(d: Date | string): number {
+  const date = d instanceof Date ? d : new Date(d + "T12:00:00");
+  return date.getDay();
+}
+
+const asDay = (d: Date | string | ExpulsionDayInput): ExpulsionDayInput =>
+  typeof d === "string" || d instanceof Date ? { date: d } : d;
+
+/** Is this day only part of the day (a period range)? */
+export function isPartialDay(d: { fromPeriod?: number | null; toPeriod?: number | null }): boolean {
+  return d.fromPeriod != null && d.toPeriod != null;
+}
+
+/**
+ * The periods one expulsion day counts: the whole day's periods, or the size
+ * of its range (clamped to the day). Weekends count zero.
+ */
+export function expulsionDayPeriods(config: PeriodsPerDay, day: Date | string | ExpulsionDayInput): number {
+  const d = asDay(day);
+  const dow = dowOf(d.date);
+  if (dow < 1 || dow > 5) return 0;
+  const n = config[dow] ?? 7;
+  if (!isPartialDay(d)) return n;
+  const from = Math.max(1, d.fromPeriod!);
+  const to = Math.min(n, d.toPeriod!);
+  return to >= from ? to - from + 1 : 0;
+}
+
+// Total school periods across a set of expulsion days — whole days or period
+// ranges. Weekend days contribute zero. Accepts Dates, ISO date strings or day objects.
 export function totalPeriodsForDays(
   config: PeriodsPerDay,
-  days: (Date | string)[]
+  days: (Date | string | ExpulsionDayInput)[]
 ): number {
-  return days.reduce<number>((sum, d) => {
-    const date = d instanceof Date ? d : new Date(d + "T12:00:00");
-    const dow = date.getDay(); // 0=Sun … 6=Sat
-    return sum + (dow >= 1 && dow <= 5 ? (config[dow] ?? 7) : 0);
-  }, 0);
+  return days.reduce<number>((sum, d) => sum + expulsionDayPeriods(config, d), 0);
+}
+
+/**
+ * Is a day's range valid? Whole day (neither end) or both ends set, within the
+ * day's 1…periodsOfDay, from ≤ to.
+ */
+export function validExpulsionDay(
+  d: { fromPeriod?: number | null; toPeriod?: number | null },
+  periodsOfDay: number,
+): boolean {
+  const hasFrom = d.fromPeriod != null;
+  const hasTo = d.toPeriod != null;
+  if (!hasFrom && !hasTo) return true;
+  if (hasFrom !== hasTo) return false;
+  const from = d.fromPeriod!;
+  const to = d.toPeriod!;
+  return Number.isInteger(from) && Number.isInteger(to) && from >= 1 && to <= periodsOfDay && from <= to;
 }
 
 /**

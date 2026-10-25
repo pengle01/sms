@@ -1,25 +1,41 @@
 // The parent letter («Γραπτή ενημέρωση γονέων/κηδεμόνων για επιβολή
 // παιδαγωγικών μέτρων») printed after a referral is resolved. Pure helpers.
 
-const ACTION_LABEL: Record<string, string> = {
-  DETENTION: "Αποβολή",
-  PEDAGOGICAL_DIALOGUE: "Παιδαγωγικός Διάλογος",
-  WRITTEN_AGREEMENT: "Γραπτή Συμφωνία",
-  WARNING: "Προειδοποίηση",
-  OTHER: "Άλλο",
-};
+import { actionLabel, lengthLabel } from "@/lib/referralLabels";
 
-/** «1 μέρα αποβολή» / «3 μέρες αποβολή»; other measures: their label, then the deputy's details. */
-export function measureSummary(action: string, expulsionDays: number, actionDetails: string | null | undefined): string {
-  if (action === "DETENTION" && expulsionDays > 0) {
-    return `${expulsionDays} ${expulsionDays === 1 ? "μέρα" : "μέρες"} αποβολή`;
-  }
-  const label = ACTION_LABEL[action] ?? action;
+const daysPhrase = (n: number) => `${n} ${n === 1 ? "μέρα" : "μέρες"}`;
+const periodsPhrase = (n: number) => `${n} ${n === 1 ? "περίοδος" : "περίοδοι"}`;
+
+/**
+ * The «Μέτρο» line of the letter:
+ *  • an expulsion — «3 μέρες αποβολή», «1 μέρα και 3 περίοδοι αποβολή», «3 περίοδοι αποβολή»;
+ *  • a suspended expulsion — «Αποβολή με Αναστολή (2 ημέρες)», then the details;
+ *  • any other measure — its label, then the deputy's details.
+ * `length`: whole days (a number) or whole days plus periods.
+ */
+export function measureSummary(
+  action: string,
+  length: number | { days: number; periods: number },
+  actionDetails: string | null | undefined,
+): string {
+  const { days, periods } = typeof length === "number" ? { days: length, periods: 0 } : length;
   const details = actionDetails?.trim();
+  if (action === "DETENTION" && (days > 0 || periods > 0)) {
+    const parts = [days > 0 ? daysPhrase(days) : null, periods > 0 ? periodsPhrase(periods) : null].filter(Boolean);
+    return `${parts.join(" και ")} αποβολή`;
+  }
+  const label =
+    action === "SUSPENDED_EXPULSION" && (days > 0 || periods > 0)
+      ? `${actionLabel(action)} (${lengthLabel(days, periods)})`
+      : actionLabel(action);
   return details ? `${label}: ${details}` : label;
 }
 
-/** Where the student spends an expulsion: 2+ days at home, 1 day at school; none without one. */
+/**
+ * Where the student spends an expulsion, by its WHOLE days: 2+ at home, 1 at
+ * school; none without one. A periods-only expulsion is served at school
+ * (call with 1); a suspended one has none (call with 0).
+ */
 export function expulsionWhere(days: number): "Σπίτι" | "Σχολείο" | null {
   if (days >= 2) return "Σπίτι";
   if (days >= 1) return "Σχολείο";

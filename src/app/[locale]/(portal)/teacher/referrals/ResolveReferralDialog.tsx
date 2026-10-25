@@ -7,18 +7,24 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ChevronRight, Loader2, X, Printer, MessageSquare, CheckCircle2, Plus, CalendarDays, FileText } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { totalPeriodsForDays } from "@/lib/periods";
-import { recommendationsLabel } from "@/lib/referralLabels";
+import { totalPeriodsForDays, periodsForDow, isPartialDay } from "@/lib/periods";
+import {
+  recommendationsLabel,
+  ACTION_ORDER,
+  actionLabel,
+  expulsionLength,
+  lengthLabel,
+  type ResolutionActionValue,
+} from "@/lib/referralLabels";
+import { SUSPENDED_MAX_DAYS, SUSPENDED_MAX_PERIODS } from "@/lib/punishment";
 
-const ACTIONS = [
-  { value: "PEDAGOGICAL_DIALOGUE", label: "Παιδαγωγικός Διάλογος" },
-  { value: "WRITTEN_AGREEMENT",    label: "Γραπτή Συμφωνία" },
-  { value: "WARNING",              label: "Προειδοποίηση" },
-  { value: "DETENTION",            label: "Αποβολή" },
-  { value: "OTHER",                label: "Άλλο" },
-] as const;
+// The punishments in the dialog's order (Προειδοποίηση before Γραπτή Συμφωνία).
+const ACTIONS = ACTION_ORDER.map((value) => ({ value, label: actionLabel(value) }));
 
-type Action = (typeof ACTIONS)[number]["value"];
+type Action = ResolutionActionValue;
+
+/** One expulsion day: the whole day (no range) or periods fromPeriod–toPeriod. */
+type ExpulsionDay = { date: string; fromPeriod: number | null; toPeriod: number | null };
 
 interface Props {
   referralId: string;
@@ -32,9 +38,9 @@ interface Props {
   periodsConfig?: Record<number, number>; // DOW 1-5 → period count
 }
 
-// Total school periods across selected expulsion dates
-function calcPeriods(dates: string[], periodsConfig: Record<number, number>): number {
-  return totalPeriodsForDays(periodsConfig, dates);
+// Total school periods across the expulsion days (whole days and ranges)
+function calcPeriods(days: ExpulsionDay[], periodsConfig: Record<number, number>): number {
+  return totalPeriodsForDays(periodsConfig, days);
 }
 
 // Local today as a YYYY-MM-DD string — earliest allowed expulsion day.
@@ -52,11 +58,21 @@ function fmtDate(iso: string): string {
   });
 }
 
-function defaultSmsMessage(studentNames: string[], expulsionDays: string[]): string {
+function defaultSmsMessage(
+  studentNames: string[],
+  action: Action,
+  expulsionDays: ExpulsionDay[],
+  suspended: { days: number; periods: number },
+): string {
   const names = studentNames.join(", ");
-  if (expulsionDays.length > 0) {
-    const fmtted = expulsionDays.map(fmtDate).join(", ");
+  if (action === "DETENTION" && expulsionDays.length > 0) {
+    const fmtted = expulsionDays
+      .map((d) => (isPartialDay(d) ? `${fmtDate(d.date)} (περίοδοι ${d.fromPeriod}–${d.toPeriod})` : fmtDate(d.date)))
+      .join(", ");
     return `Αξιότιμε κηδεμόνα, ο/η ${names} αποβλήθηκε από το σχολείο τις ημερομηνίες: ${fmtted}, λόγω πειθαρχικού παραπτώματος. Για πληροφορίες επικοινωνήστε με τη Διεύθυνση.`;
+  }
+  if (action === "SUSPENDED_EXPULSION") {
+    return `Αξιότιμε κηδεμόνα, στον/στην ${names} επιβλήθηκε αποβολή με αναστολή (${lengthLabel(suspended.days, suspended.periods)}), λόγω πειθαρχικού παραπτώματος. Η αποβολή εκτίεται σε περίπτωση νέου παραπτώματος. Για πληροφορίες επικοινωνήστε με τη Διεύθυνση.`;
   }
   return `Αξιότιμε κηδεμόνα, το πειθαρχικό θέμα του/της ${names} εξετάστηκε και ελήφθη απόφαση. Για πληροφορίες επικοινωνήστε με τη Διεύθυνση.`;
 }
@@ -80,7 +96,11 @@ export function ResolveReferralDialog({
   const [actionDetails, setActionDetails] = useState("");
   const [notes, setNotes] = useState("");
   const [counselorNotes, setCounselorNotes] = useState("");
-  const [expulsionDays, setExpulsionDays] = useState<string[]>([]);
+  const [expulsionDays, setExpulsionDays] = useState<ExpulsionDay[]>([]);
+  // «Αποβολή με Αναστολή»: its length, no dates
+  const [suspendedDays, setSuspendedDays] = useState("");
+  const [suspendedPeriods, setSuspendedPeriods] = useState("");
+  const suspended = { days: parseInt(suspendedDays) || 0, periods: parseInt(suspendedPeriods) || 0 };
   const [dateInput, setDateInput] = useState("");
   const [parentContacted, setParentContacted] = useState(false);
   const [parentContactDate, setParentContactDate] = useState("");
@@ -102,11 +122,26 @@ export function ResolveReferralDialog({
     if (dateInput < minDay) { toast.error("Δεν επιτρέπονται ημερομηνίες στο παρελθόν"); return; }
     const dow = new Date(dateInput + "T12:00:00").getDay();
     if (dow === 0 || dow === 6) { toast.error("Το Σαββατοκύριακο δεν μετράει σε σχολικές μέρες"); return; }
-    setExpulsionDays((prev) => prev.includes(dateInput) ? prev : [...prev, dateInput].sort());
+    setExpulsionDays((prev) =>
+      prev.some((x) => x.date === dateInput)
+        ? prev
+        : [...prev, { date: dateInput, fromPeriod: null, toPeriod: null }].sort((a, b) => a.date.localeCompare(b.date)),
+    );
     setDateInput("");
   };
 
-  const removeDay = (d: string) => setExpulsionDays((prev) => prev.filter((x) => x !== d));
+  const removeDay = (d: string) => setExpulsionDays((prev) => prev.filter((x) => x.date !== d));
+  // Whole day, or a period range (from ≤ to, kept within the day).
+  const setDayRange = (d: string, fromPeriod: number | null, toPeriod: number | null) =>
+    setExpulsionDays((prev) =>
+      prev.map((x) =>
+        x.date !== d
+          ? x
+          : fromPeriod === null || toPeriod === null
+            ? { ...x, fromPeriod: null, toPeriod: null }
+            : { ...x, fromPeriod: Math.min(fromPeriod, toPeriod), toPeriod: Math.max(fromPeriod, toPeriod) },
+      ),
+    );
 
   // Mark the referral opened (red → yellow) when a headteacher examines it.
   const { mutate: markOpened } = trpc.referrals.markOpened.useMutation({
@@ -121,7 +156,7 @@ export function ResolveReferralDialog({
   const { mutate: resolve, isPending: resolving } = trpc.referrals.resolve.useMutation({
     onSuccess: () => {
       setResolved(true);
-      setSmsMessage(defaultSmsMessage(studentNames, expulsionDays));
+      setSmsMessage(defaultSmsMessage(studentNames, action, expulsionDays, suspended));
       router.refresh();
     },
     onError: (e) => toast.error(e.message),
@@ -144,6 +179,14 @@ export function ResolveReferralDialog({
       toast.error("Περιγράψτε την ποινή (τουλάχιστον 5 χαρακτήρες)");
       return;
     }
+    if (action === "DETENTION" && expulsionDays.length === 0) {
+      toast.error("Επιλέξτε τουλάχιστον μία ημέρα αποβολής");
+      return;
+    }
+    if (action === "SUSPENDED_EXPULSION" && suspended.days === 0 && suspended.periods === 0) {
+      toast.error("Δώστε τη διάρκεια της αποβολής με αναστολή (ημέρες ή περιόδους)");
+      return;
+    }
     resolve({
       referralId,
       referralStudentId,
@@ -152,6 +195,8 @@ export function ResolveReferralDialog({
       notes: notes || undefined,
       counselorNotes: counselorNotes || undefined,
       expulsionDays: action === "DETENTION" ? expulsionDays : undefined,
+      suspendedDays: action === "SUSPENDED_EXPULSION" ? suspended.days || null : undefined,
+      suspendedPeriods: action === "SUSPENDED_EXPULSION" ? suspended.periods || null : undefined,
       parentContacted,
       parentContactDate: parentContactDate || undefined,
       parentContactMethod: parentContactMethod || undefined,
@@ -284,7 +329,11 @@ export function ResolveReferralDialog({
                         }`}>
                         <input type="radio" name="action" value={a.value}
                           checked={action === a.value}
-                          onChange={() => { setAction(a.value); if (a.value !== "DETENTION") setExpulsionDays([]); }}
+                          onChange={() => {
+                            setAction(a.value);
+                            if (a.value !== "DETENTION") setExpulsionDays([]);
+                            if (a.value !== "SUSPENDED_EXPULSION") { setSuspendedDays(""); setSuspendedPeriods(""); }
+                          }}
                           className="sr-only" />
                         <span className="text-sm font-medium">{a.label}</span>
                       </label>
@@ -300,6 +349,28 @@ export function ResolveReferralDialog({
                     placeholder="Τι ακριβώς επιβλήθηκε/συμφωνήθηκε…"
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none" />
                 </div>
+
+                {/* «Αποβολή με Αναστολή» — its length (days and/or periods), no dates */}
+                {action === "SUSPENDED_EXPULSION" && (
+                  <div className="rounded-xl border border-orange-200 bg-orange-50 p-4 space-y-2">
+                    <label className="text-sm font-semibold text-orange-900">Διάρκεια αποβολής με αναστολή</label>
+                    <p className="text-xs text-orange-700">Δεν ορίζονται ημερομηνίες — εκτίεται σε περίπτωση νέου παραπτώματος.</p>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <label className="flex items-center gap-2 text-sm text-orange-900">
+                        <input type="number" min={0} max={SUSPENDED_MAX_DAYS} inputMode="numeric" value={suspendedDays}
+                          onChange={(e) => setSuspendedDays(e.target.value)}
+                          className="h-10 w-20 px-2 rounded-lg border border-orange-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                        ημέρες
+                      </label>
+                      <label className="flex items-center gap-2 text-sm text-orange-900">
+                        <input type="number" min={0} max={SUSPENDED_MAX_PERIODS} inputMode="numeric" value={suspendedPeriods}
+                          onChange={(e) => setSuspendedPeriods(e.target.value)}
+                          className="h-10 w-20 px-2 rounded-lg border border-orange-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                        περίοδοι
+                      </label>
+                    </div>
+                  </div>
+                )}
 
                 {/* Expulsion days — multi-date picker for DETENTION */}
                 {action === "DETENTION" && (
@@ -324,15 +395,41 @@ export function ResolveReferralDialog({
                     {expulsionDays.length > 0 && (
                       <div className="space-y-1.5">
                         {expulsionDays.map((d) => {
-                          const dow = new Date(d + "T12:00:00").getDay();
-                          const periods = periodsConfig[dow] ?? 7;
+                          const dow = new Date(d.date + "T12:00:00").getDay();
+                          const dayPeriods = periodsForDow(periodsConfig, dow);
+                          const partial = isPartialDay(d);
+                          const sel = "h-8 px-1.5 rounded-lg border border-red-200 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-red-400";
                           return (
-                            <div key={d} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-red-200">
-                              <div>
-                                <span className="text-sm font-medium text-red-900">{fmtDate(d)}</span>
-                                <span className="ml-2 text-xs text-red-500">{periods} ώρες</span>
+                            <div key={d.date} className="flex items-center justify-between gap-2 bg-white rounded-lg px-3 py-2 border border-red-200">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-sm font-medium text-red-900">{fmtDate(d.date)}</span>
+                                {/* Whole day, or periods from–to */}
+                                <select
+                                  value={partial ? "part" : "whole"}
+                                  onChange={(e) =>
+                                    e.target.value === "whole"
+                                      ? setDayRange(d.date, null, null)
+                                      : setDayRange(d.date, 1, Math.min(2, dayPeriods.length))
+                                  }
+                                  className={sel}
+                                >
+                                  <option value="whole">Όλη η μέρα ({dayPeriods.length} περ.)</option>
+                                  <option value="part">Περίοδοι…</option>
+                                </select>
+                                {partial && (
+                                  <span className="flex items-center gap-1 text-xs text-red-800">
+                                    από
+                                    <select value={d.fromPeriod!} onChange={(e) => setDayRange(d.date, Number(e.target.value), d.toPeriod)} className={sel}>
+                                      {dayPeriods.map((p) => <option key={p} value={p}>{p}</option>)}
+                                    </select>
+                                    έως
+                                    <select value={d.toPeriod!} onChange={(e) => setDayRange(d.date, d.fromPeriod, Number(e.target.value))} className={sel}>
+                                      {dayPeriods.map((p) => <option key={p} value={p}>{p}</option>)}
+                                    </select>
+                                  </span>
+                                )}
                               </div>
-                              <button type="button" onClick={() => removeDay(d)}
+                              <button type="button" onClick={() => removeDay(d.date)}
                                 className="text-red-400 hover:text-red-700 p-1 touch-manipulation">
                                 <X className="w-3.5 h-3.5" />
                               </button>
@@ -347,7 +444,12 @@ export function ResolveReferralDialog({
                       <div className="flex items-center justify-between pt-1 border-t border-red-200 text-sm">
                         <span className="font-semibold text-red-800">Σύνολο</span>
                         <span className="font-bold text-red-900">
-                          {expulsionDays.length} ημέρ{expulsionDays.length === 1 ? "α" : "ες"} · {totalPeriods} ώρ{totalPeriods === 1 ? "α" : "ες"}
+                          {(() => {
+                            const l = expulsionLength(expulsionDays);
+                            return lengthLabel(l.days, l.periods);
+                          })()}
+                          {" · "}
+                          {totalPeriods} περίοδο{totalPeriods === 1 ? "ς" : "ι"} συνολικά
                         </span>
                       </div>
                     )}

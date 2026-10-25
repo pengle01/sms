@@ -16,6 +16,7 @@ import { resolutionSummary, actionLabel } from "@/lib/referralLabels";
 import { parseReferralSearchTab, referralSearchWhere } from "@/lib/referralSearch";
 import { decideResolutionUnlock } from "./actions";
 import { CompactReferralTable, ReferralViewToggle } from "@/components/referrals/CompactReferrals";
+import { expulsionDayLabel } from "@/lib/referralLabels";
 
 export default async function ReferralsPage({
   params,
@@ -162,7 +163,7 @@ export default async function ReferralsPage({
                           {rs.resolution.actionDetails && <p className="text-slate-500 mt-0.5">{rs.resolution.actionDetails}</p>}
                           {rs.resolution.expulsionDays.length > 0 && (
                             <p className="text-slate-500 mt-0.5">
-                              {rs.resolution.expulsionDays.map((d) => fmtDisplayDate(d.date)).join(", ")}
+                              {rs.resolution.expulsionDays.map((d) => expulsionDayLabel(d, fmtDisplayDate)).join(", ")}
                             </p>
                           )}
                         </div>

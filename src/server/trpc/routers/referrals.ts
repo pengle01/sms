@@ -9,7 +9,10 @@ import {
 import { TRPCError } from "@trpc/server";
 import { canViewAllReferrals, canViewCounselorNotes } from "@/lib/rbac";
 import { localDateStr, isFutureDay } from "@/lib/dates";
-import { expulsionDaysInPast } from "@/lib/periods";
+import { DEFAULT_PERIODS_PER_DAY } from "@/lib/periods";
+import { getPeriodsPerDay } from "@/lib/schoolConfig";
+import { validatePunishment, PUNISHMENT_ERROR_EL } from "@/lib/punishment";
+import { ACTION_ORDER, actionLabel, resolutionSummary } from "@/lib/referralLabels";
 import { canDeleteReferral } from "@/lib/referralStatus";
 import { writeAudit } from "@/server/audit";
 import type { Role } from "@/generated/prisma/client";
@@ -348,28 +351,44 @@ export const referralsRouter = createTRPCRouter({
       z.object({
         referralId: z.string(),
         referralStudentId: z.string().optional(),
-        action: z.enum(["DETENTION", "PEDAGOGICAL_DIALOGUE", "WRITTEN_AGREEMENT", "WARNING", "OTHER"]),
+        action: z.enum(ACTION_ORDER),
         // Required description of the punishment imposed/agreed.
         actionDetails: z.string().trim().min(5, "Απαιτείται περιγραφή της ποινής"),
         notes: z.string().optional(),
         counselorNotes: z.string().optional(),
-        expulsionDays: z.array(z.string()).optional(), // ISO date strings, only for DETENTION
+        // Only for DETENTION: each day the whole day or periods from–to. A bare
+        // ISO date string is still accepted as a whole day.
+        expulsionDays: z
+          .array(
+            z.union([
+              z.string(),
+              z.object({
+                date: z.string(),
+                fromPeriod: z.number().int().nullish(),
+                toPeriod: z.number().int().nullish(),
+              }),
+            ]),
+          )
+          .optional(),
+        // Only for SUSPENDED_EXPULSION: its length, no dates.
+        suspendedDays: z.number().int().nullish(),
+        suspendedPeriods: z.number().int().nullish(),
         parentContacted: z.boolean().default(false),
         parentContactDate: z.string().optional(),
         parentContactMethod: z.string().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      // Punishments may only be scheduled today or in the future, never the past.
-      if (
-        input.action === "DETENTION" &&
-        input.expulsionDays?.length &&
-        expulsionDaysInPast(input.expulsionDays, localDateStr()).length > 0
-      ) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Οι ημέρες αποβολής δεν μπορούν να είναι στο παρελθόν",
-        });
+      // The punishment's length: dated days for an expulsion (today or later,
+      // school days, valid period ranges), a length for a suspended one.
+      const expulsionDays = (input.expulsionDays ?? []).map((d) => (typeof d === "string" ? { date: d } : d));
+      const lengthError = validatePunishment(
+        { ...input, expulsionDays },
+        { ...DEFAULT_PERIODS_PER_DAY, ...(await getPeriodsPerDay()) },
+        localDateStr(),
+      );
+      if (lengthError) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: PUNISHMENT_ERROR_EL[lengthError] });
       }
 
       const referral = await ctx.db.referral.findUnique({
@@ -410,9 +429,17 @@ export const referralsRouter = createTRPCRouter({
       const result = await ctx.db.$transaction(async (tx) => {
         // Create per-student resolutions (individually to support nested expulsionDays)
         const expulsionDates =
-          input.action === "DETENTION" && input.expulsionDays?.length
-            ? input.expulsionDays.map((d) => ({ date: new Date(d) }))
+          input.action === "DETENTION"
+            ? expulsionDays.map((d) => ({
+                date: new Date(d.date),
+                fromPeriod: d.fromPeriod ?? null,
+                toPeriod: d.toPeriod ?? null,
+              }))
             : [];
+        const suspended =
+          input.action === "SUSPENDED_EXPULSION"
+            ? { suspendedDays: input.suspendedDays || null, suspendedPeriods: input.suspendedPeriods || null }
+            : {};
 
         await Promise.all(
           resolvableIds.map((rsId) =>
@@ -427,6 +454,7 @@ export const referralsRouter = createTRPCRouter({
                 parentContactDate: input.parentContactDate ? new Date(input.parentContactDate) : undefined,
                 parentContactMethod: input.parentContactMethod,
                 resolvedById: ctx.session.user.id,
+                ...suspended,
                 ...(expulsionDates.length ? { expulsionDays: { create: expulsionDates } } : {}),
               },
             })
@@ -459,7 +487,7 @@ export const referralsRouter = createTRPCRouter({
                 userId: filerUserId,
                 type: "REFERRAL_RESOLVED",
                 title: "Καταγγελία επιλύθηκε",
-                body: `Ενέργεια: ${input.action.replace(/_/g, " ")}`,
+                body: `Ενέργεια: ${actionLabel(input.action)}`,
                 linkUrl: `/teacher/referrals`,
                 read: false,
               },
@@ -520,7 +548,13 @@ export const referralsRouter = createTRPCRouter({
         action: resolution.action,
         actionDetails: resolution.actionDetails,
         notes: resolution.notes,
-        expulsionDays: resolution.expulsionDays.map((d) => d.date.toISOString().slice(0, 10)),
+        expulsionDays: resolution.expulsionDays.map((d) =>
+          d.fromPeriod != null && d.toPeriod != null
+            ? { date: d.date.toISOString().slice(0, 10), fromPeriod: d.fromPeriod, toPeriod: d.toPeriod }
+            : d.date.toISOString().slice(0, 10),
+        ),
+        suspendedDays: resolution.suspendedDays,
+        suspendedPeriods: resolution.suspendedPeriods,
         resolvedAt: resolution.resolvedAt.toISOString(),
       });
 
@@ -688,7 +722,9 @@ export const referralsRouter = createTRPCRouter({
               resolution: {
                 select: {
                   action: true,
-                  expulsionDays: { select: { date: true }, orderBy: { date: "asc" as const } },
+                  suspendedDays: true,
+                  suspendedPeriods: true,
+                  expulsionDays: { select: { date: true, fromPeriod: true, toPeriod: true }, orderBy: { date: "asc" as const } },
                 },
               },
             },
@@ -712,6 +748,8 @@ export const referralsRouter = createTRPCRouter({
           status: rs.status as string,
           action: rs.resolution?.action ?? null,
           expulsionCount: rs.resolution?.expulsionDays.length ?? 0,
+          // «Αποβολή · 1 ημέρα + 3 περίοδοι», «Αποβολή με Αναστολή · 2 ημέρες», …
+          summary: rs.resolution ? resolutionSummary(rs.resolution) : null,
         })),
       };
     }),
