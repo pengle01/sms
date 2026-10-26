@@ -176,7 +176,7 @@ export function ResolveReferralDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (actionDetails.trim().length < 5) {
-      toast.error("Περιγράψτε την ποινή (τουλάχιστον 5 χαρακτήρες)");
+      toast.error("Περιγράψτε το παιδαγωγικό μέτρο (τουλάχιστον 5 χαρακτήρες)");
       return;
     }
     if (action === "DETENTION" && expulsionDays.length === 0) {
@@ -343,7 +343,7 @@ export function ResolveReferralDialog({
 
                 {/* Punishment description — required for every action type */}
                 <div className="space-y-1.5">
-                  <label className="text-sm font-semibold text-slate-700">Περιγραφή Ποινής *</label>
+                  <label className="text-sm font-semibold text-slate-700">Περιγραφή Παιδαγωγικού Μέτρου *</label>
                   <textarea value={actionDetails} onChange={(e) => setActionDetails(e.target.value)} rows={2}
                     required
                     placeholder="Τι ακριβώς επιβλήθηκε/συμφωνήθηκε…"

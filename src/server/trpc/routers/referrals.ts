@@ -353,7 +353,7 @@ export const referralsRouter = createTRPCRouter({
         referralStudentId: z.string().optional(),
         action: z.enum(ACTION_ORDER),
         // Required description of the punishment imposed/agreed.
-        actionDetails: z.string().trim().min(5, "Απαιτείται περιγραφή της ποινής"),
+        actionDetails: z.string().trim().min(5, "Απαιτείται περιγραφή του παιδαγωγικού μέτρου"),
         notes: z.string().optional(),
         counselorNotes: z.string().optional(),
         // Only for DETENTION: each day the whole day or periods from–to. A bare

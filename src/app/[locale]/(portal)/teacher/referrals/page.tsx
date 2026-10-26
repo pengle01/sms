@@ -401,7 +401,7 @@ export default async function TeacherReferralsPage({
                 locale={locale}
                 periodsConfig={periodsConfig}
               />
-              <p className="text-xs text-slate-400 mt-1 pl-1">Κοινή ποινή για όλους</p>
+              <p className="text-xs text-slate-400 mt-1 pl-1">Κοινό παιδαγωγικό μέτρο για όλους</p>
             </div>
           )}
 

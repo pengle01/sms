@@ -249,7 +249,7 @@ export default async function PrintResolutionPage({
                       </tr>
                       {res.actionDetails && (
                         <tr className="border-b border-slate-100">
-                          <td className={label}>Περιγραφή ποινής</td>
+                          <td className={label}>Περιγραφή παιδαγωγικού μέτρου</td>
                           <td className="py-1.5 text-slate-800">{res.actionDetails}</td>
                         </tr>
                       )}

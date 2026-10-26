@@ -202,7 +202,7 @@ export function ReferralForm({ groups, filerName, locale }: Props) {
       <div className="space-y-2 rounded-xl border border-slate-200 p-4">
         <div>
           <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
-            Εισηγήσεις προς τη διεύθυνση που αφορούν την ποινή
+            Εισηγήσεις προς τη διεύθυνση που αφορούν το παιδαγωγικό μέτρο
           </label>
           <p className="text-xs text-slate-400 italic mt-0.5">
             Η διεύθυνση δεν δεσμεύεται να ακολουθήσει τις εισηγήσεις σας. Το παιδαγωγικό μέτρο που θα επιβληθεί είναι στην κρίση της διεύθυνσης.
