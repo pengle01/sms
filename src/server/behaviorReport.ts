@@ -3,7 +3,9 @@
 // then runs the pure engine in src/lib/behaviorFlags.ts.
 
 import { db } from "@/server/db";
-import { localDateStr } from "@/lib/dates";
+import { localDateStr, utcMidnight } from "@/lib/dates";
+import { getSchoolYear } from "@/lib/schoolConfig";
+import { termOf } from "@/lib/schoolYear";
 import { GRADE_PASS } from "@/lib/grades";
 import {
   analyzeStudent,
@@ -43,6 +45,24 @@ export async function groupsForStaff(userId: string): Promise<AccessibleGroup[]>
   staff.homeroomGroups.forEach((g) => add(g, "teacher"));
   staff.homeroomCounselorGroups.forEach((g) => add(g, "counselor"));
   return [...map.values()].sort((a, b) => a.grade - b.grade || a.name.localeCompare(b.name, "el"));
+}
+
+export type BehaviorWindow = "30" | "term" | "year";
+export const BEHAVIOR_WINDOWS: BehaviorWindow[] = ["30", "term", "year"];
+
+/** The window from a URL value; default the current τετράμηνο. */
+export function parseBehaviorWindow(v: string | undefined): BehaviorWindow {
+  return BEHAVIOR_WINDOWS.includes(v as BehaviorWindow) ? (v as BehaviorWindow) : "term";
+}
+
+/** The window's first day, from the super-admin's School Year & Terms settings. */
+export async function behaviorWindowSince(window: BehaviorWindow): Promise<Date> {
+  const today = utcMidnight(localDateStr());
+  if (window === "30") return new Date(today.getTime() - 30 * 86400000);
+  const ranges = await getSchoolYear();
+  if (window === "year") return ranges.yearStart;
+  // current term: Β΄ once we're past its start, else from the year start (Α΄)
+  return termOf(today, ranges) === "TERM2" ? ranges.term2Start : ranges.yearStart;
 }
 
 /** ISO weekday 1=Mon … 7=Sun from a @db.Date (UTC-midnight) value. */

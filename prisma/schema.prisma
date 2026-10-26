@@ -201,6 +201,7 @@ model User {
   notifications              Notification[]
   sentNotifications          Notification[]              @relation("SentNotifications")
   recipientGroups            StaffRecipientGroup[]       @relation("RecipientGroupOwner")
+  watchlistResolutions       WatchlistResolution[]       @relation("WatchlistResolvedBy")
   attendanceExports          AttendanceExport[]
   waivedAttendance           Attendance[]                @relation("AttendanceWaiver")
   auditLogs                  AuditLog[]
@@ -311,6 +312,7 @@ model StudentProfile {
   ddkAwards                DdkAward[]
   conversations            Conversation[]
   specialEd                SpecialEdRecord?
+  watchlistResolution      WatchlistResolution?
   // Flagged when the import's default SMS number is missing or doesn't match a
   // parent/guardian — the office should review the recipient.
   smsFlagged               Boolean                   @default(false)
@@ -1014,6 +1016,21 @@ model StaffRecipientGroup {
   updatedAt DateTime @updatedAt
 
   @@unique([ownerId, name])
+}
+
+// «Τμήμα μου» → «Προς διερεύνηση»: a student the homegroup's deputy marked as
+// resolved. `flags` is the patterns as they were (flag key → count, see
+// src/lib/watchlistResolve.ts); the student returns to the list once a new
+// pattern appears or one grows. One per student, shared by everyone who sees
+// the homegroup.
+model WatchlistResolution {
+  id           String         @id @default(cuid())
+  studentId    String         @unique
+  student      StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  flags        Json
+  resolvedById String?
+  resolvedBy   User?          @relation("WatchlistResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolvedAt   DateTime       @default(now())
 }
 
 model Notification {

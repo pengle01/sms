@@ -4,15 +4,20 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTranslations } from "next-intl/server";
-import { AlertTriangle, Search, Users } from "lucide-react";
-import { groupsForStaff, loadGroupBehavior, type StudentBehaviorRow } from "@/server/behaviorReport";
+import { AlertTriangle, CheckCircle2, Printer, RotateCcw, Search, Users } from "lucide-react";
+import {
+  BEHAVIOR_WINDOWS,
+  behaviorWindowSince,
+  groupsForStaff,
+  loadGroupBehavior,
+  parseBehaviorWindow,
+  type StudentBehaviorRow,
+} from "@/server/behaviorReport";
 import type { Flag, Severity } from "@/lib/behaviorFlags";
-import { getSchoolYear } from "@/lib/schoolConfig";
-import { termOf } from "@/lib/schoolYear";
-import { utcMidnight, localDateStr } from "@/lib/dates";
-
-type WindowKey = "30" | "term" | "year";
-const WINDOW_KEYS: WindowKey[] = ["30", "term", "year"];
+import { db } from "@/server/db";
+import { fmtDisplayDate } from "@/lib/dates";
+import { canResolveWatchlist, parseFlagSnapshot, stillResolved } from "@/lib/watchlistResolve";
+import { resolveWatchlistStudent, reopenWatchlistStudent } from "./actions";
 
 const WEEKDAYS: Record<string, string[]> = {
   // index by ISO weekday (1=Mon … 7=Sun); [0] unused
@@ -35,9 +40,8 @@ export default async function HomegroupPage({
 }) {
   const { locale } = await params;
   const { groupId: selectedGroupId, window: windowParam } = await searchParams;
-  const windowKey: WindowKey = WINDOW_KEYS.includes(windowParam as WindowKey)
-    ? (windowParam as WindowKey)
-    : "term"; // default: the current τετράμηνο, from the super-admin settings
+  // default: the current τετράμηνο, from the super-admin settings
+  const windowKey = parseBehaviorWindow(windowParam);
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login/staff`);
 
@@ -56,18 +60,18 @@ export default async function HomegroupPage({
   const activeGroup = groups.find((g) => g.id === selectedGroupId) ?? groups[0]!;
 
   // Window boundary drawn from the super-admin's School Year & Terms settings.
-  const today = utcMidnight(localDateStr());
-  const ranges = await getSchoolYear();
-  let since: Date;
-  if (windowKey === "30") {
-    since = new Date(today.getTime() - 30 * 86400000);
-  } else if (windowKey === "year") {
-    since = ranges.yearStart;
-  } else {
-    // current term: Β΄ once we're past its start, else from the year start (Α΄)
-    since = termOf(today, ranges) === "TERM2" ? ranges.term2Start : ranges.yearStart;
-  }
-  const { students } = await loadGroupBehavior(activeGroup.id, since);
+  const { students } = await loadGroupBehavior(activeGroup.id, await behaviorWindowSince(windowKey));
+  const canResolve = canResolveWatchlist(activeGroup.roles);
+  // Students the deputy marked as resolved — they stay off the list until a
+  // new pattern appears or one grows (stillResolved).
+  const resolutions = new Map(
+    (
+      await db.watchlistResolution.findMany({
+        where: { studentId: { in: students.map((s) => s.studentProfileId) } },
+        select: { studentId: true, flags: true, resolvedAt: true, resolvedBy: { select: { name: true } } },
+      })
+    ).map((r) => [r.studentId, r]),
+  );
 
   const weekdayNames = WEEKDAYS[locale] ?? WEEKDAYS.el!;
 
@@ -91,14 +95,35 @@ export default async function HomegroupPage({
     }
   };
 
-  const watchlist = students
+  const flagged = students
     .filter((s) => s.flags.length > 0)
     .sort((a, b) => b.riskScore - a.riskScore || a.studentName.localeCompare(b.studentName, "el"));
+  const isResolved = (s: StudentBehaviorRow) => {
+    const r = resolutions.get(s.studentProfileId);
+    return !!r && stillResolved(s.flags, parseFlagSnapshot(r.flags));
+  };
+  const watchlist = flagged.filter((s) => !isResolved(s));
+  const resolvedList = flagged.filter(isResolved);
 
   const dossierHref = (s: StudentBehaviorRow) =>
     `/${locale}/teacher/students/${s.studentProfileId}?from=homegroup&groupId=${activeGroup.id}`;
 
   const groupParam = `&groupId=${activeGroup.id}`;
+  const printHref = (all: boolean) =>
+    `/${locale}/teacher/homegroup/print?window=${windowKey}${groupParam}${all ? "&all=1" : ""}&auto=1`;
+
+  const flagPills = (s: StudentBehaviorRow) => (
+    <div className="flex flex-wrap gap-1.5 mt-1.5">
+      {s.flags.map((f, i) => (
+        <span
+          key={i}
+          className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full border ${SEVERITY_PILL[f.severity]}`}
+        >
+          {flagText(f)}
+        </span>
+      ))}
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -110,9 +135,31 @@ export default async function HomegroupPage({
           </h2>
           <p className="text-slate-500 text-sm mt-1">{t("subtitle")}</p>
         </div>
+        <div className="flex items-center gap-2 flex-wrap self-start">
+        {/* Print the roster for this window — this homegroup, or all of mine */}
+        <a
+          href={printHref(false)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50"
+        >
+          <Printer className="w-3.5 h-3.5" />
+          {t("print")}
+        </a>
+        {groups.length > 1 && (
+          <a
+            href={printHref(true)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            {t("printAll", { count: groups.length })}
+          </a>
+        )}
         {/* Window toggle — term/year boundaries come from the super-admin settings */}
-        <div className="flex rounded-lg border border-slate-200 overflow-hidden flex-shrink-0 self-start">
-          {WINDOW_KEYS.map((w) => (
+        <div className="flex rounded-lg border border-slate-200 overflow-hidden flex-shrink-0">
+          {BEHAVIOR_WINDOWS.map((w) => (
             <Link
               key={w}
               href={`?window=${w}${groupParam}`}
@@ -123,6 +170,7 @@ export default async function HomegroupPage({
               {w === "30" ? t("windowDays", { days: 30 }) : w === "term" ? t("windowTerm") : t("windowYear")}
             </Link>
           ))}
+        </div>
         </div>
       </div>
 
@@ -161,19 +209,61 @@ export default async function HomegroupPage({
                 <Link href={dossierHref(s)} className="font-medium text-slate-900 hover:text-emerald-700 hover:underline">
                   {s.studentName}
                 </Link>
-                <div className="flex flex-wrap gap-1.5 mt-1.5">
-                  {s.flags.map((f, i) => (
-                    <span
-                      key={i}
-                      className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full border ${SEVERITY_PILL[f.severity]}`}
-                    >
-                      {flagText(f)}
-                    </span>
-                  ))}
-                </div>
+                {flagPills(s)}
               </div>
+              {canResolve && (
+                <form action={resolveWatchlistStudent.bind(null, locale, activeGroup.id, s.studentProfileId, windowKey)} className="flex-shrink-0">
+                  <button
+                    type="submit"
+                    title={t("resolveHint")}
+                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-emerald-200 bg-emerald-50 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    {t("resolve")}
+                  </button>
+                </form>
+              )}
             </div>
           ))}
+
+          {/* Resolved — back on the list once something new happens */}
+          {resolvedList.length > 0 && (
+            <details className="pt-2 border-t border-slate-100">
+              <summary className="cursor-pointer text-sm font-medium text-slate-500 hover:text-slate-700">
+                {t("resolvedTitle", { count: resolvedList.length })}
+              </summary>
+              <p className="mt-1 text-xs text-slate-400">{t("resolvedHint")}</p>
+              <div className="mt-2 space-y-2">
+                {resolvedList.map((s) => {
+                  const r = resolutions.get(s.studentProfileId)!;
+                  return (
+                    <div key={s.studentProfileId} className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between opacity-75">
+                      <div className="min-w-0">
+                        <Link href={dossierHref(s)} className="font-medium text-slate-700 hover:text-emerald-700 hover:underline">
+                          {s.studentName}
+                        </Link>
+                        <span className="ml-2 text-xs text-emerald-700">
+                          {t("resolvedBy", { name: r.resolvedBy?.name ?? "—", date: fmtDisplayDate(r.resolvedAt) })}
+                        </span>
+                        {flagPills(s)}
+                      </div>
+                      {canResolve && (
+                        <form action={reopenWatchlistStudent.bind(null, locale, activeGroup.id, s.studentProfileId)} className="flex-shrink-0">
+                          <button
+                            type="submit"
+                            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 hover:bg-slate-50"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            {t("reopen")}
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </details>
+          )}
         </CardContent>
       </Card>
 

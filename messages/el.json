@@ -1291,7 +1291,20 @@
     "flagToiletLong": "Παρατεταμένη έξοδος τουαλέτας ×{count}",
     "flagToiletSameLesson": "Έξοδος στο ίδιο μάθημα: {course} ×{count}",
     "windowTerm": "Τετράμηνο",
-    "windowYear": "Σχολική χρονιά"
+    "windowYear": "Σχολική χρονιά",
+    "colRegistry": "Αρ. Μητρώου",
+    "print": "Εκτύπωση",
+    "printAll": "Εκτύπωση όλων ({count})",
+    "printTitle": "ΣΥΝΟΨΗ ΑΠΟΥΣΙΩΝ ΤΜΗΜΑΤΟΣ",
+    "printPeriod": "Περίοδος: {window} · {from} – {to}",
+    "printTotal": "Σύνολο ({count} μαθητές/τριες)",
+    "printAbsencesNote": "Απουσίες: περίοδοι απουσίας, χωρίς τις δικαιολογημένες/διαγραμμένες.",
+    "resolve": "Επιλύθηκε",
+    "resolveHint": "Αφαιρείται από τη λίστα μέχρι να εμφανιστεί νέο ή μεγαλύτερο μοτίβο",
+    "resolvedTitle": "Επιλύθηκαν ({count})",
+    "resolvedHint": "Επιστρέφουν στη λίστα μόλις εμφανιστεί νέο μοτίβο ή αυξηθεί κάποιο υπάρχον.",
+    "resolvedBy": "Επιλύθηκε από {name} · {date}",
+    "reopen": "Επαναφορά"
   },
   "specialEd": {
     "title": "Ειδική Αγωγή",

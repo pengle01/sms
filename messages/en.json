@@ -1291,7 +1291,20 @@
     "flagToiletLong": "Prolonged toilet break ×{count}",
     "flagToiletSameLesson": "Leaves the same lesson: {course} ×{count}",
     "windowTerm": "Term",
-    "windowYear": "School year"
+    "windowYear": "School year",
+    "colRegistry": "Registry No.",
+    "print": "Print",
+    "printAll": "Print all ({count})",
+    "printTitle": "HOMEGROUP ABSENCE SUMMARY",
+    "printPeriod": "Period: {window} · {from} – {to}",
+    "printTotal": "Total ({count} students)",
+    "printAbsencesNote": "Absences: absent periods, excluding excused/waived ones.",
+    "resolve": "Resolved",
+    "resolveHint": "Removed from the list until a new or larger pattern appears",
+    "resolvedTitle": "Resolved ({count})",
+    "resolvedHint": "They return to the list as soon as a new pattern appears or an existing one grows.",
+    "resolvedBy": "Resolved by {name} · {date}",
+    "reopen": "Reopen"
   },
   "specialEd": {
     "title": "Special Education",
