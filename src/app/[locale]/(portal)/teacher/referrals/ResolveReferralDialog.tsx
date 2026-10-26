@@ -391,6 +391,13 @@ export function ResolveReferralDialog({
                       </button>
                     </div>
 
+                    {/* An expulsion can't be resolved without its days */}
+                    {expulsionDays.length === 0 && (
+                      <p className="text-xs font-medium text-red-700">
+                        Επιλέξτε τουλάχιστον μία ημέρα και πατήστε «Προσθήκη» — χωρίς ημέρες δεν γίνεται επίλυση.
+                      </p>
+                    )}
+
                     {/* Selected days list */}
                     {expulsionDays.length > 0 && (
                       <div className="space-y-1.5">
@@ -503,7 +510,7 @@ export function ResolveReferralDialog({
                     onClick={() => setOpen(false)} className="h-12 px-5 rounded-xl text-base">
                     Ακύρωση
                   </Button>
-                  <Button type="submit" disabled={resolving}
+                  <Button type="submit" disabled={resolving || (action === "DETENTION" && expulsionDays.length === 0)}
                     className="flex-1 h-12 rounded-xl text-base font-semibold bg-green-600 hover:bg-green-700 text-white touch-manipulation">
                     {resolving && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
                     Επίλυση
