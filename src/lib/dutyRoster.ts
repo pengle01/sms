@@ -32,6 +32,14 @@ export function dutyDowFor(date: Date): number | null {
   return dow >= 1 && dow <= 5 ? dow : null;
 }
 
+/**
+ * Exit permits: any headteacher, on any school day — being on the duty roster
+ * is not required (the headmaster only views them).
+ */
+export function canIssueExitPermit(role: Role, dow: number | null): boolean {
+  return isDutyEligible(role) && dow !== null;
+}
+
 /** Group roster entries into Mon–Fri buckets (every weekday key present). */
 export function rosterByDay<T extends { dayOfWeek: number }>(
   entries: T[]

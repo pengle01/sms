@@ -5,28 +5,22 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/server/db";
 import { getActiveAuth } from "@/server/authz";
 import { writeAudit, requestMeta } from "@/server/audit";
-import { dutyDowFor, isOnDuty } from "@/lib/dutyRoster";
+import { canIssueExitPermit, dutyDowFor } from "@/lib/dutyRoster";
 import { permitAbsenceSlots, permitAccountNote } from "@/lib/exitPermit";
 import { utcMidnight } from "@/lib/dates";
 import { parentAccountPhones, permitPhoneChoices } from "@/lib/smsContacts";
 
-// Only TODAY'S rostered on-duty deputy may issue/cancel exit permits.
-async function requireOnDutyDeputy() {
+// Any headteacher may issue/cancel exit permits on a school day, on duty or not.
+async function requirePermitIssuer() {
   const auth = await getActiveAuth();
   if (!auth) return null;
+  const today = utcMidnight();
+  if (!canIssueExitPermit(auth.role, dutyDowFor(today))) return null;
   const staff = await db.staffProfile.findUnique({
     where: { userId: auth.userId },
     select: { id: true },
   });
   if (!staff) return null;
-  const today = utcMidnight();
-  const dow = dutyDowFor(today);
-  if (!dow) return null;
-  const entries = await db.dutyRosterEntry.findMany({
-    where: { dayOfWeek: dow },
-    select: { dayOfWeek: true, staffProfileId: true },
-  });
-  if (!isOnDuty(entries, dow, staff.id)) return null;
   return { auth, staff, today };
 }
 
@@ -52,8 +46,8 @@ export async function issueExitPermit(locale: string, formData: FormData) {
   const smsContactId = ((formData.get("smsContactId") as string) ?? "").trim();
   const contactNote = ((formData.get("contactNote") as string) ?? "").trim();
 
-  const ctx = await requireOnDutyDeputy();
-  if (!ctx) redirect(`${base}?${deskQs(formData, { error: "errNotOnDuty" })}`);
+  const ctx = await requirePermitIssuer();
+  if (!ctx) redirect(`${base}?${deskQs(formData, { error: "errNotPermitIssuer" })}`);
 
   if (!Number.isInteger(fromPeriod) || fromPeriod < 1 || fromPeriod > 8) {
     redirect(`${base}?${deskQs(formData, { student: studentId, error: "errPeriod" })}`);
@@ -94,7 +88,7 @@ export async function issueExitPermit(locale: string, formData: FormData) {
   // The student's remaining periods today (homegroup + subject groups; the
   // subject-group slot wins a shared period) get pre-marked ABSENT and linked
   // to the permit, so schedules/locate show them yellow right away.
-  const dow = dutyDowFor(ctx.today)!; // requireOnDutyDeputy guarantees a school day
+  const dow = dutyDowFor(ctx.today)!; // requirePermitIssuer guarantees a school day
   const groupIds = [
     ...new Set([
       ...(student.groupId ? [student.groupId] : []),
@@ -162,7 +156,7 @@ export async function issueExitPermit(locale: string, formData: FormData) {
 
 export async function cancelExitPermit(locale: string, permitId: string, returnQs: string) {
   const back = `/${locale}/teacher/duty${returnQs ? `?${returnQs}` : ""}`;
-  const ctx = await requireOnDutyDeputy();
+  const ctx = await requirePermitIssuer();
   if (!ctx) redirect(back);
 
   // Only today's permits can be cancelled (yesterday's are history).

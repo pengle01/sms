@@ -102,3 +102,18 @@ describe("canViewDutyDesk", () => {
     expect(isDutyEligible("HEADMASTER")).toBe(false);
   });
 });
+
+import { canIssueExitPermit } from "@/lib/dutyRoster";
+
+describe("canIssueExitPermit", () => {
+  it("lets any headteacher issue on a school day, rostered or not", () => {
+    expect(canIssueExitPermit("HEADTEACHER_A", 1)).toBe(true);
+    expect(canIssueExitPermit("HEADTEACHER_B", 5)).toBe(true);
+  });
+
+  it("refuses on weekends and for other roles", () => {
+    expect(canIssueExitPermit("HEADTEACHER_A", null)).toBe(false);
+    expect(canIssueExitPermit("HEADMASTER", 2)).toBe(false);
+    expect(canIssueExitPermit("TEACHER", 2)).toBe(false);
+  });
+});

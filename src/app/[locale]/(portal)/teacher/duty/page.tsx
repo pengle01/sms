@@ -6,7 +6,7 @@ import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { utcMidnight, localDateStr } from "@/lib/dates";
-import { dutyDowFor, isDutyEligible, canViewDutyDesk, isOnDuty } from "@/lib/dutyRoster";
+import { dutyDowFor, isDutyEligible, canViewDutyDesk, isOnDuty, canIssueExitPermit } from "@/lib/dutyRoster";
 import { locateHref, parseLocateTab, studentSearchWhere, type LocateTab, type LocateParams } from "@/lib/studentSearch";
 import { suggestionList } from "@/lib/textSearch";
 import { getPeriodsPerDay, getBellSchedule, DEFAULT_PERIODS_PER_DAY } from "@/lib/schoolConfig";
@@ -108,6 +108,8 @@ export default async function TeacherDutyPage({
       : [];
   const markedHallSlotIds = new Set(markedHalls.map((m) => m.timetableSlotId));
   const onDutyToday = isOnDuty(todayEntries, todayDow, me?.id ?? null);
+  // The permit desk is open to every headteacher, rostered or not.
+  const permitDesk = canIssueExitPermit(auth.role, todayDow);
 
   // ── Permit desk: same tabbed locator as attendance/locate ────────────────
   const tab = parseLocateTab(tabParam);
@@ -123,7 +125,7 @@ export default async function TeacherDutyPage({
     return `?${sp.toString()}`;
   };
 
-  const matchesWhere = !onDutyToday
+  const matchesWhere = !permitDesk
     ? null
     : tab === "group"
       ? groupId
@@ -131,7 +133,7 @@ export default async function TeacherDutyPage({
         : null
       : studentSearchWhere(tab, query);
 
-  const [todayPermits, homeroomGroups, matches, suggestionRows, selectedStudent, periodsConfig] = onDutyToday
+  const [todayPermits, homeroomGroups, matches, suggestionRows, selectedStudent, periodsConfig] = permitDesk
     ? await Promise.all([
         db.exitPermit.findMany({
           where: { date: today },
@@ -387,7 +389,7 @@ export default async function TeacherDutyPage({
   // ── Tab: Άδειες Εξόδου — the permit desk ──────────────────────────────────
   const permitsContent = viewOnly ? (
         <div className="max-w-2xl">{todayPermitsCard(viewPermits, false)}</div>
-      ) : !onDutyToday ? (
+      ) : !permitDesk ? (
         <Card className="max-w-xl">
           <CardContent className="py-4 flex items-center gap-3">
             <div className="flex items-center justify-center w-10 h-10 rounded-full flex-shrink-0 bg-slate-100 text-slate-400">

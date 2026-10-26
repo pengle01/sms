@@ -198,7 +198,7 @@
     "todayPermits": "Today's Permits",
     "noPermitsToday": "No permits today.",
     "leavesFrom": "Leaves from P{period}",
-    "errNotOnDuty": "Only today's on-duty deputy can issue or cancel a permit.",
+    "errNotPermitIssuer": "Only deputy heads can issue or cancel a permit, on school days.",
     "errReason": "A reason is required.",
     "errPeriod": "Invalid period.",
     "errStudent": "Student not found.",
