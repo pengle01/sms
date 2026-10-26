@@ -64,7 +64,7 @@ export async function DayPlanCard({ locale, dateStr }: { locale: string; dateStr
             </form>
             {plan && (
               <Link
-                href={`/${locale}/teacher/substitutions/plan/${dateStr}/print`}
+                href={`/${locale}/teacher/substitutions/plan/${dateStr}/print?back=${encodeURIComponent(`/${locale}/teacher/duty?tab=plan&planDate=${dateStr}`)}`}
                 className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50"
               >
                 <Printer className="w-3.5 h-3.5" />

@@ -53,6 +53,11 @@ describe("safeBack", () => {
     expect(safeBack("/el/teacher/whereabouts?tab=rooms&room=Α12", "el")).toBe("/el/teacher/whereabouts?tab=rooms&room=Α12");
   });
 
+  it("keeps the «Εφημερίες» tab a daily-sheet print was opened from", () => {
+    const back = new URLSearchParams(`back=${encodeURIComponent("/el/teacher/duty?tab=plan&planDate=2026-03-16")}`).get("back") ?? undefined;
+    expect(safeBack(back, "el")).toBe("/el/teacher/duty?tab=plan&planDate=2026-03-16");
+  });
+
   it("drops external, protocol-relative and other-locale paths", () => {
     expect(safeBack("https://evil.example/el/", "el")).toBeNull();
     expect(safeBack("//evil.example/el/x", "el")).toBeNull();

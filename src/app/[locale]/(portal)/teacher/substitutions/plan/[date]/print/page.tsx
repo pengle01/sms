@@ -6,15 +6,21 @@ import { getSchoolName } from "@/lib/schoolConfig";
 import { staffDisplayName } from "@/lib/staffName";
 import { utcMidnight } from "@/lib/dates";
 import { SCHOOL_ABSENCE_SOURCE, readImportMeta } from "@/lib/substitutionImport";
+import { safeBack } from "@/lib/timetablePrint";
 import { PrintBar } from "./PrintBar";
 
 // The posted daily substitution sheet (A4). Any educator may view/print it.
+// `back` returns to the page it was opened from (e.g. «Εφημερίες»), since
+// only the coordinators may open the planning page it defaults to.
 export default async function PrintSubstitutionPlanPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; date: string }>;
+  searchParams: Promise<{ back?: string }>;
 }) {
   const { locale, date: dateStr } = await params;
+  const { back } = await searchParams;
   const auth = await getActiveAuth();
   if (!auth) redirect(`/${locale}/login/staff`);
   if (!isEducator(auth.role) && !auth.roles.includes("SUPER_ADMIN")) {
@@ -88,7 +94,7 @@ export default async function PrintSubstitutionPlanPage({
 
   return (
     <>
-      <PrintBar backHref={`/${locale}/teacher/substitutions/plan?date=${dateStr}`} />
+      <PrintBar backHref={safeBack(back, locale) ?? `/${locale}/teacher/substitutions/plan?date=${dateStr}`} />
 
       <div className="min-h-screen bg-white print:bg-white">
         <div className="max-w-3xl mx-auto px-12 py-10 print:px-0 print:py-0 print:max-w-none">
