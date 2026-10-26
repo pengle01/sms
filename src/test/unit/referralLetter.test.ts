@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { expulsionWhere, letterOffence, parentLines, letterDate, letterExpulsionDay, letterPunishment } from "@/lib/referralLetter";
+import { expulsionWhere, expulsionAtSchool, letterOffence, parentLines, letterDate, letterExpulsionDay, letterPunishment } from "@/lib/referralLetter";
 
 describe("expulsionWhere", () => {
   it("is home for 2+ days, school for 1, nothing otherwise", () => {
@@ -7,6 +7,17 @@ describe("expulsionWhere", () => {
     expect(expulsionWhere(1)).toBe("Σχολείο");
     expect(expulsionWhere(2)).toBe("Σπίτι");
     expect(expulsionWhere(5)).toBe("Σπίτι");
+  });
+});
+
+describe("expulsionAtSchool", () => {
+  const whole = { fromPeriod: null, toPeriod: null };
+  it("is true for one whole day or periods only, false for 2+ days or none", () => {
+    expect(expulsionAtSchool([whole])).toBe(true);
+    expect(expulsionAtSchool([{ fromPeriod: 2, toPeriod: 4 }])).toBe(true);
+    expect(expulsionAtSchool([whole, { fromPeriod: 1, toPeriod: 3 }])).toBe(true);
+    expect(expulsionAtSchool([whole, whole])).toBe(false);
+    expect(expulsionAtSchool([])).toBe(false);
   });
 });
 
@@ -52,7 +63,7 @@ describe("letterPunishment", () => {
     expect(letterExpulsionDay(day("2026-10-28", 3, 5))).toEqual({ date: "Τετ, 28/10/2026", span: "Περίοδοι 3–5" });
   });
 
-  it("lists an expulsion's days in order with its length and where it is served", () => {
+  it("leaves the days out of an expulsion served at school", () => {
     const m = letterPunishment({
       action: "DETENTION",
       actionDetails: " Χρήση κινητού ",
@@ -60,13 +71,15 @@ describe("letterPunishment", () => {
     });
     expect(m.measure).toBe("Αποβολή");
     expect(m.length).toBe("1 ημέρα + 3 περίοδοι");
-    expect(m.days.map((d) => d.date)).toEqual(["Τρι, 27/10/2026", "Τετ, 28/10/2026"]);
+    expect(m.days).toEqual([]);
     expect(m.where).toBe("Σχολείο");
     expect(m.details).toBe("Χρήση κινητού");
     expect(m.note).toBeNull();
   });
 
-  it("serves two or more whole days at home, periods only at school", () => {
+  it("serves two or more whole days at home, listing them in order, periods only at school", () => {
+    const home = letterPunishment({ action: "DETENTION", expulsionDays: [day("2026-10-28"), day("2026-10-27")] });
+    expect(home.days.map((d) => d.date)).toEqual(["Τρι, 27/10/2026", "Τετ, 28/10/2026"]);
     expect(letterPunishment({ action: "DETENTION", expulsionDays: [day("2026-10-27"), day("2026-10-28")] }).where).toBe("Σπίτι");
     expect(letterPunishment({ action: "DETENTION", expulsionDays: [day("2026-10-27", 1, 2)] }).where).toBe("Σχολείο");
   });

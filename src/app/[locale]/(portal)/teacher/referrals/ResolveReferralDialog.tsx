@@ -17,6 +17,7 @@ import {
   type ResolutionActionValue,
 } from "@/lib/referralLabels";
 import { SUSPENDED_MAX_DAYS, SUSPENDED_MAX_PERIODS } from "@/lib/punishment";
+import { expulsionAtSchool } from "@/lib/referralLetter";
 
 // The punishments in the dialog's order (Προειδοποίηση before Γραπτή Συμφωνία).
 const ACTIONS = ACTION_ORDER.map((value) => ({ value, label: actionLabel(value) }));
@@ -66,6 +67,11 @@ function defaultSmsMessage(
 ): string {
   const names = studentNames.join(", ");
   if (action === "DETENTION" && expulsionDays.length > 0) {
+    // Served at school: the length only, no dates (the student might stay home).
+    if (expulsionAtSchool(expulsionDays)) {
+      const l = expulsionLength(expulsionDays);
+      return `Αξιότιμε κηδεμόνα, στον/στην ${names} επιβλήθηκε αποβολή (${lengthLabel(l.days, l.periods)}), λόγω πειθαρχικού παραπτώματος. Για πληροφορίες επικοινωνήστε με τη Διεύθυνση.`;
+    }
     const fmtted = expulsionDays
       .map((d) => (isPartialDay(d) ? `${fmtDate(d.date)} (περίοδοι ${d.fromPeriod}–${d.toPeriod})` : fmtDate(d.date)))
       .join(", ");

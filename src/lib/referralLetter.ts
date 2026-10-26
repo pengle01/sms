@@ -14,6 +14,15 @@ export function expulsionWhere(days: number): "Σπίτι" | "Σχολείο" | 
   return null;
 }
 
+/**
+ * An expulsion served at school (one whole day, or periods only). Its dates
+ * stay off the parent letter and SMS — a student who reads them might stay home.
+ */
+export function expulsionAtSchool(days: { fromPeriod?: number | null; toPeriod?: number | null }[]): boolean {
+  const l = expulsionLength(days);
+  return expulsionWhere(l.days > 0 ? l.days : l.periods > 0 ? 1 : 0) === "Σχολείο";
+}
+
 /** «Παράπτωμα»: the referral's title, or its description for referrals filed before titles existed. */
 export function letterOffence(title: string | null | undefined, description: string): string {
   return title?.trim() || description.trim();
@@ -64,7 +73,7 @@ export function letterExpulsionDay(d: { date: Date; fromPeriod?: number | null; 
 
 /**
  * The letter's «Παιδαγωγικό μέτρο» section: the measure, its length, the
- * expulsion days, where it is served, a note for a suspended expulsion and
+ * expulsion days (only when served at home), where it is served, a note for a suspended expulsion and
  * the deputy's description. Empty fields are null / [].
  */
 export function letterPunishment(res: {
@@ -85,10 +94,11 @@ export function letterPunishment(res: {
   if (res.action === "DETENTION") {
     const l = expulsionLength(res.expulsionDays);
     const days = [...res.expulsionDays].sort((a, b) => a.date.getTime() - b.date.getTime());
+    const atSchool = expulsionAtSchool(res.expulsionDays);
     return {
       measure: actionLabel(res.action),
       length: lengthLabel(l.days, l.periods) || null,
-      days: days.map(letterExpulsionDay),
+      days: atSchool ? [] : days.map(letterExpulsionDay),
       // By whole days; periods only → at school.
       where: expulsionWhere(l.days > 0 ? l.days : l.periods > 0 ? 1 : 0),
       note: null,
