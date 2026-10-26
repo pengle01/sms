@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import { validatePunishment, SUSPENDED_MAX_DAYS } from "@/lib/punishment";
 import { expulsionDayPeriods, totalPeriodsForDays, validExpulsionDay } from "@/lib/periods";
 import { ACTION_ORDER, expulsionLength, lengthLabel, resolutionSummary, expulsionDayLabel } from "@/lib/referralLabels";
-import { measureSummary } from "@/lib/referralLetter";
 import { missedLessons } from "@/lib/expulsionLessons";
 
 const config = { 1: 8, 2: 7, 3: 7, 4: 8, 5: 7 };
@@ -84,14 +83,6 @@ describe("labels and summaries", () => {
     const fmt = () => "26/10/26";
     expect(expulsionDayLabel({ date: new Date(), fromPeriod: 3, toPeriod: 5 }, fmt)).toBe("26/10/26 · Π3–Π5");
     expect(expulsionDayLabel({ date: new Date() }, fmt)).toBe("26/10/26");
-  });
-
-  it("words the parent letter for partial and suspended expulsions", () => {
-    expect(measureSummary("DETENTION", { days: 1, periods: 3 }, null)).toBe("1 μέρα και 3 περίοδοι αποβολή");
-    expect(measureSummary("DETENTION", { days: 0, periods: 2 }, null)).toBe("2 περίοδοι αποβολή");
-    expect(measureSummary("SUSPENDED_EXPULSION", { days: 2, periods: 0 }, "Σε δοκιμασία")).toBe(
-      "Αποβολή με Αναστολή (2 ημέρες): Σε δοκιμασία",
-    );
   });
 });
 

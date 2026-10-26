@@ -326,21 +326,15 @@ export default async function PrintResolutionPage({
                 </section>
               )}
 
-              {/* Signatures — the measure is signed by the headteacher who decided it */}
-              <section className="mt-12 grid grid-cols-3 gap-8 text-center text-xs text-slate-600">
-                <div>
+              {/* Signature — only the deputy who decided the measure */}
+              <section className="mt-12 flex justify-end text-center text-xs text-slate-600">
+                <div className="w-64">
                   <div className="border-t border-slate-400 pt-2 mt-8">
                     Ο/Η Βοηθός Διευθυντής/ντρια
                     {res?.resolvedBy?.name && (
                       <div className="mt-0.5 font-medium text-slate-800">{res.resolvedBy.name}</div>
                     )}
                   </div>
-                </div>
-                <div>
-                  <div className="border-t border-slate-400 pt-2 mt-8">Ο/Η Διευθυντής/ντρια</div>
-                </div>
-                <div>
-                  <div className="border-t border-slate-400 pt-2 mt-8">Γονέας / Κηδεμόνας</div>
                 </div>
               </section>
             </div>

@@ -1,35 +1,7 @@
 // The parent letter («Γραπτή ενημέρωση γονέων/κηδεμόνων για επιβολή
 // παιδαγωγικών μέτρων») printed after a referral is resolved. Pure helpers.
 
-import { actionLabel, lengthLabel } from "@/lib/referralLabels";
-
-const daysPhrase = (n: number) => `${n} ${n === 1 ? "μέρα" : "μέρες"}`;
-const periodsPhrase = (n: number) => `${n} ${n === 1 ? "περίοδος" : "περίοδοι"}`;
-
-/**
- * The «Μέτρο» line of the letter:
- *  • an expulsion — «3 μέρες αποβολή», «1 μέρα και 3 περίοδοι αποβολή», «3 περίοδοι αποβολή»;
- *  • a suspended expulsion — «Αποβολή με Αναστολή (2 ημέρες)», then the details;
- *  • any other measure — its label, then the deputy's details.
- * `length`: whole days (a number) or whole days plus periods.
- */
-export function measureSummary(
-  action: string,
-  length: number | { days: number; periods: number },
-  actionDetails: string | null | undefined,
-): string {
-  const { days, periods } = typeof length === "number" ? { days: length, periods: 0 } : length;
-  const details = actionDetails?.trim();
-  if (action === "DETENTION" && (days > 0 || periods > 0)) {
-    const parts = [days > 0 ? daysPhrase(days) : null, periods > 0 ? periodsPhrase(periods) : null].filter(Boolean);
-    return `${parts.join(" και ")} αποβολή`;
-  }
-  const label =
-    action === "SUSPENDED_EXPULSION" && (days > 0 || periods > 0)
-      ? `${actionLabel(action)} (${lengthLabel(days, periods)})`
-      : actionLabel(action);
-  return details ? `${label}: ${details}` : label;
-}
+import { actionLabel, expulsionLength, lengthLabel } from "@/lib/referralLabels";
 
 /**
  * Where the student spends an expulsion, by its WHOLE days: 2+ at home, 1 at
@@ -77,4 +49,61 @@ export function letterDate(d: Date): string {
   );
   const dow = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(parts.weekday!);
   return `${GREEK_DAY_SHORT[dow]}, ${parts.day}/${parts.month}/${parts.year}`;
+}
+
+/** An expulsion day on the letter: «Τρι, 27/10/2026» and «Όλη η μέρα» / «Περίοδοι 3–5». */
+export function letterExpulsionDay(d: { date: Date; fromPeriod?: number | null; toPeriod?: number | null }): {
+  date: string;
+  span: string;
+} {
+  return {
+    date: letterDate(d.date),
+    span: d.fromPeriod != null && d.toPeriod != null ? `Περίοδοι ${d.fromPeriod}–${d.toPeriod}` : "Όλη η μέρα",
+  };
+}
+
+/**
+ * The letter's «Παιδαγωγικό μέτρο» section: the measure, its length, the
+ * expulsion days, where it is served, a note for a suspended expulsion and
+ * the deputy's description. Empty fields are null / [].
+ */
+export function letterPunishment(res: {
+  action: string;
+  actionDetails?: string | null;
+  suspendedDays?: number | null;
+  suspendedPeriods?: number | null;
+  expulsionDays: { date: Date; fromPeriod?: number | null; toPeriod?: number | null }[];
+}): {
+  measure: string;
+  length: string | null;
+  days: { date: string; span: string }[];
+  where: "Σπίτι" | "Σχολείο" | null;
+  note: string | null;
+  details: string | null;
+} {
+  const details = res.actionDetails?.trim() || null;
+  if (res.action === "DETENTION") {
+    const l = expulsionLength(res.expulsionDays);
+    const days = [...res.expulsionDays].sort((a, b) => a.date.getTime() - b.date.getTime());
+    return {
+      measure: actionLabel(res.action),
+      length: lengthLabel(l.days, l.periods) || null,
+      days: days.map(letterExpulsionDay),
+      // By whole days; periods only → at school.
+      where: expulsionWhere(l.days > 0 ? l.days : l.periods > 0 ? 1 : 0),
+      note: null,
+      details,
+    };
+  }
+  if (res.action === "SUSPENDED_EXPULSION") {
+    return {
+      measure: actionLabel(res.action),
+      length: lengthLabel(res.suspendedDays ?? 0, res.suspendedPeriods ?? 0) || null,
+      days: [],
+      where: null,
+      note: "Η αποβολή δεν εκτίεται άμεσα· εκτίεται μόνο σε περίπτωση νέου παραπτώματος.",
+      details,
+    };
+  }
+  return { measure: actionLabel(res.action), length: null, days: [], where: null, note: null, details };
 }
