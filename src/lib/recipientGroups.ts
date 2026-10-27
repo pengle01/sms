@@ -1,5 +1,5 @@
 // Choosing recipients of a staff notification: a sender's own saved groups
-// («Οι ομάδες μου») and «Καθηγητές τμήματος» — everyone who teaches any
+// («Οι ομάδες μου») and «Διδάσκοντες Καθηγητές τμήματος» — everyone who teaches any
 // student of a homegroup. Pure; unit-tested in recipientGroups.test.ts.
 
 export const GROUP_NAME_MAX = 60;

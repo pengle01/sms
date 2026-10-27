@@ -78,7 +78,7 @@ export async function StaffComposePanel({
   const recipientIds = recipients.map((r) => r.id);
 
   // «Οι ομάδες μου» — the sender's own saved groups, members still available.
-  // «Καθηγητές τμήματος» — per homegroup, everyone who teaches any of its students.
+  // «Διδάσκοντες Καθηγητές τμήματος» — per homegroup, everyone who teaches any of its students.
   const [myGroups, homegroups, students, slots] = await Promise.all([
     db.staffRecipientGroup.findMany({
       where: { ownerId: auth.userId },
