@@ -9,5 +9,5 @@ export default async function DutyBreakReportPrint({ params }: { params: Promise
   const auth = await getActiveAuth();
   if (!auth) redirect(`/${locale}/login/staff`);
   if (!canViewDutyDesk(auth.role)) redirect(`/${locale}/teacher/dashboard`);
-  return <BreakDutyPrintPage date={date} backHref={`/${locale}/teacher/duty?tab=breakDuty&bdDate=${date}`} />;
+  return <BreakDutyPrintPage date={date} backHref={`/${locale}/teacher/duty?view=breakDuty&day=${date}`} />;
 }

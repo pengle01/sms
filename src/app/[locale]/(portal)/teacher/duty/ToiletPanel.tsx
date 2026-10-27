@@ -29,7 +29,11 @@ const SEVERITY_STYLES = {
   overdue: { row: "border-l-red-500 bg-red-50/50", pill: "bg-red-100 text-red-700", dot: "bg-red-500" },
 } as const;
 
-export function ToiletPanel({ breaks: initial }: { breaks: ToiletRow[] }) {
+/**
+ * «Τουαλέτα»: today's exits, live. For a past day (`live` false) the same
+ * lists, fixed: no polling, and an exit never closed shows no running time.
+ */
+export function ToiletPanel({ breaks: initial, live = true }: { breaks: ToiletRow[]; live?: boolean }) {
   const t = useTranslations("duty");
   const [now, setNow] = useState(() => Date.now());
 
@@ -38,8 +42,9 @@ export function ToiletPanel({ breaks: initial }: { breaks: ToiletRow[] }) {
   const { data } = trpc.toilet.listToday.useQuery(undefined, {
     refetchInterval: 10_000,
     refetchOnWindowFocus: true,
+    enabled: live,
   });
-  const breaks = data ?? initial;
+  const breaks = (live ? data : undefined) ?? initial;
 
   const open = breaks
     .filter((b) => b.returnedAt === null)
@@ -50,15 +55,16 @@ export function ToiletPanel({ breaks: initial }: { breaks: ToiletRow[] }) {
 
   // tick the elapsed-time counters
   useEffect(() => {
+    if (!live) return;
     const tick = setInterval(() => setNow(Date.now()), 15_000);
     return () => clearInterval(tick);
-  }, []);
+  }, [live]);
 
   // smart flag: 3rd+ exit today = frequent leaver
   const counts = useMemo(() => breakCounts(breaks), [breaks]);
 
   if (breaks.length === 0) {
-    return <p className="text-sm text-slate-400">{t("wcNone")}</p>;
+    return <p className="text-sm text-slate-400">{live ? t("wcNone") : t("wcNoneDay")}</p>;
   }
 
   return (
@@ -68,7 +74,7 @@ export function ToiletPanel({ breaks: initial }: { breaks: ToiletRow[] }) {
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <DoorOpen className="w-4 h-4 text-amber-500" />
-            {t("wcOutNow")}
+            {live ? t("wcOutNow") : t("wcNoReturn")}
             {open.length > 0 && (
               <span className="text-xs font-semibold text-slate-400">({open.length})</span>
             )}
@@ -76,10 +82,24 @@ export function ToiletPanel({ breaks: initial }: { breaks: ToiletRow[] }) {
         </CardHeader>
         <CardContent className="p-0">
           {open.length === 0 ? (
-            <p className="px-5 py-4 text-sm text-slate-400">{t("wcNoneOut")}</p>
+            <p className="px-5 py-4 text-sm text-slate-400">{live ? t("wcNoneOut") : t("wcNoneNoReturn")}</p>
           ) : (
             <div className="divide-y divide-slate-50">
               {open.map((b) => {
+                if (!live) {
+                  return (
+                    <div key={b.id} className="flex items-center gap-3 px-4 py-2.5 border-l-4 border-l-slate-300">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-slate-700">{b.studentName}</p>
+                        <p className="text-xs text-slate-400">
+                          {b.groupName} · Π{b.period}
+                          {b.staffName && <> · {b.staffName}</>}
+                        </p>
+                      </div>
+                      <span className="text-xs text-slate-400 font-mono flex-shrink-0">{fmtTime(b.leftAt)}–?</span>
+                    </div>
+                  );
+                }
                 const sev = breakSeverity(b.leftAt, new Date(now));
                 const s = SEVERITY_STYLES[sev];
                 const mins = breakMinutes(b.leftAt, null, new Date(now));
@@ -118,7 +138,7 @@ export function ToiletPanel({ breaks: initial }: { breaks: ToiletRow[] }) {
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-              {t("wcReturned")}
+              {live ? t("wcReturned") : t("wcReturnedDay")}
               <span className="text-xs font-semibold text-slate-400">({returned.length})</span>
             </CardTitle>
           </CardHeader>

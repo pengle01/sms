@@ -54,8 +54,8 @@ describe("safeBack", () => {
   });
 
   it("keeps the «Εφημερίες» tab a daily-sheet print was opened from", () => {
-    const back = new URLSearchParams(`back=${encodeURIComponent("/el/teacher/duty?tab=plan&planDate=2026-03-16")}`).get("back") ?? undefined;
-    expect(safeBack(back, "el")).toBe("/el/teacher/duty?tab=plan&planDate=2026-03-16");
+    const back = new URLSearchParams(`back=${encodeURIComponent("/el/teacher/duty?view=plan&day=2026-03-16")}`).get("back") ?? undefined;
+    expect(safeBack(back, "el")).toBe("/el/teacher/duty?view=plan&day=2026-03-16");
   });
 
   it("drops external, protocol-relative and other-locale paths", () => {

@@ -5,7 +5,7 @@ import { db } from "@/server/db";
 import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { utcMidnight, localDateStr } from "@/lib/dates";
+import { utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { dutyDowFor, isDutyEligible, canViewDutyDesk, isOnDuty, canIssueExitPermit } from "@/lib/dutyRoster";
 import { locateHref, parseLocateTab, studentSearchWhere, type LocateTab, type LocateParams } from "@/lib/studentSearch";
 import { suggestionList } from "@/lib/textSearch";
@@ -25,9 +25,15 @@ import { loadBreakDutyDay } from "@/server/breakDuty";
 import { currentBreakNo } from "@/lib/breakDuty";
 import { nicosiaHhmm } from "@/lib/toilet";
 import { DayPlanCard } from "./DayPlanCard";
-import { isRealDate } from "@/lib/substitutionImport";
+import { dutyDayMode, parseDutyDay, parseDutyView, permitSearchRange, permitStudentWhere } from "@/lib/dutyDay";
+import { staffDisplayName } from "@/lib/staffName";
+import { DateInput } from "@/components/ui/date-input";
+import { DutyDayBar } from "./DutyDayBar";
 import { RefreshAfterAttendance } from "@/components/attendance/RefreshAfterAttendance";
 import { parentAccountPhones, permitPhoneChoices, preferredPhone, splitPhones } from "@/lib/smsContacts";
+
+/** The permit search lists at most this many permits. */
+const SEARCH_LIMIT = 200;
 
 export default async function TeacherDutyPage({
   params,
@@ -41,13 +47,24 @@ export default async function TeacherDutyPage({
     q?: string;
     student?: string;
     error?: string;
+    /** The open tab (permits, attendance, breakDuty, toilet, plan). */
+    view?: string;
+    /** The day every tab shows (default today). */
+    day?: string;
+    /** Older links: the plan's / break duty's own day. */
     planDate?: string;
-    /** «Εφημερίες εκπαιδευτικών»: the day shown (default today). */
     bdDate?: string;
+    /** Permit search: student (name or registry no.) and date range. */
+    ps?: string;
+    pfrom?: string;
+    pto?: string;
   }>;
 }) {
   const { locale } = await params;
-  const { tab: tabParam, grade, groupId, q, student: selectedStudentId, error, planDate, bdDate } = await searchParams;
+  const {
+    tab: tabParam, grade, groupId, q, student: selectedStudentId, error,
+    view, day: dayParam, planDate, bdDate, ps, pfrom, pto,
+  } = await searchParams;
   const auth = await getActiveAuth();
   if (!auth) redirect(`/${locale}/login/staff`);
   if (!canViewDutyDesk(auth.role)) redirect(`/${locale}/teacher/dashboard`);
@@ -60,6 +77,14 @@ export default async function TeacherDutyPage({
 
   const today = utcMidnight();
   const todayDow = dutyDowFor(today);
+  // The day the tabs show: today is live, a past day is read-only history.
+  const todayIsoStr = localDateStr();
+  const dayIso = parseDutyDay(dayParam ?? bdDate ?? planDate, todayIsoStr);
+  const mode = dutyDayMode(dayIso, todayIsoStr);
+  const isToday = mode === "today";
+  const isFuture = mode === "future";
+  const dayDate = utcMidnight(dayIso);
+  const dayLabel = `${dayDate.toLocaleDateString("el-GR", { weekday: "short", timeZone: "UTC" })} ${fmtDisplayDate(dayDate)}`;
   const [todayEntries, me, overrides, toiletRows] = await Promise.all([
     todayDow
       ? db.dutyRosterEntry.findMany({
@@ -68,10 +93,10 @@ export default async function TeacherDutyPage({
         })
       : Promise.resolve([]),
     db.staffProfile.findUnique({ where: { userId: auth.userId }, select: { id: true } }),
-    getDayOverrides(today),
-    // today's toilet breaks — surfaced live on the Τουαλέτα tab
-    db.toiletBreak.findMany({
-      where: { date: today },
+    isFuture ? Promise.resolve(null) : getDayOverrides(dayDate),
+    // the day's toilet breaks — live on the Τουαλέτα tab today
+    isFuture ? Promise.resolve([]) : db.toiletBreak.findMany({
+      where: { date: dayDate },
       include: {
         student: { select: { user: { select: { name: true } } } },
         group: { select: { name: true } },
@@ -101,15 +126,15 @@ export default async function TeacherDutyPage({
   const markedHalls =
     hallSlotIds.length > 0
       ? await db.attendance.findMany({
-          where: { date: today, timetableSlotId: { in: hallSlotIds } },
+          where: { date: dayDate, timetableSlotId: { in: hallSlotIds } },
           select: { timetableSlotId: true },
           distinct: ["timetableSlotId"],
         })
       : [];
   const markedHallSlotIds = new Set(markedHalls.map((m) => m.timetableSlotId));
   const onDutyToday = isOnDuty(todayEntries, todayDow, me?.id ?? null);
-  // The permit desk is open to every headteacher, rostered or not.
-  const permitDesk = canIssueExitPermit(auth.role, todayDow);
+  // The permit desk is open to every headteacher, rostered or not — today only.
+  const permitDesk = isToday && canIssueExitPermit(auth.role, todayDow);
 
   // ── Permit desk: same tabbed locator as attendance/locate ────────────────
   const tab = parseLocateTab(tabParam);
@@ -133,17 +158,8 @@ export default async function TeacherDutyPage({
         : null
       : studentSearchWhere(tab, query);
 
-  const [todayPermits, homeroomGroups, matches, suggestionRows, selectedStudent, periodsConfig] = permitDesk
+  const [homeroomGroups, matches, suggestionRows, selectedStudent, periodsConfig] = permitDesk
     ? await Promise.all([
-        db.exitPermit.findMany({
-          where: { date: today },
-          include: {
-            student: { include: { user: { select: { name: true } }, group: { select: { name: true } } } },
-            issuer: { include: { user: { select: { name: true } } } },
-            smsContact: { select: { name: true, role: true, phone: true } },
-          },
-          orderBy: { issuedAt: "desc" },
-        }),
         tab === "group" && gradeNum
           ? db.group.findMany({
               where: { grade: gradeNum, students: { some: {} } },
@@ -186,20 +202,34 @@ export default async function TeacherDutyPage({
           : Promise.resolve(null),
         getPeriodsPerDay(),
       ])
-    : [[], [], [], [], null, null];
+    : [[], [], [], null, null];
 
-  // View-only (headmaster): today's permits without the issue desk.
-  const viewPermits = viewOnly
-    ? await db.exitPermit.findMany({
-        where: { date: today },
-        include: {
-          student: { include: { user: { select: { name: true } }, group: { select: { name: true } } } },
-          issuer: { include: { user: { select: { name: true } } } },
-          smsContact: { select: { name: true, role: true, phone: true } },
-        },
-        orderBy: { issuedAt: "desc" },
-      })
-    : [];
+  // The day's permits (today's on the desk; a past day's as history), and the
+  // student search across days.
+  const permitInclude = {
+    student: { include: { user: { select: { name: true } }, group: { select: { name: true } } } },
+    issuer: { include: { user: { select: { name: true } } } },
+    smsContact: { select: { name: true, role: true, phone: true } },
+  } as const;
+  const searchQuery = (ps ?? "").trim();
+  const searchRange = permitSearchRange(pfrom, pto, todayIsoStr);
+  const searchStudent = permitStudentWhere(searchQuery);
+  const [dayPermits, foundPermits] = await Promise.all([
+    isFuture
+      ? Promise.resolve([])
+      : db.exitPermit.findMany({ where: { date: dayDate }, include: permitInclude, orderBy: { issuedAt: "desc" } }),
+    searchStudent
+      ? db.exitPermit.findMany({
+          where: {
+            date: { gte: utcMidnight(searchRange.from), lte: utcMidnight(searchRange.to) },
+            student: searchStudent,
+          },
+          include: permitInclude,
+          orderBy: [{ date: "desc" }, { issuedAt: "desc" }],
+          take: SEARCH_LIMIT + 1,
+        })
+      : Promise.resolve([]),
+  ]);
 
   // The parents the deputy can pick (the import's nameless «SMS» number folded
   // into its parent, or hidden) — the same list issueExitPermit validates.
@@ -219,6 +249,14 @@ export default async function TeacherDutyPage({
     ? Math.min(Math.max(1, permitStartPeriod(bellPeriodsFor(await getBellSchedule(), todayDow), nicosiaMinutes(new Date()))), Math.max(1, periods.length))
     : 1;
   const issueAction = issueExitPermit.bind(null, locale);
+  // Where a printed slip's «Πίσω» returns: the permits tab, same day and search.
+  const historyQs = isToday && !searchQuery
+    ? currentQs
+    : new URLSearchParams({
+        view: "permits",
+        ...(isToday ? {} : { day: dayIso }),
+        ...(searchQuery ? { ps: searchQuery, pfrom: searchRange.from, pto: searchRange.to } : {}),
+      }).toString();
   const selectedGroup = groupId ? homeroomGroups.find((g) => g.id === groupId) ?? null : null;
 
   const tabs: { key: LocateTab; label: string }[] = [
@@ -238,8 +276,11 @@ export default async function TeacherDutyPage({
   );
 
   // ── Tab: Απουσιολόγια — study-hall groups per period needing attendance ───
-  const attendanceContent =
-    studyHallsToday.length === 0 ? (
+  // A past day's registers are history: shown, not opened.
+  const hallsReadOnly = viewOnly || !isToday;
+  const attendanceContent = isFuture ? (
+      <p className="text-sm text-slate-400">{t("futureDay")}</p>
+    ) : studyHallsToday.length === 0 ? (
       <p className="text-sm text-slate-400">{t("noStudyHalls")}</p>
     ) : (
       <Card className="border-sky-200 max-w-2xl">
@@ -251,10 +292,10 @@ export default async function TeacherDutyPage({
           <div className="divide-y divide-slate-50">
             {studyHallsToday.map((e) => {
               const marked = !!e.timetableSlotId && markedHallSlotIds.has(e.timetableSlotId);
-              // View-only: the same row, but not a link to the register.
+              // Read-only: the same row, but not a link to the register.
               const href = `/${locale}/teacher/attendance/mark?groupId=${e.groupId}&period=${e.period}`;
               const Row = ({ className, children }: { className: string; children: React.ReactNode }) =>
-                viewOnly ? <div className={className}>{children}</div> : <Link href={href} className={className}>{children}</Link>;
+                hallsReadOnly ? <div className={className}>{children}</div> : <Link href={href} className={className}>{children}</Link>;
               return (
                 <Row
                   key={e.id}
@@ -293,7 +334,7 @@ export default async function TeacherDutyPage({
                   ) : (
                     <span className="inline-flex items-center gap-2 flex-shrink-0">
                       <span className="text-xs font-semibold text-red-600">{t("attendancePending")}</span>
-                      {!viewOnly && <span className="text-xs font-medium text-emerald-600">{tDash("markAttendance")}</span>}
+                      {!hallsReadOnly && <span className="text-xs font-medium text-emerald-600">{tDash("markAttendance")}</span>}
                     </span>
                   )}
                 </Row>
@@ -304,18 +345,18 @@ export default async function TeacherDutyPage({
       </Card>
     );
 
-  // Today's granted permits — on the desk, and read-only for the headmaster.
-  const todayPermitsCard = (list: typeof viewPermits, canCancel: boolean) => (
+  // The day's permits — on today's desk, and read-only for a past day or the headmaster.
+  const dayPermitsCard = (list: typeof dayPermits, canCancel: boolean) => (
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
                 <Printer className="w-4 h-4 text-slate-400" />
-                {t("todayPermits")}
+                {isToday ? t("todayPermits") : t("dayPermits", { date: dayLabel })}
               </CardTitle>
             </CardHeader>
             <CardContent>
               {list.length === 0 ? (
-                <p className="text-sm text-slate-400">{t("noPermitsToday")}</p>
+                <p className="text-sm text-slate-400">{isToday ? t("noPermitsToday") : t("noPermitsDay")}</p>
               ) : (
                 <div className="divide-y divide-slate-100">
                   {list.map((p) => (
@@ -330,6 +371,9 @@ export default async function TeacherDutyPage({
                         <p className="text-xs text-slate-500 mt-0.5">
                           {t("leavesFrom", { period: p.fromPeriod })} · {p.reason}
                         </p>
+                        {!isToday && (
+                          <p className="text-xs text-slate-400 mt-0.5">{t("issuedBy", { name: staffDisplayName(p.issuer) })}</p>
+                        )}
                         {permitContactLabel(p.smsContact, p.contactNote) && (
                           <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
                             <Phone className="w-3 h-3" />
@@ -339,7 +383,7 @@ export default async function TeacherDutyPage({
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <Link
-                          href={`/${locale}/teacher/duty/permits/${p.id}/print`}
+                          href={`/${locale}/teacher/duty/permits/${p.id}/print?back=${encodeURIComponent(historyQs)}`}
                           className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-emerald-700"
                         >
                           <Printer className="w-3.5 h-3.5" />
@@ -365,11 +409,11 @@ export default async function TeacherDutyPage({
   );
 
   // ── Tab: Εφημερίες εκπαιδευτικών — teachers at their break posts ─────────
-  const todayIsoStr = localDateStr();
-  const breakDutyDate =
-    bdDate && /^\d{4}-\d{2}-\d{2}$/.test(bdDate) && isRealDate(bdDate) && bdDate <= todayIsoStr ? bdDate : todayIsoStr;
-  const breakDuty = await loadBreakDutyDay(breakDutyDate);
-  const breakDutyContent = (
+  const breakDutyDate = dayIso;
+  const breakDuty = isFuture ? null : await loadBreakDutyDay(breakDutyDate);
+  const breakDutyContent = !breakDuty ? (
+    <p className="text-sm text-slate-400">{t("futureDay")}</p>
+  ) : (
     <BreakDutyPanel
       key={breakDutyDate}
       dateIso={breakDutyDate}
@@ -387,8 +431,10 @@ export default async function TeacherDutyPage({
   );
 
   // ── Tab: Άδειες Εξόδου — the permit desk ──────────────────────────────────
-  const permitsContent = viewOnly ? (
-        <div className="max-w-2xl">{todayPermitsCard(viewPermits, false)}</div>
+  const permitsDayContent = isFuture ? (
+        <p className="text-sm text-slate-400">{t("futureDay")}</p>
+      ) : viewOnly || !isToday ? (
+        <div className="max-w-2xl">{dayPermitsCard(dayPermits, false)}</div>
       ) : !permitDesk ? (
         <Card className="max-w-xl">
           <CardContent className="py-4 flex items-center gap-3">
@@ -676,8 +722,117 @@ export default async function TeacherDutyPage({
             </CardContent>
           </Card>
 
-          {todayPermitsCard(todayPermits, true)}
+          {dayPermitsCard(dayPermits, true)}
         </div>
+  );
+
+  // «Αναζήτηση αδειών μαθητή»: one student's permits over a date range.
+  const shown = foundPermits.slice(0, SEARCH_LIMIT);
+  const permitSearchCard = (
+    <Card className="max-w-4xl">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Search className="w-4 h-4 text-slate-400" />
+          {t("searchTitle")}
+        </CardTitle>
+        <p className="text-xs text-slate-400">{t("searchHint")}</p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <form method="GET" className="flex flex-wrap items-end gap-2">
+          <input type="hidden" name="view" value="permits" />
+          {!isToday && <input type="hidden" name="day" value={dayIso} />}
+          <label className="flex-1 min-w-48">
+            <span className="block text-xs text-slate-500 mb-1">{t("searchStudent")}</span>
+            <input
+              name="ps"
+              defaultValue={searchQuery}
+              placeholder={t("searchPlaceholder")}
+              className="w-full h-9 px-3 rounded-lg border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </label>
+          <label>
+            <span className="block text-xs text-slate-500 mb-1">{t("searchFrom")}</span>
+            <DateInput name="pfrom" defaultValue={searchRange.from} className="h-9 px-2 rounded-lg border border-slate-200 text-sm bg-white" />
+          </label>
+          <label>
+            <span className="block text-xs text-slate-500 mb-1">{t("searchTo")}</span>
+            <DateInput name="pto" defaultValue={searchRange.to} className="h-9 px-2 rounded-lg border border-slate-200 text-sm bg-white" />
+          </label>
+          <button type="submit" className="h-9 px-4 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700">
+            {t("searchButton")}
+          </button>
+          {searchQuery && (
+            <Link
+              href={`?view=permits${isToday ? "" : `&day=${dayIso}`}`}
+              className="h-9 px-3 flex items-center text-sm text-slate-500 hover:text-slate-800"
+            >
+              {t("searchClear")}
+            </Link>
+          )}
+        </form>
+
+        {searchStudent && (
+          shown.length === 0 ? (
+            <p className="text-sm text-slate-400">{t("searchNone")}</p>
+          ) : (
+            <>
+              <p className="text-xs text-slate-500">
+                {t("searchCount", { count: shown.length })}
+                {foundPermits.length > SEARCH_LIMIT && ` · ${t("searchCapped", { n: SEARCH_LIMIT })}`}
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[720px]">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
+                      <th className="py-2 pr-3">{t("colDate")}</th>
+                      <th className="py-2 pr-3">{t("colStudent")}</th>
+                      <th className="py-2 pr-3">{t("colFrom")}</th>
+                      <th className="py-2 pr-3">{t("colReason")}</th>
+                      <th className="py-2 pr-3">{t("colContact")}</th>
+                      <th className="py-2 pr-3">{t("colIssuer")}</th>
+                      <th className="py-2" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {shown.map((p) => (
+                      <tr key={p.id} className="align-top">
+                        <td className="py-2 pr-3 whitespace-nowrap tabular-nums">{fmtDisplayDate(p.date)}</td>
+                        <td className="py-2 pr-3">
+                          {p.student.user?.name}
+                          <span className="block text-xs text-slate-400">
+                            {[p.student.group?.name, p.student.studentId].filter(Boolean).join(" · ")}
+                          </span>
+                        </td>
+                        <td className="py-2 pr-3 whitespace-nowrap">Π{p.fromPeriod}</td>
+                        <td className="py-2 pr-3">{p.reason}</td>
+                        <td className="py-2 pr-3 text-xs text-slate-500">{permitContactLabel(p.smsContact, p.contactNote) ?? "—"}</td>
+                        <td className="py-2 pr-3 text-xs text-slate-500">{staffDisplayName(p.issuer)}</td>
+                        <td className="py-2 text-right">
+                          <Link
+                            href={`/${locale}/teacher/duty/permits/${p.id}/print?back=${encodeURIComponent(historyQs)}`}
+                            className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-emerald-700"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                            {t("print")}
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  const permitsContent = (
+    <div className="space-y-6">
+      {permitsDayContent}
+      {permitSearchCard}
+    </div>
   );
 
   return (
@@ -688,9 +843,12 @@ export default async function TeacherDutyPage({
         <p className="text-slate-500 text-sm mt-1">{t("subtitle")}</p>
       </div>
 
+      <DutyDayBar dayIso={dayIso} todayIso={todayIsoStr} mode={mode} dayLabel={dayLabel} />
+
       {/* Clear separation: permits vs attendance */}
       <ReferralTabs
-        initialKey={tabParam === "plan" || tabParam === "breakDuty" ? tabParam : undefined}
+        initialKey={parseDutyView(view, tabParam)}
+        urlParam="view"
         tabs={[
           {
             key: "permits",
@@ -710,17 +868,18 @@ export default async function TeacherDutyPage({
           {
             key: "toilet",
             label: t("toiletTab"),
-            content: <ToiletPanel breaks={toiletBreaks} />,
+            content: isFuture ? (
+              <p className="text-sm text-slate-400">{t("futureDay")}</p>
+            ) : (
+              <ToiletPanel key={dayIso} breaks={toiletBreaks} live={isToday} />
+            ),
           },
           {
             // The whole day's finalized substitution plan, read-only
             key: "plan",
             label: t("planTab"),
             content: (
-              <DayPlanCard
-                locale={locale}
-                dateStr={planDate && /^\d{4}-\d{2}-\d{2}$/.test(planDate) && isRealDate(planDate) ? planDate : localDateStr()}
-              />
+              <DayPlanCard locale={locale} dateStr={dayIso} />
             ),
           },
         ]}

@@ -7,7 +7,6 @@ import { staffDisplayName } from "@/lib/staffName";
 import { SCHOOL_ABSENCE_SOURCE, readImportMeta } from "@/lib/substitutionImport";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { DateInput } from "@/components/ui/date-input";
 
 const KIND_STYLE: Record<string, string> = {
   COVER: "bg-sky-50 text-sky-700 border-sky-200",
@@ -55,16 +54,9 @@ export async function DayPlanCard({ locale, dateStr }: { locale: string; dateStr
             {t("dayPlanTitle", { date: fmtDisplayDate(date) })}
           </CardTitle>
           <div className="flex items-center gap-2">
-            <form method="GET" className="flex items-center gap-2">
-              <input type="hidden" name="tab" value="plan" />
-              <DateInput name="planDate" defaultValue={dateStr} className="h-8 w-32 px-2 rounded-lg border border-slate-200 text-sm" />
-              <button type="submit" className="h-8 px-3 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50">
-                {t("dayPlanShow")}
-              </button>
-            </form>
             {plan && (
               <Link
-                href={`/${locale}/teacher/substitutions/plan/${dateStr}/print?back=${encodeURIComponent(`/${locale}/teacher/duty?tab=plan&planDate=${dateStr}`)}`}
+                href={`/${locale}/teacher/substitutions/plan/${dateStr}/print?back=${encodeURIComponent(`/${locale}/teacher/duty?view=plan&day=${dateStr}`)}`}
                 className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50"
               >
                 <Printer className="w-3.5 h-3.5" />

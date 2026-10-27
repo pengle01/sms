@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Check, X, MessageSquare, Printer, Loader2 } from "lucide-react";
-import { DateInput } from "@/components/ui/date-input";
 import { cn } from "@/lib/utils";
 import { breakProgress, type GridRow, type DayBreak } from "@/lib/breakDuty";
 import { recordDutyCheck, saveDayReport } from "@/app/[locale]/(portal)/teacher/duty/break-duty-actions";
@@ -39,7 +37,6 @@ export function BreakDutyPanel({
   printHref: string;
 }) {
   const t = useTranslations("breakDuty");
-  const router = useRouter();
   const [breakNo, setBreakNo] = useState(defaultBreak ?? breaks[0]?.no ?? 1);
   const [rows, setRows] = useState(initialRows);
   const [openComment, setOpenComment] = useState<string | null>(null);
@@ -89,15 +86,8 @@ export function BreakDutyPanel({
 
   return (
     <div className="space-y-4 max-w-3xl">
-      {/* Date, break and print */}
+      {/* Break and print — the day comes from the page's day bar */}
       <div className="flex flex-wrap items-center gap-3">
-        <DateInput
-          id="break-duty-date"
-          defaultValue={dateIso}
-          max={todayIso}
-          onCommit={(iso) => iso && router.push(`?tab=breakDuty&bdDate=${iso}`)}
-          className="px-2 py-1 rounded-lg border border-slate-200 text-sm"
-        />
         <div className="flex rounded-lg border border-slate-200 overflow-hidden">
           {breaks.map((b, i) => {
             const p = breakProgress(rows, b.no);

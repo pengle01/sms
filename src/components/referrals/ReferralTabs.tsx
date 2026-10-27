@@ -15,14 +15,25 @@ export function ReferralTabs({
   tabs,
   initialKey,
   variant = "pill",
+  urlParam,
 }: {
   tabs: Tab[];
   initialKey?: string;
+  /** Keep the open tab in this URL parameter, so a reload or link returns to it. */
+  urlParam?: string;
   /** "pill" = segmented control (default); "underline" = top-level page tabs. */
   variant?: "pill" | "underline";
 }) {
   const [active, setActive] = useState(initialKey ?? tabs[0]?.key);
   const activeTab = tabs.find((t) => t.key === active) ?? tabs[0];
+  const select = (key: string) => {
+    setActive(key);
+    if (urlParam) {
+      const url = new URL(window.location.href);
+      url.searchParams.set(urlParam, key);
+      window.history.replaceState(window.history.state, "", url);
+    }
+  };
 
   if (variant === "underline") {
     return (
@@ -33,7 +44,7 @@ export function ReferralTabs({
             return (
               <button
                 key={t.key}
-                onClick={() => setActive(t.key)}
+                onClick={() => select(t.key)}
                 className={`-mb-px flex items-center gap-2 border-b-2 pb-3 text-sm font-semibold transition-colors touch-manipulation ${
                   isActive
                     ? "border-emerald-600 text-slate-900"
@@ -68,7 +79,7 @@ export function ReferralTabs({
           return (
             <button
               key={t.key}
-              onClick={() => setActive(t.key)}
+              onClick={() => select(t.key)}
               className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors touch-manipulation ${
                 isActive ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
               }`}
