@@ -228,7 +228,9 @@ export default async function TeacherMarkAttendancePage({
   // also offers «Δικό μου μάθημα»: same slot, but the subject taught is mine.
   const isClaiming = claim === "1" && !isIntercalary && !isExcursion && !!period;
   const claimDow = new Date(attendanceDateStr + "T12:00:00").getDay();
-  const showPicker = !isIntercalary && !isExcursion && !!period && !claimGroupId && (isClaiming || (!!groupId && !!slot));
+  // Offered on every lesson register — my own, a substitution, or a class I
+  // already took over (from the dashboard or a previous pick).
+  const showPicker = !isIntercalary && !isExcursion && !!period && (isClaiming || (!!groupId && !!slot) || !!claimGroupId);
 
   // Every lesson of mine (any day): which groups are mine, and my subjects with each.
   const mySlots: TeachingSlot[] =
@@ -241,11 +243,13 @@ export default async function TeacherMarkAttendancePage({
         ).map((m) => ({ ...m, courseName: m.course.name }))
       : [];
 
-  // Picker options: every lesson happening this day/period except my current group
+  // Picker options: every lesson happening this day/period except the groups
+  // already on the page
+  const onPage = [groupId, claimGroupId].filter((g): g is string => !!g);
   const claimOptions: ClaimOption[] = showPicker
     ? (
         await db.timetableSlot.findMany({
-          where: { period, dayOfWeek: claimDow, ...(groupId ? { groupId: { not: groupId } } : {}) },
+          where: { period, dayOfWeek: claimDow, ...(onPage.length ? { groupId: { notIn: onPage } } : {}) },
           include: {
             group: { select: { id: true, name: true } },
             course: { select: { name: true } },
@@ -459,17 +463,6 @@ export default async function TeacherMarkAttendancePage({
         </div>
       )}
 
-      {/* Quiet entry to cover/merge a second group in the same period — the
-          picker opens in place; ?claim=1 opens it straight away */}
-      {showPicker && (
-        <ClaimPicker
-          options={claimOptions}
-          base={{ ...(groupId ? { groupId } : {}), period: String(period), date: attendanceDateStr }}
-          period={period}
-          initialOpen={isClaiming}
-        />
-      )}
-
       {/* The claimed group — its own clearly-labelled marking sheet */}
       {claimed && (
         <ScrollIntoViewOnMount key={claimGroupId}>
@@ -535,6 +528,19 @@ export default async function TeacherMarkAttendancePage({
           </div>
         </div>
         </ScrollIntoViewOnMount>
+      )}
+
+      {/* «Προσθήκη τμήματος»: cover/merge another group in the same period —
+          the picker opens in place; ?claim=1 opens it straight away. Picking
+          another while one is shown replaces it on the page (its register
+          stays saved). */}
+      {showPicker && (
+        <ClaimPicker
+          options={claimOptions}
+          base={{ ...(groupId ? { groupId } : {}), period: String(period), date: attendanceDateStr }}
+          period={period}
+          initialOpen={isClaiming}
+        />
       )}
     </div>
   );

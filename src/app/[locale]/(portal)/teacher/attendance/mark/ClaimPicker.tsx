@@ -52,7 +52,7 @@ export function ClaimPicker({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-emerald-700 transition-colors print:hidden"
+        className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-dashed border-emerald-300 text-sm font-medium text-emerald-700 hover:bg-emerald-50 transition-colors print:hidden"
       >
         <Plus className="w-4 h-4" />
         {t("claimAddSecond")}
