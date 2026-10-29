@@ -401,7 +401,13 @@ export default async function ActivityDetailPage({
             </ul>
           )}
 
-          {activity.participants.length === 0 ? (
+          {activity.ddkAwards.length > 0 ? (
+            // Converted once: a new conversion needs the ΔΔΚ deleted first.
+            <p className="text-sm text-slate-500">
+              Η δραστηριότητα έχει μετατραπεί σε ΔΔΚ. Για νέα μετατροπή, διαγράψτε πρώτα τις μονάδες της
+              («Επεξεργασία ΔΔΚ»).
+            </p>
+          ) : activity.participants.length === 0 ? (
             <p className="text-sm text-slate-400">Δεν υπάρχουν συμμετέχοντες για καταχώρηση ΔΔΚ.</p>
           ) : (
             <ConvertToDdkForm

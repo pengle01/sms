@@ -188,6 +188,16 @@ export function clampPoints(spec: DdkPointSpec, value: number): number {
   return Math.max(min, Math.min(max, Math.round(value)));
 }
 
+/**
+ * The conversion form's points box: blank or 0 = this student gets nothing;
+ * anything else is clamped to what the guide allows.
+ */
+export function pointsToAward(spec: DdkPointSpec, raw: string | null | undefined): number | null {
+  const n = parseInt(raw ?? "");
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return clampPoints(spec, n);
+}
+
 /** Human label for a point spec, e.g. "1", "1-3", "1 ανά συμμετοχή". */
 export function pointSpecLabel(spec: DdkPointSpec): string {
   if (spec.kind === "fixed") return String(spec.value);

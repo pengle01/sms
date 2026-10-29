@@ -10,7 +10,7 @@ import type { Role } from "@/generated/prisma/client";
 import { utcMidnight, normalizeIsoDate } from "@/lib/dates";
 import { weeklyOccurrences } from "@/lib/activities";
 import { getSchoolYear } from "@/lib/schoolConfig";
-import { findDdkCategory, clampPoints, schoolYearLabel } from "@/lib/ddk";
+import { findDdkCategory, pointsToAward, schoolYearLabel } from "@/lib/ddk";
 import { writeAudit } from "@/server/audit";
 
 async function requireStaff() {
@@ -182,9 +182,10 @@ export async function removeParticipant(formData: FormData) {
 
 // ─── ΔΔΚ conversion ───────────────────────────────────────────────────────────
 
-// Award ΔΔΚ points to selected participants of a filed activity. One category
-// is chosen for the batch; points default to the guide's value but can be
-// overridden per student (e.g. theatre roles), so points come in as points_<id>.
+// Award ΔΔΚ points to the participants of a filed activity: one category for
+// the batch, then each student's points (points_<id>); a blank or 0 skips the
+// student. Points are kept to what the guide allows for the category. An
+// activity converts once; to redo it, its ΔΔΚ is deleted first.
 export async function convertActivityToDdk(formData: FormData) {
   const activityId = formData.get("activityId") as string;
   const categoryCode = formData.get("categoryCode") as string;
@@ -196,6 +197,8 @@ export async function convertActivityToDdk(formData: FormData) {
   if (!activityId || !category || category.autoOnly || studentIds.length === 0) return;
   // Only the activity's creator may convert it to ΔΔΚ.
   const staff = await requireActivityOwner(activityId);
+  // Once: a converted activity converts again only after its ΔΔΚ is deleted.
+  if (await db.ddkAward.count({ where: { activityId } })) return;
 
   // Only award to genuine participants of this activity.
   const participants = await db.activityParticipant.findMany({
@@ -209,12 +212,9 @@ export async function convertActivityToDdk(formData: FormData) {
 
   const rows = studentIds
     .filter((id) => validIds.has(id))
-    .map((studentId) => {
-      // Only the points the guide allows: clampPoints pins fixed/per categories
-      // to their value and keeps ranges within bounds (NaN → the guide default).
-      const raw = parseInt(formData.get(`points_${studentId}`) as string);
-      const points = clampPoints(category.spec, raw);
-      return { studentId, categoryCode, points, note, activityId, awardedById: staff.id, schoolYear };
+    .flatMap((studentId) => {
+      const points = pointsToAward(category.spec, formData.get(`points_${studentId}`) as string);
+      return points === null ? [] : [{ studentId, categoryCode, points, note, activityId, awardedById: staff.id, schoolYear }];
     });
 
   if (rows.length === 0) return;
