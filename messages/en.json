@@ -2499,10 +2499,6 @@
   },
   "timetablePrint": {
     "print": "Print timetable",
-    "specialty": "Specialty",
-    "specialtyPick": "— choose —",
-    "specialtyOption": "{code} ({count, plural, one {# teacher} other {# teachers}})",
-    "printSpecialty": "Print all",
     "titleTeacher": "Teacher timetable",
     "titleStudent": "Student timetable",
     "titleRoom": "Room timetable",
@@ -2513,7 +2509,10 @@
     "day2": "Tuesday",
     "day3": "Wednesday",
     "day4": "Thursday",
-    "day5": "Friday"
+    "day5": "Friday",
+    "printSpecialties": "Print specialties",
+    "printSpecialtiesHint": "Every timetable of a specialty, one per page:",
+    "specialtyCount": "{count, plural, one {# teacher} other {# teachers}}"
   },
   "breakDuty": {
     "backToSettings": "Back to Settings",

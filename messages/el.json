@@ -2499,10 +2499,6 @@
   },
   "timetablePrint": {
     "print": "Εκτύπωση προγράμματος",
-    "specialty": "Ειδικότητα",
-    "specialtyPick": "— επιλέξτε —",
-    "specialtyOption": "{code} ({count, plural, one {# εκπαιδευτικός} other {# εκπαιδευτικοί}})",
-    "printSpecialty": "Εκτύπωση όλων",
     "titleTeacher": "Πρόγραμμα εκπαιδευτικού",
     "titleStudent": "Πρόγραμμα μαθητή/τριας",
     "titleRoom": "Πρόγραμμα αίθουσας",
@@ -2513,7 +2509,10 @@
     "day2": "Τρίτη",
     "day3": "Τετάρτη",
     "day4": "Πέμπτη",
-    "day5": "Παρασκευή"
+    "day5": "Παρασκευή",
+    "printSpecialties": "Εκτύπωση ειδικοτήτων",
+    "printSpecialtiesHint": "Όλα τα προγράμματα μιας ειδικότητας, ένα ανά σελίδα:",
+    "specialtyCount": "{count, plural, one {# εκπαιδευτικός} other {# εκπαιδευτικοί}}"
   },
   "breakDuty": {
     "backToSettings": "Πίσω στις Ρυθμίσεις",
