@@ -2591,5 +2591,23 @@
     "typeBig": "Big",
     "typeSmall": "Small",
     "page": "Page {page} of {pages}"
+  },
+  "ddkMine": {
+    "title": "My ΔΔΚ",
+    "print": "Print",
+    "empty": "You have not awarded any ΔΔΚ points for the {year} school year.",
+    "summary": "{year}: {awards, plural, one {# award} other {# awards}} · {students, plural, one {# student} other {# students}} · {points, plural, one {# point} other {# points}}",
+    "noActivity": "No activity (deleted)",
+    "colStudent": "Student",
+    "colRegistry": "Registry No.",
+    "colGroup": "Class",
+    "colCategory": "Category",
+    "colPoints": "Points",
+    "printYear": "SCHOOL YEAR: {year}",
+    "printTitle": "CREATIVITY - ACTION - SERVICE — POINTS AWARDED",
+    "printTeacher": "Teacher: {name}",
+    "remove": "Delete ΔΔΚ",
+    "removeConfirm": "Delete all ΔΔΚ points of the activity «{name}»? The activity itself stays.",
+    "studentsTitle": "Students awarded ΔΔΚ points"
   }
 }

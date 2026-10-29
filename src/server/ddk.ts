@@ -1,6 +1,6 @@
 import { db } from "@/server/db";
 import type { SchoolYearRanges } from "@/lib/schoolYear";
-import { fullAttendanceAward, ddkCategoryLabel, FULL_ATTENDANCE_CODE, FULL_ATTENDANCE_POINTS, type DerivedAward } from "@/lib/ddk";
+import { fullAttendanceAward, ddkCategoryLabel, FULL_ATTENDANCE_CODE, FULL_ATTENDANCE_POINTS, type DerivedAward, type MyDdkAward } from "@/lib/ddk";
 import { staffDisplayName } from "@/lib/staffName";
 
 // Official wording for the auto full-attendance entry (per the printed report).
@@ -118,4 +118,40 @@ export async function loadDdkAwardsForStudents(
     }
   }
   return out;
+}
+
+// «Τα ΔΔΚ μου»: the awards a teacher gave in a school year, and the years
+// they gave any (for the year picker).
+export async function loadMyDdkAwards(staffId: string, schoolYear: string): Promise<MyDdkAward[]> {
+  const rows = await db.ddkAward.findMany({
+    where: { awardedById: staffId, schoolYear },
+    select: {
+      id: true,
+      categoryCode: true,
+      points: true,
+      note: true,
+      student: { select: { id: true, studentId: true, user: { select: { name: true } }, group: { select: { name: true } } } },
+      activity: { select: { id: true, name: true, date: true } },
+    },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    studentId: r.student.id,
+    studentName: r.student.user?.name ?? "—",
+    registryNo: r.student.studentId,
+    groupName: r.student.group?.name ?? null,
+    categoryCode: r.categoryCode,
+    points: r.points,
+    note: r.note,
+    activity: r.activity,
+  }));
+}
+
+export async function myDdkYears(staffId: string): Promise<string[]> {
+  const rows = await db.ddkAward.findMany({
+    where: { awardedById: staffId },
+    select: { schoolYear: true },
+    distinct: ["schoolYear"],
+  });
+  return rows.map((r) => r.schoolYear).sort().reverse();
 }

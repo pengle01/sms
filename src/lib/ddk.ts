@@ -274,3 +274,53 @@ export function summarizeBySection(
     return { section, awards: sectionAwards, points: ddkTotal(sectionAwards) };
   }).filter((s) => s.awards.length > 0);
 }
+
+// ─── «Τα ΔΔΚ μου»: a teacher's own awards ────────────────────────────────────
+
+export interface MyDdkAward {
+  id: string;
+  studentId: string;
+  studentName: string;
+  registryNo: string | null;
+  groupName: string | null;
+  categoryCode: string;
+  points: number;
+  note: string | null;
+  activity: { id: string; name: string; date: Date } | null;
+}
+
+export interface MyDdkActivityGroup {
+  activity: MyDdkAward["activity"];
+  awards: MyDdkAward[];
+  points: number;
+}
+
+/**
+ * The awards grouped by their activity — newest activity first, awards by
+ * student name; awards with no activity (its activity was deleted) last.
+ */
+export function groupAwardsByActivity(awards: MyDdkAward[]): MyDdkActivityGroup[] {
+  const byKey = new Map<string, MyDdkActivityGroup>();
+  for (const a of awards) {
+    const key = a.activity?.id ?? "";
+    const g = byKey.get(key) ?? { activity: a.activity, awards: [], points: 0 };
+    g.awards.push(a);
+    g.points += a.points;
+    byKey.set(key, g);
+  }
+  for (const g of byKey.values()) g.awards.sort((x, y) => x.studentName.localeCompare(y.studentName, "el"));
+  return [...byKey.values()].sort((x, y) => {
+    if (!x.activity) return 1;
+    if (!y.activity) return -1;
+    return y.activity.date.getTime() - x.activity.date.getTime() || x.activity.name.localeCompare(y.activity.name, "el");
+  });
+}
+
+/** Totals for the header: awards, distinct students, points. */
+export function myDdkSummary(awards: MyDdkAward[]): { awards: number; students: number; points: number } {
+  return {
+    awards: awards.length,
+    students: new Set(awards.map((a) => a.studentId)).size,
+    points: ddkTotal(awards),
+  };
+}

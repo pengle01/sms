@@ -9,13 +9,21 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Users, Pencil, Printer } from "lucide-react";
 import { utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { DeleteActivityButton } from "./DeleteActivityButton";
+import { MyDdkCard } from "./MyDdkCard";
+import { getSchoolYear } from "@/lib/schoolConfig";
+import { schoolYearLabel } from "@/lib/ddk";
+import { myDdkYears } from "@/server/ddk";
 
 export default async function ActivitiesPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  /** «Τα ΔΔΚ μου»: the school year shown (default the current one). */
+  searchParams: Promise<{ ddkYear?: string }>;
 }) {
   const { locale } = await params;
+  const { ddkYear } = await searchParams;
 
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login/staff`);
@@ -39,6 +47,12 @@ export default async function ActivitiesPage({
   const myStaffId = myStaff?.id ?? null;
   const mine = myStaffId ? all.filter((a) => a.filerId === myStaffId) : [];
 
+  // «Τα ΔΔΚ μου» — shown once the teacher has awarded any ΔΔΚ points.
+  const [ranges, ddkYears] = await Promise.all([getSchoolYear(), myStaffId ? myDdkYears(myStaffId) : Promise.resolve([])]);
+  const currentDdkYear = schoolYearLabel(ranges.yearStart.getUTCFullYear());
+  const ddkYearOptions = [...new Set([currentDdkYear, ...ddkYears])].sort().reverse();
+  const shownDdkYear = ddkYear && ddkYearOptions.includes(ddkYear) ? ddkYear : currentDdkYear;
+
   const DOW = ["Κυρ", "Δευ", "Τρι", "Τετ", "Πεμ", "Παρ", "Σαβ"];
 
   function periodRange(s: number, e: number) {
@@ -47,7 +61,7 @@ export default async function ActivitiesPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Δραστηριότητες</h2>
           <p className="text-slate-500 text-sm mt-1">Σχολικές δραστηριότητες κατά τη διάρκεια των μαθημάτων</p>
@@ -119,6 +133,16 @@ export default async function ActivitiesPage({
             })}
           </CardContent>
         </Card>
+      )}
+
+      {myStaffId && ddkYears.length > 0 && (
+        <MyDdkCard
+          locale={locale}
+          staffId={myStaffId}
+          schoolYear={shownDdkYear}
+          currentYear={currentDdkYear}
+          years={ddkYearOptions}
+        />
       )}
 
       {/* All activities — the complete list */}

@@ -230,24 +230,24 @@ export async function convertActivityToDdk(formData: FormData) {
   revalidatePath("/", "layout");
 }
 
-export async function removeDdkAward(formData: FormData) {
-  const staff = await requireStaff();
-  const id = formData.get("awardId") as string;
-  if (!id) return;
-  const award = await db.ddkAward.findUnique({
-    where: { id },
-    select: { id: true, awardedById: true, activity: { select: { filerId: true } } },
+// Delete an activity's ΔΔΚ as a whole (the activity itself stays) — the only
+// way to change it: ΔΔΚ awards are not edited one by one. No activityId = the
+// teacher's awards of that school year whose activity was deleted.
+export async function removeActivityDdk(formData: FormData) {
+  const activityId = ((formData.get("activityId") as string) ?? "").trim();
+  const schoolYear = ((formData.get("schoolYear") as string) ?? "").trim();
+  if (!activityId && !/^\d{4}-\d{4}$/.test(schoolYear)) return;
+  const staff = activityId ? await requireActivityOwner(activityId) : await requireStaff();
+  const gone = await db.ddkAward.deleteMany({
+    where: activityId ? { activityId } : { activityId: null, awardedById: staff.id, schoolYear },
   });
-  if (!award) return;
-  // Only the activity's creator (= the awarder) may remove the award.
-  const owns = award.activity ? award.activity.filerId === staff.id : award.awardedById === staff.id;
-  if (!owns) redirect("/");
-  await db.ddkAward.delete({ where: { id } });
+  if (gone.count === 0) return;
   await writeAudit({
     userId: staff.userId ?? "",
-    action: "ddk.remove",
-    resource: "DdkAward",
-    resourceId: id,
+    action: "ddk.removeActivity",
+    resource: "Activity",
+    resourceId: activityId || undefined,
+    details: { schoolYear, count: gone.count },
   });
   revalidatePath("/", "layout");
 }

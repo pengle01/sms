@@ -10,17 +10,18 @@ import { getPickerGroups } from "@/server/studentPicker";
 import type { PickerGroup } from "@/components/students/StudentPicker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, Users, X, Award, Pencil, Check, Repeat, Copy, Printer } from "lucide-react";
+import { ChevronLeft, Users, Award, Pencil, Check, Repeat, Copy, Printer } from "lucide-react";
 import { fmtDisplayDate } from "@/lib/dates";
 import { getPeriodsPerDay, maxPeriodCount } from "@/lib/schoolConfig";
 import { ddkCategoryLabel } from "@/lib/ddk";
 import {
-  removeDdkAward,
   updateActivity,
   repeatActivity,
 } from "../actions";
 import { ConvertToDdkForm } from "../ConvertToDdkForm";
 import { DeleteActivityButton } from "../DeleteActivityButton";
+import { DeleteActivityDdkButton } from "../DeleteActivityDdkButton";
+import { getTranslations } from "next-intl/server";
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
@@ -36,10 +37,10 @@ export default async function ActivityDetailPage({
   searchParams,
 }: {
   params: Promise<{ locale: string; id: string }>;
-  searchParams: Promise<{ edit?: string; ddk?: string }>;
+  searchParams: Promise<{ edit?: string }>;
 }) {
   const { locale, id } = await params;
-  const { edit, ddk } = await searchParams;
+  const { edit } = await searchParams;
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login/staff`);
 
@@ -69,7 +70,6 @@ export default async function ActivityDetailPage({
   });
   const isOwner = !!viewer && viewer.id === activity.filerId;
   const editing = isOwner && edit === "1"; // editing the activity (fields / participants)
-  const ddkEditing = isOwner && ddk === "1"; // editing ΔΔΚ awards (removal)
 
   const dateLabel = fmtDisplayDate(activity.date);
   const dateInput = activity.date.toISOString().slice(0, 10);
@@ -87,11 +87,12 @@ export default async function ActivityDetailPage({
     pickerGroups = await getPickerGroups();
   }
 
+  const tDdk = await getTranslations("ddkMine");
   const baseHref = `/${locale}/teacher/activities/${id}`;
   // Build a detail-page href, merging overrides onto the current params
   // (null clears a param) — lets the two edit modes coexist independently.
   function buildHref(overrides: Record<string, string | null>) {
-    const merged: Record<string, string | undefined | null> = { edit, ddk, ...overrides };
+    const merged: Record<string, string | undefined | null> = { edit, ...overrides };
     const p = new URLSearchParams();
     for (const [k, v] of Object.entries(merged)) if (v) p.set(k, v);
     const qs = p.toString();
@@ -347,24 +348,15 @@ export default async function ActivityDetailPage({
             <Award className="w-4 h-4 text-amber-600" />
             ΔΔΚ — Δημιουργικότητα · Δράση · Κοινωνική Προσφορά
           </CardTitle>
-          {activity.ddkAwards.length > 0 &&
-            (ddkEditing ? (
-              <Link
-                href={buildHref({ ddk: null })}
-                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-amber-500 text-white text-xs font-medium hover:bg-amber-600 flex-shrink-0"
-              >
-                <Check className="w-3.5 h-3.5" />
-                Τέλος
-              </Link>
-            ) : (
-              <Link
-                href={buildHref({ ddk: "1" })}
-                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-slate-200 text-slate-600 text-xs font-medium hover:bg-slate-50 flex-shrink-0"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-                Επεξεργασία ΔΔΚ
-              </Link>
-            ))}
+          {/* No editing: the ΔΔΚ is deleted as a whole, then converted again */}
+          {activity.ddkAwards.length > 0 && (
+            <DeleteActivityDdkButton
+              activityId={id}
+              schoolYear={activity.ddkAwards[0]!.schoolYear}
+              label={tDdk("remove")}
+              confirmText={tDdk("removeConfirm", { name: activity.name })}
+            />
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
           {activity.ddkAwards.length > 0 && (
@@ -384,18 +376,6 @@ export default async function ActivityDetailPage({
                       {aw.note && ` · ${aw.note}`}
                     </p>
                   </div>
-                  {ddkEditing && (
-                    <form action={removeDdkAward}>
-                      <input type="hidden" name="awardId" value={aw.id} />
-                      <button
-                        type="submit"
-                        className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50"
-                        title="Αφαίρεση"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </form>
-                  )}
                 </li>
               ))}
             </ul>
@@ -404,8 +384,7 @@ export default async function ActivityDetailPage({
           {activity.ddkAwards.length > 0 ? (
             // Converted once: a new conversion needs the ΔΔΚ deleted first.
             <p className="text-sm text-slate-500">
-              Η δραστηριότητα έχει μετατραπεί σε ΔΔΚ. Για νέα μετατροπή, διαγράψτε πρώτα τις μονάδες της
-              («Επεξεργασία ΔΔΚ»).
+              Η δραστηριότητα έχει μετατραπεί σε ΔΔΚ. Για νέα μετατροπή, πατήστε πρώτα «Διαγραφή ΔΔΚ».
             </p>
           ) : activity.participants.length === 0 ? (
             <p className="text-sm text-slate-400">Δεν υπάρχουν συμμετέχοντες για καταχώρηση ΔΔΚ.</p>
