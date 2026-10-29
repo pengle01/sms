@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { homegroupTeacherUserIds, keepAvailable, validateGroupName, GROUP_NAME_MAX } from "@/lib/recipientGroups";
+import {
+  homegroupTeacherUserIds,
+  keepAvailable,
+  validateGroupName,
+  GROUP_NAME_MAX,
+  classTeacherIds,
+  homeroomTeacherIds,
+  homegroupsByGrade,
+} from "@/lib/recipientGroups";
 
 describe("homegroupTeacherUserIds", () => {
   const students = [
@@ -46,5 +54,48 @@ describe("keepAvailable", () => {
   it("keeps only members who can still receive, each once, in order", () => {
     expect(keepAvailable(["a", "gone", "b", "a"], ["b", "a", "c"])).toEqual(["a", "b"]);
     expect(keepAvailable([], ["a"])).toEqual([]);
+  });
+});
+
+describe("classTeacherIds", () => {
+  const hgs = [
+    { id: "b31", teacherIds: ["u1", "u2"] },
+    { id: "b32", teacherIds: ["u2", "u3"] },
+    { id: "g11", teacherIds: ["u4"] },
+  ];
+  it("joins the teachers of the chosen classes, each once", () => {
+    expect(classTeacherIds(hgs, ["b31", "b32"])).toEqual(["u1", "u2", "u3"]);
+    expect(classTeacherIds(hgs, [])).toEqual([]);
+    expect(classTeacherIds(hgs, ["nope"])).toEqual([]);
+  });
+});
+
+describe("homeroomTeacherIds", () => {
+  const rs = [
+    { id: "a", homeroomGrades: [1] },
+    { id: "b", homeroomGrades: [2, 3] },
+    { id: "c", homeroomGrades: [] },
+  ];
+  it("picks the homeroom teachers of the chosen years", () => {
+    expect(homeroomTeacherIds(rs, [1])).toEqual(["a"]);
+    expect(homeroomTeacherIds(rs, [3])).toEqual(["b"]);
+    expect(homeroomTeacherIds(rs, [1, 2, 3])).toEqual(["a", "b"]);
+    expect(homeroomTeacherIds(rs, [])).toEqual([]);
+  });
+});
+
+describe("homegroupsByGrade", () => {
+  it("groups by year in order, unknown years last", () => {
+    const out = homegroupsByGrade([
+      { id: "g1", grade: 3 },
+      { id: "a1", grade: 1 },
+      { id: "x", grade: null },
+      { id: "a2", grade: 1 },
+    ]);
+    expect(out.map(([g, hs]) => [g, hs.map((h) => h.id)])).toEqual([
+      [1, ["a1", "a2"]],
+      [3, ["g1"]],
+      [0, ["x"]],
+    ]);
   });
 });

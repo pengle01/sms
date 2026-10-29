@@ -78,14 +78,14 @@ export async function StaffComposePanel({
   const recipientIds = recipients.map((r) => r.id);
 
   // «Οι ομάδες μου» — the sender's own saved groups, members still available.
-  // «Διδάσκοντες Καθηγητές τμήματος» — per homegroup, everyone who teaches any of its students.
+  // «Καθηγητές τμήματος» — per homegroup, everyone who teaches any of its students.
   const [myGroups, homegroups, students, slots] = await Promise.all([
     db.staffRecipientGroup.findMany({
       where: { ownerId: auth.userId },
       select: { id: true, name: true, memberIds: true },
       orderBy: { name: "asc" },
     }),
-    db.group.findMany({ where: isHomegroupWhere(), select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    db.group.findMany({ where: isHomegroupWhere(), select: { id: true, name: true, grade: true }, orderBy: { name: "asc" } }),
     db.studentProfile.findMany({
       where: { user: { isActive: true }, groupId: { not: null } },
       select: { groupId: true, subjectGroups: { select: { groupId: true } } },
@@ -99,6 +99,7 @@ export async function StaffComposePanel({
     .map((h) => ({
       id: h.id,
       name: h.name,
+      grade: h.grade,
       teacherIds: keepAvailable(homegroupTeacherUserIds(h.id, studentRows, slotRows), recipientIds),
     }))
     .filter((h) => h.teacherIds.length > 0)

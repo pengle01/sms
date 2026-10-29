@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { Send, Loader2, Save, MoreHorizontal, Users } from "lucide-react";
+import { Send, Loader2, Save, MoreHorizontal } from "lucide-react";
 import { saveRecipientGroup, deleteRecipientGroup } from "./recipient-group-actions";
+import { classTeacherIds, homeroomTeacherIds, homegroupsByGrade } from "@/lib/recipientGroups";
 import { AttachmentPicker, uploadAttachments } from "@/components/attachments/AttachmentPicker";
 
 type Recipient = {
@@ -19,8 +20,16 @@ type Recipient = {
 
 /** One of the sender's saved groups («Οι ομάδες μου»). */
 type SavedGroup = { id: string; name: string; memberIds: string[] };
-/** «Διδάσκοντες Καθηγητές τμήματος»: everyone who teaches any student of the homegroup. */
-type HomegroupTeachers = { id: string; name: string; teacherIds: string[] };
+/** «Καθηγητές τμήματος»: everyone who teaches any student of the homegroup. */
+type HomegroupTeachers = { id: string; name: string; grade: number | null; teacherIds: string[] };
+
+/**
+ * Who gets it: everyone; the teachers of chosen classes; the homeroom teachers
+ * of chosen years; or a hand-picked list. The middle two are sent as a picked
+ * list — the server resolves and checks the ids either way.
+ */
+type Mode = "all" | "class" | "homeroom" | "pick";
+const MODES: Mode[] = ["all", "class", "homeroom", "pick"];
 
 export function StaffNotificationForm({
   recipients,
@@ -35,10 +44,11 @@ export function StaffNotificationForm({
 }) {
   const t = useTranslations("staffNotify");
   const router = useRouter();
-  const [homegroupId, setHomegroupId] = useState("");
+  const [classIds, setClassIds] = useState<Set<string>>(new Set());
+  const [years, setYears] = useState<Set<number>>(new Set());
   const [groupBusy, startGroup] = useTransition();
   const ta = useTranslations("attachments");
-  const [mode, setMode] = useState<"all" | "pick">("all");
+  const [mode, setMode] = useState<Mode>("all");
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -93,7 +103,18 @@ export function StaffNotificationForm({
       return next;
     });
   const isSetSelected = (ids: string[]) => ids.length > 0 && ids.every((id) => selected.has(id));
-  const addSet = (ids: string[]) => setSelected((prev) => new Set([...prev, ...ids]));
+
+  // «Καθηγητές τμήματος» / «Υπεύθυνοι τμημάτων»: who the chosen classes / years add up to.
+  const toggleIn = <T,>(set: Set<T>, v: T) => {
+    const next = new Set(set);
+    if (next.has(v)) next.delete(v);
+    else next.add(v);
+    return next;
+  };
+  const modeIds =
+    mode === "class" ? classTeacherIds(homegroups, classIds) : mode === "homeroom" ? homeroomTeacherIds(recipients, years) : [];
+  const modeNames = recipients.filter((r) => modeIds.includes(r.id)).map((r) => r.label);
+  const nothingChosen = (mode === "class" || mode === "homeroom") && modeIds.length === 0;
 
   // Saving / updating / deleting a group keeps the current selection; the page
   // refreshes so the chips show the stored groups.
@@ -158,9 +179,9 @@ export function StaffNotificationForm({
       {/* Recipients */}
       <div>
         <p className="text-sm font-medium text-slate-700 mb-2">{t("recipients")}</p>
-        <input type="hidden" name="mode" value={mode} />
-        <div className="flex gap-2 mb-3">
-          {(["all", "pick"] as const).map((m) => (
+        <input type="hidden" name="mode" value={mode === "all" ? "all" : "pick"} />
+        <div className="flex flex-wrap gap-2 mb-3">
+          {MODES.filter((m) => (m === "class" ? homegroups.length > 0 : m === "homeroom" ? homeroomYears.length > 0 : true)).map((m) => (
             <button
               key={m}
               type="button"
@@ -172,53 +193,103 @@ export function StaffNotificationForm({
                   : "border-slate-200 text-slate-500 hover:text-slate-700"
               )}
             >
-              {m === "all" ? t("allTeachers") : t("pickRecipients")}
+              {m === "all" ? t("allTeachers") : m === "class" ? t("modeClass") : m === "homeroom" ? t("modeHomeroom") : t("pickRecipients")}
             </button>
           ))}
         </div>
 
+        {/* «Καθηγητές τμήματος»: classes by year; everyone who teaches any of them */}
+        {mode === "class" && (
+          <div className="rounded-xl border border-slate-200 p-3 space-y-2.5">
+            <p className="text-xs text-slate-500">{t("classHint")}</p>
+            {homegroupsByGrade(homegroups).map(([grade, hs]) => (
+              <div key={grade} className="flex flex-wrap items-center gap-1.5">
+                <span className="w-16 text-xs font-semibold text-slate-400">{grade ? t("yearLong", { n: grade }) : ""}</span>
+                {hs.map((h) => (
+                  <button
+                    key={h.id}
+                    type="button"
+                    onClick={() => setClassIds((s) => toggleIn(s, h.id))}
+                    aria-pressed={classIds.has(h.id)}
+                    className={cn(
+                      "h-8 px-3 rounded-lg border text-sm font-medium transition-colors",
+                      classIds.has(h.id)
+                        ? "bg-emerald-600 border-emerald-600 text-white"
+                        : "bg-white border-slate-200 text-slate-600 hover:border-emerald-400 hover:text-emerald-700",
+                    )}
+                  >
+                    {h.name}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* «Υπεύθυνοι τμημάτων»: the homeroom teachers of the chosen years */}
+        {mode === "homeroom" && (
+          <div className="rounded-xl border border-slate-200 p-3 space-y-2.5">
+            <p className="text-xs text-slate-500">{t("homeroomHint")}</p>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => setYears(years.size === homeroomYears.length ? new Set() : new Set(homeroomYears))}
+                aria-pressed={years.size === homeroomYears.length}
+                className={cn(
+                  "h-8 px-3 rounded-lg border text-sm font-medium transition-colors",
+                  years.size === homeroomYears.length
+                    ? "bg-emerald-600 border-emerald-600 text-white"
+                    : "bg-white border-slate-200 text-slate-600 hover:border-emerald-400 hover:text-emerald-700",
+                )}
+              >
+                {t("homeroomAllYears")}
+              </button>
+              {homeroomYears.map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => setYears((s) => toggleIn(s, g))}
+                  aria-pressed={years.has(g)}
+                  className={cn(
+                    "h-8 px-3 rounded-lg border text-sm font-medium transition-colors",
+                    years.has(g)
+                      ? "bg-emerald-600 border-emerald-600 text-white"
+                      : "bg-white border-slate-200 text-slate-600 hover:border-emerald-400 hover:text-emerald-700",
+                  )}
+                >
+                  {t("yearLong", { n: g })}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Who it goes to, before sending */}
+        {(mode === "class" || mode === "homeroom") && (
+          <div className="mt-2 text-sm">
+            {modeIds.length === 0 ? (
+              <p className="text-slate-400">{mode === "class" ? t("chooseClasses") : t("chooseYears")}</p>
+            ) : (
+              <>
+                <p className="font-medium text-slate-700">{t("recipientsCount", { count: modeIds.length })}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{modeNames.join(" · ")}</p>
+              </>
+            )}
+            {modeIds.map((id) => (
+              <input key={id} type="hidden" name="to" value={id} />
+            ))}
+          </div>
+        )}
+
         {mode === "pick" && (
           <div className="rounded-xl border border-slate-200 overflow-hidden">
-            {/* Smart shortcuts: homeroom teachers + per-specialty sets */}
+            {/* Smart shortcuts: per-specialty sets (homeroom teachers have their own mode) */}
             <div className="px-3 pt-2.5 pb-2 border-b border-slate-100 bg-slate-50/60 flex flex-wrap items-center gap-1.5">
               <span className="text-[11px] uppercase tracking-wide text-slate-400 mr-1">
                 {t("quickPick")}
               </span>
-              {chip(t("homeroomChip"), chipSet((r) => r.homeroomGrades.length > 0))}
-              {homeroomYears.map((g) =>
-                chip(
-                  t("homeroomGradeChip", { n: g }),
-                  chipSet((r) => r.homeroomGrades.includes(g))
-                )
-              )}
               {specialties.map((sp) => chip(sp, chipSet((r) => r.specialty === sp)))}
             </div>
-
-            {/* «Διδάσκοντες Καθηγητές τμήματος» — everyone who teaches any student of a homegroup */}
-            {homegroups.length > 0 && (
-              <div className="px-3 py-2 border-b border-slate-100 bg-slate-50/60 flex flex-wrap items-center gap-2">
-                <span className="text-[11px] uppercase tracking-wide text-slate-400 mr-1">{t("homegroupTeachers")}</span>
-                <select
-                  value={homegroupId}
-                  onChange={(e) => setHomegroupId(e.target.value)}
-                  className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
-                >
-                  <option value="">{t("chooseHomegroup")}</option>
-                  {homegroups.map((h) => (
-                    <option key={h.id} value={h.id}>{`${h.name} · ${h.teacherIds.length}`}</option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  disabled={!homegroupId}
-                  onClick={() => addSet(homegroups.find((h) => h.id === homegroupId)?.teacherIds ?? [])}
-                  className="inline-flex items-center gap-1 h-8 rounded-lg border border-emerald-300 bg-white px-2.5 text-xs font-medium text-emerald-700 hover:bg-emerald-50 disabled:opacity-40"
-                >
-                  <Users className="w-3.5 h-3.5" />
-                  {t("addTeachers")}
-                </button>
-              </div>
-            )}
 
             {/* «Οι ομάδες μου» — the sender's own saved groups */}
             <div className="px-3 py-2 border-b border-slate-100 bg-slate-50/60 flex flex-wrap items-center gap-1.5">
@@ -339,7 +410,7 @@ export function StaffNotificationForm({
 
       <button
         type="submit"
-        disabled={busy}
+        disabled={busy || nothingChosen}
         className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
       >
         {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
