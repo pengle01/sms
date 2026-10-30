@@ -24,7 +24,10 @@ async function deputyFor(groupId: string, studentId: string) {
 export async function resolveWatchlistStudent(locale: string, groupId: string, studentId: string, window: string) {
   const auth = await deputyFor(groupId, studentId);
   if (!auth) return;
-  const { students } = await loadGroupBehavior(groupId, await behaviorWindowSince(parseBehaviorWindow(window)));
+  const windowKey = parseBehaviorWindow(window);
+  // A resolution is made over a running window, not one past week.
+  if (windowKey === "week") return;
+  const { students } = await loadGroupBehavior(groupId, await behaviorWindowSince(windowKey));
   const row = students.find((s) => s.studentProfileId === studentId);
   if (!row || row.flags.length === 0) return;
   const flags = flagSnapshot(row.flags);

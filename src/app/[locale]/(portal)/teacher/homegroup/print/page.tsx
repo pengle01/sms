@@ -2,9 +2,10 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { getActiveAuth } from "@/server/authz";
 import { getSchoolName } from "@/lib/schoolConfig";
-import { fmtDisplayDate, getNow } from "@/lib/dates";
+import { fmtDisplayDate, getNow, localDateStr } from "@/lib/dates";
+import { parseBehaviorWeek, weekMonday } from "@/lib/behaviorWeek";
 import {
-  behaviorWindowSince,
+  behaviorRange,
   groupsForStaff,
   loadGroupBehavior,
   parseBehaviorWindow,
@@ -31,28 +32,33 @@ export default async function HomegroupPrintPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ groupId?: string; window?: string; all?: string }>;
+  searchParams: Promise<{ groupId?: string; window?: string; week?: string; all?: string }>;
 }) {
   const { locale } = await params;
-  const { groupId, window: windowParam, all } = await searchParams;
+  const { groupId, window: windowParam, week: weekParam, all } = await searchParams;
   const auth = await getActiveAuth();
   if (!auth) redirect(`/${locale}/login/staff`);
 
   const groups = await groupsForStaff(auth.userId);
   const windowKey = parseBehaviorWindow(windowParam);
-  const backHref = `/${locale}/teacher/homegroup?window=${windowKey}${groupId ? `&groupId=${groupId}` : ""}`;
+  const todayIso = localDateStr();
+  const week = parseBehaviorWeek(weekParam, todayIso);
+  const weekQs = windowKey === "week" && week !== weekMonday(todayIso) ? `&week=${week}` : "";
+  const backHref = `/${locale}/teacher/homegroup?window=${windowKey}${weekQs}${groupId ? `&groupId=${groupId}` : ""}`;
   // Only the viewer's own homegroups — any other id prints nothing.
   const printed = all === "1" ? groups : groups.filter((g) => g.id === (groupId ?? groups[0]?.id));
   if (printed.length === 0) redirect(backHref);
 
-  const since = await behaviorWindowSince(windowKey);
+  const { since, until } = await behaviorRange(windowKey, week);
   const [t, schoolName, reports] = await Promise.all([
     getTranslations("investigate"),
     getSchoolName(),
-    Promise.all(printed.map((g) => loadGroupBehavior(g.id, since))),
+    Promise.all(printed.map((g) => loadGroupBehavior(g.id, since, until))),
   ]);
-  const windowLabel = windowKey === "30" ? t("windowDays", { days: 30 }) : windowKey === "term" ? t("windowTerm") : t("windowYear");
-  const today = getNow();
+  const windowLabel =
+    windowKey === "week" ? t("windowWeek") : windowKey === "30" ? t("windowDays", { days: 30 }) : windowKey === "term" ? t("windowTerm") : t("windowYear");
+  // A past week ends on its Sunday; the other windows run to today.
+  const today = until ?? getNow();
 
   return (
     <>

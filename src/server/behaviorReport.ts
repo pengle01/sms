@@ -7,6 +7,7 @@ import { localDateStr, utcMidnight } from "@/lib/dates";
 import { getSchoolYear } from "@/lib/schoolConfig";
 import { termOf } from "@/lib/schoolYear";
 import { GRADE_PASS } from "@/lib/grades";
+import { weekMonday, weekRange } from "@/lib/behaviorWeek";
 import {
   analyzeStudent,
   riskScore,
@@ -47,17 +48,33 @@ export async function groupsForStaff(userId: string): Promise<AccessibleGroup[]>
   return [...map.values()].sort((a, b) => a.grade - b.grade || a.name.localeCompare(b.name, "el"));
 }
 
-export type BehaviorWindow = "30" | "term" | "year";
-export const BEHAVIOR_WINDOWS: BehaviorWindow[] = ["30", "term", "year"];
+export type BehaviorWindow = "week" | "30" | "term" | "year";
+export const BEHAVIOR_WINDOWS: BehaviorWindow[] = ["week", "30", "term", "year"];
 
 /** The window from a URL value; default the current τετράμηνο. */
 export function parseBehaviorWindow(v: string | undefined): BehaviorWindow {
   return BEHAVIOR_WINDOWS.includes(v as BehaviorWindow) ? (v as BehaviorWindow) : "term";
 }
 
+/**
+ * The window's days: from its first day to `until` (null = up to now). A week
+ * is Monday–Sunday of `weekMonday`; the others end today.
+ */
+export async function behaviorRange(
+  window: BehaviorWindow,
+  weekMonday: string,
+): Promise<{ since: Date; until: Date | null }> {
+  if (window === "week") {
+    const { from, to } = weekRange(weekMonday);
+    return { since: utcMidnight(from), until: utcMidnight(to) };
+  }
+  return { since: await behaviorWindowSince(window), until: null };
+}
+
 /** The window's first day, from the super-admin's School Year & Terms settings. */
 export async function behaviorWindowSince(window: BehaviorWindow): Promise<Date> {
   const today = utcMidnight(localDateStr());
+  if (window === "week") return utcMidnight(weekMonday(localDateStr()));
   if (window === "30") return new Date(today.getTime() - 30 * 86400000);
   const ranges = await getSchoolYear();
   if (window === "year") return ranges.yearStart;
@@ -97,7 +114,7 @@ export type GroupBehavior = {
  * Assemble behaviour data for one homegroup over a window.
  * @param since  start boundary (UTC midnight, inclusive); null = all time.
  */
-export async function loadGroupBehavior(groupId: string, since: Date | null): Promise<GroupBehavior> {
+export async function loadGroupBehavior(groupId: string, since: Date | null, until: Date | null = null): Promise<GroupBehavior> {
   const group = await db.group.findUnique({ where: { id: groupId }, select: { name: true } });
 
   const students = await db.studentProfile.findMany({
@@ -111,7 +128,7 @@ export async function loadGroupBehavior(groupId: string, since: Date | null): Pr
     return { groupName: group?.name ?? "—", students: [] };
   }
 
-  const dateFilter = since ? { gte: since } : undefined;
+  const dateFilter = since || until ? { ...(since ? { gte: since } : {}), ...(until ? { lte: until } : {}) } : undefined;
 
   const [attendance, toiletBreaks, referralCounts, lowGradeCounts] = await Promise.all([
     db.attendance.findMany({
@@ -136,7 +153,7 @@ export async function loadGroupBehavior(groupId: string, since: Date | null): Pr
       by: ["studentId"],
       where: {
         studentId: { in: studentIds },
-        referral: { isDraft: false, ...(since ? { date: { gte: since } } : {}) },
+        referral: { isDraft: false, ...(dateFilter ? { date: dateFilter } : {}) },
       },
       _count: { _all: true },
     }),
@@ -145,7 +162,7 @@ export async function loadGroupBehavior(groupId: string, since: Date | null): Pr
       where: {
         studentId: { in: studentIds },
         value: { lt: GRADE_PASS },
-        ...(since ? { testSchedule: { date: { gte: since } } } : {}),
+        ...(dateFilter ? { testSchedule: { date: dateFilter } } : {}),
       },
       _count: { _all: true },
     }),

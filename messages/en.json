@@ -1338,7 +1338,13 @@
     "resolvedTitle": "Resolved ({count})",
     "resolvedHint": "They return to the list as soon as a new pattern appears or an existing one grows.",
     "resolvedBy": "Resolved by {name} · {date}",
-    "reopen": "Reopen"
+    "reopen": "Reopen",
+    "windowWeek": "Week",
+    "prevWeek": "Previous week",
+    "nextWeek": "Next week",
+    "weekLabel": "{from} – {to}",
+    "thisWeek": "this week",
+    "lowGradesHint": "Test grades below 10 (out of 20) in the period"
   },
   "specialEd": {
     "title": "Special Education",

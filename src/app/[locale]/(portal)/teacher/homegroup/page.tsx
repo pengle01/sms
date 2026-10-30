@@ -4,10 +4,10 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTranslations } from "next-intl/server";
-import { AlertTriangle, CheckCircle2, Printer, RotateCcw, Search, Users } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Printer, RotateCcw, Search, Users } from "lucide-react";
 import {
   BEHAVIOR_WINDOWS,
-  behaviorWindowSince,
+  behaviorRange,
   groupsForStaff,
   loadGroupBehavior,
   parseBehaviorWindow,
@@ -15,7 +15,9 @@ import {
 } from "@/server/behaviorReport";
 import type { Flag, Severity } from "@/lib/behaviorFlags";
 import { db } from "@/server/db";
-import { fmtDisplayDate } from "@/lib/dates";
+import { fmtDisplayDate, localDateStr, utcMidnight } from "@/lib/dates";
+import { addDaysIso } from "@/lib/attendanceLock";
+import { parseBehaviorWeek, weekMonday, weekRange } from "@/lib/behaviorWeek";
 import { canResolveWatchlist, parseFlagSnapshot, stillResolved } from "@/lib/watchlistResolve";
 import { resolveWatchlistStudent, reopenWatchlistStudent } from "./actions";
 
@@ -36,12 +38,18 @@ export default async function HomegroupPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ groupId?: string; window?: string }>;
+  searchParams: Promise<{ groupId?: string; window?: string; week?: string }>;
 }) {
   const { locale } = await params;
-  const { groupId: selectedGroupId, window: windowParam } = await searchParams;
+  const { groupId: selectedGroupId, window: windowParam, week: weekParam } = await searchParams;
   // default: the current τετράμηνο, from the super-admin settings
   const windowKey = parseBehaviorWindow(windowParam);
+  // «Εβδομάδα»: the Monday of the week shown (default this week)
+  const todayIso = localDateStr();
+  const week = parseBehaviorWeek(weekParam, todayIso);
+  const isWeek = windowKey === "week";
+  // The window (and week) every link keeps
+  const windowQs = `window=${windowKey}${isWeek && week !== weekMonday(todayIso) ? `&week=${week}` : ""}`;
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login/staff`);
 
@@ -60,8 +68,10 @@ export default async function HomegroupPage({
   const activeGroup = groups.find((g) => g.id === selectedGroupId) ?? groups[0]!;
 
   // Window boundary drawn from the super-admin's School Year & Terms settings.
-  const { students } = await loadGroupBehavior(activeGroup.id, await behaviorWindowSince(windowKey));
-  const canResolve = canResolveWatchlist(activeGroup.roles);
+  const range = await behaviorRange(windowKey, week);
+  const { students } = await loadGroupBehavior(activeGroup.id, range.since, range.until);
+  // Resolving is done over a running window, not one past week.
+  const canResolve = canResolveWatchlist(activeGroup.roles) && !isWeek;
   // Students the deputy marked as resolved — they stay off the list until a
   // new pattern appears or one grows (stillResolved).
   const resolutions = new Map(
@@ -110,7 +120,7 @@ export default async function HomegroupPage({
 
   const groupParam = `&groupId=${activeGroup.id}`;
   const printHref = (all: boolean) =>
-    `/${locale}/teacher/homegroup/print?window=${windowKey}${groupParam}${all ? "&all=1" : ""}&auto=1`;
+    `/${locale}/teacher/homegroup/print?${windowQs}${groupParam}${all ? "&all=1" : ""}&auto=1`;
 
   const flagPills = (s: StudentBehaviorRow) => (
     <div className="flex flex-wrap gap-1.5 mt-1.5">
@@ -162,17 +172,46 @@ export default async function HomegroupPage({
           {BEHAVIOR_WINDOWS.map((w) => (
             <Link
               key={w}
-              href={`?window=${w}${groupParam}`}
+              href={`?window=${w}${w === "week" && week !== weekMonday(todayIso) ? `&week=${week}` : ""}${groupParam}`}
               className={`px-3 py-1.5 text-xs font-medium transition-colors border-l first:border-l-0 border-slate-200 ${
                 windowKey === w ? "bg-slate-800 text-white" : "bg-white text-slate-500 hover:bg-slate-50"
               }`}
             >
-              {w === "30" ? t("windowDays", { days: 30 }) : w === "term" ? t("windowTerm") : t("windowYear")}
+              {w === "week" ? t("windowWeek") : w === "30" ? t("windowDays", { days: 30 }) : w === "term" ? t("windowTerm") : t("windowYear")}
             </Link>
           ))}
         </div>
         </div>
       </div>
+
+      {/* «Εβδομάδα»: step through the weeks, never past this one */}
+      {isWeek && (() => {
+        const { to } = weekRange(week);
+        const prev = addDaysIso(week, -7);
+        const next = addDaysIso(week, 7);
+        const isThisWeek = week === weekMonday(todayIso);
+        const nav = "inline-flex items-center justify-center h-8 w-8 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50";
+        return (
+          <div className="flex items-center gap-2">
+            <Link href={`?window=week&week=${prev}${groupParam}`} aria-label={t("prevWeek")} className={nav}>
+              <ChevronLeft className="w-4 h-4" />
+            </Link>
+            <span className="text-sm font-medium text-slate-700 tabular-nums">
+              {t("weekLabel", { from: fmtDisplayDate(utcMidnight(week)), to: fmtDisplayDate(utcMidnight(to)) })}
+            </span>
+            {isThisWeek ? (
+              <span className={`${nav} opacity-30 pointer-events-none`} aria-hidden>
+                <ChevronRight className="w-4 h-4" />
+              </span>
+            ) : (
+              <Link href={`?window=week&week=${next}${groupParam}`} aria-label={t("nextWeek")} className={nav}>
+                <ChevronRight className="w-4 h-4" />
+              </Link>
+            )}
+            {isThisWeek && <span className="text-xs text-slate-400">{t("thisWeek")}</span>}
+          </div>
+        );
+      })()}
 
       {/* Group tabs */}
       {groups.length > 1 && (
@@ -180,7 +219,7 @@ export default async function HomegroupPage({
           {groups.map((g) => (
             <Link
               key={g.id}
-              href={`?groupId=${g.id}&window=${windowKey}`}
+              href={`?groupId=${g.id}&${windowQs}`}
               className={`h-9 px-4 rounded-lg text-sm font-medium border transition-colors ${
                 activeGroup.id === g.id
                   ? "bg-slate-800 text-white border-slate-800"
@@ -285,7 +324,7 @@ export default async function HomegroupPage({
                 <th className="text-center px-3 py-3">{t("colLates")}</th>
                 <th className="text-center px-3 py-3">{t("colReferrals")}</th>
                 <th className="text-center px-3 py-3">{t("colToilet")}</th>
-                <th className="text-center px-3 py-3">{t("colLowGrades")}</th>
+                <th className="text-center px-3 py-3" title={t("lowGradesHint")}>{t("colLowGrades")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
