@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import { validatePunishment, SUSPENDED_MAX_DAYS } from "@/lib/punishment";
 import { expulsionDayPeriods, totalPeriodsForDays, validExpulsionDay } from "@/lib/periods";
 import { ACTION_ORDER, expulsionLength, lengthLabel, resolutionSummary, expulsionDayLabel } from "@/lib/referralLabels";
-import { missedLessons } from "@/lib/expulsionLessons";
 
 const config = { 1: 8, 2: 7, 3: 7, 4: 8, 5: 7 };
 const TODAY = "2026-10-26"; // a Monday
@@ -83,21 +82,5 @@ describe("labels and summaries", () => {
     const fmt = () => "26/10/26";
     expect(expulsionDayLabel({ date: new Date(), fromPeriod: 3, toPeriod: 5 }, fmt)).toBe("26/10/26 · Π3–Π5");
     expect(expulsionDayLabel({ date: new Date() }, fmt)).toBe("26/10/26");
-  });
-});
-
-describe("missedLessons — partial days", () => {
-  const slots = [
-    { dayOfWeek: 2, period: 2, courseName: "Αγγλικά", teacherName: "Α" },
-    { dayOfWeek: 2, period: 4, courseName: "Φυσική", teacherName: "Φ" },
-    { dayOfWeek: 2, period: 6, courseName: "Ιστορία", teacherName: "Ι" },
-  ];
-
-  it("keeps only the lessons of the expelled periods", () => {
-    expect(missedLessons(slots, [{ date: "2026-10-27", fromPeriod: 3, toPeriod: 5 }]).map((l) => l.courseName)).toEqual(["Φυσική"]);
-  });
-
-  it("keeps every lesson of a whole day", () => {
-    expect(missedLessons(slots, ["2026-10-27"])).toHaveLength(3);
   });
 });

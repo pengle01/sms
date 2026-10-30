@@ -2,7 +2,7 @@ import { db } from "@/server/db";
 import { staffDisplayName, slotTeacherName } from "@/lib/staffName";
 import { getSchoolName } from "@/lib/schoolConfig";
 import { getSpecialDaysInRange, buildDayTypeMap, isHolidayType } from "@/lib/calendar";
-import { missedLessons } from "@/lib/expulsionLessons";
+import { missedLessonsByDay } from "@/lib/expulsionLessons";
 import { redirect } from "next/navigation";
 import { getActiveAuth } from "@/server/authz";
 import { canReadReferral } from "@/server/referralAccess";
@@ -14,6 +14,12 @@ import { actionLabel, expulsionLength, lengthLabel, resolutionSummary } from "@/
 function fmt(date: Date | null | undefined): string {
   if (!date) return "—";
   return date.toLocaleDateString("el-GR", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+/** «Τρί 17/03/2026» — an expulsion date with its weekday. */
+function fmtDay(iso: string): string {
+  const d = new Date(iso + "T12:00:00.000Z");
+  return `${d.toLocaleDateString("el-GR", { weekday: "short", timeZone: "UTC" })} ${fmt(d)}`;
 }
 
 /**
@@ -81,8 +87,8 @@ export default async function PrintResolutionPage({
   const printed = onlyStudent ? referral.students.filter((rs) => rs.id === onlyStudent) : referral.students;
   const shown = printed.length > 0 ? printed : referral.students;
 
-  // Missed lessons of each expelled student: their timetable (homegroup +
-  // subject/support groups) on the expulsion weekdays, skipping holidays.
+  // Missed lessons of each expelled student, date by date: their timetable
+  // (homegroup + subject/support groups) on each expulsion day; holidays flagged.
   const expelled = shown.filter((rs) => rs.resolution?.action === "DETENTION" && rs.resolution.expulsionDays.length > 0);
   const groupIdsOf = (rs: (typeof shown)[number]) =>
     [rs.student.groupId, ...rs.student.subjectGroups.map((g) => g.groupId)].filter((id): id is string => !!id);
@@ -112,10 +118,16 @@ export default async function PrintResolutionPage({
   const noSchool = new Set([...dayTypes].filter(([, type]) => isHolidayType(type)).map(([iso]) => iso));
   const lessonsMissed = (rs: (typeof shown)[number]) => {
     const groups = new Set(groupIdsOf(rs));
-    return missedLessons(
+    return missedLessonsByDay(
       slots
         .filter((s) => groups.has(s.groupId))
-        .map((s) => ({ dayOfWeek: s.dayOfWeek, period: s.period, courseName: s.course.name, teacherName: slotTeacherName(s) })),
+        .map((s) => ({
+          dayOfWeek: s.dayOfWeek,
+          period: s.period,
+          courseName: s.course.name,
+          teacherName: slotTeacherName(s),
+          subjectGroup: s.groupId !== rs.student.groupId,
+        })),
       // A partial day: only the lessons of its periods.
       rs.resolution!.expulsionDays,
       noSchool,
@@ -303,24 +315,49 @@ export default async function PrintResolutionPage({
               {isExpulsion && (
                 <section className="mb-6">
                   <h2 className={section}>Μαθήματα που θα χάσει</h2>
-                  {lessons.length === 0 ? (
+                  {lessons.every((d) => d.lessons.length === 0 && !d.noSchool) ? (
                     <p className="text-sm text-slate-400 italic">Δεν βρέθηκαν μαθήματα στο ωρολόγιο για αυτές τις ημέρες.</p>
                   ) : (
                     <table className="w-full text-sm border border-slate-200">
                       <thead>
                         <tr className="bg-slate-100 text-left">
+                          <th className="px-3 py-1.5 font-semibold text-slate-700 w-36">Ημερομηνία</th>
+                          <th className="px-3 py-1.5 font-semibold text-slate-700 w-20">Περίοδος</th>
                           <th className="px-3 py-1.5 font-semibold text-slate-700">Μάθημα</th>
                           <th className="px-3 py-1.5 font-semibold text-slate-700">Καθηγητής/τρια</th>
                         </tr>
                       </thead>
-                      <tbody>
-                        {lessons.map((l) => (
-                          <tr key={`${l.courseName}|${l.teacherName}`} className="border-t border-slate-100">
-                            <td className="px-3 py-1.5 text-slate-900">{l.courseName}</td>
-                            <td className="px-3 py-1.5 text-slate-700">{l.teacherName}</td>
-                          </tr>
-                        ))}
-                      </tbody>
+                      {lessons.map((day) => {
+                        const date = fmtDay(day.iso);
+                        if (day.lessons.length === 0) {
+                          return (
+                            <tbody key={day.iso} className="border-t-2 border-slate-300">
+                              <tr>
+                                <td className="px-3 py-1.5 text-slate-900 font-medium">{date}</td>
+                                <td colSpan={3} className="px-3 py-1.5 text-slate-500 italic">
+                                  {day.noSchool ? "Αργία — δεν χάνει μαθήματα" : "Χωρίς μαθήματα στο ωρολόγιο"}
+                                </td>
+                              </tr>
+                            </tbody>
+                          );
+                        }
+                        return (
+                          <tbody key={day.iso} className="border-t-2 border-slate-300">
+                            {day.lessons.map((l, i) => (
+                              <tr key={l.period} className={i > 0 ? "border-t border-slate-100" : undefined}>
+                                {i === 0 && (
+                                  <td rowSpan={day.lessons.length} className="px-3 py-1.5 text-slate-900 font-medium align-top">
+                                    {date}
+                                  </td>
+                                )}
+                                <td className="px-3 py-1.5 text-slate-700">{l.period}η</td>
+                                <td className="px-3 py-1.5 text-slate-900">{l.courseName}</td>
+                                <td className="px-3 py-1.5 text-slate-700">{l.teacherName}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        );
+                      })}
                     </table>
                   )}
                 </section>

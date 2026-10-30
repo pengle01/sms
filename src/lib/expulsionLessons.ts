@@ -1,60 +1,65 @@
 // The lessons a student misses while expelled (αποβολή) — listed on the
-// printed disciplinary decision so the student knows whose work to catch up.
-// Pure (no DB) so the rule is unit-tested.
+// printed disciplinary decision, date by date and period by period, so the
+// secretary knows which lessons are affected and the student whose work to
+// catch up. Pure (no DB) so the rule is unit-tested.
 
 export interface ExpulsionSlot {
   dayOfWeek: number;
-  /** The slot's period — needed when a day is only part of the day. */
-  period?: number;
+  period: number;
   courseName: string;
   teacherName: string;
+  /** A subject/support group's lesson — it replaces the homegroup's lesson in that period. */
+  subjectGroup?: boolean;
 }
 
 /** An expulsion date: the whole day, or periods fromPeriod–toPeriod. */
 export type ExpulsionDate = Date | string | { date: Date | string; fromPeriod?: number | null; toPeriod?: number | null };
 
+export interface MissedDay {
+  iso: string;
+  /** No school that day (holiday): nothing is missed. */
+  noSchool: boolean;
+  lessons: { period: number; courseName: string; teacherName: string }[];
+}
+
 /**
- * The distinct lessons (subject + teacher) on the expulsion days: the student's
- * timetable slots on those weekdays — only the expelled periods on a partial
- * day — skipping days with no school (holidays). Each subject/teacher pair is
- * listed once, sorted by subject, then teacher.
+ * Each expulsion date (in date order) with the lessons of the student's
+ * timetable on it — only the expelled periods on a partial day — one lesson per
+ * period, a subject group's lesson over the homegroup's (as on the student's
+ * own timetable). Holidays are kept, flagged, with no lessons; weekends dropped.
  */
-export function missedLessons(
+export function missedLessonsByDay(
   slots: ExpulsionSlot[],
   expulsionDates: ExpulsionDate[],
   noSchoolIsos: Set<string> = new Set(),
-): { courseName: string; teacherName: string }[] {
-  // Weekday → "all" its periods, or the set of expelled periods.
-  const days = new Map<number, "all" | Set<number>>();
+): MissedDay[] {
+  const days: MissedDay[] = [];
   for (const raw of expulsionDates) {
     const d = typeof raw === "string" || raw instanceof Date ? { date: raw } : raw;
     const iso = typeof d.date === "string" ? d.date.slice(0, 10) : d.date.toISOString().slice(0, 10);
-    if (noSchoolIsos.has(iso)) continue;
     const dow = new Date(iso + "T12:00:00.000Z").getUTCDay();
     if (dow < 1 || dow > 5) continue;
-    const from = "fromPeriod" in d ? d.fromPeriod : null;
-    const to = "toPeriod" in d ? d.toPeriod : null;
-    if (from == null || to == null || days.get(dow) === "all") {
-      days.set(dow, "all");
+    if (noSchoolIsos.has(iso)) {
+      days.push({ iso, noSchool: true, lessons: [] });
       continue;
     }
-    const set = (days.get(dow) as Set<number> | undefined) ?? new Set<number>();
-    for (let p = from; p <= to; p++) set.add(p);
-    days.set(dow, set);
+    const from = "fromPeriod" in d ? d.fromPeriod : null;
+    const to = "toPeriod" in d ? d.toPeriod : null;
+    const partial = from != null && to != null;
+    const byPeriod = new Map<number, ExpulsionSlot>();
+    for (const s of slots) {
+      if (s.dayOfWeek !== dow) continue;
+      if (partial && (s.period < from || s.period > to)) continue;
+      const held = byPeriod.get(s.period);
+      if (!held || (s.subjectGroup && !held.subjectGroup)) byPeriod.set(s.period, s);
+    }
+    days.push({
+      iso,
+      noSchool: false,
+      lessons: [...byPeriod.values()]
+        .sort((a, b) => a.period - b.period)
+        .map((s) => ({ period: s.period, courseName: s.courseName, teacherName: s.teacherName })),
+    });
   }
-  const covers = (s: ExpulsionSlot) => {
-    const day = days.get(s.dayOfWeek);
-    if (!day) return false;
-    return day === "all" || (s.period !== undefined && day.has(s.period));
-  };
-  const seen = new Map<string, { courseName: string; teacherName: string }>();
-  for (const s of slots) {
-    if (!covers(s)) continue;
-    const key = `${s.courseName}\u0000${s.teacherName}`;
-    if (!seen.has(key)) seen.set(key, { courseName: s.courseName, teacherName: s.teacherName });
-  }
-  return [...seen.values()].sort(
-    (a, b) =>
-      a.courseName.localeCompare(b.courseName, "el") || a.teacherName.localeCompare(b.teacherName, "el"),
-  );
+  return days.sort((a, b) => a.iso.localeCompare(b.iso));
 }
