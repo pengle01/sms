@@ -505,7 +505,9 @@
     "confirmDeleteDraft": "Delete this draft?",
     "confirmWithdraw": "Withdraw referral #{number}? No deputy head has opened it yet and it will be permanently deleted.",
     "draftDeleted": "Draft deleted",
-    "withdrawn": "Referral withdrawn"
+    "withdrawn": "Referral withdrawn",
+    "editDraft": "Edit draft",
+    "editDraftButton": "Edit"
   },
   "grades": {
     "title": "Grades",

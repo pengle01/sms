@@ -13,9 +13,9 @@ import { DEFAULT_PERIODS_PER_DAY } from "@/lib/periods";
 import { getPeriodsPerDay } from "@/lib/schoolConfig";
 import { validatePunishment, PUNISHMENT_ERROR_EL } from "@/lib/punishment";
 import { ACTION_ORDER, actionLabel, resolutionSummary } from "@/lib/referralLabels";
-import { canDeleteReferral } from "@/lib/referralStatus";
+import { canDeleteReferral, canEditDraft, draftStudentChanges } from "@/lib/referralStatus";
 import { writeAudit } from "@/server/audit";
-import type { Role } from "@/generated/prisma/client";
+import type { Prisma, Role } from "@/generated/prisma/client";
 import { parentCard } from "@/lib/smsContacts";
 
 function reqMeta(req?: Request) {
@@ -36,6 +36,56 @@ const RECOMMENDATION_VALUES = [
   "OTHER_RECOMMENDATION",
 ] as const;
 
+// The referral form's fields — filed new (create) or saved again as a draft (updateDraft).
+const referralFields = z.object({
+  studentIds: z.array(z.string()).min(1),
+  /** Short title of the offence — the parent letter's «Παράπτωμα». */
+  title: z.string().trim().max(120).optional(),
+  description: z.string().min(10),
+  date: z.string(),
+  location: z.string().optional(),
+  incidentTime: z.string().optional(),
+  extraInfo: z.string().optional(),
+  recommendations: z.array(z.enum(RECOMMENDATION_VALUES)).max(RECOMMENDATION_VALUES.length).default([]),
+  isDraft: z.boolean().default(false),
+});
+
+function checkReferralFields(input: { date: string; isDraft: boolean; title?: string }) {
+  // An incident is reported for today or an earlier day, never a future one.
+  if (isFutureDay(input.date, localDateStr())) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Η ημερομηνία του παραπτώματος δεν μπορεί να είναι μελλοντική." });
+  }
+  if (!input.isDraft && !input.title) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Συμπληρώστε τον τίτλο του παραπτώματος." });
+  }
+}
+
+/** On filing (never for a draft): tell each student's homegroup headteacher, once each. */
+async function notifyHeadteachersOfFiling(
+  tx: Prisma.TransactionClient,
+  students: { group: { homeroomHeadteacher: { user: { id: string } | null } | null } | null }[],
+  filerDisplayName: string,
+  description: string,
+) {
+  const notified = new Set<string>();
+  for (const s of students) {
+    const headUserId = s.group?.homeroomHeadteacher?.user?.id;
+    if (headUserId && !notified.has(headUserId)) {
+      notified.add(headUserId);
+      await tx.notification.create({
+        data: {
+          userId: headUserId,
+          type: "REFERRAL_CREATED",
+          title: "Νέα καταγγελία",
+          body: `${filerDisplayName}: ${description.slice(0, 80)}`,
+          linkUrl: `/teacher/referrals`,
+          read: false,
+        },
+      });
+    }
+  }
+}
+
 // Include shape reused across list queries
 const referralInclude = {
   filer: { include: { user: { select: { name: true } } } },
@@ -52,28 +102,9 @@ const referralInclude = {
 export const referralsRouter = createTRPCRouter({
   // File a referral — one Referral + one ReferralStudent per selected student
   create: staffProcedure
-    .input(
-      z.object({
-        studentIds: z.array(z.string()).min(1),
-        /** Short title of the offence — the parent letter's «Παράπτωμα». */
-        title: z.string().trim().max(120).optional(),
-        description: z.string().min(10),
-        date: z.string(),
-        location: z.string().optional(),
-        incidentTime: z.string().optional(),
-        extraInfo: z.string().optional(),
-        recommendations: z.array(z.enum(RECOMMENDATION_VALUES)).max(RECOMMENDATION_VALUES.length).default([]),
-        isDraft: z.boolean().default(false),
-      })
-    )
+    .input(referralFields)
     .mutation(async ({ ctx, input }) => {
-      // An incident is reported for today or an earlier day, never a future one.
-      if (isFutureDay(input.date, localDateStr())) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Η ημερομηνία του παραπτώματος δεν μπορεί να είναι μελλοντική." });
-      }
-      if (!input.isDraft && !input.title) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Συμπληρώστε τον τίτλο του παραπτώματος." });
-      }
+      checkReferralFields(input);
       const [staff, claim] = await Promise.all([
         ctx.db.staffProfile.findUnique({
           where: { userId: ctx.session.user.id },
@@ -121,34 +152,18 @@ export const referralsRouter = createTRPCRouter({
           include: referralInclude,
         });
 
-        if (!input.isDraft) {
-          const notified = new Set<string>();
-          for (const s of students) {
-            const headUserId = s.group?.homeroomHeadteacher?.user?.id;
-            if (headUserId && !notified.has(headUserId)) {
-              notified.add(headUserId);
-              await tx.notification.create({
-                data: {
-                  userId: headUserId,
-                  type: "REFERRAL_CREATED",
-                  title: "Νέα καταγγελία",
-                  body: `${filerDisplayName}: ${input.description.slice(0, 80)}`,
-                  linkUrl: `/teacher/referrals`,
-                  read: false,
-                },
-              });
-            }
-          }
-        }
+        if (!input.isDraft) await notifyHeadteachersOfFiling(tx, students, filerDisplayName, input.description);
 
         return referral;
       });
     }),
 
-  // Promote a draft to submitted and notify headteachers
-  submit: staffProcedure
-    .input(z.object({ referralId: z.string() }))
+  // Save a draft again — still a draft, or filed (isDraft: false). Only its
+  // filer, only while it is a draft. Headteachers hear of it only when filed.
+  updateDraft: staffProcedure
+    .input(referralFields.extend({ referralId: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      checkReferralFields(input);
       const [staff, claim] = await Promise.all([
         ctx.db.staffProfile.findUnique({
           where: { userId: ctx.session.user.id },
@@ -164,47 +179,70 @@ export const referralsRouter = createTRPCRouter({
 
       const referral = await ctx.db.referral.findUnique({
         where: { id: input.referralId },
+        select: { isDraft: true, filerId: true, students: { select: { studentId: true } } },
+      });
+      if (!referral) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!canEditDraft(referral, staff.id)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Η καταγγελία έχει ήδη υποβληθεί και δεν αλλάζει." });
+      }
+
+      const students = await ctx.db.studentProfile.findMany({
+        where: { id: { in: input.studentIds } },
         include: {
-          students: {
+          group: {
             include: {
-              group: {
-                include: {
-                  homeroomHeadteacher: { include: { user: { select: { id: true } } } },
-                },
-              },
+              homeroomHeadteacher: { include: { user: { select: { id: true } } } },
             },
           },
         },
       });
-      if (!referral) throw new TRPCError({ code: "NOT_FOUND" });
-      if (referral.filerId !== staff.id) throw new TRPCError({ code: "FORBIDDEN" });
-      if (!referral.isDraft) throw new TRPCError({ code: "BAD_REQUEST", message: "Not a draft" });
+      if (students.length === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "Επιλέξτε μαθητή/τρια." });
+      const { add, remove } = draftStudentChanges(
+        referral.students.map((rs) => rs.studentId),
+        students.map((s) => s.id),
+      );
 
       return ctx.db.$transaction(async (tx) => {
-        const updated = await tx.referral.update({
-          where: { id: input.referralId },
-          data: { isDraft: false },
+        // Guard against a concurrent filing/withdrawal between the read and here.
+        const changed = await tx.referral.updateMany({
+          where: { id: input.referralId, isDraft: true, filerId: staff.id },
+          data: {
+            title: input.title || null,
+            description: input.description,
+            location: input.location || null,
+            incidentTime: input.incidentTime || null,
+            extraInfo: input.extraInfo || null,
+            recommendations: [...new Set(input.recommendations)],
+            date: new Date(input.date),
+            isDraft: input.isDraft,
+            // Filing: it reaches the headteachers now, so it counts as new from now.
+            ...(input.isDraft ? {} : { createdAt: new Date() }),
+          },
         });
-
-        const notified = new Set<string>();
-        for (const rs of referral.students) {
-          const headUserId = rs.group?.homeroomHeadteacher?.user?.id;
-          if (headUserId && !notified.has(headUserId)) {
-            notified.add(headUserId);
-            await tx.notification.create({
-              data: {
-                userId: headUserId,
-                type: "REFERRAL_CREATED",
-                title: "Νέα καταγγελία",
-                body: `${filerDisplayName}: ${referral.description.slice(0, 80)}`,
-                linkUrl: `/teacher/referrals`,
-                read: false,
-              },
+        if (changed.count === 0) {
+          throw new TRPCError({ code: "CONFLICT", message: "Η καταγγελία έχει ήδη υποβληθεί και δεν αλλάζει." });
+        }
+        if (remove.length) {
+          await tx.referralStudent.deleteMany({ where: { referralId: input.referralId, studentId: { in: remove } } });
+        }
+        const addSet = new Set(add);
+        for (const s of students) {
+          // New students join; kept ones take their current homegroup.
+          if (addSet.has(s.id)) {
+            await tx.referralStudent.create({
+              data: { referralId: input.referralId, studentId: s.id, groupId: s.groupId, status: "PENDING" },
+            });
+          } else {
+            await tx.referralStudent.updateMany({
+              where: { referralId: input.referralId, studentId: s.id },
+              data: { groupId: s.groupId },
             });
           }
         }
 
-        return updated;
+        if (!input.isDraft) await notifyHeadteachersOfFiling(tx, students, filerDisplayName, input.description);
+
+        return { id: input.referralId, isDraft: input.isDraft };
       });
     }),
 

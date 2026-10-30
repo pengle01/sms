@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { overallStatus, referralColor, referralColorScoped, referralGroupSignals, canDeleteReferral, responsibleHeadteachers } from "@/lib/referralStatus";
+import { overallStatus, referralColor, referralColorScoped, referralGroupSignals, canDeleteReferral, canEditDraft, draftStudentChanges, responsibleHeadteachers } from "@/lib/referralStatus";
 
 const students = (statuses: string[]) => statuses.map((status) => ({ status }));
 
@@ -208,5 +208,19 @@ describe("responsibleHeadteachers", () => {
 
   it("returns nothing for a referral without students", () => {
     expect(responsibleHeadteachers([])).toEqual([]);
+  });
+});
+
+describe("editing a draft", () => {
+  it("lets only the filer edit, and only while it is a draft", () => {
+    expect(canEditDraft({ isDraft: true, filerId: "s1" }, "s1")).toBe(true);
+    expect(canEditDraft({ isDraft: true, filerId: "s1" }, "s2")).toBe(false);
+    expect(canEditDraft({ isDraft: false, filerId: "s1" }, "s1")).toBe(false);
+    expect(canEditDraft({ isDraft: true, filerId: "s1" }, null)).toBe(false);
+  });
+
+  it("adds the newly picked students and removes the unpicked ones", () => {
+    expect(draftStudentChanges(["a", "b"], ["b", "c", "c"])).toEqual({ add: ["c"], remove: ["a"] });
+    expect(draftStudentChanges(["a"], ["a"])).toEqual({ add: [], remove: [] });
   });
 });

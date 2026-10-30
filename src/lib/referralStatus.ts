@@ -52,6 +52,21 @@ export function canDeleteReferral(
   return r.students.every((s) => s.status !== "RESOLVED");
 }
 
+/** May this staff member edit the referral? Only its filer, only while it is a draft. */
+export function canEditDraft(r: { isDraft: boolean; filerId: string }, staffId: string | null | undefined): boolean {
+  return !!staffId && r.isDraft && r.filerId === staffId;
+}
+
+/** The students to add to and remove from a draft when it is saved again. */
+export function draftStudentChanges(
+  current: readonly string[],
+  wanted: readonly string[],
+): { add: string[]; remove: string[] } {
+  const have = new Set(current);
+  const want = new Set(wanted);
+  return { add: [...want].filter((id) => !have.has(id)), remove: [...have].filter((id) => !want.has(id)) };
+}
+
 export function referralColor(r: ReferralLike): ReferralColor {
   if (r.isDraft) return "GRAY";
   const total = r.students.length;

@@ -5,7 +5,8 @@ import { authOptions } from "@/server/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertTriangle, Plus, Printer } from "lucide-react";
+import { AlertTriangle, Pencil, Plus, Printer } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { fmtDisplayDate } from "@/lib/dates";
 import { canViewCounselorNotes, canViewAllReferrals } from "@/lib/rbac";
 import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY } from "@/lib/schoolConfig";
@@ -17,7 +18,7 @@ import { StudentsDropdown } from "@/components/referrals/StudentsDropdown";
 import { ResponsibleHeadteachers } from "@/components/referrals/ResponsibleHeadteachers";
 import { ReferralInfo } from "@/components/referrals/ReferralInfo";
 import { ReferralTabs } from "@/components/referrals/ReferralTabs";
-import { canDeleteReferral, overallStatus } from "@/lib/referralStatus";
+import { canDeleteReferral, canEditDraft, overallStatus } from "@/lib/referralStatus";
 import { referralRecommendations, recommendationsLabel, resolutionSummary, expulsionDayLabel } from "@/lib/referralLabels";
 import { parseReferralSearchTab, referralSearchWhere } from "@/lib/referralSearch";
 import { UnlockResolutionDialog } from "./UnlockResolutionDialog";
@@ -53,6 +54,7 @@ export default async function TeacherReferralsPage({
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
+  const tr = await getTranslations("referrals");
   if (!session) redirect(`/${locale}/login/staff`);
 
   const role = session.user.role as Role;
@@ -255,6 +257,16 @@ export default async function TeacherReferralsPage({
         <td className="px-4 py-3 text-sm">
           {/* The filer may remove their own referral until a headteacher opens
               it — a draft outright, a filed one as a withdrawal. */}
+          {/* A draft: open it again to finish, then save or file it. */}
+          {canEditDraft(r, staff.id) && (
+            <Link
+              href={`/${locale}/teacher/referrals/${r.id}/edit`}
+              className="mr-3 inline-flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-800 font-medium"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              {tr("editDraftButton")}
+            </Link>
+          )}
           {canDeleteReferral(r, staff.id) && (
             <DeleteReferralButton referralId={r.id} number={r.number} isDraft={r.isDraft} />
           )}

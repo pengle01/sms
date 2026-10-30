@@ -19,10 +19,24 @@ type ReferralRecommendation =
   | "NOTIFY_PARENTS"
   | "OTHER_RECOMMENDATION";
 
+/** A saved draft being edited: the form opens with its values. */
+export interface ReferralDraft {
+  id: string;
+  studentIds: string[];
+  title: string;
+  description: string;
+  date: string;
+  location: string;
+  incidentTime: string;
+  extraInfo: string;
+  recommendations: ReferralRecommendation[];
+}
+
 interface Props {
   groups: PickerGroup[];
   filerName: string;
   locale: string;
+  draft?: ReferralDraft;
 }
 
 // Any number may be ticked; none ticked = no recommendation (so there is no
@@ -38,30 +52,37 @@ const REC_LABELS: Record<RecommendationChoice, string> = {
 };
 
 
-export function ReferralForm({ groups, filerName, locale }: Props) {
+export function ReferralForm({ groups, filerName, locale, draft }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
 
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>(draft?.studentIds ?? []);
   // Today in Cyprus, when the form opens — an incident is today or earlier.
   const [today] = useState(() => localDateStr(getNow()));
-  const [date, setDate] = useState(today);
-  const [location, setLocation] = useState("");
-  const [incidentTime, setIncidentTime] = useState("");
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [extraInfo, setExtraInfo] = useState("");
-  const [recommendations, setRecommendations] = useState<RecommendationChoice[]>([]);
+  const [date, setDate] = useState(draft?.date ?? today);
+  const [location, setLocation] = useState(draft?.location ?? "");
+  const [incidentTime, setIncidentTime] = useState(draft?.incidentTime ?? "");
+  const [title, setTitle] = useState(draft?.title ?? "");
+  const [description, setDescription] = useState(draft?.description ?? "");
+  const [extraInfo, setExtraInfo] = useState(draft?.extraInfo ?? "");
+  const [recommendations, setRecommendations] = useState<RecommendationChoice[]>(
+    (draft?.recommendations ?? []).filter((r): r is RecommendationChoice => r !== "NO_RECOMMENDATION"),
+  );
   const toggleRecommendation = (val: RecommendationChoice) =>
     setRecommendations((cur) => (cur.includes(val) ? cur.filter((v) => v !== val) : [...cur, val]));
 
-  const { mutate: createReferral, isPending } = trpc.referrals.create.useMutation({
-    onSuccess: (_, vars) => {
+  const done = {
+    onSuccess: (_: unknown, vars: { isDraft?: boolean }) => {
       toast.success(vars.isDraft ? "Πρόχειρο αποθηκεύτηκε" : "Καταγγελία υποβλήθηκε");
       router.push(`/${locale}/teacher/referrals`);
+      router.refresh();
     },
-    onError: (e) => toast.error(e.message),
-  });
+    onError: (e: { message: string }) => toast.error(e.message),
+  };
+  const create = trpc.referrals.create.useMutation(done);
+  // An edited draft is saved in place: still a draft, or filed now.
+  const update = trpc.referrals.updateDraft.useMutation(done);
+  const isPending = create.isPending || update.isPending;
 
   const canSubmit = selectedIds.length > 0 && description.length >= 10;
   // A filed referral needs a title (the parent letter's «Παράπτωμα»); a draft may wait.
@@ -70,7 +91,7 @@ export function ReferralForm({ groups, filerName, locale }: Props) {
   const submit = (isDraft: boolean) => {
     if (!canSubmit || (!isDraft && !canFile)) return;
     startTransition(() => {
-      createReferral({
+      const fields = {
         studentIds: selectedIds,
         title: title.trim() || undefined,
         description,
@@ -80,7 +101,9 @@ export function ReferralForm({ groups, filerName, locale }: Props) {
         extraInfo: extraInfo || undefined,
         recommendations,
         isDraft,
-      });
+      };
+      if (draft) update.mutate({ ...fields, referralId: draft.id });
+      else create.mutate(fields);
     });
   };
 
