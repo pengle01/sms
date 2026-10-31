@@ -7,6 +7,7 @@ export interface RegisterValues {
   email: string;
   role: string;
   staffName: string;
+  chaperoneName: string;
 }
 
 export type RegisterState = { error: string; values: RegisterValues } | null;
@@ -28,5 +29,6 @@ export function registerValues(form: { get(name: string): FormDataEntryValue | n
     email: str("email"),
     role: str("role"),
     staffName: str("staffName"),
+    chaperoneName: str("chaperoneName"),
   };
 }

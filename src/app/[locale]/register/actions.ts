@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { db } from "@/server/db";
 import { isStaffNameAvailable } from "@/server/staffRoster";
+import { loadAvailableChaperoneNames } from "@/server/chaperoneRoster";
 import { allowRegistration } from "@/server/rateLimit";
 import { clientIp } from "@/server/audit";
 import { logger } from "@/server/logger";
@@ -21,19 +22,24 @@ const CLAIMABLE_ROLES: Role[] = REGISTRATION_ROLES;
 // form keeps its fields; only success redirects.
 export async function registerAction(_prev: RegisterState, formData: FormData): Promise<RegisterState> {
   const fail = (error: string): RegisterState => ({ error, values: registerValues(formData) });
-  const firstName = ((formData.get("firstName") as string) ?? "").trim();
-  const lastName = ((formData.get("lastName") as string) ?? "").trim();
-  const name = composeFullName(firstName, lastName);
+  const role = (formData.get("role") as Role) ?? "";
+  // A chaperone picks their name from the school's chaperone list instead of
+  // typing it — that name is what links them to their students.
+  const isChaperone = role === "CHAPERONE";
+  const chaperoneName = ((formData.get("chaperoneName") as string) ?? "").trim();
+  const firstName = isChaperone ? "" : ((formData.get("firstName") as string) ?? "").trim();
+  const lastName = isChaperone ? "" : ((formData.get("lastName") as string) ?? "").trim();
+  const name = isChaperone ? chaperoneName : composeFullName(firstName, lastName);
   const email = ((formData.get("email") as string) ?? "").toLowerCase().trim();
   const password = (formData.get("password") as string) ?? "";
   const confirm = (formData.get("confirmPassword") as string) ?? "";
-  const role = (formData.get("role") as Role) ?? "";
   const staffName = ((formData.get("staffName") as string) ?? "").trim();
   const locale = ((formData.get("locale") as string) ?? "el");
 
   const base = `/${locale}/register`;
 
-  if (!firstName || !lastName || !email || !password) return fail("errorGeneric");
+  if (isChaperone && !chaperoneName) return fail("errorChaperoneNameRequired");
+  if ((!isChaperone && (!firstName || !lastName)) || !email || !password) return fail("errorGeneric");
 
   // Throttled per email (tight) and per IP (wide) — a whole staff room signs up
   // from one NAT address, so the IP alone cannot carry the tight limit. Checked
@@ -67,6 +73,11 @@ export async function registerAction(_prev: RegisterState, formData: FormData): 
     if (existing) return fail("errorStaffNameTaken");
   }
 
+  // Still on the list, and nobody has registered with it since the page loaded.
+  if (isChaperone && !(await loadAvailableChaperoneNames()).includes(chaperoneName)) {
+    return fail("errorChaperoneNameNotFound");
+  }
+
   const existingUser = await db.user.findUnique({ where: { email } });
   if (existingUser) return fail("errorEmailExists");
 
@@ -83,7 +94,7 @@ export async function registerAction(_prev: RegisterState, formData: FormData): 
     });
   } else {
     await db.user.create({
-      data: { firstName, lastName, name, email, passwordHash, role, isActive: false },
+      data: { firstName: firstName || null, lastName: lastName || null, name, email, passwordHash, role, isActive: false },
     });
   }
 

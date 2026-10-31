@@ -30,8 +30,7 @@ export default async function AdminPortalLayout({
   const pendingClaimsCount = await Promise.all([
     db.user.count({ where: { isActive: false, role: { in: REGISTRATION_ROLES } } }),
     db.teacherClaim.count({ where: { status: "PENDING", user: { isActive: true } } }),
-    db.chaperoneRequest.count({ where: { status: "PENDING" } }),
-  ]).then(([u, t, c]) => u + t + c);
+  ]).then(([u, t]) => u + t);
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">

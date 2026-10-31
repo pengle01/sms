@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { UserCheck, UserX, GraduationCap, Undo2, CheckCircle2, XCircle } from "lucide-react";
+import { UserCheck, UserX, Undo2, CheckCircle2, XCircle } from "lucide-react";
 import type { Role } from "@/generated/prisma/client";
 import { fmtDisplayDate } from "@/lib/dates";
 import {
@@ -13,8 +13,6 @@ import {
   rejectRegistrationAction,
   approveTeacherClaimAction,
   rejectTeacherClaimAction,
-  approveChaperoneRequestAction,
-  rejectChaperoneRequestAction,
 } from "./actions";
 
 export interface PendingUser {
@@ -28,6 +26,8 @@ export interface PendingUser {
   posts?: { teacherOf: string[]; headteacherOf: string[]; counselorOf: string[] };
   /** The role those posts need, when it differs from the one they signed up with. */
   roleMismatch?: Role;
+  /** A chaperone sign-up: the students listed under their name (empty = not on the list). */
+  chaperoneStudents?: string[];
 }
 
 export interface PendingClaim {
@@ -38,19 +38,9 @@ export interface PendingClaim {
   createdAt: string;
 }
 
-export interface PendingChaperone {
-  id: string;
-  name: string;
-  email: string;
-  note?: string;
-  students: { id: string; name: string }[];
-  createdAt: string;
-}
-
 type AnyItem =
   | { kind: "reg"; data: PendingUser }
-  | { kind: "claim"; data: PendingClaim }
-  | { kind: "chaperone"; data: PendingChaperone };
+  | { kind: "claim"; data: PendingClaim };
 
 interface Toast {
   id: string;
@@ -63,16 +53,14 @@ const UNDO_MS = 5000;
 interface Props {
   registrations: PendingUser[];
   teacherClaims: PendingClaim[];
-  chaperoneRequests: PendingChaperone[];
 }
 
-export function RequestsList({ registrations: initRegs, teacherClaims: initClaims, chaperoneRequests: initChaperones }: Props) {
+export function RequestsList({ registrations: initRegs, teacherClaims: initClaims }: Props) {
   const t = useTranslations("adminClaims");
   const tRoles = useTranslations("roles");
   const router = useRouter();
   const [regs, setRegs] = useState(initRegs);
   const [claims, setClaims] = useState(initClaims);
-  const [chaperones, setChaperones] = useState(initChaperones);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -86,10 +74,6 @@ export function RequestsList({ registrations: initRegs, teacherClaims: initClaim
   useEffect(() => {
     setClaims(initClaims.filter((c) => !pendingIds.current.has(c.id)));
   }, [initClaims]);
-
-  useEffect(() => {
-    setChaperones(initChaperones.filter((c) => !pendingIds.current.has(c.id)));
-  }, [initChaperones]);
 
   function schedule(id: string, label: string, approved: boolean, commit: () => Promise<void>, restore: () => void) {
     pendingIds.current.add(id);
@@ -153,26 +137,9 @@ export function RequestsList({ registrations: initRegs, teacherClaims: initClaim
     );
   }
 
-  function approveChaperone(item: PendingChaperone) {
-    setChaperones((prev) => prev.filter((c) => c.id !== item.id));
-    schedule(item.id, t("approvedName", { name: item.name }), true,
-      () => approveChaperoneRequestAction(item.id),
-      () => setChaperones((prev) => [...prev, item].sort((a, b) => a.createdAt.localeCompare(b.createdAt))),
-    );
-  }
-
-  function rejectChaperone(item: PendingChaperone) {
-    setChaperones((prev) => prev.filter((c) => c.id !== item.id));
-    schedule(item.id, t("rejectedName", { name: item.name }), false,
-      () => rejectChaperoneRequestAction(item.id),
-      () => setChaperones((prev) => [...prev, item].sort((a, b) => a.createdAt.localeCompare(b.createdAt))),
-    );
-  }
-
   const allItems: AnyItem[] = [
     ...regs.map((data) => ({ kind: "reg" as const, data })),
     ...claims.map((data) => ({ kind: "claim" as const, data })),
-    ...chaperones.map((data) => ({ kind: "chaperone" as const, data })),
   ].sort((a, b) => a.data.createdAt.localeCompare(b.data.createdAt));
 
   return (
@@ -213,6 +180,13 @@ export function RequestsList({ registrations: initRegs, teacherClaims: initClaim
                           ].filter(Boolean).join(" · ")}
                         </p>
                       )}
+                      {item.chaperoneStudents && (
+                        <p className={`text-xs mt-1.5 ${item.chaperoneStudents.length ? "text-slate-600" : "font-medium text-amber-700"}`}>
+                          {item.chaperoneStudents.length
+                            ? t("chaperoneListed", { students: item.chaperoneStudents.join(", ") })
+                            : t("chaperoneNotListed")}
+                        </p>
+                      )}
                       {item.roleMismatch && (
                         <p className="text-xs font-medium text-amber-700 mt-1">
                           {t("roleMismatch", { role: tRoles.has(item.roleMismatch) ? tRoles(item.roleMismatch) : item.roleMismatch })}
@@ -231,57 +205,24 @@ export function RequestsList({ registrations: initRegs, teacherClaims: initClaim
                 );
               }
 
-              if (entry.kind === "claim") {
-                const item = entry.data;
-                return (
-                  <div key={item.id} className="py-4 flex flex-col sm:flex-row sm:items-center gap-4">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-slate-900">{item.name || "—"}</p>
-                      <p className="text-sm text-slate-500">{item.email}</p>
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <Badge variant="outline" className="text-xs">{tRoles("TEACHER")}</Badge>
-                        <Badge className="text-xs bg-blue-50 text-blue-700 border-blue-200 font-mono">{item.staffName}</Badge>
-                        <span className="text-xs text-slate-400">{fmtDisplayDate(new Date(item.createdAt))}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <Button size="sm" onClick={() => approveClaim(item)} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5">
-                        <UserCheck className="w-3.5 h-3.5" /> {t("approve")}
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => rejectClaim(item)} className="border-red-200 text-red-600 hover:bg-red-50 gap-1.5">
-                        <UserX className="w-3.5 h-3.5" /> {t("reject")}
-                      </Button>
-                    </div>
-                  </div>
-                );
-              }
-
-              // chaperone
+              // teacher claim
               const item = entry.data;
               return (
-                <div key={item.id} className="py-4 flex flex-col sm:flex-row sm:items-start gap-4">
-                  <div className="flex-1 min-w-0 space-y-1.5">
+                <div key={item.id} className="py-4 flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div className="flex-1 min-w-0">
                     <p className="font-medium text-slate-900">{item.name || "—"}</p>
                     <p className="text-sm text-slate-500">{item.email}</p>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge variant="outline" className="text-xs">{tRoles("CHAPERONE")}</Badge>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <Badge variant="outline" className="text-xs">{tRoles("TEACHER")}</Badge>
+                      <Badge className="text-xs bg-blue-50 text-blue-700 border-blue-200 font-mono">{item.staffName}</Badge>
                       <span className="text-xs text-slate-400">{fmtDisplayDate(new Date(item.createdAt))}</span>
-                    </div>
-                    {item.note && (
-                      <p className="text-sm text-slate-600 italic">"{item.note}"</p>
-                    )}
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <GraduationCap className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                      {item.students.map((s) => (
-                        <Badge key={s.id} variant="outline" className="text-xs">{s.name}</Badge>
-                      ))}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <Button size="sm" onClick={() => approveChaperone(item)} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5">
+                    <Button size="sm" onClick={() => approveClaim(item)} className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5">
                       <UserCheck className="w-3.5 h-3.5" /> {t("approve")}
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => rejectChaperone(item)} className="border-red-200 text-red-600 hover:bg-red-50 gap-1.5">
+                    <Button variant="outline" size="sm" onClick={() => rejectClaim(item)} className="border-red-200 text-red-600 hover:bg-red-50 gap-1.5">
                       <UserX className="w-3.5 h-3.5" /> {t("reject")}
                     </Button>
                   </div>

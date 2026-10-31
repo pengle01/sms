@@ -24,11 +24,19 @@ describe("sign-up form", () => {
       email: "m@example.com",
       role: "TEACHER",
       staffName: "ΠΑΠΑΔΟΠΟΥΛΟΥ Μ.",
+      chaperoneName: "",
     });
     expect(JSON.stringify(v)).not.toContain("secret");
   });
 
+  it("gives back a chaperone's picked name", () => {
+    const fd = new FormData();
+    fd.set("role", "CHAPERONE");
+    fd.set("chaperoneName", "Παπάς Γιώργος");
+    expect(registerValues(fd)).toMatchObject({ role: "CHAPERONE", chaperoneName: "Παπάς Γιώργος", firstName: "" });
+  });
+
   it("returns empty strings for missing fields", () => {
-    expect(registerValues(new FormData())).toEqual({ firstName: "", lastName: "", email: "", role: "", staffName: "" });
+    expect(registerValues(new FormData())).toEqual({ firstName: "", lastName: "", email: "", role: "", staffName: "", chaperoneName: "" });
   });
 });

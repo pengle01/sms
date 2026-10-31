@@ -7,7 +7,8 @@ import { RequestsList } from "./RequestsList";
 import { normalizeStaffName } from "@/lib/staffLink";
 import { roleNeededFor, roleFitsPosts } from "@/lib/homegroupStaff";
 import { expectedSignupRole } from "@/lib/staffRole";
-import type { PendingUser, PendingClaim, PendingChaperone } from "./RequestsList";
+import type { PendingUser, PendingClaim } from "./RequestsList";
+import { chaperoneNameKey } from "@/lib/chaperone";
 
 export default async function ClaimsPage({
   params,
@@ -21,7 +22,7 @@ export default async function ClaimsPage({
     redirect(`/${locale}/login/staff`);
   }
 
-  const [rawUsers, rawClaims, rawChaperones] = await Promise.all([
+  const [rawUsers, rawClaims, chaperoneList] = await Promise.all([
     db.user.findMany({
       // Sign-ups only — a deactivated student or parent is inactive too, but is
       // not a request (see isPendingRegistration).
@@ -34,15 +35,10 @@ export default async function ClaimsPage({
       include: { user: true },
       orderBy: { createdAt: "asc" },
     }),
-    db.chaperoneRequest.findMany({
-      where: { status: "PENDING" },
-      include: {
-        user: true,
-        students: {
-          include: { studentProfile: { include: { user: { select: { name: true } } } } },
-        },
-      },
-      orderBy: { createdAt: "asc" },
+    // Who is on the chaperone list, by name — shown on a chaperone's sign-up.
+    db.chaperoneListEntry.findMany({
+      select: { nameKey: true, student: { select: { user: { select: { name: true } }, group: { select: { name: true } } } } },
+      orderBy: { student: { user: { name: "asc" } } },
     }),
   ]);
 
@@ -70,6 +66,12 @@ export default async function ClaimsPage({
     ]),
   );
 
+  const listedByName = new Map<string, string[]>();
+  for (const e of chaperoneList) {
+    const label = [e.student.user.name ?? "—", e.student.group?.name].filter(Boolean).join(" ");
+    listedByName.set(e.nameKey, [...(listedByName.get(e.nameKey) ?? []), label]);
+  }
+
   const registrations: PendingUser[] = rawUsers.map((u) => ({
     id: u.id,
     name: u.name ?? "",
@@ -77,6 +79,7 @@ export default async function ClaimsPage({
     role: u.role as Role,
     staffName: u.teacherClaim?.staffName,
     createdAt: u.createdAt.toISOString(),
+    ...(u.role === "CHAPERONE" ? { chaperoneStudents: listedByName.get(chaperoneNameKey(u.name)) ?? [] } : {}),
     ...(() => {
       const posts = u.teacherClaim ? postsByName.get(normalizeStaffName(u.teacherClaim.staffName)) : undefined;
       if (!posts) return {};
@@ -99,20 +102,10 @@ export default async function ClaimsPage({
     createdAt: c.createdAt.toISOString(),
   }));
 
-  const chaperoneRequests: PendingChaperone[] = rawChaperones.map((r) => ({
-    id: r.id,
-    name: r.user?.name ?? "",
-    email: r.user.email,
-    note: r.note ?? undefined,
-    students: r.students.map((s) => ({ id: s.studentProfile.id, name: s.studentProfile.user?.name ?? "—" })),
-    createdAt: r.createdAt.toISOString(),
-  }));
-
   return (
     <RequestsList
       registrations={registrations}
       teacherClaims={teacherClaims}
-      chaperoneRequests={chaperoneRequests}
     />
   );
 }

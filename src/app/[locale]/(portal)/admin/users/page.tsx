@@ -14,6 +14,7 @@ import { SuggestInput } from "@/components/SuggestInput";
 import { suggestionList } from "@/lib/textSearch";
 import { pickQueryString } from "@/lib/listFilters";
 import { STAFF_ROLES } from "@/lib/rbac";
+import { chaperoneNameKey } from "@/lib/chaperone";
 import {
   type StaffRow,
   STAFF_KEYS,
@@ -50,6 +51,7 @@ const ROLE_PILLS: Role[] = [
   "TEACHER",
   "SCHOOL_ADMIN",
   "SUPER_ADMIN",
+  "CHAPERONE",
 ];
 
 const POST_PILLS = ["specialEd", "ddk", "subCoord", "itMaint", "itManager", "parentMsg", "homeroom", "extraAdmin"] as const;
@@ -95,7 +97,7 @@ export default async function UsersPage({
     q: (raw.q ?? "").trim(),
   };
 
-  const [profiles, accountsWithoutProfile, slotCounts] = await Promise.all([
+  const [profiles, accountsWithoutProfile, slotCounts, chaperones, chaperoneList] = await Promise.all([
     db.staffProfile.findMany({
       include: {
         user: {
@@ -122,11 +124,27 @@ export default async function UsersPage({
     // Lesson load by name. NOT by staffId: that is only stamped at claim
     // approval, so a relation count reads 0 for everyone who has not signed up.
     db.timetableSlot.groupBy({ by: ["staffName"], _count: true }),
+    // Chaperones (Συνοδοί) — listed too, with the students on the school's
+    // chaperone list under their name.
+    db.user.findMany({
+      where: { role: "CHAPERONE" },
+      select: { id: true, name: true, nameEl: true, email: true, role: true, isActive: true, extraRoles: true },
+      orderBy: { name: "asc" },
+    }),
+    db.chaperoneListEntry.findMany({
+      select: { nameKey: true, student: { select: { user: { select: { name: true } }, group: { select: { name: true } } } } },
+      orderBy: { student: { user: { name: "asc" } } },
+    }),
   ]);
+  const chaperoneStudents = new Map<string, string[]>();
+  for (const e of chaperoneList) {
+    const label = [e.student.user.name ?? "—", e.student.group?.name].filter(Boolean).join(" ");
+    chaperoneStudents.set(e.nameKey, [...(chaperoneStudents.get(e.nameKey) ?? []), label]);
+  }
 
   const lessons = lessonsByName(slotCounts);
 
-  const roster: StaffRow[] = [
+  const roster: (StaffRow & { students?: string[] })[] = [
     ...profiles.map((sp) => ({
       userId: sp.userId,
       staffProfileId: sp.id,
@@ -151,7 +169,7 @@ export default async function UsersPage({
       ],
       lessons: lessons.get(sp.scheduleName ?? "") ?? 0,
     })),
-    ...accountsWithoutProfile.map((u) => ({
+    ...[...accountsWithoutProfile, ...chaperones].map((u) => ({
       userId: u.id,
       staffProfileId: null,
       scheduleName: null,
@@ -171,6 +189,7 @@ export default async function UsersPage({
       plannedRole: null,
       homerooms: [],
       lessons: 0,
+      ...(u.role === "CHAPERONE" ? { students: chaperoneStudents.get(chaperoneNameKey(u.name)) ?? [] } : {}),
     })),
   ];
 
@@ -411,6 +430,12 @@ export default async function UsersPage({
                         {r.userId && !r.isActive && (
                           <span className="text-[11px] text-slate-400">{t("inactive")}</span>
                         )}
+                        {/* A chaperone: the students listed under their name */}
+                        {r.students && (
+                          <p className={cn("text-xs mt-0.5", r.students.length ? "text-slate-500" : "text-amber-600")}>
+                            {r.students.length ? r.students.join(", ") : t("chaperoneNoStudents")}
+                          </p>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
@@ -460,7 +485,7 @@ export default async function UsersPage({
                         ) : <span className="text-slate-300 text-xs">—</span>}
                       </td>
                       <td className="px-4 py-3">
-                        {!r.staffProfileId && (
+                        {!r.staffProfileId && r.role !== "CHAPERONE" && (
                           <span className="text-xs text-slate-400">{t("noProfile")}</span>
                         )}
                         {r.staffProfileId && (

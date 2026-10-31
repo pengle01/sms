@@ -37,10 +37,11 @@ export async function GET(
 
   const staff = auth.roles.some((r) => isStaff(r));
   // A notice's attachment inherits that notice's audience; an announcement is
-  // staff-internal (management posts it, educators see it on their dashboard).
+  // for staff and chaperones (educators see it on their dashboard, chaperones
+  // in «Ανακοινώσεις ημέρας»).
   // A file attached to nothing is still reachable by whoever uploaded it.
   const viaNotice = file.notices.some((n) => staff || !n.staffOnly);
-  const viaAnnouncement = file.announcements.length > 0 && staff;
+  const viaAnnouncement = file.announcements.length > 0 && (staff || auth.roles.includes("CHAPERONE"));
   // A staff message is addressed: only the people it was sent to, plus whoever
   // sent it, may open what it carried.
   const viaNotification = file.notifications.some(

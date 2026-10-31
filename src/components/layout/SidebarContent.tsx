@@ -9,7 +9,7 @@ import type { Role } from "@/generated/prisma/client";
 import {
   LayoutDashboard, ClipboardList, AlertTriangle, BookOpen,
   Calendar, CalendarRange, FileText, Bell, Users, Settings, Shield,
-  GraduationCap, Home, Backpack, Plus, BookMarked, ShieldAlert,
+  GraduationCap, Home, Backpack, BookMarked, ShieldAlert,
   CircleUser, BellRing, LogOut, ArrowLeftRight, BarChart3, Award, MessageSquare,
   ScrollText, Send, Database, Megaphone, Wrench, MapPin, NotebookPen,
 } from "lucide-react";
@@ -87,8 +87,9 @@ const NAV_ITEMS: NavItem[] = [
   { key: "noticeboard",  href: "noticeboard",       icon: Bell,            roles: ["PARENT"] },
 
   // ── Chaperone portal ─────────────────────────────────────────────────
+  // The parents' menu minus messages; the day's announcements are on «Οι μαθητές μου».
   { key: "myStudents",   href: "students",          icon: GraduationCap,   roles: ["CHAPERONE"] },
-  { key: "newRequest",   href: "request",           icon: Plus,            roles: ["CHAPERONE"] },
+  { key: "noticeboard",  href: "noticeboard",       icon: Bell,            roles: ["CHAPERONE"] },
 ];
 
 interface SidebarContentProps {

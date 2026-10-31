@@ -89,15 +89,3 @@ export async function rejectTeacherClaimAction(claimId: string) {
   await db.teacherClaim.update({ where: { id: claimId, status: "PENDING" }, data: { status: "REJECTED" } });
   revalidatePath("/", "layout");
 }
-
-export async function approveChaperoneRequestAction(requestId: string) {
-  await requireAdmin();
-  await db.chaperoneRequest.update({ where: { id: requestId, status: "PENDING" }, data: { status: "APPROVED" } });
-  revalidatePath("/", "layout");
-}
-
-export async function rejectChaperoneRequestAction(requestId: string) {
-  await requireAdmin();
-  await db.chaperoneRequest.update({ where: { id: requestId, status: "PENDING" }, data: { status: "REJECTED" } });
-  revalidatePath("/", "layout");
-}

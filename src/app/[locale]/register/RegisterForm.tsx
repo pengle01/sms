@@ -19,6 +19,8 @@ interface RegisterFormProps {
   error?: string;
   success?: boolean;
   staffNames: string[];
+  /** Names on the school's chaperone list without an account yet. */
+  chaperoneNames: string[];
 }
 
 // Roles offered at sign-up, with their message key. Educators (everything up to
@@ -45,7 +47,7 @@ const ROLE_LABEL_KEY = {
 // by importing it rather than re-listing (rbac.ts is client-safe: type-only import).
 const CLAIM_ROLES: string[] = SELF_REGISTER_EDUCATOR_ROLES;
 
-export function RegisterForm({ locale, error, success, staffNames }: RegisterFormProps) {
+export function RegisterForm({ locale, error, success, staffNames, chaperoneNames }: RegisterFormProps) {
   const t = useTranslations("register");
   const tAuth = useTranslations("auth");
   // Errors come back as state with what was typed, so a refused sign-up keeps
@@ -55,6 +57,9 @@ export function RegisterForm({ locale, error, success, staffNames }: RegisterFor
   const shownError = state?.error ?? error;
   const [selectedRole, setSelectedRole] = useState<string>("");
   const [staffName, setStaffName] = useState("");
+  const [chaperoneName, setChaperoneName] = useState("");
+  // A chaperone picks their name from the school's list instead of typing it.
+  const isChaperone = selectedRole === "CHAPERONE";
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const mismatch = !passwordsMatch(password, confirm);
@@ -68,6 +73,7 @@ export function RegisterForm({ locale, error, success, staffNames }: RegisterFor
     if (state) {
       setSelectedRole(state.values.role);
       setStaffName(state.values.staffName);
+      setChaperoneName(state.values.chaperoneName);
     }
   }
 
@@ -106,6 +112,7 @@ export function RegisterForm({ locale, error, success, staffNames }: RegisterFor
       <form action={formAction} className="space-y-4">
         <input type="hidden" name="locale" value={locale} />
 
+        {!isChaperone && (
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label htmlFor="firstName" className="text-lime-200 text-sm">{t("firstName")}</Label>
@@ -122,6 +129,7 @@ export function RegisterForm({ locale, error, success, staffNames }: RegisterFor
             />
           </div>
         </div>
+        )}
 
         <div className="space-y-1.5">
           <Label htmlFor="email" className="text-lime-200 text-sm">{t("email")}</Label>
@@ -210,7 +218,31 @@ export function RegisterForm({ locale, error, success, staffNames }: RegisterFor
           </div>
         )}
 
-        <Button type="submit" disabled={pending} className="w-full h-11 bg-emerald-500 hover:bg-emerald-400 text-white font-semibold">
+        {isChaperone && (
+          <div className="space-y-1.5">
+            <Label htmlFor="chaperoneName" className="text-lime-200 text-sm">{t("chaperoneName")}</Label>
+            {chaperoneNames.length === 0 ? (
+              <p className="text-sm text-amber-300/80 px-1">{t("chaperoneNameNone")}</p>
+            ) : (
+              <>
+                <input type="hidden" name="chaperoneName" value={chaperoneName} />
+                <Select value={chaperoneName} onValueChange={(v) => setChaperoneName(v ?? "")}>
+                  <SelectTrigger id="chaperoneName" className="w-full h-10 bg-white/10 border-white/20 text-white data-placeholder:text-lime-300/40 focus-visible:ring-emerald-400">
+                    <SelectValue placeholder={t("chaperoneNamePlaceholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {chaperoneNames.map((n) => (
+                      <SelectItem key={n} value={n}>{n}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-lime-300/60 px-1">{t("chaperoneNameHint")}</p>
+              </>
+            )}
+          </div>
+        )}
+
+        <Button type="submit" disabled={pending || (isChaperone && !chaperoneName)} className="w-full h-11 bg-emerald-500 hover:bg-emerald-400 text-white font-semibold">
           {pending ? t("submitting") : t("submit")}
         </Button>
       </form>

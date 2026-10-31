@@ -1,6 +1,5 @@
 import { db } from "@/server/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/server/auth";
+import { guardianAccess } from "@/server/guardianAccess";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { GradeReport } from "@/components/grades/GradeReport";
@@ -11,23 +10,16 @@ export default async function ParentChildGradesPage({
   params: Promise<{ locale: string; studentId: string }>;
 }) {
   const { locale, studentId } = await params;
-  const session = await getServerSession(authOptions);
-  if (!session) redirect(`/${locale}/login/parent`);
-
-  // Verify parent is linked to this student
-  const parent = await db.parentProfile.findUnique({
-    where: { userId: session.user.id },
-    include: { children: true },
-  });
-  if (!parent || !parent.children.some((c) => c.studentProfileId === studentId)) {
-    redirect(`/${locale}/parent/children`);
-  }
+  // A parent's linked child, or a chaperone's approved student — shared by
+  // both portals (the chaperone routes re-export this page).
+  const { home, studentIds } = await guardianAccess(locale);
+  if (!studentIds.has(studentId)) redirect(home);
 
   const student = await db.studentProfile.findUnique({
     where: { id: studentId },
     include: { user: { select: { name: true } }, group: true },
   });
-  if (!student) redirect(`/${locale}/parent/children`);
+  if (!student) redirect(home);
 
   const t = await getTranslations("grades");
 

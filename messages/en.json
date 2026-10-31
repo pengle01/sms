@@ -730,7 +730,13 @@
     "errorStaffNameTaken": "That name has already been claimed by another account.",
     "errorGeneric": "Registration failed. Please try again.",
     "errorTooMany": "Too many registration attempts. Please try again in an hour.",
-    "submitting": "Sending…"
+    "submitting": "Sending…",
+    "chaperoneName": "Your name on the chaperone list",
+    "chaperoneNamePlaceholder": "Choose your name…",
+    "chaperoneNameHint": "You will see the students listed under your name.",
+    "chaperoneNameNone": "No names are available on the chaperone list. Please contact the school.",
+    "errorChaperoneNameRequired": "Choose your name from the chaperone list.",
+    "errorChaperoneNameNotFound": "That name is no longer available on the chaperone list. Please contact the school."
   },
   "groups": {
     "deleteGroup": "Delete group",
@@ -1497,15 +1503,6 @@
     "linkGrades": "Grades",
     "linkTests": "Tests"
   },
-  "chaperoneActivities": {
-    "title": "My Activities",
-    "subtitle": "Activities you are assigned to escort.",
-    "emptyTitle": "You have no assigned activities yet.",
-    "emptyHint": "An administrator will assign you to an activity when needed.",
-    "periods": "Periods {from}–{to}",
-    "studentsCount": "{count, plural, one {# student} other {# students}}",
-    "inactive": "Inactive"
-  },
   "adminUsers": {
     "title": "Staff",
     "rosterSummary": "{total} people · {linked} with an account",
@@ -1662,7 +1659,8 @@
       "history": "has history (attendance, referrals, tests, …)",
       "designation": "has a special designation (e.g. coordinator)",
       "notFound": "not found"
-    }
+    },
+    "chaperoneNoStudents": "No students on the chaperone list"
   },
   "adminStudents": {
     "title": "Students",
@@ -2096,7 +2094,9 @@
     "postTeacher": "Homeroom teacher: {groups}",
     "postHeadteacher": "Homeroom deputy (ΒΔ): {groups}",
     "postCounselor": "Counselor (ΣΕΑ): {groups}",
-    "roleMismatch": "Expected role: “{role}” — the user chose another. After approving, you can change the role on the user's page."
+    "roleMismatch": "Expected role: “{role}” — the user chose another. After approving, you can change the role on the user's page.",
+    "chaperoneListed": "On the chaperone list: {students}",
+    "chaperoneNotListed": "This name is not on the chaperone list — they will see no students."
   },
   "adminNoticeboard": {
     "title": "Noticeboard",
@@ -2620,5 +2620,30 @@
     "remove": "Delete ΔΔΚ",
     "removeConfirm": "Delete all ΔΔΚ points of the activity «{name}»? The activity itself stays.",
     "studentsTitle": "Students awarded ΔΔΚ points"
+  },
+  "chaperone": {
+    "studentsTitle": "My students",
+    "studentsCount": "{count, plural, =0 {No students} one {# student} other {# students}}",
+    "noStudents": "There are no students under the name «{name}» on the school's chaperone list. If you accompany a student, please contact the school."
+  },
+  "chaperoneAdmin": {
+    "title": "Chaperones ({count})",
+    "hint": "Each chaperone picks their name from this list when they create an account, and sees the students listed under it.",
+    "upload": "Upload list",
+    "uploadHint": "An Excel file with one row per chaperone and student: the chaperone's full name («Ονοματεπώνυμο συνοδού», or «Επώνυμο συνοδού» and «Όνομα συνοδού») and the student's «Αρ. Μητρώου». Each upload replaces the whole list.",
+    "err_noFile": "Choose an Excel file.",
+    "err_empty": "The sheet has no rows.",
+    "err_noRegistryColumn": "No «Αρ. Μητρώου» column found.",
+    "err_noNameColumn": "No column with the chaperone's name found (e.g. «Ονοματεπώνυμο συνοδού»).",
+    "err_noneMatched": "No registry number in the file matches a student; the list is unchanged.",
+    "uploaded": "List updated: {chaperones, plural, one {# chaperone} other {# chaperones}}, {students, plural, one {# student} other {# students}}.",
+    "unknownNumbers": "Registry numbers not found: {numbers}",
+    "skippedRows": "{count, plural, one {# row was skipped} other {# rows were skipped}}: the name or registry number is missing.",
+    "noAccount": "no account yet",
+    "accountActive": "account: {email}",
+    "accountPending": "awaiting approval: {email}",
+    "unmatchedTitle": "{count, plural, one {# chaperone account is} other {# chaperone accounts are}} not on the list",
+    "unmatchedHint": "They see no students — e.g. their name changed or was removed in a newer file. Put the name in the Excel file exactly as shown here and upload it again.",
+    "awaitingApproval": "awaiting approval"
   }
 }

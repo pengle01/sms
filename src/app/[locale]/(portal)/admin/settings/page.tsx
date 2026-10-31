@@ -13,6 +13,7 @@ import { getEmailConfig } from "@/lib/email";
 import { getRooms } from "@/server/rooms";
 import { getSpecialEdCodeTables } from "@/server/specialEd";
 import { getTranslations } from "next-intl/server";
+import { ChaperoneListCard } from "./ChaperoneListCard";
 
 export default async function AdminSettingsPage({
   params,
@@ -256,6 +257,11 @@ export default async function AdminSettingsPage({
           <SpecialEdCodesForm problems={specialEdCodes.problems} accommodations={specialEdCodes.accommodations} />
         </CardContent>
       </Card>
+
+      {/* «Συνοδοί»: the uploaded chaperone ↔ student list */}
+      <div className="max-w-2xl">
+        <ChaperoneListCard />
+      </div>
 
       <Card className="max-w-sm">
         <CardHeader className="pb-2">

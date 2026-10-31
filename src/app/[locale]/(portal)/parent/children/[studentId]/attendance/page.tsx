@@ -1,7 +1,6 @@
 import { db } from "@/server/db";
 import { withTaughtCourses } from "@/server/addedLessons";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/server/auth";
+import { guardianAccess } from "@/server/guardianAccess";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,17 +18,10 @@ export default async function ParentChildAttendancePage({
 }) {
   const { locale, studentId } = await params;
   const t = await getTranslations("parentAttendance");
-  const session = await getServerSession(authOptions);
-  if (!session) redirect(`/${locale}/login/parent`);
-
-  // Verify parent is linked to this student
-  const parent = await db.parentProfile.findUnique({
-    where: { userId: session.user.id },
-    include: { children: true },
-  });
-  if (!parent || !parent.children.some((c) => c.studentProfileId === studentId)) {
-    redirect(`/${locale}/parent/children`);
-  }
+  // A parent's linked child, or a chaperone's approved student — shared by
+  // both portals (the chaperone routes re-export this page).
+  const { home, studentIds } = await guardianAccess(locale);
+  if (!studentIds.has(studentId)) redirect(home);
 
   const student = await db.studentProfile.findUnique({
     where: { id: studentId },
@@ -38,7 +30,7 @@ export default async function ParentChildAttendancePage({
       group: true,
     },
   });
-  if (!student) redirect(`/${locale}/parent/children`);
+  if (!student) redirect(home);
 
   const { month: monthStr } = await searchParams;
   const [year, month] = monthStr

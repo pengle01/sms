@@ -317,6 +317,7 @@ model StudentProfile {
   // parent/guardian — the office should review the recipient.
   smsFlagged               Boolean                   @default(false)
   smsFlagReason            String?
+  chaperoneListEntries     ChaperoneListEntry[]
 }
 
 model ParentProfile {
@@ -740,6 +741,24 @@ model TeacherClaim {
 
 // A chaperone requests responsibility for a set of students.
 // Admin approves → chaperone can view those students in their portal.
+// The admin's uploaded list of chaperones (Συνοδοί): one row per chaperone
+// name and student. A chaperone account sees the students listed under its
+// own name (nameKey — accents, case, spacing and word order ignored). Each
+// upload replaces the whole list.
+model ChaperoneListEntry {
+  id        String         @id @default(cuid())
+  name      String
+  nameKey   String
+  studentId String
+  student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  createdAt DateTime       @default(now())
+
+  @@unique([nameKey, studentId])
+  @@index([nameKey])
+}
+
+// Legacy: chaperones once picked students and the admin approved each request.
+// Access now comes from ChaperoneListEntry; kept so old rows are not dropped.
 model ChaperoneRequest {
   id        String                    @id @default(cuid())
   userId    String

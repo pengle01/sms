@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/server/auth";
 import { getPortalForRole } from "@/lib/rbac";
 import { loadAvailableStaffNames } from "@/server/staffRoster";
+import { loadAvailableChaperoneNames } from "@/server/chaperoneRoster";
 import type { Role } from "@/generated/prisma/client";
 import { RegisterForm } from "./RegisterForm";
 
@@ -22,7 +23,7 @@ export default async function RegisterPage({
     redirect(`/${locale}/${portal}`);
   }
 
-  const staffNames = await loadAvailableStaffNames();
+  const [staffNames, chaperoneNames] = await Promise.all([loadAvailableStaffNames(), loadAvailableChaperoneNames()]);
 
   return (
     <div
@@ -45,6 +46,7 @@ export default async function RegisterPage({
           error={error}
           success={success === "1"}
           staffNames={staffNames}
+          chaperoneNames={chaperoneNames}
         />
       </div>
     </div>
