@@ -320,6 +320,7 @@ export default async function HomegroupPage({
               <tr className="border-b border-slate-100 text-xs font-semibold text-slate-400 uppercase tracking-wide">
                 <th className="text-left px-5 py-3">{t("colStudent")}</th>
                 <th className="text-center px-3 py-3">{t("colAbsences")}</th>
+                <th className="text-center px-3 py-3" title={t("activityAbsencesHint")}>{t("colActivityAbsences")}</th>
                 <th className="text-center px-3 py-3">{t("colPartial")}</th>
                 <th className="text-center px-3 py-3">{t("colLates")}</th>
                 <th className="text-center px-3 py-3">{t("colReferrals")}</th>
@@ -336,6 +337,14 @@ export default async function HomegroupPage({
                     </Link>
                   </td>
                   <NumCell value={s.totals.absences} warn={5} alert={10} />
+                  {/* Of the absences, those while on an activity — informative, never a warning */}
+                  <td className="px-3 py-3 text-center tabular-nums">
+                    {s.totals.activityAbsences > 0 ? (
+                      <span className="text-violet-700 font-medium">{s.totals.activityAbsences}</span>
+                    ) : (
+                      <span className="text-slate-200">—</span>
+                    )}
+                  </td>
                   <NumCell value={s.totals.partialDays} warn={2} alert={3} />
                   <NumCell value={s.totals.lates} warn={4} alert={8} />
                   <NumCell value={s.totals.referrals} warn={1} alert={3} tone="orange" />
@@ -345,7 +354,7 @@ export default async function HomegroupPage({
               ))}
               {students.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-5 py-10 text-center text-slate-400">{t("noStudents")}</td>
+                  <td colSpan={8} className="px-5 py-10 text-center text-slate-400">{t("noStudents")}</td>
                 </tr>
               )}
             </tbody>

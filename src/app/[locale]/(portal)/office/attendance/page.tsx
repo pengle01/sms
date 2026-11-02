@@ -9,6 +9,8 @@ import { ClipboardList, Download, FileSpreadsheet, Printer, CheckCircle2, AlertC
 import { utcMidnight, localDateStr, toAppTimeline, fromAppTimeline, fmtDisplayDate } from "@/lib/dates";
 import { studentNameOrIdWhere } from "@/lib/studentSearch";
 import { markerDetails, MARKER_INCLUDE, type MarkerDetail } from "@/server/attendanceReport";
+import { activityIndexFor } from "@/server/activityAbsences";
+import { activityForAbsence, type ActivityIndex } from "@/lib/activities";
 import { ReferralTabs } from "@/components/referrals/ReferralTabs";
 import { toggleWaivedAction } from "./actions";
 import { AttendanceFilters } from "./Filters";
@@ -102,7 +104,7 @@ export default async function OfficeAttendancePage({
 
   // Which lesson, who took it, and — when not the lesson's own teacher — how
   // and in whose place (substitute, deputy, ad-hoc cover, homegroup cover).
-  const markers = await markerDetails(absences);
+  const [markers, activities] = await Promise.all([markerDetails(absences), activityIndexFor(absences)]);
 
   // Group rows per FILING day (oldest first); inside a day keep them sorted
   // by the attendance date they refer to, then student/period.
@@ -220,6 +222,14 @@ export default async function OfficeAttendancePage({
                     {t("exitPermit")}
                   </Badge>
                 )}
+                {(() => {
+                  const activity = a.status === "ABSENT" ? activityOf(activities, a) : null;
+                  return activity ? (
+                    <Badge variant="outline" className="ml-1.5 bg-violet-50 text-violet-700 border-violet-200" title={activity}>
+                      {t("activity")}
+                    </Badge>
+                  ) : null;
+                })()}
                 {a.waived && (
                   <Badge variant="outline" className="ml-1.5 bg-slate-100 text-slate-500 border-slate-300">
                     {t("waived")}
@@ -394,7 +404,10 @@ export default async function OfficeAttendancePage({
       : Promise.resolve(null),
   ]);
 
-  const eraseMarkers = await markerDetails(eraseStudent?.attendance ?? []);
+  const [eraseMarkers, eraseActivities] = await Promise.all([
+    markerDetails(eraseStudent?.attendance ?? []),
+    activityIndexFor(eraseStudent?.attendance ?? []),
+  ]);
 
   const backUrl = `/${locale}/office/attendance?${new URLSearchParams({
     ...(eraseQuery ? { sq: eraseQuery } : {}),
@@ -470,6 +483,11 @@ export default async function OfficeAttendancePage({
                   <span className="truncate">{lessonText(eraseMarkers.get(a.id))}</span>
                   <span className="block text-xs text-slate-500">{markerCell(eraseMarkers.get(a.id))}</span>
                 </span>
+                {activityOf(eraseActivities, a) && (
+                  <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200" title={activityOf(eraseActivities, a)!}>
+                    {t("activity")}
+                  </Badge>
+                )}
                 {a.waived ? (
                   <Badge variant="outline" className="bg-slate-100 text-slate-500 border-slate-300">{t("waived")}</Badge>
                 ) : (
@@ -525,4 +543,12 @@ export default async function OfficeAttendancePage({
       />
     </div>
   );
+}
+
+/** The activity the student was on during this absence, if any. */
+function activityOf(
+  index: ActivityIndex,
+  a: { studentId: string; date: Date; intercalaryPeriod: number | null; timetableSlot: { period: number } | null },
+): string | null {
+  return activityForAbsence(index, a.studentId, a.date.toISOString().slice(0, 10), a.timetableSlot?.period ?? a.intercalaryPeriod);
 }

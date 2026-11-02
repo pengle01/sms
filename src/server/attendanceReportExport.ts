@@ -28,15 +28,15 @@ export async function attendanceReportXlsx(req: NextRequest, locale: string): Pr
 
   const wb = XLSX.utils.book_new();
   const studentSheet = XLSX.utils.aoa_to_sheet([
-    [t("colId"), t("colStudent"), t("colGroup"), t("colDays"), t("colAbsences"), t("colAuto"), t("colLate"), t("colPermit"), t("colWaived")],
-    ...students.map((s) => [s.studentId, s.studentName, s.groupName, s.days, s.absences, s.autoAbsent, s.late, s.withPermit, s.waived]),
+    [t("colId"), t("colStudent"), t("colGroup"), t("colDays"), t("colAbsences"), t("colAuto"), t("colLate"), t("colPermit"), t("colActivity"), t("colWaived")],
+    ...students.map((s) => [s.studentId, s.studentName, s.groupName, s.days, s.absences, s.autoAbsent, s.late, s.withPermit, s.withActivity, s.waived]),
   ]);
   studentSheet["!cols"] = [{ wch: 12 }, { wch: 32 }, { wch: 10 }, { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
   XLSX.utils.book_append_sheet(wb, studentSheet, t("sheetStudents"));
 
   const groupSheet = XLSX.utils.aoa_to_sheet([
-    [t("colGroup"), t("colStudents"), t("colAbsences"), t("colLate"), t("colPermit")],
-    ...groups.map((g) => [g.groupName ?? "—", g.students, g.absences, g.late, g.withPermit]),
+    [t("colGroup"), t("colStudents"), t("colAbsences"), t("colLate"), t("colPermit"), t("colActivity")],
+    ...groups.map((g) => [g.groupName ?? "—", g.students, g.absences, g.late, g.withPermit, g.withActivity]),
   ]);
   groupSheet["!cols"] = [{ wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }];
   XLSX.utils.book_append_sheet(wb, groupSheet, t("sheetGroups"));

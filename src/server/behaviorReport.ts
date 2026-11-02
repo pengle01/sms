@@ -8,6 +8,8 @@ import { getSchoolYear } from "@/lib/schoolConfig";
 import { termOf } from "@/lib/schoolYear";
 import { GRADE_PASS } from "@/lib/grades";
 import { weekMonday, weekRange } from "@/lib/behaviorWeek";
+import { activityForAbsence } from "@/lib/activities";
+import { activityIndexFor } from "@/server/activityAbsences";
 import {
   analyzeStudent,
   riskScore,
@@ -89,6 +91,7 @@ function isoWeekday(d: Date): number {
 
 export type BehaviorTotals = {
   absences: number; // ABSENT periods (incl. auto), excl. waived/excused
+  activityAbsences: number; // of those, periods the student was on an activity
   partialDays: number; // dates mixing an absence with a present period
   lates: number;
   referrals: number;
@@ -184,6 +187,17 @@ export async function loadGroupBehavior(groupId: string, since: Date | null, unt
     }
   }
 
+  // Absences while on an activity (matched by student, date and period).
+  const absentRows = attendance.filter((a) => !a.waived && (a.status === "ABSENT" || a.isAutoAbsent));
+  const activities = await activityIndexFor(absentRows);
+  const activityAbsences = new Map<string, number>();
+  for (const a of absentRows) {
+    const period = a.timetableSlot?.period ?? a.intercalaryPeriod ?? null;
+    if (activityForAbsence(activities, a.studentId, a.date.toISOString().slice(0, 10), period)) {
+      activityAbsences.set(a.studentId, (activityAbsences.get(a.studentId) ?? 0) + 1);
+    }
+  }
+
   const referralMap = new Map(referralCounts.map((r) => [r.studentId, r._count._all]));
   const lowGradeMap = new Map(lowGradeCounts.map((g) => [g.studentId, g._count._all]));
 
@@ -241,6 +255,7 @@ export async function loadGroupBehavior(groupId: string, since: Date | null, unt
       flags,
       totals: {
         absences,
+        activityAbsences: activityAbsences.get(s.id) ?? 0,
         partialDays,
         lates,
         referrals: referralMap.get(s.id) ?? 0,

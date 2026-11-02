@@ -1228,7 +1228,9 @@
     "colWaived": "Erased",
     "exportExcel": "Export Excel",
     "sheetStudents": "By student",
-    "sheetGroups": "By group"
+    "sheetGroups": "By group",
+    "withActivity": "Due to an activity",
+    "colActivity": "Activity"
   },
   "officeAttendance": {
     "title": "Absences",
@@ -1300,7 +1302,9 @@
       "HEADTEACHER_A": "Deputy A",
       "HEADTEACHER_B": "Deputy"
     },
-    "downloadXlsx": "Excel"
+    "downloadXlsx": "Excel",
+    "activity": "Activity",
+    "activityNote": "Activity: {name} (periods {periods})"
   },
   "officeDashboard": {
     "title": "Office",
@@ -1352,7 +1356,9 @@
     "nextWeek": "Next week",
     "weekLabel": "{from} – {to}",
     "thisWeek": "this week",
-    "lowGradesHint": "Test grades below 10 (out of 20) in the period"
+    "lowGradesHint": "Test grades below 10 (out of 20) in the period",
+    "colActivityAbsences": "Due to activities",
+    "activityAbsencesHint": "Of the absences, those while the student was on a school activity (they still count as absences)."
   },
   "specialEd": {
     "title": "Special Education",

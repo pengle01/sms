@@ -6,6 +6,8 @@ import { getTranslations } from "next-intl/server";
 import { utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { getSchoolName, getPeriodsPerDay, periodsForDow } from "@/lib/schoolConfig";
 import { rollCall } from "@/lib/attendanceReport";
+import { activityForAbsence } from "@/lib/activities";
+import { activityIndexFor } from "@/server/activityAbsences";
 import { PrintTrigger, PrintButton } from "@/app/[locale]/(portal)/teacher/referrals/[referralId]/print/PrintTrigger";
 
 /** A4 daily absence sheet — the thing that gets signed and filed. */
@@ -71,6 +73,19 @@ export default async function AbsencePrintPage({
   );
   const dayPeriods = periodsForDow(periodsCfg, dow).length;
 
+  // Missed periods while on an activity, per student: «Εκδρομή (3, 4, 5)».
+  const activities = await activityIndexFor(rows);
+  const activityNotes = new Map<string, Map<string, number[]>>();
+  for (const a of rows) {
+    const period = a.timetableSlot?.period ?? a.intercalaryPeriod ?? null;
+    if (a.status !== "ABSENT" || a.waived || period == null) continue;
+    const name = activityForAbsence(activities, a.studentId, dateStr, period);
+    if (!name) continue;
+    const byName = activityNotes.get(a.studentId) ?? new Map<string, number[]>();
+    byName.set(name, [...(byName.get(name) ?? []), period].sort((x, y) => x - y));
+    activityNotes.set(a.studentId, byName);
+  }
+
   return (
     <>
       <PrintTrigger />
@@ -113,6 +128,11 @@ export default async function AbsencePrintPage({
                       {s.studentName}
                       <span className="ml-2 font-mono text-[10px] text-slate-400">{s.studentId}</span>
                       {s.wholeDay && <span className="ml-2 text-[10px] font-semibold text-red-700">{t("wholeDay")}</span>}
+                      {[...(activityNotes.get(s.studentProfileId) ?? [])].map(([name, periods]) => (
+                        <span key={name} className="block text-[10px] text-violet-700">
+                          {t("activityNote", { name, periods: periods.join(", ") })}
+                        </span>
+                      ))}
                     </td>
                     <td className="py-1.5">{s.groupName ?? "—"}</td>
                     <td className="py-1.5 font-mono text-xs">{s.periods.join(", ") || "—"}</td>

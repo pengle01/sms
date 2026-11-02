@@ -15,6 +15,7 @@ import { PrintBar } from "@/app/[locale]/(portal)/teacher/substitutions/plan/[da
 
 const COLUMNS: { key: keyof BehaviorTotals; label: string }[] = [
   { key: "absences", label: "colAbsences" },
+  { key: "activityAbsences", label: "colActivityAbsences" },
   { key: "partialDays", label: "colPartial" },
   { key: "lates", label: "colLates" },
   { key: "referrals", label: "colReferrals" },

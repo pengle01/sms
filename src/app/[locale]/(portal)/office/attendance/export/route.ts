@@ -6,6 +6,8 @@ import { db } from "@/server/db";
 import { utcMidnight, toAppTimeline, fromAppTimeline } from "@/lib/dates";
 import { toCsv } from "@/lib/attendanceReport";
 import { markerDetails, MARKER_INCLUDE } from "@/server/attendanceReport";
+import { activityIndexFor } from "@/server/activityAbsences";
+import { activityForAbsence } from "@/lib/activities";
 import { getTranslations } from "next-intl/server";
 
 // Downloads one day's absence log as CSV (or Excel with ?format=xlsx) and
@@ -54,7 +56,7 @@ export async function GET(
   });
   const rows = rowsRaw.filter((a) => filingDay(a.createdAt) === dateStr);
 
-  const markers = await markerDetails(rows);
+  const [markers, activities] = await Promise.all([markerDetails(rows), activityIndexFor(rows)]);
   const KIND_LABEL = {
     COVER: t("subTeacher"),
     SWAP: t("subTeacher"),
@@ -76,7 +78,7 @@ export async function GET(
   const header = [
       t("csvFiledOn"), t("csvAbsenceDate"), t("csvOtherDay"), t("csvStudentId"), t("colStudent"),
       t("colGroup"), t("colPeriod"), t("colCourse"), t("colStatus"), t("csvAuto"),
-      t("csvDelayMinutes"), t("exitPermit"), t("colTeacher"), t("csvSubstitution"), t("csvLessonTeacher"), t("waived"),
+      t("csvDelayMinutes"), t("exitPermit"), t("activity"), t("colTeacher"), t("csvSubstitution"), t("csvLessonTeacher"), t("waived"),
       t("csvSms"),
   ];
   const table = rows.map((a) => [
@@ -92,6 +94,10 @@ export async function GET(
       a.isAutoAbsent ? t("csvYes") : "",
       a.minutesDelayed > 0 ? a.minutesDelayed : "",
       a.exitPermit ? a.exitPermit.reason : "",
+      // The activity the student was on (absences only), else blank.
+      (a.status === "ABSENT"
+        ? activityForAbsence(activities, a.studentId, a.date.toISOString().slice(0, 10), a.timetableSlot?.period ?? a.intercalaryPeriod)
+        : null) ?? "",
       markerText(a.id),
       (() => { const k = markers.get(a.id)?.kind; return k ? KIND_LABEL[k] : ""; })(),
       markers.get(a.id)?.lessonTeacher ?? "",

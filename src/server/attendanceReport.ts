@@ -7,6 +7,8 @@ import { effectiveStaffRole } from "@/lib/staffRole";
 import { managementTag, markKind, registerLabel, type MarkKind, type RegisterLabel } from "@/lib/attendanceMarker";
 import { addedLessonsFor } from "@/server/addedLessons";
 import { markedKey } from "@/lib/coverMarked";
+import { activityForAbsence } from "@/lib/activities";
+import { loadActivityIndex } from "@/server/activityAbsences";
 
 /** Loads the non-present attendance rows for a date range (and optional group),
  *  shaped for the pure summarizers — shared by the reports page and the CSV export. */
@@ -40,19 +42,27 @@ export async function loadReportRows(
     },
   });
 
-  return rows.map((r) => ({
-    studentProfileId: r.student.id,
-    studentName: r.student.user?.name ?? "—",
-    studentId: r.student.studentId,
-    groupId: r.student.group?.id ?? null,
-    groupName: r.student.group?.name ?? null,
-    date: r.date.toISOString().slice(0, 10),
-    period: r.timetableSlot?.period ?? r.intercalaryPeriod ?? null,
-    status: r.status,
-    isAutoAbsent: r.isAutoAbsent,
-    hasExitPermit: r.exitPermitId !== null,
-    waived: r.waived,
-  }));
+  // Absences while on an activity: matched by student, date and period.
+  const activities = await loadActivityIndex(fromStr, toStr, [...new Set(rows.map((r) => r.student.id))]);
+
+  return rows.map((r) => {
+    const date = r.date.toISOString().slice(0, 10);
+    const period = r.timetableSlot?.period ?? r.intercalaryPeriod ?? null;
+    return {
+      studentProfileId: r.student.id,
+      studentName: r.student.user?.name ?? "—",
+      studentId: r.student.studentId,
+      groupId: r.student.group?.id ?? null,
+      groupName: r.student.group?.name ?? null,
+      date,
+      period,
+      status: r.status,
+      isAutoAbsent: r.isAutoAbsent,
+      hasExitPermit: r.exitPermitId !== null,
+      activityName: activityForAbsence(activities, r.student.id, date, period),
+      waived: r.waived,
+    };
+  });
 }
 
 /** For attendance rows marked by someone other than the slot's own teacher,

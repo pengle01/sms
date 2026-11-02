@@ -11,6 +11,8 @@ export type ReportRow = {
   status: string; // PRESENT | ABSENT | LATE
   isAutoAbsent: boolean;
   hasExitPermit: boolean;
+  /** The activity the student was on during this period, if any (worked out at report time). */
+  activityName?: string | null;
   /** Soft-erased (διαγραφή): stays on record, excluded from every total. */
   waived?: boolean;
 };
@@ -25,6 +27,7 @@ export type StudentSummary = {
   autoAbsent: number;
   late: number;
   withPermit: number; // rows linked to an exit permit
+  withActivity: number; // absences while on an activity — still counted in `absences`
   waived: number; // soft-erased rows — kept on record, not in the totals
 };
 
@@ -35,6 +38,7 @@ export type GroupSummary = {
   absences: number;
   late: number;
   withPermit: number;
+  withActivity: number;
 };
 
 export function summarizeByStudent(rows: ReportRow[]): StudentSummary[] {
@@ -52,6 +56,7 @@ export function summarizeByStudent(rows: ReportRow[]): StudentSummary[] {
         autoAbsent: 0,
         late: 0,
         withPermit: 0,
+        withActivity: 0,
         waived: 0,
         dates: new Set(),
       };
@@ -67,6 +72,7 @@ export function summarizeByStudent(rows: ReportRow[]): StudentSummary[] {
       s.late += 1;
     }
     if (r.hasExitPermit && !r.waived) s.withPermit += 1;
+    if (r.activityName && r.status === "ABSENT" && !r.waived) s.withActivity += 1;
   }
   return [...map.values()]
     .map(({ dates, ...s }) => ({ ...s, days: dates.size }))
@@ -86,6 +92,7 @@ export function summarizeByGroup(rows: ReportRow[]): GroupSummary[] {
         absences: 0,
         late: 0,
         withPermit: 0,
+        withActivity: 0,
         studentIds: new Set(),
       };
       map.set(key, g);
@@ -96,6 +103,7 @@ export function summarizeByGroup(rows: ReportRow[]): GroupSummary[] {
     } else if (r.status === "ABSENT") g.absences += 1;
     else if (r.status === "LATE") g.late += 1;
     if (r.hasExitPermit && !r.waived) g.withPermit += 1;
+    if (r.activityName && r.status === "ABSENT" && !r.waived) g.withActivity += 1;
   }
   return [...map.values()]
     .map(({ studentIds, ...g }) => ({ ...g, students: studentIds.size }))

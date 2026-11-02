@@ -1228,7 +1228,9 @@
     "colWaived": "Διεγραμμένες",
     "exportExcel": "Εξαγωγή Excel",
     "sheetStudents": "Ανά μαθητή",
-    "sheetGroups": "Ανά τμήμα"
+    "sheetGroups": "Ανά τμήμα",
+    "withActivity": "Λόγω δραστηριότητας",
+    "colActivity": "Δραστηριότητα"
   },
   "officeAttendance": {
     "title": "Απουσίες",
@@ -1300,7 +1302,9 @@
       "HEADTEACHER_A": "Β.Δ.Α.",
       "HEADTEACHER_B": "Β.Δ."
     },
-    "downloadXlsx": "Excel"
+    "downloadXlsx": "Excel",
+    "activity": "Δραστηριότητα",
+    "activityNote": "Δραστηριότητα: {name} (περίοδοι {periods})"
   },
   "officeDashboard": {
     "title": "Γραμματεία",
@@ -1352,7 +1356,9 @@
     "nextWeek": "Επόμενη εβδομάδα",
     "weekLabel": "{from} – {to}",
     "thisWeek": "τρέχουσα εβδομάδα",
-    "lowGradesHint": "Βαθμοί διαγωνισμάτων κάτω από 10 (στα 20) στην περίοδο"
+    "lowGradesHint": "Βαθμοί διαγωνισμάτων κάτω από 10 (στα 20) στην περίοδο",
+    "colActivityAbsences": "Λόγω δραστηριότητας",
+    "activityAbsencesHint": "Από τις απουσίες, όσες έγιναν ενώ ο/η μαθητής/τρια ήταν σε δραστηριότητα του σχολείου (μετρούν και στις απουσίες)."
   },
   "specialEd": {
     "title": "Ειδική Αγωγή",

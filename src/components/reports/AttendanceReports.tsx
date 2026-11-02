@@ -62,6 +62,8 @@ export async function AttendanceReports({
     late: counted.filter((r) => r.status === "LATE").length,
     students: new Set(counted.map((r) => r.studentProfileId)).size,
     withPermit: counted.filter((r) => r.hasExitPermit).length,
+    // Absences while on an activity — still counted in `absences`.
+    withActivity: counted.filter((r) => r.status === "ABSENT" && r.activityName).length,
   };
 
   const qs = new URLSearchParams({ from: fromStr, to: toStr, ...(groupId ? { groupId } : {}) });
@@ -143,11 +145,12 @@ export async function AttendanceReports({
       </form>
 
       {/* Summary tiles */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {tile(t("totalAbsences"), totals.absences, "text-red-600")}
         {tile(t("totalLate"), totals.late, "text-amber-600")}
         {tile(t("studentsAffected"), totals.students)}
         {tile(t("withPermit"), totals.withPermit, "text-yellow-600")}
+        {tile(t("withActivity"), totals.withActivity, "text-violet-600")}
       </div>
 
       {/* Per-period distribution */}
@@ -187,6 +190,7 @@ export async function AttendanceReports({
                   {th(t("colAbsences"))}
                   {th(t("colLate"))}
                   {th(t("colPermit"))}
+                  {th(t("colActivity"))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -208,6 +212,7 @@ export async function AttendanceReports({
                     <td className="px-4 py-2.5 text-right font-semibold text-red-600">{g.absences}</td>
                     <td className="px-4 py-2.5 text-right text-amber-600">{g.late}</td>
                     <td className="px-4 py-2.5 text-right text-yellow-600">{g.withPermit}</td>
+                    <td className="px-4 py-2.5 text-right text-violet-600">{g.withActivity}</td>
                   </tr>
                 ))}
                 {byGroup.length === 0 && (
@@ -240,6 +245,7 @@ export async function AttendanceReports({
                   {th(t("colAuto"))}
                   {th(t("colLate"))}
                   {th(t("colPermit"))}
+                  {th(t("colActivity"))}
                   {th(t("colWaived"))}
                 </tr>
               </thead>
@@ -253,6 +259,7 @@ export async function AttendanceReports({
                     <td className="px-4 py-2.5 text-right text-slate-500">{s.autoAbsent}</td>
                     <td className="px-4 py-2.5 text-right text-amber-600">{s.late}</td>
                     <td className="px-4 py-2.5 text-right text-yellow-600">{s.withPermit}</td>
+                    <td className="px-4 py-2.5 text-right text-violet-600">{s.withActivity}</td>
                     <td className="px-4 py-2.5 text-right text-slate-400">{s.waived}</td>
                   </tr>
                 ))}

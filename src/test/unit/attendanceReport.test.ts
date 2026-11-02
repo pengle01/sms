@@ -203,3 +203,21 @@ describe("canViewAttendanceReports", () => {
     expect(canViewAttendanceReports(["TEACHER", "SUPER_ADMIN"])).toBe(true);
   });
 });
+
+describe("absences due to an activity", () => {
+  const rows = [
+    row({ studentProfileId: "a", groupId: "g", period: 1 }),
+    row({ studentProfileId: "a", groupId: "g", period: 3, activityName: "Εκδρομή" }),
+    row({ studentProfileId: "a", groupId: "g", period: 4, activityName: "Εκδρομή", waived: true }),
+    row({ studentProfileId: "a", groupId: "g", period: 5, activityName: "Εκδρομή", status: "LATE" }),
+  ];
+
+  it("counts them separately and still in the totals", () => {
+    const [s] = summarizeByStudent(rows);
+    expect(s!.withActivity).toBe(1);
+    expect(s!.absences).toBe(2);
+    const [g] = summarizeByGroup(rows);
+    expect(g!.withActivity).toBe(1);
+    expect(g!.absences).toBe(2);
+  });
+});
