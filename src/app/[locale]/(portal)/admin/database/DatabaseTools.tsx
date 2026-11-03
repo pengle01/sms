@@ -43,7 +43,11 @@ export function DatabaseTools({ locale }: { locale: string }) {
       fd.set("confirm", restorePhrase);
       fd.set("file", file);
       const res = await fetch(`/${locale}/admin/database/import`, { method: "POST", body: fd });
-      const j = (await res.json()) as { ok: boolean; message?: string; error?: string; notes?: string[] };
+      // A proxy in front (Caddy) may answer with an empty or non-JSON body.
+      const j = (await res.json().catch(() => ({
+        ok: false,
+        error: `HTTP ${res.status}${res.status === 413 ? " — το αρχείο είναι πολύ μεγάλο" : ""}`,
+      }))) as { ok: boolean; message?: string; error?: string; notes?: string[] };
       if (j.ok) {
         toast.success(j.message ?? "Η επαναφορά ολοκληρώθηκε.");
         setRestoreNotes(j.notes ?? []);

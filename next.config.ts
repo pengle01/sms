@@ -52,6 +52,13 @@ const nextConfig: NextConfig = {
   // any LAN without knowing the IP. Bookmark http://coding.local:3000 once. The
   // raw IPs are kept as a fallback for devices that can't resolve .local.
   ...(isDev ? { allowedDevOrigins: ["coding.local", "192.168.10.59", "192.168.17.32"] } : {}),
+  experimental: {
+    // src/proxy.ts runs on every request, and Next buffers each request body
+    // for it up to this size — anything beyond is SILENTLY cut off (default
+    // 10 MB), so a database restore dump (/admin/database/import) arrived
+    // truncated and failed. Caddy still caps every other route at 25 MB.
+    proxyClientMaxBodySize: "1gb",
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

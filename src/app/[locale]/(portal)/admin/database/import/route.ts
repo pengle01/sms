@@ -16,7 +16,17 @@ export async function POST(req: NextRequest) {
   const auth = await getSuperAdminAuth();
   if (!auth) return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
 
-  const form = await req.formData();
+  // A body cut off on the way (proxyClientMaxBodySize in next.config.ts, or
+  // Caddy's request_body limit) is not valid multipart: say so, in JSON.
+  let form: FormData;
+  try {
+    form = await req.formData();
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: "Το αρχείο δεν έφτασε ολόκληρο στον διακομιστή (πολύ μεγάλο;). Η βάση έμεινε όπως ήταν." },
+      { status: 413 },
+    );
+  }
   if (String(form.get("confirm") ?? "") !== "RESTORE") {
     return NextResponse.json({ ok: false, error: 'Type RESTORE to confirm.' }, { status: 400 });
   }

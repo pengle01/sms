@@ -29,12 +29,22 @@
 {$SMS_DOMAIN} {
 	import tls_{$TLS_MODE}
 	encode gzip
-	# Attachments are capped at 20 MB per request by the app; leave headroom so
-	# the app, not Caddy, explains an oversized upload.
-	request_body {
-		max_size 25MB
+	# A database restore (admin «Βάση δεδομένων») uploads a whole .sql dump.
+	@dbImport path /el/admin/database/import /en/admin/database/import
+	handle @dbImport {
+		request_body {
+			max_size 1GB
+		}
+		reverse_proxy app:3000
 	}
-	reverse_proxy app:3000
+	# Everything else: attachments are capped at 20 MB per request by the app;
+	# leave headroom so the app, not Caddy, explains an oversized upload.
+	handle {
+		request_body {
+			max_size 25MB
+		}
+		reverse_proxy app:3000
+	}
 	log {
 		output stdout
 		format json
