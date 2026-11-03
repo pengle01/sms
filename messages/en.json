@@ -1004,7 +1004,20 @@
     "eightDay": "8 periods",
     "intercalaryDay": "Extra period",
     "homegroupPeriod": "Homegroup period",
-    "cancelledHomegroup": "Cancelled — homegroup period"
+    "cancelledHomegroup": "Cancelled — homegroup period",
+    "studyHall": "Study hall",
+    "chaperoneHall": "Study hall with the chaperones",
+    "supportMerge": "With the regular class",
+    "excursion": "Excursion",
+    "holiday": "Holiday",
+    "activity": "Activity: {name}",
+    "todayChanges": "Changes today",
+    "noChangesToday": "No changes to the timetable today.",
+    "excursionToday": "Today is an excursion — no lessons.",
+    "holidayToday": "Today is a holiday.",
+    "changesNote": "Changes appear once the day's substitution plan is finalized.",
+    "backToStudents": "My students",
+    "scheduleOf": "This week's timetable"
   },
   "locate": {
     "title": "Locate Student",
@@ -1507,7 +1520,8 @@
     "exitPermitToday": "Exit permit today",
     "linkAttendance": "Attendance",
     "linkGrades": "Grades",
-    "linkTests": "Tests"
+    "linkTests": "Tests",
+    "linkSchedule": "Timetable and today's changes"
   },
   "adminUsers": {
     "title": "Staff",

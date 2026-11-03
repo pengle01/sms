@@ -2,7 +2,7 @@ import { db } from "@/server/db";
 import { getTranslations } from "next-intl/server";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { GraduationCap, BookOpen, ClipboardList, FileText, LogOut } from "lucide-react";
+import { GraduationCap, BookOpen, ClipboardList, FileText, LogOut, CalendarDays } from "lucide-react";
 import { utcMidnight, monthStart, localDateStr } from "@/lib/dates";
 import Link from "next/link";
 
@@ -16,10 +16,13 @@ export async function GuardianStudentCards({
   locale,
   studentIds,
   basePath,
+  showSchedule = false,
 }: {
   locale: string;
   studentIds: string[];
   basePath: string;
+  /** A «Πρόγραμμα» link to the student's week with today's changes (chaperones). */
+  showSchedule?: boolean;
 }) {
   const t = await getTranslations({ locale, namespace: "parentChildren" });
   const [curYear, curMonth] = localDateStr().split("-").map(Number) as [number, number];
@@ -90,6 +93,15 @@ export async function GuardianStudentCards({
                   )}
                 </div>
 
+                {showSchedule && (
+                  <Link
+                    href={`${basePath}/${s.id}/schedule`}
+                    className="flex items-center justify-center gap-1.5 h-9 rounded-lg border border-emerald-200 bg-emerald-50 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
+                  >
+                    <CalendarDays className="w-3.5 h-3.5" />
+                    {t("linkSchedule")}
+                  </Link>
+                )}
                 <div className="flex gap-2">
                   <Link
                     href={`${basePath}/${s.id}/attendance`}

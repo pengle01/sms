@@ -1004,7 +1004,20 @@
     "eightDay": "Οκτάωρο",
     "intercalaryDay": "Εμβόλιμη",
     "homegroupPeriod": "Υπευθυνότητα Τμήματος",
-    "cancelledHomegroup": "Ακυρώνεται — Υπευθυνότητα Τμήματος"
+    "cancelledHomegroup": "Ακυρώνεται — Υπευθυνότητα Τμήματος",
+    "studyHall": "Φ/δι",
+    "chaperoneHall": "Φ/δι Συνοδοί — με τους συνοδούς",
+    "supportMerge": "Στο κανονικό τμήμα",
+    "excursion": "Εκδρομή",
+    "holiday": "Αργία",
+    "activity": "Δραστηριότητα: {name}",
+    "todayChanges": "Αλλαγές σήμερα",
+    "noChangesToday": "Καμία αλλαγή στο πρόγραμμα σήμερα.",
+    "excursionToday": "Σήμερα είναι εκδρομή — δεν γίνονται μαθήματα.",
+    "holidayToday": "Σήμερα είναι αργία.",
+    "changesNote": "Οι αλλαγές εμφανίζονται μόλις οριστικοποιηθεί το πρόγραμμα αναπληρώσεων της ημέρας.",
+    "backToStudents": "Οι μαθητές μου",
+    "scheduleOf": "Πρόγραμμα εβδομάδας"
   },
   "locate": {
     "title": "Εντοπισμός Μαθητή/τριας",
@@ -1507,7 +1520,8 @@
     "exitPermitToday": "Άδεια εξόδου σήμερα",
     "linkAttendance": "Απουσίες",
     "linkGrades": "Βαθμολογία",
-    "linkTests": "Διαγωνίσματα"
+    "linkTests": "Διαγωνίσματα",
+    "linkSchedule": "Πρόγραμμα και αλλαγές ημέρας"
   },
   "adminUsers": {
     "title": "Προσωπικό",
