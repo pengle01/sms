@@ -10,6 +10,7 @@ import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY, totalPeriodsForDays } from "
 import { PrintTrigger, PrintButton } from "./PrintTrigger";
 import { expulsionDayPeriods, isPartialDay } from "@/lib/periods";
 import { actionLabel, expulsionLength, lengthLabel, resolutionSummary } from "@/lib/referralLabels";
+import { LEVEL_LABEL, LEVEL_SIGNER } from "@/lib/referralLevels";
 
 function fmt(date: Date | null | undefined): string {
   if (!date) return "—";
@@ -60,6 +61,10 @@ export default async function PrintResolutionPage({
                 resolvedBy: { select: { name: true } },
                 expulsionDays: { orderBy: { date: "asc" } },
               },
+            },
+            escalations: {
+              select: { id: true, toLevel: true, reason: true, createdAt: true, escalatedBy: { select: { name: true } } },
+              orderBy: { createdAt: "asc" },
             },
           },
           orderBy: { student: { user: { name: "asc" } } },
@@ -363,11 +368,26 @@ export default async function PrintResolutionPage({
                 </section>
               )}
 
-              {/* Signature — only the deputy who decided the measure */}
+              {/* Referred up: the decision was taken at a higher level */}
+              {rs.escalations.length > 0 && (
+                <section className="mb-6">
+                  <h3 className="text-sm font-bold text-slate-900 mb-1.5">Παραπομπή</h3>
+                  <ul className="space-y-1 text-sm text-slate-700">
+                    {rs.escalations.map((e) => (
+                      <li key={e.id}>
+                        <span className="font-medium">{LEVEL_LABEL[e.toLevel]}</span> ({e.createdAt.toLocaleDateString("el-GR", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                        {e.escalatedBy.name && `, ${e.escalatedBy.name}`}): {e.reason}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {/* Signature — whoever decided, at the student's level */}
               <section className="mt-12 flex justify-end text-center text-xs text-slate-600">
                 <div className="w-64">
                   <div className="border-t border-slate-400 pt-2 mt-8">
-                    Ο/Η Βοηθός Διευθυντής/ντρια
+                    {LEVEL_SIGNER[rs.level]}
                     {res?.resolvedBy?.name && (
                       <div className="mt-0.5 font-medium text-slate-800">{res.resolvedBy.name}</div>
                     )}

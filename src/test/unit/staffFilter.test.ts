@@ -28,6 +28,7 @@ function row(over: Partial<StaffRow> = {}): StaffRow {
     extraAdmin: false,
     specialEducation: false,
     ddkCoordinator: false,
+    disciplinaryCouncil: false,
     substitutionCoordinator: false,
     itMaintenance: false,
     itManager: false,

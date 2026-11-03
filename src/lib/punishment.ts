@@ -22,6 +22,7 @@ export type PunishmentError =
   | "weekend"
   | "duplicateDay"
   | "badRange"
+  | "tooManyDays"
   | "noSuspendedLength"
   | "badSuspended";
 
@@ -31,6 +32,7 @@ export const PUNISHMENT_ERROR_EL: Record<PunishmentError, string> = {
   weekend: "Οι ημέρες αποβολής πρέπει να είναι εργάσιμες",
   duplicateDay: "Η ίδια ημέρα επιλέχθηκε δύο φορές",
   badRange: "Μη έγκυρο εύρος περιόδων για την ημέρα",
+  tooManyDays: "Περισσότερες ημέρες αποβολής από όσες επιτρέπονται σε αυτό το επίπεδο — παραπέμψτε την καταγγελία στο επόμενο επίπεδο",
   noSuspendedLength: "Δώστε τη διάρκεια της αποβολής με αναστολή (ημέρες ή περιόδους)",
   badSuspended: `Η διάρκεια πρέπει να είναι έως ${SUSPENDED_MAX_DAYS} ημέρες και ${SUSPENDED_MAX_PERIODS} περίοδοι`,
 };
@@ -47,10 +49,13 @@ export function validatePunishment(
   },
   periodsPerDay: PeriodsPerDay,
   todayIso: string,
+  /** The deciding level's limit on expulsion dates (a partial day counts as one). */
+  maxExpulsionDays?: number,
 ): PunishmentError | null {
   if (input.action === "DETENTION") {
     const days = input.expulsionDays ?? [];
     if (days.length === 0) return "noDays";
+    if (maxExpulsionDays != null && days.length > maxExpulsionDays) return "tooManyDays";
     if (new Set(days.map((d) => d.date)).size !== days.length) return "duplicateDay";
     for (const d of days) {
       if (d.date < todayIso) return "pastDay";

@@ -206,6 +206,7 @@ export default async function UserDetailPage({
         specialEducation={sp?.specialEducation ?? false}
         substitutionCoordinator={sp?.substitutionCoordinator ?? false}
         ddkCoordinator={sp?.ddkCoordinator ?? false}
+        disciplinaryCouncil={sp?.disciplinaryCouncil ?? false}
         itMaintenance={sp?.itMaintenance ?? false}
         itManager={sp?.itManager ?? false}
         parentMessaging={sp?.parentMessaging ?? false}

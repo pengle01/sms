@@ -69,6 +69,7 @@ export async function StaffDirectory({ params }: { params: StaffDirectoryParams 
       extraAdmin: false,
       specialEducation: false,
       ddkCoordinator: false,
+      disciplinaryCouncil: false,
       substitutionCoordinator: false,
       itMaintenance: false,
       itManager: false,

@@ -1680,7 +1680,13 @@
       "designation": "has a special designation (e.g. coordinator)",
       "notFound": "not found"
     },
-    "chaperoneNoStudents": "No students on the chaperone list"
+    "chaperoneNoStudents": "No students on the chaperone list",
+    "post_council": "Disciplinary council",
+    "councilOn": "Disciplinary council ✓",
+    "councilOff": "Make responsible for the disciplinary council",
+    "councilHeadteachersOnly": "Headteachers only",
+    "rowCouncil": "Disciplinary council",
+    "rowCouncilHint": "Decides the referrals the headmaster refers up (expulsion up to 6 days). One at a time — setting it removes it from whoever had it."
   },
   "adminStudents": {
     "title": "Students",

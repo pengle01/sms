@@ -84,3 +84,23 @@ describe("labels and summaries", () => {
     expect(expulsionDayLabel({ date: new Date() }, fmt)).toBe("26/10/26");
   });
 });
+
+describe("validatePunishment — the deciding level's expulsion limit", () => {
+  const days = (n: number) =>
+    ["2026-10-26", "2026-10-27", "2026-10-28", "2026-10-29", "2026-10-30"].slice(0, n).map((date) => ({ date }));
+
+  it("allows up to the limit and refuses more", () => {
+    expect(validatePunishment({ action: "DETENTION", expulsionDays: days(2) }, config, TODAY, 2)).toBeNull();
+    expect(validatePunishment({ action: "DETENTION", expulsionDays: days(3) }, config, TODAY, 2)).toBe("tooManyDays");
+    expect(validatePunishment({ action: "DETENTION", expulsionDays: days(4) }, config, TODAY, 4)).toBeNull();
+  });
+
+  it("counts a part of a day as a whole day", () => {
+    const partial = [{ date: "2026-10-26", fromPeriod: 1, toPeriod: 2 }, { date: "2026-10-27", fromPeriod: 6, toPeriod: 7 }, { date: "2026-10-28" }];
+    expect(validatePunishment({ action: "DETENTION", expulsionDays: partial }, config, TODAY, 2)).toBe("tooManyDays");
+  });
+
+  it("does not limit a suspended expulsion by level", () => {
+    expect(validatePunishment({ action: "SUSPENDED_EXPULSION", suspendedDays: 5 }, config, TODAY, 2)).toBeNull();
+  });
+});

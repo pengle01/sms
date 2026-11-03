@@ -28,6 +28,7 @@ export interface StaffRow {
   extraAdmin: boolean;
   specialEducation: boolean;
   ddkCoordinator: boolean;
+  disciplinaryCouncil: boolean;
   substitutionCoordinator: boolean;
   itMaintenance: boolean;
   itManager: boolean;
@@ -78,11 +79,12 @@ export function staffRowLabel(row: StaffRow): string {
 }
 
 /** The extra hats an admin grants on top of the role. Keys are URL values. */
-export type StaffPost = "specialEd" | "ddk" | "subCoord" | "itMaint" | "itManager" | "parentMsg" | "homeroom" | "extraAdmin";
+export type StaffPost = "specialEd" | "ddk" | "council" | "subCoord" | "itMaint" | "itManager" | "parentMsg" | "homeroom" | "extraAdmin";
 
 const POST_PREDICATE: Record<StaffPost, (r: StaffRow) => boolean> = {
   specialEd:  (r) => r.specialEducation,
   ddk:        (r) => r.ddkCoordinator,
+  council:    (r) => r.disciplinaryCouncil,
   subCoord:   (r) => r.substitutionCoordinator,
   itMaint:    (r) => r.itMaintenance,
   itManager:  (r) => r.itManager,

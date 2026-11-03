@@ -15,11 +15,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ShieldCheck, ShieldOff, HeartHandshake, ArrowLeftRight, Award, Wrench, MonitorCog, MessageSquare, Loader2 } from "lucide-react";
+import { ShieldCheck, ShieldOff, HeartHandshake, ArrowLeftRight, Award, Gavel, Wrench, MonitorCog, MessageSquare, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { Role } from "@/generated/prisma/client";
 import { STAFF_PROFILE_ROLES } from "@/lib/staffRole";
-import { grantSuperAdmin, revokeSuperAdmin, setSpecialEducation, setSubstitutionCoordinator, setDdkCoordinator, setItMaintenance, setItManager, setParentMessaging, setUserRole } from "./actions";
+import { grantSuperAdmin, revokeSuperAdmin, setSpecialEducation, setSubstitutionCoordinator, setDdkCoordinator, setDisciplinaryCouncil, setItMaintenance, setItManager, setParentMessaging, setUserRole } from "./actions";
 
 interface Props {
   userId: string;
@@ -37,6 +37,8 @@ interface Props {
   specialEducation: boolean;
   substitutionCoordinator: boolean;
   ddkCoordinator: boolean;
+  /** The «Πειθαρχικό Συμβούλιο» headteacher (one at a time). */
+  disciplinaryCouncil: boolean;
   itMaintenance: boolean;
   itManager: boolean;
   parentMessaging: boolean;
@@ -55,6 +57,7 @@ export function RolesCard({
   specialEducation,
   substitutionCoordinator,
   ddkCoordinator,
+  disciplinaryCouncil,
   itMaintenance,
   itManager,
   parentMessaging,
@@ -255,6 +258,32 @@ export function RolesCard({
     </button>
   );
 
+  // ── «Πειθαρχικό Συμβούλιο» designation (headteachers; one at a time) ──────
+  const isHeadteacher = currentRole === "HEADTEACHER_A" || currentRole === "HEADTEACHER_B";
+  const councilControl = !hasStaffProfile ? (
+    <span className="text-xs text-slate-400">{t("noStaffProfile")}</span>
+  ) : !isHeadteacher && !disciplinaryCouncil ? (
+    <span className="text-xs text-slate-400">{t("councilHeadteachersOnly")}</span>
+  ) : (
+    <button
+      disabled={pending}
+      onClick={() =>
+        run(
+          () => setDisciplinaryCouncil(userId, !disciplinaryCouncil),
+          disciplinaryCouncil ? t("designationRemoved") : t("designationSet")
+        )
+      }
+      className={
+        disciplinaryCouncil
+          ? "inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-orange-600 text-white text-xs font-medium hover:bg-orange-700 disabled:opacity-50"
+          : "inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-slate-200 text-slate-600 text-xs font-medium hover:bg-slate-50 disabled:opacity-50"
+      }
+    >
+      <Gavel className="w-3.5 h-3.5" />
+      {disciplinaryCouncil ? t("councilOn") : t("councilOff")}
+    </button>
+  );
+
   // ── IT maintenance designation ────────────────────────────────────────────
   const itControl = !hasStaffProfile ? (
     <span className="text-xs text-slate-400">{t("noStaffProfile")}</span>
@@ -338,6 +367,7 @@ export function RolesCard({
         {row(t("rowSpecialEd"), specialEdControl, t("rowSpecialEdHint"))}
         {row(t("rowSubCoord"), coordinatorControl, t("rowSubCoordHint"))}
         {row(t("rowDdk"), ddkControl, t("rowDdkHint"))}
+        {row(t("rowCouncil"), councilControl, t("rowCouncilHint"))}
         {row(t("rowIt"), itControl, t("rowItHint"))}
         {row(t("rowItManager"), itManagerControl, t("rowItManagerHint"))}
         {row(t("rowParentMsg"), messagingControl, t("rowParentMsgHint"))}

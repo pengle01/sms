@@ -24,6 +24,18 @@ import { parseReferralSearchTab, referralSearchWhere } from "@/lib/referralSearc
 import { UnlockResolutionDialog } from "./UnlockResolutionDialog";
 import { CompactReferralTable, ReferralViewToggle } from "@/components/referrals/CompactReferrals";
 import type { Role } from "@/generated/prisma/client";
+import { getActiveAuth } from "@/server/authz";
+import { loadReferralViewer } from "@/server/referralViewer";
+import {
+  canResolve as canResolveStudent,
+  canEscalate,
+  nextLevel,
+  expulsionLimitFor,
+  EXPULSION_MAX_DAYS,
+  LEVEL_LABEL,
+  ESCALATE_TO_LABEL,
+} from "@/lib/referralLevels";
+import { EscalateReferralDialog } from "./EscalateReferralDialog";
 
 // Include shape — same as in router
 const referralInclude = {
@@ -40,6 +52,11 @@ const referralInclude = {
         },
       },
       unlockRequests: { where: { status: "PENDING" as const }, select: { id: true } },
+      // Referred up a level: by whom, why (src/lib/referralLevels.ts)
+      escalations: {
+        select: { id: true, toLevel: true, reason: true, createdAt: true, escalatedBy: { select: { name: true } } },
+        orderBy: { createdAt: "asc" as const },
+      },
     },
     orderBy: { student: { user: { name: "asc" as const } } },
   },
@@ -78,6 +95,12 @@ export default async function TeacherReferralsPage({
   });
   if (!staff) redirect(`/${locale}/teacher/dashboard`);
 
+  // Who decides what (homegroup headteacher → headmaster → «Πειθαρχικό Συμβούλιο»)
+  const auth = await getActiveAuth();
+  const viewer = (await loadReferralViewer(userId, auth?.roles ?? [role]))!;
+  const isHeadmaster = viewer.roles.includes("HEADMASTER");
+  const isCouncil = viewer.isCouncil;
+
   const isManagement = ["HEADMASTER", "HEADTEACHER_A"].includes(role);
   const isHeadteacherB = role === "HEADTEACHER_B";
   const showCounselorNotes = canViewCounselorNotes(role);
@@ -95,7 +118,7 @@ export default async function TeacherReferralsPage({
   };
 
   // Search applies to every list seen by headteachers/management.
-  const canSearch = isManagement || isHeadteacherB;
+  const canSearch = isManagement || isHeadteacherB || isHeadmaster || isCouncil;
   const searchAnd = canSearch && searchWhere ? { AND: [searchWhere] } : {};
 
   // My filed referrals (all roles, all states incl. drafts)
@@ -117,7 +140,7 @@ export default async function TeacherReferralsPage({
       ? await db.referral.findMany({
           where: {
             isDraft: false,
-            students: { some: { groupId: { in: headGroupIds }, status: "PENDING" } },
+            students: { some: { groupId: { in: headGroupIds }, status: "PENDING", level: "HOMEGROUP" } },
             // NOTE: do NOT exclude referrals this headteacher filed — a headteacher
             // can file against a student in their own homegroup, and that referral
             // must still surface here so they can resolve it (the "my filed" tab
@@ -135,10 +158,13 @@ export default async function TeacherReferralsPage({
       ? await db.referral.findMany({
           where: {
             isDraft: false,
-            students: { some: { groupId: { in: headGroupIds }, status: "RESOLVED" } },
-            // Resolved-only: exclude referrals still pending in my group. Self-filed
+            // Decided — by me, or by a level above after I referred the student up.
+            students: {
+              some: { groupId: { in: headGroupIds }, OR: [{ status: "RESOLVED" }, { level: { not: "HOMEGROUP" } }] },
+            },
+            // Exclude referrals still waiting for me in my group. Self-filed
             // referrals are intentionally NOT excluded (see groupReferrals above).
-            NOT: { students: { some: { groupId: { in: headGroupIds }, status: "PENDING" } } },
+            NOT: { students: { some: { groupId: { in: headGroupIds }, status: "PENDING", level: "HOMEGROUP" } } },
             ...searchAnd,
           },
           include: referralInclude,
@@ -146,6 +172,29 @@ export default async function TeacherReferralsPage({
           take: 100,
         })
       : [];
+
+  // Referred up to me: the headmaster's / the council headteacher's queue and history.
+  const levelQueue = async (level: "HEADMASTER" | "COUNCIL", reached: ("HEADMASTER" | "COUNCIL")[]) =>
+    Promise.all([
+      db.referral.findMany({
+        where: { isDraft: false, students: { some: { status: "PENDING", level } }, ...searchAnd },
+        include: referralInclude,
+        orderBy: { createdAt: "asc" },
+      }),
+      db.referral.findMany({
+        where: {
+          isDraft: false,
+          students: { some: { level: { in: reached } } },
+          NOT: { students: { some: { status: "PENDING", level } } },
+          ...searchAnd,
+        },
+        include: referralInclude,
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      }),
+    ]);
+  const [headmasterQueue, headmasterHistory] = isHeadmaster ? await levelQueue("HEADMASTER", ["HEADMASTER", "COUNCIL"]) : [[], []];
+  const [councilQueue, councilHistory] = isCouncil ? await levelQueue("COUNCIL", ["COUNCIL"]) : [[], []];
 
   // Management: all submitted referrals with filters
   const allWhere = {
@@ -246,7 +295,13 @@ export default async function TeacherReferralsPage({
           <ResponsibleHeadteachers
             students={students.map((rs) => ({
               status: rs.status,
-              headteacher: rs.group?.homeroomHeadteacher ? staffDisplayName(rs.group.homeroomHeadteacher) : null,
+              // Referred up: the level that decides now, not the homegroup's Β.Δ.
+              headteacher:
+                rs.level !== "HOMEGROUP"
+                  ? LEVEL_LABEL[rs.level]
+                  : rs.group?.homeroomHeadteacher
+                    ? staffDisplayName(rs.group.homeroomHeadteacher)
+                    : null,
             }))}
           />
         </td>
@@ -357,13 +412,28 @@ export default async function TeacherReferralsPage({
     );
   };
 
-  // HEADTEACHER_B examine card — full coloured border, per-student info + resolve.
-  const GroupCard = ({ r }: { r: Referral }) => {
-    const myStudents = r.students.filter((rs) => rs.groupId && headGroupIds.includes(rs.groupId));
-    const pendingMine = myStudents.filter((rs) => rs.status === "PENDING");
+  // An examine card — full coloured border, per-student info, resolve and refer
+  // up. `scope` is whose card it is: the homegroup headteacher (their groups'
+  // students), the headmaster (students referred to them, and on to the
+  // council) or the «Πειθαρχικό Συμβούλιο» headteacher.
+  type Scope = "homegroup" | "headmaster" | "council";
+  const GroupCard = ({ r, scope = "homegroup" }: { r: Referral; scope?: Scope }) => {
+    const myStudents = r.students.filter((rs) =>
+      scope === "homegroup"
+        ? rs.groupId && headGroupIds.includes(rs.groupId)
+        : scope === "headmaster"
+          ? rs.level === "HEADMASTER" || rs.level === "COUNCIL"
+          : rs.level === "COUNCIL",
+    );
+    const lite = (rs: (typeof myStudents)[number]) => ({ groupId: rs.groupId, level: rs.level, resolved: !!rs.resolution });
+    // Pending students this viewer decides now (others were referred up)
+    const pendingMine = myStudents.filter((rs) => rs.status === "PENDING" && canResolveStudent(lite(rs), viewer));
+    const escalatable = pendingMine.filter((rs) => canEscalate(lite(rs), viewer));
     const resolvedMine = myStudents.filter((rs) => rs.status === "RESOLVED");
+    const badgeScope = scope === "homegroup" ? headGroupIds : undefined;
+    const escalations = myStudents.flatMap((rs) => rs.escalations.map((e) => ({ ...e, student: rs.student.user?.name ?? "—" })));
     return (
-      <div className={`rounded-2xl border-2 ${referralBorderClass(r, headGroupIds)} bg-white overflow-hidden shadow-sm`}>
+      <div className={`rounded-2xl border-2 ${referralBorderClass(r, badgeScope)} bg-white overflow-hidden shadow-sm`}>
         {/* Card header */}
         <div className="px-5 py-4 border-b border-slate-100 bg-slate-50">
           <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -374,7 +444,7 @@ export default async function TeacherReferralsPage({
             <div className="flex items-center gap-2">
               {resolvedMine.length > 0 && <PrintLinks r={r} />}
               {/* Badge reflects only this headteacher's own students */}
-              <ReferralStatusBadge referral={r} scopeGroupIds={headGroupIds} />
+              <ReferralStatusBadge referral={r} scopeGroupIds={badgeScope} />
             </div>
           </div>
           {/* When other homegroups are involved, show each headteacher's progress */}
@@ -398,6 +468,18 @@ export default async function TeacherReferralsPage({
               {recommendationsLabel(referralRecommendations(r))}
             </div>
           )}
+          {/* Referred up: to whom, by whom, why */}
+          {escalations.length > 0 && (
+            <div className="mt-2 space-y-1">
+              {escalations.map((e) => (
+                <p key={e.id} className="rounded-lg bg-orange-50 border border-orange-200 px-2.5 py-1.5 text-xs text-orange-800">
+                  <span className="font-semibold">Παραπομπή → {LEVEL_LABEL[e.toLevel]}</span> · {e.student} ·{" "}
+                  {e.escalatedBy.name ?? "—"} · {fmtDisplayDate(e.createdAt)}
+                  <span className="block text-orange-700 whitespace-pre-wrap">{e.reason}</span>
+                </p>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Student resolution buttons */}
@@ -412,8 +494,19 @@ export default async function TeacherReferralsPage({
                 groupResolve
                 locale={locale}
                 periodsConfig={periodsConfig}
+                maxExpulsionDays={expulsionLimitFor(pendingMine.map((rs) => rs.level))}
               />
               <p className="text-xs text-slate-400 mt-1 pl-1">Κοινό παιδαγωγικό μέτρο για όλους</p>
+              {escalatable.length >= 2 && (
+                <div className="mt-2">
+                  <EscalateReferralDialog
+                    referralId={r.id}
+                    referralStudentIds={escalatable.map((rs) => rs.id)}
+                    studentNames={escalatable.map((rs) => rs.student.user?.name ?? "—")}
+                    label={`${ESCALATE_TO_LABEL[nextLevel(escalatable[0]!.level)!]} (όλοι)`}
+                  />
+                </div>
+              )}
             </div>
           )}
 
@@ -459,8 +552,24 @@ export default async function TeacherReferralsPage({
                   </div>
                 )}
               </div>
+            ) : !canResolveStudent(lite(rs), viewer) ? (
+              // Referred up — decided at another level now
+              <div key={rs.id} className="px-5 py-3 flex items-center justify-between gap-3 bg-orange-50/40">
+                <div>
+                  <p className="text-sm font-semibold text-slate-700">{rs.student.user?.name}</p>
+                  <p className="text-xs text-slate-400">{rs.group?.name}</p>
+                </div>
+                <span className="text-xs font-medium text-orange-700 bg-orange-100 border border-orange-200 px-2.5 py-1 rounded-lg">
+                  Παραπέμφθηκε: {LEVEL_LABEL[rs.level]}
+                </span>
+              </div>
             ) : (
               <div key={rs.id} className="px-5 py-3">
+                {rs.level !== "HOMEGROUP" && (
+                  <p className="mb-1.5 text-xs font-medium text-orange-700">
+                    Απόφαση: {LEVEL_LABEL[rs.level]} — αποβολή έως {EXPULSION_MAX_DAYS[rs.level]} ημέρες
+                  </p>
+                )}
                 <ResolveReferralDialog
                   referralId={r.id}
                   referralStudentId={rs.id}
@@ -469,7 +578,18 @@ export default async function TeacherReferralsPage({
                   canViewCounselorNotes={showCounselorNotes}
                   locale={locale}
                   periodsConfig={periodsConfig}
+                  maxExpulsionDays={EXPULSION_MAX_DAYS[rs.level]}
                 />
+                {canEscalate(lite(rs), viewer) && (
+                  <div className="mt-2">
+                    <EscalateReferralDialog
+                      referralId={r.id}
+                      referralStudentIds={[rs.id]}
+                      studentNames={[rs.student.user?.name ?? "—"]}
+                      label={ESCALATE_TO_LABEL[nextLevel(rs.level)!]!}
+                    />
+                  </div>
+                )}
                 <div className="flex items-center justify-between gap-2 mt-1 pl-1">
                   <p className="text-xs text-slate-400">{rs.group?.name}</p>
                   <StudentInfoDialog
@@ -486,43 +606,31 @@ export default async function TeacherReferralsPage({
     );
   };
 
-  const examineContent = compact ? (
-    <Card>
-      <CardContent className="p-0 overflow-x-auto">
-        <CompactReferralTable referrals={groupReferrals} numberHref={numberHref} scopeGroupIds={headGroupIds} empty="Δεν υπάρχουν καταγγελίες προς εξέταση" />
-      </CardContent>
-    </Card>
-  ) : (
-    <div className="space-y-3">
-      {groupReferrals.length === 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-12 text-center text-slate-400">
-          <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-30" />
-          Δεν υπάρχουν καταγγελίες προς εξέταση
-        </div>
-      ) : (
-        groupReferrals.map((r) => <GroupCard key={r.id} r={r} />)
-      )}
-    </div>
-  );
-
-  const historyContent = compact ? (
-    <Card>
-      <CardContent className="p-0 overflow-x-auto">
-        <CompactReferralTable referrals={groupHistory} numberHref={numberHref} scopeGroupIds={headGroupIds} empty="Δεν υπάρχουν επιλυμένες καταγγελίες" />
-      </CardContent>
-    </Card>
-  ) : (
-    <div className="space-y-3">
-      {groupHistory.length === 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-12 text-center text-slate-400">
-          <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-30" />
-          Δεν υπάρχουν επιλυμένες καταγγελίες
-        </div>
-      ) : (
-        groupHistory.map((r) => <GroupCard key={r.id} r={r} />)
-      )}
-    </div>
-  );
+  // A tab's list: cards (or the compact table) for one scope.
+  const listContent = (list: Referral[], scope: Scope, empty: string) =>
+    compact ? (
+      <Card>
+        <CardContent className="p-0 overflow-x-auto">
+          <CompactReferralTable
+            referrals={list}
+            numberHref={numberHref}
+            scopeGroupIds={scope === "homegroup" ? headGroupIds : undefined}
+            empty={empty}
+          />
+        </CardContent>
+      </Card>
+    ) : (
+      <div className="space-y-3">
+        {list.length === 0 ? (
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-12 text-center text-slate-400">
+            <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-30" />
+            {empty}
+          </div>
+        ) : (
+          list.map((r) => <GroupCard key={r.id} r={r} scope={scope} />)
+        )}
+      </div>
+    );
 
   const myFiledCard = (
     <Card>
@@ -606,6 +714,73 @@ export default async function TeacherReferralsPage({
         </form>
       )}
 
+      {/* Who decides: the homegroup headteacher's, the headmaster's and the
+          council headteacher's queues first, then the referrals I filed. */}
+      {isHeadteacherB || isHeadmaster || isCouncil ? (
+        <ReferralTabs
+          tabs={[
+            ...(isHeadmaster
+              ? [
+                  {
+                    key: "headmaster",
+                    label: "Παραπομπές προς εμένα",
+                    count: headmasterQueue.length,
+                    highlight: true,
+                    content: listContent(headmasterQueue, "headmaster", "Δεν υπάρχουν παραπομπές προς εξέταση"),
+                  },
+                  {
+                    key: "headmasterHistory",
+                    label: "Ιστορικό παραπομπών",
+                    count: headmasterHistory.length,
+                    content: listContent(headmasterHistory, "headmaster", "Δεν υπάρχουν παραπομπές"),
+                  },
+                ]
+              : []),
+            ...(isCouncil
+              ? [
+                  {
+                    key: "council",
+                    label: "Πειθαρχικό Συμβούλιο",
+                    count: councilQueue.length,
+                    highlight: true,
+                    content: listContent(councilQueue, "council", "Δεν υπάρχουν παραπομπές στο Πειθαρχικό Συμβούλιο"),
+                  },
+                  {
+                    key: "councilHistory",
+                    label: "Ιστορικό Συμβουλίου",
+                    count: councilHistory.length,
+                    content: listContent(councilHistory, "council", "Δεν υπάρχουν αποφάσεις του Συμβουλίου"),
+                  },
+                ]
+              : []),
+            ...(isHeadteacherB
+              ? [
+                  {
+                    key: "examine",
+                    label: "Προς εξέταση",
+                    count: groupReferrals.length,
+                    highlight: true,
+                    content: listContent(groupReferrals, "homegroup", "Δεν υπάρχουν καταγγελίες προς εξέταση"),
+                  },
+                  {
+                    key: "history",
+                    label: "Ιστορικό",
+                    count: groupHistory.length,
+                    content: listContent(groupHistory, "homegroup", "Δεν υπάρχουν επιλυμένες καταγγελίες"),
+                  },
+                ]
+              : []),
+            {
+              key: "mine",
+              label: "Δελτία που υπέβαλα",
+              count: myTotal,
+              content: myFiledCard,
+            },
+          ]}
+        />
+      ) : (
+        myFiledCard
+      )}
       {/* Management: all referrals */}
       {isManagement && (
         <Card>
@@ -654,34 +829,6 @@ export default async function TeacherReferralsPage({
         </Card>
       )}
 
-      {/* HEADTEACHER_B: examine tab first, own filed second */}
-      {isHeadteacherB ? (
-        <ReferralTabs
-          tabs={[
-            {
-              key: "examine",
-              label: "Προς εξέταση",
-              count: groupReferrals.length,
-              highlight: true,
-              content: examineContent,
-            },
-            {
-              key: "history",
-              label: "Ιστορικό",
-              count: groupHistory.length,
-              content: historyContent,
-            },
-            {
-              key: "mine",
-              label: "Δελτία που υπέβαλα",
-              count: myTotal,
-              content: myFiledCard,
-            },
-          ]}
-        />
-      ) : (
-        myFiledCard
-      )}
     </div>
   );
 }

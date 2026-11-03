@@ -17,6 +17,8 @@ import { canDeleteReferral, canEditDraft, draftStudentChanges } from "@/lib/refe
 import { writeAudit } from "@/server/audit";
 import type { Prisma, Role } from "@/generated/prisma/client";
 import { parentCard } from "@/lib/smsContacts";
+import { canResolve, canEscalate, expulsionLimitFor, nextLevel, LEVEL_LABEL } from "@/lib/referralLevels";
+import { loadReferralViewer } from "@/server/referralViewer";
 
 function reqMeta(req?: Request) {
   const fwd = req?.headers.get("x-forwarded-for");
@@ -341,7 +343,11 @@ export const referralsRouter = createTRPCRouter({
         });
         if (!staff) throw new TRPCError({ code: "NOT_FOUND" });
         const headGroupIds = staff.homeroomHeadGroups.map((g) => g.id);
-        whereFilter.students = { some: { groupId: { in: headGroupIds } } };
+        // Their homegroups' referrals — and, for the «Πειθαρχικό Συμβούλιο»
+        // headteacher, every referral with a student referred to the council.
+        whereFilter.students = staff.disciplinaryCouncil
+          ? { some: { OR: [{ groupId: { in: headGroupIds } }, { level: "COUNCIL" }] } }
+          : { some: { groupId: { in: headGroupIds } } };
         whereFilter.isDraft = false;
       } else if (!canViewAllReferrals(role)) {
         throw new TRPCError({ code: "FORBIDDEN" });
@@ -417,17 +423,7 @@ export const referralsRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      // The punishment's length: dated days for an expulsion (today or later,
-      // school days, valid period ranges), a length for a suspended one.
       const expulsionDays = (input.expulsionDays ?? []).map((d) => (typeof d === "string" ? { date: d } : d));
-      const lengthError = validatePunishment(
-        { ...input, expulsionDays },
-        { ...DEFAULT_PERIODS_PER_DAY, ...(await getPeriodsPerDay()) },
-        localDateStr(),
-      );
-      if (lengthError) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: PUNISHMENT_ERROR_EL[lengthError] });
-      }
 
       const referral = await ctx.db.referral.findUnique({
         where: { id: input.referralId },
@@ -440,16 +436,14 @@ export const referralsRouter = createTRPCRouter({
       });
       if (!referral) throw new TRPCError({ code: "NOT_FOUND" });
 
-      // Only the homeroom headteacher of each student's group may resolve them.
-      const staff = await ctx.db.staffProfile.findUnique({
-        where: { userId: ctx.session.user.id },
-        include: { homeroomHeadGroups: { select: { id: true } } },
-      });
-      if (!staff) throw new TRPCError({ code: "NOT_FOUND" });
-      const headGroupIds = new Set(staff.homeroomHeadGroups.map((g) => g.id));
-      const eligibleIds = referral.students
-        .filter((rs) => rs.groupId && headGroupIds.has(rs.groupId) && !rs.resolution)
-        .map((rs) => rs.id);
+      // Each student is decided at their level (src/lib/referralLevels.ts): the
+      // homegroup headteacher, the headmaster or the «Πειθαρχικό Συμβούλιο».
+      const viewer = await loadReferralViewer(ctx.session.user.id, ctx.effectiveRoles);
+      if (!viewer) throw new TRPCError({ code: "NOT_FOUND" });
+      const eligible = referral.students.filter((rs) =>
+        canResolve({ groupId: rs.groupId, level: rs.level, resolved: !!rs.resolution }, viewer),
+      );
+      const eligibleIds = eligible.map((rs) => rs.id);
 
       // If a specific student was requested, resolve only them (after checking eligibility)
       let resolvableIds: string[];
@@ -463,6 +457,26 @@ export const referralsRouter = createTRPCRouter({
 
       if (resolvableIds.length === 0)
         throw new TRPCError({ code: "BAD_REQUEST", message: "No students to resolve" });
+
+      // The punishment's length: dated days for an expulsion (today or later,
+      // school days, valid period ranges, within the level's limit), a length
+      // for a suspended one.
+      const maxDays = expulsionLimitFor(eligible.filter((rs) => resolvableIds.includes(rs.id)).map((rs) => rs.level));
+      const lengthError = validatePunishment(
+        { ...input, expulsionDays },
+        { ...DEFAULT_PERIODS_PER_DAY, ...(await getPeriodsPerDay()) },
+        localDateStr(),
+        maxDays,
+      );
+      if (lengthError) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            lengthError === "tooManyDays"
+              ? `Έως ${maxDays} ημέρες αποβολής σε αυτό το επίπεδο — για περισσότερες, παραπέμψτε την καταγγελία.`
+              : PUNISHMENT_ERROR_EL[lengthError],
+        });
+      }
 
       const result = await ctx.db.$transaction(async (tx) => {
         // Create per-student resolutions (individually to support nested expulsionDays)
@@ -546,6 +560,83 @@ export const referralsRouter = createTRPCRouter({
       });
 
       return result;
+    }),
+
+  // Refer students up a level (homegroup headteacher → headmaster →
+  // «Πειθαρχικό Συμβούλιο»), one-way, with a reason. Only whoever may decide
+  // the student now may refer them; the next level is notified.
+  escalate: managementProcedure
+    .input(
+      z.object({
+        referralId: z.string(),
+        referralStudentIds: z.array(z.string()).min(1),
+        reason: z.string().trim().min(5, "Γράψτε τον λόγο της παραπομπής"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const viewer = await loadReferralViewer(ctx.session.user.id, ctx.effectiveRoles);
+      if (!viewer) throw new TRPCError({ code: "NOT_FOUND" });
+      const students = await ctx.db.referralStudent.findMany({
+        where: { id: { in: input.referralStudentIds }, referralId: input.referralId, referral: { isDraft: false } },
+        select: { id: true, groupId: true, level: true, resolution: { select: { id: true } } },
+      });
+      if (students.length !== input.referralStudentIds.length) throw new TRPCError({ code: "NOT_FOUND" });
+      for (const rs of students) {
+        if (!canEscalate({ groupId: rs.groupId, level: rs.level, resolved: !!rs.resolution }, viewer)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Δεν μπορείτε να παραπέμψετε αυτόν/ήν τον/τη μαθητή/τρια" });
+        }
+      }
+      const toLevels = new Set(students.map((rs) => nextLevel(rs.level)!));
+
+      await ctx.db.$transaction(async (tx) => {
+        for (const rs of students) {
+          const to = nextLevel(rs.level)!;
+          // Guard against a concurrent decision: only a still-pending student at this level moves.
+          const moved = await tx.referralStudent.updateMany({
+            where: { id: rs.id, level: rs.level, status: "PENDING" },
+            data: { level: to },
+          });
+          if (moved.count !== 1) throw new TRPCError({ code: "CONFLICT", message: "Η καταγγελία άλλαξε στο μεταξύ — ανανεώστε τη σελίδα" });
+          await tx.referralEscalation.create({
+            data: { referralStudentId: rs.id, fromLevel: rs.level, toLevel: to, reason: input.reason, escalatedById: ctx.session.user.id },
+          });
+        }
+        // Tell the next level: every headmaster, or the council headteacher.
+        const recipients = await tx.user.findMany({
+          where: {
+            isActive: true,
+            OR: [
+              ...(toLevels.has("HEADMASTER") ? [{ role: "HEADMASTER" as const }, { extraRoles: { has: "HEADMASTER" as const } }] : []),
+              ...(toLevels.has("COUNCIL") ? [{ staffProfile: { disciplinaryCouncil: true } }] : []),
+            ],
+          },
+          select: { id: true },
+        });
+        const referral = await tx.referral.findUnique({ where: { id: input.referralId }, select: { number: true, title: true } });
+        const to = [...toLevels].map((l) => LEVEL_LABEL[l]).join(", ");
+        for (const r of recipients) {
+          await tx.notification.create({
+            data: {
+              userId: r.id,
+              type: "REFERRAL_ESCALATED",
+              title: `Παραπομπή καταγγελίας #${referral?.number ?? ""} — ${to}`,
+              body: `${referral?.title ? `${referral.title}: ` : ""}${input.reason.slice(0, 120)}`,
+              linkUrl: `/teacher/referrals`,
+              read: false,
+            },
+          });
+        }
+      });
+
+      await writeAudit({
+        userId: ctx.session.user.id,
+        action: "referral.escalate",
+        resource: "Referral",
+        resourceId: input.referralId,
+        details: { referralStudentIds: input.referralStudentIds, to: [...toLevels], reason: input.reason },
+        ...reqMeta(ctx.req),
+      });
+      return { ok: true };
     }),
 
   // A headteacher asks to UNLOCK a resolution THEY made. The admin only

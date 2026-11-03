@@ -302,6 +302,52 @@ export async function setSubstitutionCoordinator(
   return { ok: true };
 }
 
+/**
+ * Toggle the «Πειθαρχικό Συμβούλιο» designation: the headteacher who decides
+ * referrals the headmaster refers up. One at a time — setting it clears it from
+ * anyone else. Headteachers only.
+ */
+export async function setDisciplinaryCouncil(
+  targetUserId: string,
+  value: boolean
+): Promise<ActionResult> {
+  const auth = await getSuperAdminAuth();
+  if (!auth) return { ok: false, error: "Δεν επιτρέπεται" };
+
+  const target = await db.user.findUnique({
+    where: { id: targetUserId },
+    select: { role: true, staffProfile: { select: { id: true } } },
+  });
+  if (!target?.staffProfile) return { ok: false, error: "Δεν υπάρχει συνδεδεμένο προφίλ προσωπικού" };
+  if (value && target.role !== "HEADTEACHER_A" && target.role !== "HEADTEACHER_B") {
+    return { ok: false, error: "Μόνο Βοηθός Διευθυντής/ντρια μπορεί να οριστεί υπεύθυνος/η του Πειθαρχικού Συμβουλίου" };
+  }
+
+  const cleared = await db.$transaction(async (tx) => {
+    const others = value
+      ? await tx.staffProfile.updateMany({
+          where: { disciplinaryCouncil: true, id: { not: target.staffProfile!.id } },
+          data: { disciplinaryCouncil: false },
+        })
+      : { count: 0 };
+    await tx.staffProfile.update({
+      where: { id: target.staffProfile!.id },
+      data: { disciplinaryCouncil: value },
+    });
+    return others.count;
+  });
+  await writeAudit({
+    userId: auth.userId,
+    action: "staff.disciplinaryCouncil",
+    resource: "StaffProfile",
+    resourceId: target.staffProfile.id,
+    details: { value, clearedOthers: cleared },
+    ...(await requestMeta()),
+  });
+  revalidateUsers();
+  return { ok: true };
+}
+
 /** Toggle the "ΔΔΚ coordinator" designation. */
 export async function setDdkCoordinator(
   targetUserId: string,

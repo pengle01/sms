@@ -195,6 +195,7 @@ model User {
   resolvedReferrals          ReferralResolution[]
   resolvedReferralStudents   ReferralStudentResolution[] @relation("ReferralStudentResolver")
   resolutionUnlockRequests   ResolutionUnlockRequest[]   @relation("ResolutionUnlockRequester")
+  referralEscalations        ReferralEscalation[]        @relation("ReferralEscalator")
   resolutionUnlockDecisions  ResolutionUnlockRequest[]   @relation("ResolutionUnlockDecider")
   substitutionPlansGenerated SubstitutionPlan[]          @relation("SubstitutionPlanGenerator")
   substitutionPlansFinalized SubstitutionPlan[]          @relation("SubstitutionPlanFinalizer")
@@ -236,6 +237,9 @@ model StaffProfile {
   substitutionCoordinator Boolean @default(false)
   // Designation: the headteacher responsible for ΔΔΚ (set by admin)
   ddkCoordinator          Boolean @default(false)
+  // Designation: the headteacher responsible for the «Πειθαρχικό Συμβούλιο» —
+  // decides referrals the headmaster refers up (one at a time; set by admin)
+  disciplinaryCouncil     Boolean @default(false)
   // Designation: IT maintenance — handles equipment faults in the rooms assigned
   // to them (RoomMaintainer), set by admin
   itMaintenance           Boolean @default(false)
@@ -887,6 +891,15 @@ enum ReferralStudentStatus {
   RESOLVED
 }
 
+// Who decides a student on a referral: the homegroup headteacher (expulsion up
+// to 2 days), the headmaster (4) or the «Πειθαρχικό Συμβούλιο» (6). One-way —
+// see src/lib/referralLevels.ts.
+enum ReferralLevel {
+  HOMEGROUP
+  HEADMASTER
+  COUNCIL
+}
+
 model ReferralStudent {
   id         String                @id @default(cuid())
   referralId String
@@ -896,9 +909,11 @@ model ReferralStudent {
   groupId    String?
   group      Group?                @relation("ReferralStudentGroup", fields: [groupId], references: [id])
   status     ReferralStudentStatus @default(PENDING)
+  level      ReferralLevel         @default(HOMEGROUP)
 
   resolution     ReferralStudentResolution?
   unlockRequests ResolutionUnlockRequest[]
+  escalations    ReferralEscalation[]
 
   @@unique([referralId, studentId])
   @@index([studentId])
@@ -954,6 +969,22 @@ model ResolutionUnlockRequest {
   createdAt         DateTime          @default(now())
 
   @@index([status])
+  @@index([referralStudentId])
+}
+
+// A student's referral sent up a level (homegroup headteacher → headmaster →
+// «Πειθαρχικό Συμβούλιο»), with the reason — the trail on the referral and print.
+model ReferralEscalation {
+  id                String          @id @default(cuid())
+  referralStudentId String
+  referralStudent   ReferralStudent @relation(fields: [referralStudentId], references: [id], onDelete: Cascade)
+  fromLevel         ReferralLevel
+  toLevel           ReferralLevel
+  reason            String          @db.Text
+  escalatedById     String
+  escalatedBy       User            @relation("ReferralEscalator", fields: [escalatedById], references: [id])
+  createdAt         DateTime        @default(now())
+
   @@index([referralStudentId])
 }
 

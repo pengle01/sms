@@ -37,6 +37,8 @@ interface Props {
   groupResolve?: boolean;
   locale?: string;
   periodsConfig?: Record<number, number>; // DOW 1-5 → period count
+  /** The deciding level's limit on expulsion dates (src/lib/referralLevels.ts). */
+  maxExpulsionDays?: number;
 }
 
 // Total school periods across the expulsion days (whole days and ranges)
@@ -92,6 +94,7 @@ export function ResolveReferralDialog({
   groupResolve = false,
   locale = "el",
   periodsConfig = { 1: 7, 2: 7, 3: 7, 4: 7, 5: 7 },
+  maxExpulsionDays,
 }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -128,6 +131,10 @@ export function ResolveReferralDialog({
     if (dateInput < minDay) { toast.error("Δεν επιτρέπονται ημερομηνίες στο παρελθόν"); return; }
     const dow = new Date(dateInput + "T12:00:00").getDay();
     if (dow === 0 || dow === 6) { toast.error("Το Σαββατοκύριακο δεν μετράει σε σχολικές μέρες"); return; }
+    if (maxExpulsionDays != null && !expulsionDays.some((x) => x.date === dateInput) && expulsionDays.length >= maxExpulsionDays) {
+      toast.error(`Έως ${maxExpulsionDays} ημέρες αποβολής σε αυτό το επίπεδο — για περισσότερες, παραπέμψτε την καταγγελία.`);
+      return;
+    }
     setExpulsionDays((prev) =>
       prev.some((x) => x.date === dateInput)
         ? prev
@@ -384,6 +391,9 @@ export function ResolveReferralDialog({
                     <div className="flex items-center gap-2">
                       <CalendarDays className="w-4 h-4 text-red-600" />
                       <label className="text-sm font-semibold text-red-800">Ημέρες Αποβολής</label>
+                      {maxExpulsionDays != null && (
+                        <span className="text-xs text-red-700">(έως {maxExpulsionDays} — κάθε ημερομηνία μετρά ως μία)</span>
+                      )}
                     </div>
 
                     {/* Add date */}

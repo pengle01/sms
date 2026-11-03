@@ -17,6 +17,7 @@ import { parseReferralSearchTab, referralSearchWhere } from "@/lib/referralSearc
 import { decideResolutionUnlock } from "./actions";
 import { CompactReferralTable, ReferralViewToggle } from "@/components/referrals/CompactReferrals";
 import { expulsionDayLabel } from "@/lib/referralLabels";
+import { LEVEL_LABEL } from "@/lib/referralLevels";
 
 export default async function ReferralsPage({
   params,
@@ -309,7 +310,13 @@ export default async function ReferralsPage({
                       <ResponsibleHeadteachers
                         students={r.students.map((rs) => ({
                           status: rs.status,
-                          headteacher: rs.group?.homeroomHeadteacher ? staffDisplayName(rs.group.homeroomHeadteacher) : null,
+                          // Referred up: the level that decides now
+                          headteacher:
+                            rs.level !== "HOMEGROUP"
+                              ? LEVEL_LABEL[rs.level]
+                              : rs.group?.homeroomHeadteacher
+                                ? staffDisplayName(rs.group.homeroomHeadteacher)
+                                : null,
                         }))}
                       />
                     </td>
