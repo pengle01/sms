@@ -18,7 +18,7 @@ export async function decideResolutionUnlock(requestId: string, approve: boolean
     include: {
       referralStudent: {
         include: {
-          resolution: { select: { id: true } },
+          resolution: { select: { id: true, decidedLevel: true } },
           referral: { select: { number: true } },
           student: { include: { user: { select: { name: true } } } },
         },
@@ -32,11 +32,13 @@ export async function decideResolutionUnlock(requestId: string, approve: boolean
 
   await db.$transaction(async (tx) => {
     if (approve && rs.resolution) {
-      // Delete the decision (expulsion days cascade) and reopen the student.
+      // Delete the decision (expulsion days cascade) and reopen the student —
+      // back at the level that chose the measure (the headmaster's or the
+      // council's decision returns to them, not to the homegroup headteacher).
       await tx.referralStudentResolution.delete({ where: { id: rs.resolution.id } });
       await tx.referralStudent.update({
         where: { id: rs.id },
-        data: { status: "PENDING" },
+        data: { status: "PENDING", level: rs.resolution.decidedLevel },
       });
     }
 

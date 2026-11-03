@@ -91,8 +91,13 @@ export function resolutionSummary(resolution: {
   expulsionDays?: { date: Date; fromPeriod?: number | null; toPeriod?: number | null }[] | null;
   suspendedDays?: number | null;
   suspendedPeriods?: number | null;
+  /** A headmaster's / council's expulsion before its dates are picked. */
+  decidedDays?: number | null;
 }): string {
   const base = actionLabel(resolution.action);
+  if (resolution.action === "DETENTION" && !resolution.expulsionDays?.length && resolution.decidedDays) {
+    return `${base} · ${lengthLabel(resolution.decidedDays, 0)}`;
+  }
   const length =
     resolution.action === "SUSPENDED_EXPULSION"
       ? lengthLabel(resolution.suspendedDays ?? 0, resolution.suspendedPeriods ?? 0)

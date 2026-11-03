@@ -5,7 +5,7 @@ import { DateInput } from "@/components/ui/date-input";
 import { trpc } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ChevronRight, Loader2, X, Printer, MessageSquare, CheckCircle2, Plus, CalendarDays, FileText } from "lucide-react";
+import { ChevronRight, Loader2, X, Plus, CalendarDays } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { totalPeriodsForDays, periodsForDow, isPartialDay } from "@/lib/periods";
 import {
@@ -17,7 +17,6 @@ import {
   type ResolutionActionValue,
 } from "@/lib/referralLabels";
 import { SUSPENDED_MAX_DAYS, SUSPENDED_MAX_PERIODS } from "@/lib/punishment";
-import { expulsionAtSchool } from "@/lib/referralLetter";
 
 // The punishments in the dialog's order (Προειδοποίηση before Γραπτή Συμφωνία).
 const ACTIONS = ACTION_ORDER.map((value) => ({ value, label: actionLabel(value) }));
@@ -35,10 +34,17 @@ interface Props {
   recommendations?: string[];
   canViewCounselorNotes?: boolean;
   groupResolve?: boolean;
+  /** Unused since the dialog no longer prints; kept so callers needn't change. */
   locale?: string;
   periodsConfig?: Record<number, number>; // DOW 1-5 → period count
   /** The deciding level's limit on expulsion dates (src/lib/referralLevels.ts). */
   maxExpulsionDays?: number;
+  /**
+   * Carrying out a headmaster's / «Πειθαρχικό Συμβούλιο» decision: always an
+   * expulsion of `decidedDays` days — the homegroup headteacher picks exactly
+   * that many dates, writes the details and records the parent contact.
+   */
+  carryOut?: { referralStudentIds: string[]; decidedDays: number; decidedBy: string; decisionNotes: string | null };
 }
 
 // Total school periods across the expulsion days (whole days and ranges)
@@ -61,30 +67,6 @@ function fmtDate(iso: string): string {
   });
 }
 
-function defaultSmsMessage(
-  studentNames: string[],
-  action: Action,
-  expulsionDays: ExpulsionDay[],
-  suspended: { days: number; periods: number },
-): string {
-  const names = studentNames.join(", ");
-  if (action === "DETENTION" && expulsionDays.length > 0) {
-    // Served at school: the length only, no dates (the student might stay home).
-    if (expulsionAtSchool(expulsionDays)) {
-      const l = expulsionLength(expulsionDays);
-      return `Αξιότιμε κηδεμόνα, στον/στην ${names} επιβλήθηκε αποβολή (${lengthLabel(l.days, l.periods)}), λόγω πειθαρχικού παραπτώματος. Για πληροφορίες επικοινωνήστε με τη Διεύθυνση.`;
-    }
-    const fmtted = expulsionDays
-      .map((d) => (isPartialDay(d) ? `${fmtDate(d.date)} (περίοδοι ${d.fromPeriod}–${d.toPeriod})` : fmtDate(d.date)))
-      .join(", ");
-    return `Αξιότιμε κηδεμόνα, ο/η ${names} αποβλήθηκε από το σχολείο τις ημερομηνίες: ${fmtted}, λόγω πειθαρχικού παραπτώματος. Για πληροφορίες επικοινωνήστε με τη Διεύθυνση.`;
-  }
-  if (action === "SUSPENDED_EXPULSION") {
-    return `Αξιότιμε κηδεμόνα, στον/στην ${names} επιβλήθηκε αποβολή με αναστολή (${lengthLabel(suspended.days, suspended.periods)}), λόγω πειθαρχικού παραπτώματος. Η αποβολή εκτίεται σε περίπτωση νέου παραπτώματος. Για πληροφορίες επικοινωνήστε με τη Διεύθυνση.`;
-  }
-  return `Αξιότιμε κηδεμόνα, το πειθαρχικό θέμα του/της ${names} εξετάστηκε και ελήφθη απόφαση. Για πληροφορίες επικοινωνήστε με τη Διεύθυνση.`;
-}
-
 export function ResolveReferralDialog({
   referralId,
   referralStudentId,
@@ -92,16 +74,16 @@ export function ResolveReferralDialog({
   recommendations = [],
   canViewCounselorNotes = false,
   groupResolve = false,
-  locale = "el",
   periodsConfig = { 1: 7, 2: 7, 3: 7, 4: 7, 5: 7 },
-  maxExpulsionDays,
+  maxExpulsionDays: maxDaysProp,
+  carryOut,
 }: Props) {
+  const maxExpulsionDays = carryOut?.decidedDays ?? maxDaysProp;
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [resolved, setResolved] = useState(false);
 
   // Form state
-  const [action, setAction] = useState<Action>("PEDAGOGICAL_DIALOGUE");
+  const [action, setAction] = useState<Action>(carryOut ? "DETENTION" : "PEDAGOGICAL_DIALOGUE");
   const [actionDetails, setActionDetails] = useState("");
   const [notes, setNotes] = useState("");
   const [counselorNotes, setCounselorNotes] = useState("");
@@ -115,9 +97,6 @@ export function ResolveReferralDialog({
   const [parentContactDate, setParentContactDate] = useState("");
   const [parentContactMethod, setParentContactMethod] = useState("");
 
-  // SMS state
-  const [smsMessage, setSmsMessage] = useState("");
-  const [showSmsPanel, setShowSmsPanel] = useState(false);
 
   const totalPeriods = useMemo(
     () => calcPeriods(expulsionDays, periodsConfig),
@@ -166,25 +145,19 @@ export function ResolveReferralDialog({
     markOpened({ referralId });
   };
 
-  const { mutate: resolve, isPending: resolving } = trpc.referrals.resolve.useMutation({
+  const onDone = {
+    // Straight back to the list; the decision and the parent letter are
+    // printed from the referral's card.
     onSuccess: () => {
-      setResolved(true);
-      setSmsMessage(defaultSmsMessage(studentNames, action, expulsionDays, suspended));
+      toast.success("Η απόφαση καταχωρήθηκε");
+      setOpen(false);
       router.refresh();
     },
-    onError: (e) => toast.error(e.message),
-  });
-
-  const { mutate: sendSms, isPending: smsPending } = trpc.referrals.sendResolutionSms.useMutation({
-    onSuccess: (data) => {
-      const sent = data.results.filter((r) => r.success).length;
-      const failed = data.results.filter((r) => !r.success).length;
-      if (sent > 0) toast.success(`SMS εστάλη σε ${sent} επαφή/ές`);
-      if (failed > 0) toast.error(`${failed} αποστολή/ές απέτυχαν`);
-      setShowSmsPanel(false);
-    },
-    onError: (e) => toast.error(e.message),
-  });
+    onError: (e: { message: string }) => toast.error(e.message),
+  };
+  const { mutate: resolve, isPending: resolvingOwn } = trpc.referrals.resolve.useMutation(onDone);
+  const { mutate: carryOutMutate, isPending: carryingOut } = trpc.referrals.carryOut.useMutation(onDone);
+  const resolving = resolvingOwn || carryingOut;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -194,6 +167,24 @@ export function ResolveReferralDialog({
     }
     if (action === "DETENTION" && expulsionDays.length === 0) {
       toast.error("Επιλέξτε τουλάχιστον μία ημέρα αποβολής");
+      return;
+    }
+    if (carryOut) {
+      if (expulsionDays.length !== carryOut.decidedDays) {
+        toast.error(`Επιλέξτε ακριβώς ${carryOut.decidedDays} ${carryOut.decidedDays === 1 ? "ημερομηνία" : "ημερομηνίες"} αποβολής`);
+        return;
+      }
+      carryOutMutate({
+        referralId,
+        referralStudentIds: carryOut.referralStudentIds,
+        expulsionDays,
+        actionDetails: actionDetails.trim(),
+        notes: notes || undefined,
+        counselorNotes: counselorNotes || undefined,
+        parentContacted,
+        parentContactDate: parentContactDate || undefined,
+        parentContactMethod: parentContactMethod || undefined,
+      });
       return;
     }
     if (action === "SUSPENDED_EXPULSION" && suspended.days === 0 && suspended.periods === 0) {
@@ -216,18 +207,22 @@ export function ResolveReferralDialog({
     });
   };
 
-  const handlePrint = () => window.open(`/${locale}/teacher/referrals/${referralId}/print?auto=1`, "_blank");
-  // The parent letter: just this student's, or every resolved one on a group resolve.
-  const handleLetter = () =>
-    window.open(
-      `/${locale}/teacher/referrals/${referralId}/letter?auto=1${!groupResolve && referralStudentId ? `&student=${referralStudentId}` : ""}`,
-      "_blank",
-    );
-
   const studentLabel = studentNames.length === 1 ? studentNames[0]! : `${studentNames.length} μαθητές`;
 
   // ─── Trigger buttons ──────────────────────────────────────────────────────
   if (!open) {
+    if (carryOut) return (
+      <button onClick={openDialog}
+        className="w-full flex items-center justify-between gap-3 px-4 py-3.5 rounded-xl bg-orange-50 border border-orange-200 hover:bg-orange-100 active:scale-[0.98] transition-all touch-manipulation">
+        <span className="text-left">
+          <span className="block text-sm font-semibold text-slate-800">{studentLabel}</span>
+          <span className="block text-xs text-orange-800">
+            {carryOut.decidedBy}: αποβολή {lengthLabel(carryOut.decidedDays, 0)}
+          </span>
+        </span>
+        <span className="flex items-center gap-1 text-orange-700 font-semibold text-sm whitespace-nowrap">Εκτέλεση <ChevronRight className="w-4 h-4" /></span>
+      </button>
+    );
     if (groupResolve) return (
       <button onClick={openDialog}
         className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-[0.98] transition-all touch-manipulation">
@@ -259,67 +254,17 @@ export function ResolveReferralDialog({
           <div className="flex items-start justify-between gap-4">
             <div>
               <h3 className="text-lg font-bold text-slate-900">
-                {resolved ? "Αποφάσεις Επίλυσης" : "Επίλυση Καταγγελίας"}
+                {carryOut ? "Εκτέλεση απόφασης" : "Επίλυση Καταγγελίας"}
               </h3>
               <p className="text-base font-semibold text-emerald-700 mt-0.5">{studentLabel}</p>
             </div>
-            <button onClick={() => { setOpen(false); setResolved(false); }}
+            <button onClick={() => setOpen(false)}
               className="flex-shrink-0 p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 touch-manipulation">
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* ── POST-RESOLVE ── */}
-          {resolved ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-green-50 border border-green-200 text-green-800">
-                <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <span className="text-sm font-medium">Η απόφαση καταχωρήθηκε επιτυχώς</span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <button onClick={handlePrint}
-                  className="flex flex-col items-center gap-2 px-4 py-5 rounded-2xl border-2 border-slate-200 hover:border-slate-400 hover:bg-slate-50 transition-colors touch-manipulation">
-                  <Printer className="w-7 h-7 text-slate-600" />
-                  <span className="text-sm font-semibold text-slate-700">Εκτύπωση</span>
-                  <span className="text-xs text-slate-400">Απόφαση παραπτώματος</span>
-                </button>
-                <button onClick={handleLetter}
-                  className="flex flex-col items-center gap-2 px-4 py-5 rounded-2xl border-2 border-slate-200 hover:border-slate-400 hover:bg-slate-50 transition-colors touch-manipulation">
-                  <FileText className="w-7 h-7 text-slate-600" />
-                  <span className="text-sm font-semibold text-slate-700">Επιστολή γονέων</span>
-                  <span className="text-xs text-slate-400">Ενημέρωση για τα μέτρα</span>
-                </button>
-                <button onClick={() => setShowSmsPanel((v) => !v)}
-                  className="flex flex-col items-center gap-2 px-4 py-5 rounded-2xl border-2 border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50 transition-colors touch-manipulation">
-                  <MessageSquare className="w-7 h-7 text-emerald-600" />
-                  <span className="text-sm font-semibold text-emerald-700">Αποστολή SMS</span>
-                  <span className="text-xs text-slate-400">Ειδοποίηση γονέων</span>
-                </button>
-              </div>
-
-              {showSmsPanel && (
-                <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-                  <label className="text-sm font-semibold text-emerald-800">Μήνυμα SMS</label>
-                  <textarea value={smsMessage} onChange={(e) => setSmsMessage(e.target.value)} rows={4}
-                    className="w-full px-3 py-2 rounded-xl border border-emerald-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none bg-white" />
-                  <p className="text-xs text-slate-400">{smsMessage.length} χαρακτήρες</p>
-                  <Button onClick={() => sendSms({ referralId, referralStudentId, message: smsMessage })}
-                    disabled={smsPending || !smsMessage.trim()}
-                    className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold touch-manipulation">
-                    {smsPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Αποστολή SMS στους Γονείς
-                  </Button>
-                </div>
-              )}
-
-              <button onClick={() => { setOpen(false); setResolved(false); }}
-                className="w-full py-2.5 rounded-xl border border-slate-200 text-sm text-slate-500 hover:bg-slate-50 touch-manipulation">
-                Κλείσιμο
-              </button>
-            </div>
-          ) : (
-            /* ── RESOLVE FORM ── */
+          {/* ── RESOLVE FORM ── */}
             <>
               {recommendations.length > 0 && (
                 <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
@@ -329,6 +274,15 @@ export function ResolveReferralDialog({
               )}
 
               <form onSubmit={handleSubmit} className="space-y-5">
+                {/* Carrying out a higher level's decision: the measure is fixed */}
+                {carryOut ? (
+                  <div className="rounded-xl bg-orange-50 border border-orange-200 px-4 py-3 text-sm text-orange-900 space-y-0.5">
+                    <p className="font-semibold">Απόφαση: {carryOut.decidedBy}</p>
+                    <p>Αποβολή {lengthLabel(carryOut.decidedDays, 0)} — ορίστε {carryOut.decidedDays === 1 ? "την ημερομηνία" : `${carryOut.decidedDays} ημερομηνίες`}.</p>
+                    {carryOut.decisionNotes && <p className="text-orange-800 whitespace-pre-wrap">{carryOut.decisionNotes}</p>}
+                  </div>
+                ) : (
+                <>
                 {/* Action radio cards */}
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-slate-700">Ενέργεια που ελήφθη</label>
@@ -353,6 +307,8 @@ export function ResolveReferralDialog({
                     ))}
                   </div>
                 </div>
+                </>
+                )}
 
                 {/* Punishment description — required for every action type */}
                 <div className="space-y-1.5">
@@ -391,9 +347,6 @@ export function ResolveReferralDialog({
                     <div className="flex items-center gap-2">
                       <CalendarDays className="w-4 h-4 text-red-600" />
                       <label className="text-sm font-semibold text-red-800">Ημέρες Αποβολής</label>
-                      {maxExpulsionDays != null && (
-                        <span className="text-xs text-red-700">(έως {maxExpulsionDays} — κάθε ημερομηνία μετρά ως μία)</span>
-                      )}
                     </div>
 
                     {/* Add date */}
@@ -529,12 +482,11 @@ export function ResolveReferralDialog({
                   <Button type="submit" disabled={resolving || (action === "DETENTION" && expulsionDays.length === 0)}
                     className="flex-1 h-12 rounded-xl text-base font-semibold bg-green-600 hover:bg-green-700 text-white touch-manipulation">
                     {resolving && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-                    Επίλυση
+                    {carryOut ? "Εκτέλεση — Επίλυση" : "Επίλυση"}
                   </Button>
                 </div>
               </form>
             </>
-          )}
         </div>
       </div>
     </div>

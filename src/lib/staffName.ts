@@ -48,3 +48,18 @@ export function staffAuthorLabel(
   if (isOfficeAdmin(author.role)) return officeLabel;
   return author.scheduleName ?? author.name ?? fallback;
 }
+
+/**
+ * A person's real name for a signature on an official document (never the
+ * timetable coding): the Greek name if set, else first + last name, else the
+ * account name.
+ */
+export function signatureName(
+  user: { nameEl?: string | null; firstName?: string | null; lastName?: string | null; name?: string | null } | null | undefined,
+): string {
+  if (!user) return "";
+  const el = user.nameEl?.trim();
+  if (el) return el;
+  const parts = [user.firstName?.trim(), user.lastName?.trim()].filter(Boolean).join(" ");
+  return parts || user.name?.trim() || "";
+}

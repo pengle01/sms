@@ -1,5 +1,5 @@
 import { db } from "@/server/db";
-import { staffDisplayName, slotTeacherName } from "@/lib/staffName";
+import { staffDisplayName, slotTeacherName, signatureName } from "@/lib/staffName";
 import { getSchoolName } from "@/lib/schoolConfig";
 import { getSpecialDaysInRange, buildDayTypeMap, isHolidayType } from "@/lib/calendar";
 import { missedLessonsByDay } from "@/lib/expulsionLessons";
@@ -10,7 +10,8 @@ import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY, totalPeriodsForDays } from "
 import { PrintTrigger, PrintButton } from "./PrintTrigger";
 import { expulsionDayPeriods, isPartialDay } from "@/lib/periods";
 import { actionLabel, expulsionLength, lengthLabel, resolutionSummary } from "@/lib/referralLabels";
-import { LEVEL_LABEL, LEVEL_SIGNER } from "@/lib/referralLevels";
+import { LEVEL_LABEL } from "@/lib/referralLevels";
+import { getHeadmasterSignature } from "@/server/headmasterSigner";
 
 function fmt(date: Date | null | undefined): string {
   if (!date) return "—";
@@ -41,7 +42,7 @@ export default async function PrintResolutionPage({
   const auth = await getActiveAuth();
   if (!auth) redirect(`/${locale}/login/staff`);
 
-  const [referral, periodsPerDay, schoolName] = await Promise.all([
+  const [referral, periodsPerDay, schoolName, headmaster] = await Promise.all([
     db.referral.findUnique({
       where: { id: referralId },
       include: {
@@ -58,7 +59,8 @@ export default async function PrintResolutionPage({
             group: { select: { name: true } },
             resolution: {
               include: {
-                resolvedBy: { select: { name: true } },
+                resolvedBy: { select: { name: true, nameEl: true, firstName: true, lastName: true } },
+                carriedOutBy: { select: { name: true, nameEl: true, firstName: true, lastName: true } },
                 expulsionDays: { orderBy: { date: "asc" } },
               },
             },
@@ -73,6 +75,7 @@ export default async function PrintResolutionPage({
     }),
     getPeriodsPerDay(),
     getSchoolName(),
+    getHeadmasterSignature(),
   ]);
   const periodsConfig = { ...DEFAULT_PERIODS_PER_DAY, ...periodsPerDay };
 
@@ -383,14 +386,21 @@ export default async function PrintResolutionPage({
                 </section>
               )}
 
-              {/* Signature — whoever decided, at the student's level */}
-              <section className="mt-12 flex justify-end text-center text-xs text-slate-600">
+              {/* Signatures — the headteacher (who resolved it, or carried out the
+                  headmaster's / council's decision) and the headmaster */}
+              <section className="mt-12 flex justify-between gap-10 text-center text-xs text-slate-600">
                 <div className="w-64">
                   <div className="border-t border-slate-400 pt-2 mt-8">
-                    {LEVEL_SIGNER[rs.level]}
-                    {res?.resolvedBy?.name && (
-                      <div className="mt-0.5 font-medium text-slate-800">{res.resolvedBy.name}</div>
+                    Ο/Η Βοηθός Διευθυντής/ντρια
+                    {res && signatureName(res.carriedOutBy ?? res.resolvedBy) && (
+                      <div className="mt-0.5 font-medium text-slate-800">{signatureName(res.carriedOutBy ?? res.resolvedBy)}</div>
                     )}
+                  </div>
+                </div>
+                <div className="w-64">
+                  <div className="border-t border-slate-400 pt-2 mt-8">
+                    Ο/Η Διευθυντής/ντρια
+                    {headmaster && <div className="mt-0.5 font-medium text-slate-800">{headmaster}</div>}
                   </div>
                 </div>
               </section>

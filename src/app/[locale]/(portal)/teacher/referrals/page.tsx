@@ -29,6 +29,7 @@ import { loadReferralViewer } from "@/server/referralViewer";
 import {
   canResolve as canResolveStudent,
   canEscalate,
+  canCarryOut,
   nextLevel,
   expulsionLimitFor,
   EXPULSION_MAX_DAYS,
@@ -36,6 +37,7 @@ import {
   ESCALATE_TO_LABEL,
 } from "@/lib/referralLevels";
 import { EscalateReferralDialog } from "./EscalateReferralDialog";
+import { DecideExpulsionDialog } from "./DecideExpulsionDialog";
 
 // Include shape — same as in router
 const referralInclude = {
@@ -49,6 +51,7 @@ const referralInclude = {
         include: {
           expulsionDays: { orderBy: { date: "asc" as const } },
           resolvedBy: { select: { name: true } },
+          carriedOutBy: { select: { name: true } },
         },
       },
       unlockRequests: { where: { status: "PENDING" as const }, select: { id: true } },
@@ -174,7 +177,9 @@ export default async function TeacherReferralsPage({
       : [];
 
   // Referred up to me: the headmaster's / the council headteacher's queue and history.
-  const levelQueue = async (level: "HEADMASTER" | "COUNCIL", reached: ("HEADMASTER" | "COUNCIL")[]) =>
+  // History: every referral with a student once referred to this level (the
+  // student returns to the homegroup headteacher once the measure is chosen).
+  const levelQueue = async (level: "HEADMASTER" | "COUNCIL") =>
     Promise.all([
       db.referral.findMany({
         where: { isDraft: false, students: { some: { status: "PENDING", level } }, ...searchAnd },
@@ -184,7 +189,7 @@ export default async function TeacherReferralsPage({
       db.referral.findMany({
         where: {
           isDraft: false,
-          students: { some: { level: { in: reached } } },
+          students: { some: { escalations: { some: { toLevel: level } } } },
           NOT: { students: { some: { status: "PENDING", level } } },
           ...searchAnd,
         },
@@ -193,8 +198,8 @@ export default async function TeacherReferralsPage({
         take: 100,
       }),
     ]);
-  const [headmasterQueue, headmasterHistory] = isHeadmaster ? await levelQueue("HEADMASTER", ["HEADMASTER", "COUNCIL"]) : [[], []];
-  const [councilQueue, councilHistory] = isCouncil ? await levelQueue("COUNCIL", ["COUNCIL"]) : [[], []];
+  const [headmasterQueue, headmasterHistory] = isHeadmaster ? await levelQueue("HEADMASTER") : [[], []];
+  const [councilQueue, councilHistory] = isCouncil ? await levelQueue("COUNCIL") : [[], []];
 
   // Management: all submitted referrals with filters
   const allWhere = {
@@ -422,10 +427,16 @@ export default async function TeacherReferralsPage({
       scope === "homegroup"
         ? rs.groupId && headGroupIds.includes(rs.groupId)
         : scope === "headmaster"
-          ? rs.level === "HEADMASTER" || rs.level === "COUNCIL"
-          : rs.level === "COUNCIL",
+          ? rs.level === "HEADMASTER" || rs.escalations.some((e) => e.toLevel === "HEADMASTER")
+          : rs.level === "COUNCIL" || rs.escalations.some((e) => e.toLevel === "COUNCIL"),
     );
-    const lite = (rs: (typeof myStudents)[number]) => ({ groupId: rs.groupId, level: rs.level, resolved: !!rs.resolution });
+    type RS = (typeof myStudents)[number];
+    const lite = (rs: RS) => ({ groupId: rs.groupId, level: rs.level, resolved: !!rs.resolution });
+    // A measure the headmaster / council chose, waiting for the homegroup headteacher
+    const awaitingCarryOut = (rs: RS) => rs.status === "PENDING" && !!rs.resolution;
+    const carryOutLite = (rs: RS) => ({ groupId: rs.groupId, level: rs.level, hasDecision: !!rs.resolution, pending: rs.status === "PENDING" });
+    const decidedBy = (rs: RS) =>
+      rs.resolution ? `${LEVEL_LABEL[rs.resolution.decidedLevel]}${rs.resolution.resolvedBy?.name ? ` — ${rs.resolution.resolvedBy.name}` : ""}` : "";
     // Pending students this viewer decides now (others were referred up)
     const pendingMine = myStudents.filter((rs) => rs.status === "PENDING" && canResolveStudent(lite(rs), viewer));
     const escalatable = pendingMine.filter((rs) => canEscalate(lite(rs), viewer));
@@ -486,16 +497,26 @@ export default async function TeacherReferralsPage({
         <div className="divide-y divide-slate-100">
           {pendingMine.length >= 2 && (
             <div className="px-5 py-3 bg-slate-50">
-              <ResolveReferralDialog
-                referralId={r.id}
-                studentNames={pendingMine.map((rs) => rs.student.user?.name ?? "").filter(Boolean)}
-                recommendations={referralRecommendations(r)}
-                canViewCounselorNotes={showCounselorNotes}
-                groupResolve
-                locale={locale}
-                periodsConfig={periodsConfig}
-                maxExpulsionDays={expulsionLimitFor(pendingMine.map((rs) => rs.level))}
-              />
+              {pendingMine.every((rs) => rs.level === "HOMEGROUP") ? (
+                <ResolveReferralDialog
+                  referralId={r.id}
+                  studentNames={pendingMine.map((rs) => rs.student.user?.name ?? "").filter(Boolean)}
+                  recommendations={referralRecommendations(r)}
+                  canViewCounselorNotes={showCounselorNotes}
+                  groupResolve
+                  locale={locale}
+                  periodsConfig={periodsConfig}
+                  maxExpulsionDays={expulsionLimitFor(pendingMine.map((rs) => rs.level))}
+                />
+              ) : (
+                <DecideExpulsionDialog
+                  referralId={r.id}
+                  referralStudentIds={pendingMine.map((rs) => rs.id)}
+                  studentNames={pendingMine.map((rs) => rs.student.user?.name ?? "—")}
+                  maxDays={expulsionLimitFor(pendingMine.map((rs) => rs.level))}
+                  recommendation={referralRecommendations(r).length > 0 ? recommendationsLabel(referralRecommendations(r)) : null}
+                />
+              )}
               <p className="text-xs text-slate-400 mt-1 pl-1">Κοινό παιδαγωγικό μέτρο για όλους</p>
               {escalatable.length >= 2 && (
                 <div className="mt-2">
@@ -547,10 +568,61 @@ export default async function TeacherReferralsPage({
                       </p>
                     )}
                     <p className="text-slate-400">
+                      {rs.resolution.decidedLevel !== "HOMEGROUP" && `${LEVEL_LABEL[rs.resolution.decidedLevel]}: `}
                       {rs.resolution.resolvedBy?.name ?? "—"} · {fmtDisplayDate(rs.resolution.resolvedAt)}
+                      {rs.resolution.decidedLevel !== "HOMEGROUP" && rs.resolution.carriedOutBy?.name && (
+                        <> · εκτέλεση: {rs.resolution.carriedOutBy.name}</>
+                      )}
                     </p>
                   </div>
                 )}
+              </div>
+            ) : awaitingCarryOut(rs) && canCarryOut(carryOutLite(rs), viewer) ? (
+              // Back from the headmaster / council: carry the measure out
+              <div key={rs.id} className="px-5 py-3">
+                <ResolveReferralDialog
+                  referralId={r.id}
+                  referralStudentId={rs.id}
+                  studentNames={[rs.student.user?.name ?? "—"]}
+                  recommendations={referralRecommendations(r)}
+                  canViewCounselorNotes={showCounselorNotes}
+                  locale={locale}
+                  periodsConfig={periodsConfig}
+                  carryOut={{
+                    referralStudentIds: [rs.id],
+                    decidedDays: rs.resolution!.decidedDays ?? 1,
+                    decidedBy: decidedBy(rs),
+                    decisionNotes: rs.resolution!.notes,
+                  }}
+                />
+                <div className="flex items-center justify-between gap-2 mt-1 pl-1">
+                  <p className="text-xs text-slate-400">{rs.group?.name}</p>
+                  <StudentInfoDialog studentId={rs.studentId} excludeReferralId={r.id} studentName={rs.student.user?.name ?? undefined} />
+                </div>
+              </div>
+            ) : awaitingCarryOut(rs) ? (
+              // Measure chosen; the homegroup headteacher has yet to carry it out
+              <div key={rs.id} className="px-5 py-3 flex items-center justify-between gap-3 bg-orange-50/40">
+                <div>
+                  <p className="text-sm font-semibold text-slate-700">{rs.student.user?.name}</p>
+                  <p className="text-xs text-slate-400">{rs.group?.name}</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-medium text-orange-700 bg-orange-100 border border-orange-200 px-2.5 py-1 rounded-lg">
+                    {resolutionSummary(rs.resolution!)}
+                  </span>
+                  <p className="mt-1 text-[11px] text-slate-500">{decidedBy(rs)} · εκκρεμεί εκτέλεση από Β.Δ. τμήματος</p>
+                  {rs.resolution!.resolvedById === userId && (
+                    <div className="mt-1.5">
+                      <UnlockResolutionDialog
+                        resolutionId={rs.resolution!.id}
+                        studentName={rs.student.user?.name ?? "—"}
+                        currentSummary={resolutionSummary(rs.resolution!)}
+                        hasPendingUnlock={rs.unlockRequests.length > 0}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             ) : !canResolveStudent(lite(rs), viewer) ? (
               // Referred up — decided at another level now
@@ -565,21 +637,27 @@ export default async function TeacherReferralsPage({
               </div>
             ) : (
               <div key={rs.id} className="px-5 py-3">
-                {rs.level !== "HOMEGROUP" && (
-                  <p className="mb-1.5 text-xs font-medium text-orange-700">
-                    Απόφαση: {LEVEL_LABEL[rs.level]} — αποβολή έως {EXPULSION_MAX_DAYS[rs.level]} ημέρες
-                  </p>
+                {rs.level === "HOMEGROUP" ? (
+                  <ResolveReferralDialog
+                    referralId={r.id}
+                    referralStudentId={rs.id}
+                    studentNames={[rs.student.user?.name ?? ""]}
+                    recommendations={referralRecommendations(r)}
+                    canViewCounselorNotes={showCounselorNotes}
+                    locale={locale}
+                    periodsConfig={periodsConfig}
+                    maxExpulsionDays={EXPULSION_MAX_DAYS[rs.level]}
+                  />
+                ) : (
+                  // Headmaster / council: an expulsion — they set only its days
+                  <DecideExpulsionDialog
+                    referralId={r.id}
+                    referralStudentIds={[rs.id]}
+                    studentNames={[rs.student.user?.name ?? "—"]}
+                    maxDays={EXPULSION_MAX_DAYS[rs.level]}
+                    recommendation={referralRecommendations(r).length > 0 ? recommendationsLabel(referralRecommendations(r)) : null}
+                  />
                 )}
-                <ResolveReferralDialog
-                  referralId={r.id}
-                  referralStudentId={rs.id}
-                  studentNames={[rs.student.user?.name ?? ""]}
-                  recommendations={referralRecommendations(r)}
-                  canViewCounselorNotes={showCounselorNotes}
-                  locale={locale}
-                  periodsConfig={periodsConfig}
-                  maxExpulsionDays={EXPULSION_MAX_DAYS[rs.level]}
-                />
                 {canEscalate(lite(rs), viewer) && (
                   <div className="mt-2">
                     <EscalateReferralDialog

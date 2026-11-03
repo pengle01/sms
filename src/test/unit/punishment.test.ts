@@ -104,3 +104,19 @@ describe("validatePunishment — the deciding level's expulsion limit", () => {
     expect(validatePunishment({ action: "SUSPENDED_EXPULSION", suspendedDays: 5 }, config, TODAY, 2)).toBeNull();
   });
 });
+
+describe("carrying out a headmaster's / council's expulsion", () => {
+  const days = (n: number) =>
+    ["2026-10-26", "2026-10-27", "2026-10-28", "2026-10-29"].slice(0, n).map((date) => ({ date }));
+
+  it("needs exactly as many dates as the decision's days", () => {
+    expect(validatePunishment({ action: "DETENTION", expulsionDays: days(3) }, config, TODAY, undefined, 3)).toBeNull();
+    expect(validatePunishment({ action: "DETENTION", expulsionDays: days(2) }, config, TODAY, undefined, 3)).toBe("wrongDayCount");
+    expect(validatePunishment({ action: "DETENTION", expulsionDays: days(4) }, config, TODAY, undefined, 3)).toBe("wrongDayCount");
+  });
+
+  it("shows the decided length before the dates are picked", () => {
+    expect(resolutionSummary({ action: "DETENTION", expulsionDays: [], decidedDays: 3 })).toBe("Αποβολή · 3 ημέρες");
+    expect(resolutionSummary({ action: "DETENTION", expulsionDays: [{ date: new Date("2026-10-26") }], decidedDays: 3 })).toBe("Αποβολή · 1 ημέρα");
+  });
+});

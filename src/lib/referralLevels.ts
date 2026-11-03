@@ -3,6 +3,9 @@
 //   homegroup headteacher (expulsion ≤ 2 days) → headmaster (≤ 4)
 //   → «Πειθαρχικό Συμβούλιο» (≤ 6), run by the headteacher the admin designates.
 // A limit counts expulsion DATES: a part of a day counts as one.
+// The headmaster and the council only CHOOSE the measure: the student then
+// returns to the homegroup headteacher, who carries it out (parent contact,
+// SMS, letter) and so resolves it.
 // «Αποβολή με Αναστολή» is not limited per level. Pure; unit-tested.
 
 import type { ReferralLevel, Role } from "@/generated/prisma/enums";
@@ -18,13 +21,6 @@ export const LEVEL_LABEL: Record<ReferralLevel, string> = {
   HOMEGROUP: "Β.Δ. τμήματος",
   HEADMASTER: "Διευθυντής/ντρια",
   COUNCIL: "Πειθαρχικό Συμβούλιο",
-};
-
-/** The signature line of a decision taken at this level. */
-export const LEVEL_SIGNER: Record<ReferralLevel, string> = {
-  HOMEGROUP: "Ο/Η Βοηθός Διευθυντής/ντρια",
-  HEADMASTER: "Ο/Η Διευθυντής/ντρια",
-  COUNCIL: "Για το Πειθαρχικό Συμβούλιο",
 };
 
 /** «Παραπομπή …» — the button that sends a student to this level. */
@@ -70,6 +66,24 @@ export function canResolve(rs: ReferralStudentLite, viewer: ReferralViewer): boo
 /** May this viewer send this student up a level? */
 export function canEscalate(rs: ReferralStudentLite, viewer: ReferralViewer): boolean {
   return !rs.resolved && nextLevel(rs.level) !== null && canDecideAt(rs, viewer);
+}
+
+/** Where a student goes once a level chooses the measure. */
+export function decisionOutcome(level: ReferralLevel): { status: "PENDING" | "RESOLVED"; level: ReferralLevel } {
+  // The homegroup headteacher decides and carries out at once; a higher
+  // level's measure returns to them, still pending, to be carried out.
+  return { status: level === "HOMEGROUP" ? "RESOLVED" : "PENDING", level: "HOMEGROUP" };
+}
+
+/**
+ * May this viewer carry out a measure a higher level chose? The student's own
+ * homegroup headteacher, while it is still pending.
+ */
+export function canCarryOut(
+  rs: { groupId: string | null; level: ReferralLevel; hasDecision: boolean; pending: boolean },
+  viewer: ReferralViewer,
+): boolean {
+  return rs.hasDecision && rs.pending && rs.level === "HOMEGROUP" && canDecideAt(rs, viewer);
 }
 
 /** The expulsion limit when several students are resolved at once: the strictest. */

@@ -17,7 +17,7 @@ import { canDeleteReferral, canEditDraft, draftStudentChanges } from "@/lib/refe
 import { writeAudit } from "@/server/audit";
 import type { Prisma, Role } from "@/generated/prisma/client";
 import { parentCard } from "@/lib/smsContacts";
-import { canResolve, canEscalate, expulsionLimitFor, nextLevel, LEVEL_LABEL } from "@/lib/referralLevels";
+import { canResolve, canEscalate, canCarryOut, decisionOutcome, expulsionLimitFor, nextLevel, LEVEL_LABEL } from "@/lib/referralLevels";
 import { loadReferralViewer } from "@/server/referralViewer";
 
 function reqMeta(req?: Request) {
@@ -346,7 +346,7 @@ export const referralsRouter = createTRPCRouter({
         // Their homegroups' referrals — and, for the «Πειθαρχικό Συμβούλιο»
         // headteacher, every referral with a student referred to the council.
         whereFilter.students = staff.disciplinaryCouncil
-          ? { some: { OR: [{ groupId: { in: headGroupIds } }, { level: "COUNCIL" }] } }
+          ? { some: { OR: [{ groupId: { in: headGroupIds } }, { escalations: { some: { toLevel: "COUNCIL" } } }] } }
           : { some: { groupId: { in: headGroupIds } } };
         whereFilter.isDraft = false;
       } else if (!canViewAllReferrals(role)) {
@@ -440,8 +440,10 @@ export const referralsRouter = createTRPCRouter({
       // homegroup headteacher, the headmaster or the «Πειθαρχικό Συμβούλιο».
       const viewer = await loadReferralViewer(ctx.session.user.id, ctx.effectiveRoles);
       if (!viewer) throw new TRPCError({ code: "NOT_FOUND" });
-      const eligible = referral.students.filter((rs) =>
-        canResolve({ groupId: rs.groupId, level: rs.level, resolved: !!rs.resolution }, viewer),
+      // Here only the homegroup level decides a full measure; the headmaster and
+      // the council set an expulsion's days through `decide`.
+      const eligible = referral.students.filter(
+        (rs) => rs.level === "HOMEGROUP" && canResolve({ groupId: rs.groupId, level: rs.level, resolved: !!rs.resolution }, viewer),
       );
       const eligibleIds = eligible.map((rs) => rs.id);
 
@@ -493,27 +495,27 @@ export const referralsRouter = createTRPCRouter({
             ? { suspendedDays: input.suspendedDays || null, suspendedPeriods: input.suspendedPeriods || null }
             : {};
 
-        await Promise.all(
-          resolvableIds.map((rsId) =>
-            tx.referralStudentResolution.create({
-              data: {
-                referralStudentId: rsId,
-                action: input.action,
-                actionDetails: input.actionDetails,
-                notes: input.notes,
-                counselorNotes: input.counselorNotes,
-                parentContacted: input.parentContacted,
-                parentContactDate: input.parentContactDate ? new Date(input.parentContactDate) : undefined,
-                parentContactMethod: input.parentContactMethod,
-                resolvedById: ctx.session.user.id,
-                ...suspended,
-                ...(expulsionDates.length ? { expulsionDays: { create: expulsionDates } } : {}),
-              },
-            })
-          )
-        );
-
-        // Mark those students as RESOLVED
+        const now = new Date();
+        for (const rsId of resolvableIds) {
+          await tx.referralStudentResolution.create({
+            data: {
+              referralStudentId: rsId,
+              action: input.action,
+              actionDetails: input.actionDetails,
+              notes: input.notes,
+              counselorNotes: input.counselorNotes,
+              parentContacted: input.parentContacted,
+              parentContactDate: input.parentContactDate ? new Date(input.parentContactDate) : undefined,
+              parentContactMethod: input.parentContactMethod,
+              resolvedById: ctx.session.user.id,
+              decidedLevel: "HOMEGROUP",
+              carriedOutById: ctx.session.user.id,
+              carriedOutAt: now,
+              ...suspended,
+              ...(expulsionDates.length ? { expulsionDays: { create: expulsionDates } } : {}),
+            },
+          });
+        }
         await tx.referralStudent.updateMany({
           where: { id: { in: resolvableIds } },
           data: { status: "RESOLVED" },
@@ -559,6 +561,221 @@ export const referralsRouter = createTRPCRouter({
         ...reqMeta(ctx.req),
       });
 
+      return result;
+    }),
+
+  // The headmaster / «Πειθαρχικό Συμβούλιο» decide a referred student: always
+  // an expulsion, only its number of days (up to the level's limit). The
+  // student returns to the homegroup headteacher, who picks the dates and does
+  // the rest (carryOut).
+  decide: managementProcedure
+    .input(
+      z.object({
+        referralId: z.string(),
+        referralStudentIds: z.array(z.string()).min(1),
+        days: z.number().int().min(1),
+        notes: z.string().trim().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const viewer = await loadReferralViewer(ctx.session.user.id, ctx.effectiveRoles);
+      if (!viewer) throw new TRPCError({ code: "NOT_FOUND" });
+      const referral = await ctx.db.referral.findUnique({
+        where: { id: input.referralId },
+        select: {
+          number: true,
+          students: {
+            where: { id: { in: input.referralStudentIds } },
+            select: {
+              id: true,
+              groupId: true,
+              level: true,
+              resolution: { select: { id: true } },
+              group: { select: { homeroomHeadteacher: { select: { user: { select: { id: true } } } } } },
+            },
+          },
+        },
+      });
+      if (!referral || referral.students.length !== input.referralStudentIds.length) throw new TRPCError({ code: "NOT_FOUND" });
+      for (const rs of referral.students) {
+        if (rs.level === "HOMEGROUP" || !canResolve({ groupId: rs.groupId, level: rs.level, resolved: !!rs.resolution }, viewer)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Cannot decide this student" });
+        }
+      }
+      const max = expulsionLimitFor(referral.students.map((rs) => rs.level));
+      if (input.days > max) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: `Έως ${max} ημέρες αποβολής σε αυτό το επίπεδο.` });
+      }
+
+      await ctx.db.$transaction(async (tx) => {
+        for (const rs of referral.students) {
+          await tx.referralStudentResolution.create({
+            data: {
+              referralStudentId: rs.id,
+              action: "DETENTION",
+              decidedDays: input.days,
+              notes: input.notes || null,
+              resolvedById: ctx.session.user.id,
+              decidedLevel: rs.level,
+            },
+          });
+          // Back to the homegroup headteacher, still pending, to carry it out
+          const moved = await tx.referralStudent.updateMany({
+            where: { id: rs.id, level: rs.level, status: "PENDING" },
+            data: decisionOutcome(rs.level),
+          });
+          if (moved.count !== 1) throw new TRPCError({ code: "CONFLICT", message: "Η καταγγελία άλλαξε στο μεταξύ — ανανεώστε τη σελίδα" });
+        }
+        await tx.referral.updateMany({ where: { id: input.referralId, openedAt: null }, data: { openedAt: new Date() } });
+        const heads = new Set(
+          referral.students.map((rs) => rs.group?.homeroomHeadteacher?.user?.id).filter((id): id is string => !!id),
+        );
+        for (const userId of heads) {
+          await tx.notification.create({
+            data: {
+              userId,
+              type: "REFERRAL_DECIDED",
+              title: `Καταγγελία #${referral.number}: αποβολή ${input.days} ${input.days === 1 ? "ημέρας" : "ημερών"} — προς εκτέλεση`,
+              body: "Ορίστε τις ημερομηνίες, ενημερώστε τους γονείς και ολοκληρώστε την επίλυση.",
+              linkUrl: `/teacher/referrals`,
+              read: false,
+            },
+          });
+        }
+      });
+
+      await writeAudit({
+        userId: ctx.session.user.id,
+        action: "referral.decide",
+        resource: "Referral",
+        resourceId: input.referralId,
+        details: { referralStudentIds: input.referralStudentIds, days: input.days, levels: referral.students.map((rs) => rs.level) },
+        ...reqMeta(ctx.req),
+      });
+      return { ok: true };
+    }),
+
+  // The homegroup headteacher carries out a measure the headmaster or the
+  // «Πειθαρχικό Συμβούλιο» chose: records the parent contact and resolves the
+  // student (the filer is told once the whole referral is resolved).
+  carryOut: managementProcedure
+    .input(
+      z.object({
+        referralId: z.string(),
+        referralStudentIds: z.array(z.string()).min(1),
+        // The expulsion's dates — exactly as many as the decision's days.
+        expulsionDays: z
+          .array(z.object({ date: z.string(), fromPeriod: z.number().int().nullish(), toPeriod: z.number().int().nullish() }))
+          .min(1),
+        actionDetails: z.string().trim().min(5, "Απαιτείται περιγραφή του παιδαγωγικού μέτρου"),
+        notes: z.string().optional(),
+        counselorNotes: z.string().optional(),
+        parentContacted: z.boolean().default(false),
+        parentContactDate: z.string().optional(),
+        parentContactMethod: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const viewer = await loadReferralViewer(ctx.session.user.id, ctx.effectiveRoles);
+      if (!viewer) throw new TRPCError({ code: "NOT_FOUND" });
+      const students = await ctx.db.referralStudent.findMany({
+        where: { id: { in: input.referralStudentIds }, referralId: input.referralId },
+        select: {
+          id: true,
+          groupId: true,
+          level: true,
+          status: true,
+          resolution: { select: { id: true, action: true, decidedDays: true } },
+        },
+      });
+      if (students.length !== input.referralStudentIds.length) throw new TRPCError({ code: "NOT_FOUND" });
+      // Several students at once only when they were given the same days.
+      const decided = new Set(students.map((rs) => rs.resolution?.decidedDays ?? null));
+      const decidedDays = [...decided][0];
+      if (decided.size !== 1 || decidedDays == null) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Οι μαθητές έχουν διαφορετικές αποφάσεις — εκτελέστε τις χωριστά" });
+      }
+      const lengthError = validatePunishment(
+        { action: "DETENTION", expulsionDays: input.expulsionDays },
+        { ...DEFAULT_PERIODS_PER_DAY, ...(await getPeriodsPerDay()) },
+        localDateStr(),
+        undefined,
+        decidedDays,
+      );
+      if (lengthError) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            lengthError === "wrongDayCount"
+              ? `Επιλέξτε ακριβώς ${decidedDays} ${decidedDays === 1 ? "ημερομηνία" : "ημερομηνίες"} αποβολής, όπως η απόφαση.`
+              : PUNISHMENT_ERROR_EL[lengthError],
+        });
+      }
+      for (const rs of students) {
+        const ok = canCarryOut(
+          { groupId: rs.groupId, level: rs.level, hasDecision: !!rs.resolution, pending: rs.status === "PENDING" },
+          viewer,
+        );
+        if (!ok) throw new TRPCError({ code: "FORBIDDEN", message: "Δεν υπάρχει απόφαση προς εκτέλεση για αυτόν/ήν τον/τη μαθητή/τρια" });
+      }
+
+      const result = await ctx.db.$transaction(async (tx) => {
+        const now = new Date();
+        for (const rs of students) {
+          await tx.referralStudentResolution.update({
+            where: { id: rs.resolution!.id },
+            data: {
+              actionDetails: input.actionDetails,
+              ...(input.notes ? { notes: input.notes } : {}),
+              ...(input.counselorNotes ? { counselorNotes: input.counselorNotes } : {}),
+              parentContacted: input.parentContacted,
+              parentContactDate: input.parentContactDate ? new Date(input.parentContactDate) : null,
+              parentContactMethod: input.parentContactMethod || null,
+              carriedOutById: ctx.session.user.id,
+              carriedOutAt: now,
+              expulsionDays: {
+                create: input.expulsionDays.map((d) => ({
+                  date: new Date(d.date),
+                  fromPeriod: d.fromPeriod ?? null,
+                  toPeriod: d.toPeriod ?? null,
+                })),
+              },
+            },
+          });
+          const moved = await tx.referralStudent.updateMany({ where: { id: rs.id, status: "PENDING" }, data: { status: "RESOLVED" } });
+          if (moved.count !== 1) throw new TRPCError({ code: "CONFLICT", message: "Η καταγγελία άλλαξε στο μεταξύ — ανανεώστε τη σελίδα" });
+        }
+        const anyPending = await tx.referralStudent.findFirst({ where: { referralId: input.referralId, status: "PENDING" } });
+        if (!anyPending) {
+          const referral = await tx.referral.findUnique({
+            where: { id: input.referralId },
+            select: { filer: { select: { user: { select: { id: true } } } } },
+          });
+          const filerUserId = referral?.filer.user?.id;
+          if (filerUserId) {
+            await tx.notification.create({
+              data: {
+                userId: filerUserId,
+                type: "REFERRAL_RESOLVED",
+                title: "Καταγγελία επιλύθηκε",
+                body: `Ενέργεια: ${actionLabel(students[0]!.resolution!.action)}`,
+                linkUrl: `/teacher/referrals`,
+                read: false,
+              },
+            });
+          }
+        }
+        return { allResolved: !anyPending };
+      });
+
+      await writeAudit({
+        userId: ctx.session.user.id,
+        action: "referral.carryOut",
+        resource: "Referral",
+        resourceId: input.referralId,
+        details: { referralStudentIds: input.referralStudentIds, allResolved: result.allResolved },
+        ...reqMeta(ctx.req),
+      });
       return result;
     }),
 
@@ -732,79 +949,6 @@ export const referralsRouter = createTRPCRouter({
       });
 
       return request;
-    }),
-
-  // Send SMS to parents of resolved students in a referral
-  sendResolutionSms: managementProcedure
-    .input(
-      z.object({
-        referralId: z.string(),
-        referralStudentId: z.string().optional(), // send for one student only
-        message: z.string().min(1),
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      const { sendSms } = await import("@/lib/sms");
-
-      const referral = await ctx.db.referral.findUnique({
-        where: { id: input.referralId },
-        include: {
-          students: {
-            where: input.referralStudentId ? { id: input.referralStudentId } : { status: "RESOLVED" },
-            include: {
-              student: {
-                include: {
-                  user: { select: { name: true } },
-                  smsContacts: { where: { active: true } },
-                },
-              },
-            },
-          },
-        },
-      });
-      if (!referral) throw new TRPCError({ code: "NOT_FOUND" });
-
-      const results: { studentName: string; phone: string; success: boolean; error?: string }[] = [];
-
-      for (const rs of referral.students) {
-        // SMS goes to the student's ACTIVE recipients. The import activates only
-        // the default, so this is "the default" by default; the office can
-        // activate a second parent for "both".
-        const contacts = rs.student.smsContacts; // already filtered to active
-        for (const contact of contacts) {
-          const result = await sendSms(contact.phone, input.message);
-          // Log the SMS
-          await ctx.db.smsLog.create({
-            data: {
-              studentId: rs.studentId,
-              smsContactId: contact.id,
-              phoneNumber: contact.phone,
-              message: input.message,
-              status: result.success ? "SENT" : "FAILED",
-              gatewayResponse: result.gatewayResponse ?? result.error,
-              sentById: ctx.session.user.id,
-              kind: "REFERRAL",
-            },
-          });
-          results.push({
-            studentName: rs.student.user?.name ?? rs.studentId,
-            phone: contact.phone,
-            success: result.success,
-            error: result.error,
-          });
-        }
-      }
-
-      await writeAudit({
-        userId: ctx.session.user.id,
-        action: "referral.sendSms",
-        resource: "Referral",
-        resourceId: input.referralId,
-        details: { recipients: results.length, sent: results.filter((r) => r.success).length },
-        ...reqMeta(ctx.req),
-      });
-
-      return { results };
     }),
 
   // Student dossier for a referral: contact phone numbers + past referrals.

@@ -196,6 +196,7 @@ model User {
   resolvedReferralStudents   ReferralStudentResolution[] @relation("ReferralStudentResolver")
   resolutionUnlockRequests   ResolutionUnlockRequest[]   @relation("ResolutionUnlockRequester")
   referralEscalations        ReferralEscalation[]        @relation("ReferralEscalator")
+  carriedOutReferrals        ReferralStudentResolution[] @relation("ReferralCarrier")
   resolutionUnlockDecisions  ResolutionUnlockRequest[]   @relation("ResolutionUnlockDecider")
   substitutionPlansGenerated SubstitutionPlan[]          @relation("SubstitutionPlanGenerator")
   substitutionPlansFinalized SubstitutionPlan[]          @relation("SubstitutionPlanFinalizer")
@@ -939,6 +940,18 @@ model ReferralStudentResolution {
   // «Αποβολή με Αναστολή» only: its length, served if the student re-offends.
   suspendedDays       Int?
   suspendedPeriods    Int?
+  // Who chose the measure (resolvedBy): the homegroup headteacher, the
+  // headmaster or the «Πειθαρχικό Συμβούλιο». A higher level's measure goes
+  // back to the homegroup headteacher, who carries it out (parent contact,
+  // SMS, letter) — the student stays PENDING until then.
+  decidedLevel        ReferralLevel    @default(HOMEGROUP)
+  // A higher level's decision is always an expulsion of this many days; the
+  // homegroup headteacher picks the dates (and writes the details) when
+  // carrying it out. Null for a homegroup-level decision.
+  decidedDays         Int?
+  carriedOutById      String?
+  carriedOutBy        User?            @relation("ReferralCarrier", fields: [carriedOutById], references: [id])
+  carriedOutAt        DateTime?
 
   expulsionDays ReferralExpulsionDay[]
 }

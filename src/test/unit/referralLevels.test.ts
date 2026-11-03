@@ -5,6 +5,8 @@ import {
   canResolve,
   canEscalate,
   expulsionLimitFor,
+  decisionOutcome,
+  canCarryOut,
   EXPULSION_MAX_DAYS,
   type ReferralViewer,
 } from "@/lib/referralLevels";
@@ -53,5 +55,27 @@ describe("referral levels", () => {
     expect(canEscalate({ groupId: "g1", level: "COUNCIL", resolved: false }, council)).toBe(false);
     expect(canResolve({ groupId: "g1", level: "COUNCIL", resolved: false }, council)).toBe(true);
     expect(canResolve({ groupId: "g1", level: "COUNCIL", resolved: true }, council)).toBe(false);
+  });
+});
+
+describe("a higher level's measure returns to the homegroup headteacher", () => {
+  it("resolves at once at the homegroup level, and waits to be carried out otherwise", () => {
+    expect(decisionOutcome("HOMEGROUP")).toEqual({ status: "RESOLVED", level: "HOMEGROUP" });
+    expect(decisionOutcome("HEADMASTER")).toEqual({ status: "PENDING", level: "HOMEGROUP" });
+    expect(decisionOutcome("COUNCIL")).toEqual({ status: "PENDING", level: "HOMEGROUP" });
+  });
+
+  it("lets only the student's homegroup headteacher carry it out, once, while pending", () => {
+    const back = { groupId: "g1", level: "HOMEGROUP" as const, hasDecision: true, pending: true };
+    expect(canCarryOut(back, bd)).toBe(true);
+    expect(canCarryOut({ ...back, groupId: "g2" }, bd)).toBe(false);
+    expect(canCarryOut(back, head)).toBe(false);
+    expect(canCarryOut({ ...back, pending: false }, bd)).toBe(false);
+    expect(canCarryOut({ ...back, hasDecision: false }, bd)).toBe(false);
+  });
+
+  it("does not let the homegroup headteacher decide again once a measure was chosen", () => {
+    expect(canResolve({ groupId: "g1", level: "HOMEGROUP", resolved: true }, bd)).toBe(false);
+    expect(canEscalate({ groupId: "g1", level: "HOMEGROUP", resolved: true }, bd)).toBe(false);
   });
 });

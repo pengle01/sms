@@ -11,7 +11,7 @@ const FULL_ACCESS_ROLES = ["SUPER_ADMIN", "HEADMASTER", "HEADTEACHER_A", "STUDEN
  */
 export async function canReadReferral(
   auth: ActiveAuth,
-  referral: { filerId: string; students: { groupId: string | null; level?: string }[] },
+  referral: { id: string; filerId: string; students: { groupId: string | null }[] },
 ): Promise<boolean> {
   if (auth.roles.some((r) => FULL_ACCESS_ROLES.includes(r))) return true;
   const staff = await db.staffProfile.findUnique({
@@ -20,7 +20,16 @@ export async function canReadReferral(
   });
   if (!staff) return false;
   if (referral.filerId === staff.id) return true;
-  if (staff.disciplinaryCouncil && referral.students.some((rs) => rs.level === "COUNCIL")) return true;
   const headGroupIds = new Set(staff.homeroomHeadGroups.map((g) => g.id));
-  return referral.students.some((rs) => !!rs.groupId && headGroupIds.has(rs.groupId));
+  if (referral.students.some((rs) => !!rs.groupId && headGroupIds.has(rs.groupId))) return true;
+  // Referred to the council at some point (the student returns to the
+  // homegroup headteacher once the council has chosen the measure).
+  if (staff.disciplinaryCouncil) {
+    const referred = await db.referralEscalation.findFirst({
+      where: { toLevel: "COUNCIL", referralStudent: { referralId: referral.id } },
+      select: { id: true },
+    });
+    return !!referred;
+  }
+  return false;
 }

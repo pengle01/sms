@@ -4,6 +4,8 @@ import { getActiveAuth } from "@/server/authz";
 import { canReadReferral } from "@/server/referralAccess";
 import { letterPunishment, letterOffence, parentLines, letterDate } from "@/lib/referralLetter";
 import { getSchoolName } from "@/lib/schoolConfig";
+import { getHeadmasterSignature } from "@/server/headmasterSigner";
+import { signatureName } from "@/lib/staffName";
 import { PrintBar } from "@/app/[locale]/(portal)/teacher/substitutions/plan/[date]/print/PrintBar";
 
 /**
@@ -24,7 +26,7 @@ export default async function ReferralParentLetterPage({
   const auth = await getActiveAuth();
   if (!auth) redirect(`/${locale}/login/staff`);
 
-  const [referral, schoolName] = await Promise.all([
+  const [referral, schoolName, headmaster] = await Promise.all([
     db.referral.findUnique({
       where: { id: referralId },
       select: {
@@ -54,7 +56,8 @@ export default async function ReferralParentLetterPage({
                 suspendedDays: true,
                 suspendedPeriods: true,
                 expulsionDays: { select: { date: true, fromPeriod: true, toPeriod: true }, orderBy: { date: "asc" } },
-                resolvedBy: { select: { name: true, staffProfile: { select: { scheduleName: true } } } },
+                resolvedBy: { select: { name: true, nameEl: true, firstName: true, lastName: true } },
+                carriedOutBy: { select: { name: true, nameEl: true, firstName: true, lastName: true } },
               },
             },
           },
@@ -62,9 +65,10 @@ export default async function ReferralParentLetterPage({
       },
     }),
     getSchoolName(),
+    getHeadmasterSignature(),
   ]);
   if (!referral) notFound();
-  if (!(await canReadReferral(auth, referral))) redirect(`/${locale}/teacher/referrals`);
+  if (!(await canReadReferral(auth, { ...referral, id: referralId }))) redirect(`/${locale}/teacher/referrals`);
 
   const picked = onlyStudent ? referral.students.filter((rs) => rs.id === onlyStudent) : referral.students;
   const shown = picked.length > 0 ? picked : referral.students;
@@ -101,7 +105,10 @@ export default async function ReferralParentLetterPage({
           const res = rs.resolution!;
           const m = letterPunishment(res);
           const parents = parentLines(rs.student.smsContacts);
-          const signer = res.resolvedBy?.staffProfile?.scheduleName ?? res.resolvedBy?.name ?? "";
+          // The headteacher who resolved it (or carried out the headmaster's /
+          // council's decision), and the headmaster — both sign.
+          const signer = signatureName(res.carriedOutBy ?? res.resolvedBy);
+          const headmasterName = headmaster;
           const label = "py-1.5 pr-4 align-top text-[12px] font-semibold uppercase tracking-wide text-slate-500 w-36";
           return (
             <div key={rs.id} className="letter-page bg-white text-black">
@@ -207,12 +214,17 @@ export default async function ReferralParentLetterPage({
                   παιδιού σας με τους σχολικούς κανονισμούς.
                 </p>
 
-                {/* Signature — the deputy who decided the measure */}
-                <div className="mt-6 flex justify-end">
+                {/* Signatures — the headteacher and the headmaster */}
+                <div className="mt-6 flex justify-between gap-10">
                   <div className="w-64 text-center">
                     <p>Ο/Η Β. Διευθυντής/ντρια</p>
                     <p className="mt-12 border-b border-black" />
                     <p className="mt-1 font-semibold">{signer}</p>
+                  </div>
+                  <div className="w-64 text-center">
+                    <p>Ο/Η Διευθυντής/ντρια</p>
+                    <p className="mt-12 border-b border-black" />
+                    <p className="mt-1 font-semibold">{headmasterName}</p>
                   </div>
                 </div>
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { slotTeacherName, staffAuthorLabel, staffDisplayName } from "@/lib/staffName";
+import { slotTeacherName, staffAuthorLabel, staffDisplayName, signatureName } from "@/lib/staffName";
 
 describe("staffDisplayName", () => {
   it("prefers the schedule coding over the account name", () => {
@@ -62,5 +62,18 @@ describe("staffAuthorLabel", () => {
     expect(staffAuthorLabel({ role: "TEACHER", name: "Άννα Κ." }, OFFICE)).toBe("Άννα Κ.");
     expect(staffAuthorLabel({ role: "TEACHER" }, OFFICE)).toBe("—");
     expect(staffAuthorLabel(null, OFFICE)).toBe("—");
+  });
+});
+
+describe("signatureName", () => {
+  it("prefers the Greek name, then first + last, then the account name", () => {
+    expect(signatureName({ nameEl: "Μαρία Μασιά", firstName: "Maria", lastName: "Masia", name: "maria" })).toBe("Μαρία Μασιά");
+    expect(signatureName({ nameEl: " ", firstName: "Maria", lastName: "Masia", name: "maria" })).toBe("Maria Masia");
+    expect(signatureName({ firstName: null, lastName: null, name: "Maria Masia" })).toBe("Maria Masia");
+  });
+
+  it("returns empty for no user, leaving the line blank to sign by hand", () => {
+    expect(signatureName(null)).toBe("");
+    expect(signatureName({})).toBe("");
   });
 });
