@@ -7,8 +7,10 @@ import { trpc } from "@/trpc/client";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { relativeTime } from "@/lib/relativeTime";
+import { notificationsPathFor } from "@/lib/rbac";
+import type { Role } from "@/generated/prisma/client";
 
-export function NotificationBell({ locale }: { locale: string }) {
+export function NotificationBell({ locale, role }: { locale: string; role: Role }) {
   const t = useTranslations("notifications");
   const tCommon = useTranslations("common");
   const router = useRouter();
@@ -56,9 +58,9 @@ export function NotificationBell({ locale }: { locale: string }) {
   const handleNotificationClick = (id: string, linkUrl: string | null) => {
     markRead({ id });
     setOpen(false);
-    if (linkUrl) {
-      router.push(`/${locale}${linkUrl}`);
-    }
+    // Its own page (a referral, a request…), else the notifications page —
+    // where a notice's full text and attachments are.
+    router.push(`/${locale}${linkUrl ?? notificationsPathFor(role)}`);
   };
 
   const icon = (type: string) => {

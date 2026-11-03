@@ -100,7 +100,7 @@ export function Header({ userName, userImage, locale, pageTitle, role, portal, p
 
         {/* Right */}
         <div className="flex items-center gap-2">
-          {role && <NotificationBell locale={locale} />}
+          {role && <NotificationBell locale={locale} role={role} />}
 
           <Button
             variant="ghost"

@@ -13,6 +13,7 @@ import {
   canViewAllReferrals,
   canViewStaffDirectory,
   getPortalForRole,
+  notificationsPathFor,
   EDUCATOR_ROLES,
   SELF_REGISTER_EDUCATOR_ROLES,
   canViewAccessCode,
@@ -304,5 +305,20 @@ describe("isPendingRegistration", () => {
 
   it("registration roles exclude students, parents and the system admin", () => {
     for (const r of ["STUDENT", "PARENT", "SUPER_ADMIN"] as const) expect(REGISTRATION_ROLES).not.toContain(r);
+  });
+});
+
+describe("notificationsPathFor", () => {
+  it("sends staff to their portal's communication hub", () => {
+    expect(notificationsPathFor("TEACHER")).toBe("/teacher/noticeboard");
+    expect(notificationsPathFor("HEADTEACHER_B")).toBe("/teacher/noticeboard");
+    expect(notificationsPathFor("SCHOOL_ADMIN")).toBe("/office/notifications");
+    expect(notificationsPathFor("SUPER_ADMIN")).toBe("/admin/notifications");
+  });
+
+  it("sends students, parents and chaperones to their noticeboard", () => {
+    expect(notificationsPathFor("STUDENT")).toBe("/student/noticeboard");
+    expect(notificationsPathFor("PARENT")).toBe("/parent/noticeboard");
+    expect(notificationsPathFor("CHAPERONE")).toBe("/chaperone/noticeboard");
   });
 });

@@ -209,6 +209,18 @@ export function getPortalForRole(role: Role): "admin" | "teacher" | "office" | "
   return "teacher"; // HEADMASTER, HEADTEACHER_A, HEADTEACHER_B, STUDENT_COUNSELOR, TEACHER
 }
 
+/**
+ * The page listing a role's notifications (the bell's full view), without the
+ * locale prefix. Staff portals hold it in their communication hub; the others
+ * in their noticeboard.
+ */
+export function notificationsPathFor(role: Role): string {
+  const portal = getPortalForRole(role);
+  if (portal === "teacher") return "/teacher/noticeboard";
+  if (portal === "office" || portal === "admin") return `/${portal}/notifications`;
+  return `/${portal}/noticeboard`;
+}
+
 // Routes that require specific minimum roles (admin portal)
 export const PROTECTED_ROUTES: Record<string, Role> = {
   "/admin/settings": "SUPER_ADMIN",
