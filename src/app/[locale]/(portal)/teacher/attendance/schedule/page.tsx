@@ -62,10 +62,6 @@ export default async function TeacherSchedulePage({
   });
   if (!staff && (session.user.role as Role) === "TEACHER") redirect(`/${locale}/teacher/setup`);
 
-  const homeroomGroup = staff
-    ? ([...(staff.homeroomGroups ?? []), ...(staff.homeroomHeadGroups ?? [])].find(Boolean) ?? null)
-    : null;
-
   const now = getNow();
   const todayStr = localDateStr(now);
   const todayDow = now.getDay();
@@ -111,7 +107,13 @@ export default async function TeacherSchedulePage({
   const dayMeetingMap = buildDayMeetingMap(specialDays, weekDates);
   const hasMeeting = dayMeetingMap.size > 0;
   const myHomegroups = ownHomegroups(staff);
-  const homegroupOptions = hasMeeting && myHomegroups.length === 0 ? await getHomegroupOptions() : [];
+  const hasExcursion = weekDates.some(
+    (d) => dayTypeMap.get(d.toISOString().slice(0, 10)) === "EXCURSION"
+  );
+  // The picker: on a homegroup-period day for teachers without a homegroup;
+  // on an excursion day for everyone (cover another homegroup ad hoc).
+  const homegroupOptions =
+    hasExcursion || (hasMeeting && myHomegroups.length === 0) ? await getHomegroupOptions() : [];
 
   // Every period of each school day (Settings → periods per day), not just up
   // to the teacher's last lesson; plus the homegroup period when inserted.
@@ -128,11 +130,7 @@ export default async function TeacherSchedulePage({
 
   const markedSet = new Set<string>();
   const meetingMarked = new Set<string>(); // "date:groupId"
-  const excursionMarkedDates = new Set<string>();
-
-  const hasExcursion = weekDates.some(
-    (d) => dayTypeMap.get(d.toISOString().slice(0, 10)) === "EXCURSION"
-  );
+  const excursionMarked = new Set<string>(); // "date:groupId"
 
   if (!isFutureWeek) {
     const weekStart = utcMidnight(weekStartStr);
@@ -168,17 +166,18 @@ export default async function TeacherSchedulePage({
       }
     }
 
-    if (hasExcursion && homeroomGroup) {
+    if (hasExcursion && myHomegroups.length > 0) {
       const excursionDates = weekDates.filter(
         (d) => dayTypeMap.get(d.toISOString().slice(0, 10)) === "EXCURSION"
       );
       if (excursionDates.length > 0) {
         const checks = excursionDates.map((d) => {
           const iso = d.toISOString().slice(0, 10);
-          return db.attendance.findFirst({
-            where: { intercalaryGroupId: homeroomGroup.id, intercalaryPeriod: 1, date: d },
-            select: { date: true },
-          }).then((row) => { if (row) excursionMarkedDates.add(iso); });
+          return db.attendance.findMany({
+            where: { intercalaryGroupId: { in: myHomegroups.map((g) => g.id) }, intercalaryPeriod: 1, date: d },
+            select: { intercalaryGroupId: true },
+            distinct: ["intercalaryGroupId"],
+          }).then((rows) => { for (const r of rows) excursionMarked.add(`${iso}:${r.intercalaryGroupId}`); });
         });
         queries.push(...checks);
       }
@@ -469,51 +468,48 @@ export default async function TeacherSchedulePage({
 
                     // Excursion day — normal schedule is suspended
                     if (isDayExcursion) {
-                      const excursionMarked = excursionMarkedDates.has(dateStr);
-                      // Period 1: homegroup teachers mark attendance; others see a passive indicator
-                      if (period === 1 && homeroomGroup) {
+                      // Period 1: each own homegroup's register, plus any other
+                      // homegroup ad hoc through the picker.
+                      if (period === 1) {
                         return (
                           <Wrap key={cellKey} className={`px-2 py-2 align-top ${isToday && isCurrentWeek ? "bg-blue-50/30" : ""}`}>
-                            {canMark ? (
-                              <Link
-                                href={`/${locale}/teacher/attendance/mark?groupId=${homeroomGroup.id}&period=1&date=${dateStr}&excursion=1`}
-                                className="group block"
-                              >
-                                <div className={`rounded-lg px-3 py-2.5 border ${
-                                  excursionMarked
-                                    ? "border-blue-200 bg-blue-50"
-                                    : "border-blue-200 bg-blue-50/50 group-hover:border-blue-300"
-                                }`}>
-                                  <p className="text-xs font-semibold leading-snug text-blue-900">{homeroomGroup.name}</p>
-                                  <p className="mt-0.5 text-xs text-blue-500">{tCal("excursion")}</p>
-                                  <div className="mt-1.5 flex items-center gap-1">
-                                    {excursionMarked ? (
-                                      <><CheckCircle2 className="w-3 h-3 text-blue-600" /><span className="text-xs font-medium text-blue-600">{t("done")}</span></>
+                            <div className={`rounded-lg px-2.5 py-2 border border-blue-200 bg-blue-50/50 space-y-1.5 ${canMark ? "" : "opacity-50"}`}>
+                              <p className="text-[11px] font-semibold text-blue-700">{tCal("excursion")}</p>
+                              {myHomegroups.map((g) =>
+                                canMark ? (
+                                  <Link
+                                    key={g.id}
+                                    href={`/${locale}/teacher/attendance/mark?groupId=${g.id}&period=1&date=${dateStr}&excursion=1`}
+                                    className="flex items-center gap-1 text-xs font-semibold text-blue-900 hover:underline"
+                                  >
+                                    {g.name}
+                                    {excursionMarked.has(`${dateStr}:${g.id}`) ? (
+                                      <CheckCircle2 className="w-3 h-3 text-blue-600" />
                                     ) : (
-                                      <><ClipboardList className="w-3 h-3 text-blue-500" /><span className="text-xs font-medium text-blue-600">{t("mark")}</span></>
+                                      <ClipboardList className="w-3 h-3 text-blue-500" />
                                     )}
-                                  </div>
-                                </div>
-                              </Link>
-                            ) : (
-                              <div className="rounded-lg px-3 py-2.5 border border-blue-100 bg-blue-50/30 opacity-40">
-                                <p className="text-xs font-semibold leading-snug text-blue-800">{homeroomGroup.name}</p>
-                                <p className="mt-0.5 text-xs text-blue-400">{tCal("excursion")}</p>
-                              </div>
-                            )}
+                                  </Link>
+                                ) : (
+                                  <p key={g.id} className="text-xs font-semibold text-blue-800">{g.name}</p>
+                                ),
+                              )}
+                              {canMark && (
+                                <HomegroupPicker
+                                  locale={locale}
+                                  period={1}
+                                  date={dateStr}
+                                  groups={homegroupOptions}
+                                  excludeIds={myHomegroups.map((g) => g.id)}
+                                  kind="excursion"
+                                  compact
+                                />
+                              )}
+                            </div>
                           </Wrap>
                         );
                       }
-                      // Period 1 for non-homegroup teacher, or any other period: dimmed excursion cell
-                      return (
-                        <Wrap key={cellKey} className="px-2 py-2 align-top bg-blue-50/10">
-                          {period === 1 && (
-                            <div className="rounded-lg px-3 py-2 border border-blue-100 bg-blue-50/20">
-                              <p className="text-xs text-blue-400 text-center">{tCal("excursion")}</p>
-                            </div>
-                          )}
-                        </Wrap>
-                      );
+                      // Any other period: the normal schedule is suspended
+                      return <Wrap key={cellKey} className="px-2 py-2 align-top bg-blue-50/10" />;
                     }
 
                     if (isHoliday) {

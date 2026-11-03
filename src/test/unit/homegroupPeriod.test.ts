@@ -8,6 +8,7 @@ import {
   rowsForDay,
 } from "@/lib/homegroupPeriod";
 import { homegroupRegisterDue } from "@/lib/attendanceLock";
+import { ownHomegroups } from "@/server/homegroupPeriod";
 
 describe("homegroup periods", () => {
   const insert = homegroupMeeting("INTERCALARY", 4)!;
@@ -55,5 +56,24 @@ describe("homegroupRegisterDue", () => {
     expect(homegroupRegisterDue({ hasHomegroupRegister: true, alreadyMarked: true, teacherAbsent: false })).toBe(false);
     expect(homegroupRegisterDue({ hasHomegroupRegister: true, alreadyMarked: false, teacherAbsent: true })).toBe(false);
     expect(homegroupRegisterDue({ hasHomegroupRegister: false, alreadyMarked: false, teacherAbsent: false })).toBe(false);
+  });
+});
+
+describe("ownHomegroups", () => {
+  const a = { id: "g1", name: "Α11" };
+  const b = { id: "g2", name: "Β21" };
+
+  it("returns every homegroup, as homegroup teacher and as deputy", () => {
+    expect(ownHomegroups({ homeroomGroups: [a], homeroomHeadGroups: [b] })).toEqual([a, b]);
+    expect(ownHomegroups({ homeroomHeadGroups: [a, b] })).toEqual([a, b]);
+  });
+
+  it("lists a group once when the teacher is both its homegroup teacher and deputy", () => {
+    expect(ownHomegroups({ homeroomGroups: [a], homeroomHeadGroups: [a, b] })).toEqual([a, b]);
+  });
+
+  it("returns nothing for no staff profile or no homegroups", () => {
+    expect(ownHomegroups(null)).toEqual([]);
+    expect(ownHomegroups({})).toEqual([]);
   });
 });

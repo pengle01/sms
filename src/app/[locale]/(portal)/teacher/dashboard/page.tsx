@@ -77,10 +77,6 @@ export default async function TeacherDashboardPage({
     redirect(`/${locale}/teacher/profile?required=1`);
   }
 
-  const homeroomGroup = staff
-    ? ([...(staff.homeroomGroups ?? []), ...(staff.homeroomHeadGroups ?? [])].find(Boolean) ?? null)
-    : null;
-
   const now = getNow();
   const todayDow = now.getDay();
   const isWeekend = todayDow === 0 || todayDow === 6;
@@ -93,7 +89,7 @@ export default async function TeacherDashboardPage({
   const meeting = !isWeekend ? await getHomegroupMeetingForDate(today) : null;
   const myHomegroups = ownHomegroups(staff);
 
-  const [allSlots, markedRaw, meetingMarkedRows, excursionMarkedRow, todayActivitiesRaw, homegroupOptions] = await Promise.all([
+  const [allSlots, markedRaw, meetingMarkedRows, excursionMarkedRows, todayActivitiesRaw, homegroupOptions] = await Promise.all([
     staff
       ? db.timetableSlot.findMany({
           where: { staffId: staff.id },
@@ -115,12 +111,14 @@ export default async function TeacherDashboardPage({
           distinct: ["intercalaryGroupId"],
         })
       : Promise.resolve([]),
-    isTodayExcursion && homeroomGroup
-      ? db.attendance.findFirst({
-          where: { intercalaryGroupId: homeroomGroup.id, intercalaryPeriod: 1, date: today },
-          select: { id: true },
+    // Excursion day: P1 homegroup registers already taken, per own homegroup
+    isTodayExcursion && myHomegroups.length > 0
+      ? db.attendance.findMany({
+          where: { intercalaryGroupId: { in: myHomegroups.map((g) => g.id) }, intercalaryPeriod: 1, date: today },
+          select: { intercalaryGroupId: true },
+          distinct: ["intercalaryGroupId"],
         })
-      : Promise.resolve(null),
+      : Promise.resolve([]),
     // Today's activities, with each participant's group memberships — so we can
     // surface only the ones whose students this teacher actually teaches today.
     staff && !isWeekend
@@ -142,7 +140,9 @@ export default async function TeacherDashboardPage({
           orderBy: { startPeriod: "asc" },
         })
       : Promise.resolve([]),
-    meeting && myHomegroups.length === 0 ? getHomegroupOptions() : Promise.resolve([]),
+    // The picker: on a homegroup-period day for teachers without a homegroup;
+    // on an excursion day for everyone (cover another homegroup ad hoc).
+    isTodayExcursion || (meeting && myHomegroups.length === 0) ? getHomegroupOptions() : Promise.resolve([]),
   ]);
 
   const todaySlots = allSlots.filter((s) => s.dayOfWeek === todayDow);
@@ -178,7 +178,7 @@ export default async function TeacherDashboardPage({
   const todayIso = today.toISOString().slice(0, 10);
   const adHoc = staff && !isWeekend && !isTodayExcursion ? await loadAdHocCovers(staff.id, today, today) : new Map<string, AdHocCover[]>();
   const meetingMarked = new Set(meetingMarkedRows.map((r) => r.intercalaryGroupId));
-  const excursionMarked = excursionMarkedRow !== null;
+  const excursionMarked = new Set(excursionMarkedRows.map((r) => r.intercalaryGroupId));
 
   // Every period of the school day (Settings → periods per day), not just up
   // to the teacher's last lesson; plus the homegroup period when inserted.
@@ -293,27 +293,39 @@ export default async function TeacherDashboardPage({
               <p className="px-5 py-6 text-sm text-slate-400">{t("noSchoolToday")}</p>
             ) : isTodayExcursion ? (
               <div className="divide-y divide-slate-50">
-                {homeroomGroup ? (
+                {myHomegroups.length === 0 && (
+                  <div className="flex items-center gap-3 px-5 py-4 text-sm text-blue-500">
+                    <span>{t("excursion")}</span>
+                  </div>
+                )}
+                {myHomegroups.map((g) => (
                   <Link
-                    href={`/${locale}/teacher/attendance/mark?groupId=${homeroomGroup.id}&period=1&excursion=1`}
-                    className={`flex items-center gap-4 px-5 py-3 transition-colors hover:bg-blue-50/40 ${excursionMarked ? "bg-blue-50/30" : ""}`}
+                    key={g.id}
+                    href={`/${locale}/teacher/attendance/mark?groupId=${g.id}&period=1&excursion=1`}
+                    className={`flex items-center gap-4 px-5 py-3 transition-colors hover:bg-blue-50/40 ${excursionMarked.has(g.id) ? "bg-blue-50/30" : ""}`}
                   >
                     <span className="w-5 flex-shrink-0 text-center text-sm font-bold text-blue-300">1</span>
                     <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium text-blue-900">{homeroomGroup.name}</span>
+                      <span className="text-sm font-medium text-blue-900">{g.name}</span>
                       <span className="text-xs text-blue-400">{t("excursion")}</span>
                     </div>
-                    {excursionMarked ? (
+                    {excursionMarked.has(g.id) ? (
                       <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-blue-500" />
                     ) : (
                       <span className="text-xs font-medium text-blue-600 flex-shrink-0">{t("markAttendance")}</span>
                     )}
                   </Link>
-                ) : (
-                  <div className="flex items-center gap-3 px-5 py-4 text-sm text-blue-500">
-                    <span>{t("excursion")}</span>
-                  </div>
-                )}
+                ))}
+                {/* Any other homegroup's P1 register, ad hoc (e.g. covering an absent colleague) */}
+                <div className="px-5 py-3">
+                  <HomegroupPicker
+                    locale={locale}
+                    period={1}
+                    groups={homegroupOptions}
+                    excludeIds={myHomegroups.map((g) => g.id)}
+                    kind="excursion"
+                  />
+                </div>
               </div>
             ) : maxPeriod === 0 ? (
               <p className="px-5 py-6 text-sm text-slate-400">{t("noTimetableSlots")}</p>
