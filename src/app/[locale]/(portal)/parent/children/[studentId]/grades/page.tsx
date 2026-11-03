@@ -12,7 +12,9 @@ export default async function ParentChildGradesPage({
   const { locale, studentId } = await params;
   // A parent's linked child, or a chaperone's approved student — shared by
   // both portals (the chaperone routes re-export this page).
-  const { home, studentIds } = await guardianAccess(locale);
+  const { home, studentIds, canSeeGrades } = await guardianAccess(locale);
+  // Chaperones never see grades.
+  if (!canSeeGrades) redirect(home);
   if (!studentIds.has(studentId)) redirect(home);
 
   const student = await db.studentProfile.findUnique({

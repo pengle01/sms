@@ -17,12 +17,15 @@ export async function GuardianStudentCards({
   studentIds,
   basePath,
   showSchedule = false,
+  showGrades = true,
 }: {
   locale: string;
   studentIds: string[];
   basePath: string;
   /** A «Πρόγραμμα» link to the student's week with today's changes (chaperones). */
   showSchedule?: boolean;
+  /** The «Βαθμοί» link — off for chaperones, who never see grades. */
+  showGrades?: boolean;
 }) {
   const t = await getTranslations({ locale, namespace: "parentChildren" });
   const [curYear, curMonth] = localDateStr().split("-").map(Number) as [number, number];
@@ -110,13 +113,15 @@ export async function GuardianStudentCards({
                     <ClipboardList className="w-3.5 h-3.5" />
                     {t("linkAttendance")}
                   </Link>
-                  <Link
-                    href={`${basePath}/${s.id}/grades`}
-                    className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg border border-slate-200 text-sm text-slate-700 hover:bg-slate-50"
-                  >
-                    <BookOpen className="w-3.5 h-3.5" />
-                    {t("linkGrades")}
-                  </Link>
+                  {showGrades && (
+                    <Link
+                      href={`${basePath}/${s.id}/grades`}
+                      className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg border border-slate-200 text-sm text-slate-700 hover:bg-slate-50"
+                    >
+                      <BookOpen className="w-3.5 h-3.5" />
+                      {t("linkGrades")}
+                    </Link>
+                  )}
                   <Link
                     href={`${basePath}/${s.id}/tests`}
                     className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg border border-slate-200 text-sm text-slate-700 hover:bg-slate-50"

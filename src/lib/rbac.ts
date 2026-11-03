@@ -200,6 +200,14 @@ export function canViewAllReferrals(role: Role): boolean {
   );
 }
 
+/**
+ * May someone outside the staff see a student's grades (term grades and test
+ * marks)? The student and their parents yes; a chaperone never.
+ */
+export function guardianSeesGrades(role: Role): boolean {
+  return role === "PARENT" || role === "STUDENT";
+}
+
 export function getPortalForRole(role: Role): "admin" | "teacher" | "office" | "student" | "parent" | "chaperone" {
   if (role === "PARENT") return "parent";
   if (role === "STUDENT") return "student";

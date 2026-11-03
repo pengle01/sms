@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { createTRPCRouter, staffProcedure, protectedProcedure } from "../init";
+import { isStaff, guardianSeesGrades } from "@/lib/rbac";
 import { TRPCError } from "@trpc/server";
 import { GRADES_UNLOCKED_KEY, parseGradesUnlocked, TERM_GRADE_MIN, GRADE_MAX } from "@/lib/grades";
 import type { Role } from "@/generated/prisma/client";
@@ -87,6 +88,11 @@ export const gradesRouter = createTRPCRouter({
           (c: { studentProfileId: string }) => c.studentProfileId === input.studentId
         );
         if (!linked) throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      // Anyone else must be staff — chaperones never see grades.
+      if (!guardianSeesGrades(role) && !ctx.effectiveRoles.some(isStaff)) {
+        throw new TRPCError({ code: "FORBIDDEN" });
       }
 
       // Student: can only view their own grades

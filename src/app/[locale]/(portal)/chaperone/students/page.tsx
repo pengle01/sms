@@ -48,7 +48,7 @@ export default async function ChaperoneStudentsPage({
           </CardContent>
         </Card>
       ) : (
-        <GuardianStudentCards locale={locale} studentIds={studentIds} basePath={`/${locale}/chaperone/students`} showSchedule />
+        <GuardianStudentCards locale={locale} studentIds={studentIds} basePath={`/${locale}/chaperone/students`} showSchedule showGrades={false} />
       )}
     </div>
   );

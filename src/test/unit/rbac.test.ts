@@ -14,6 +14,7 @@ import {
   canViewStaffDirectory,
   getPortalForRole,
   notificationsPathFor,
+  guardianSeesGrades,
   EDUCATOR_ROLES,
   SELF_REGISTER_EDUCATOR_ROLES,
   canViewAccessCode,
@@ -320,5 +321,13 @@ describe("notificationsPathFor", () => {
     expect(notificationsPathFor("STUDENT")).toBe("/student/noticeboard");
     expect(notificationsPathFor("PARENT")).toBe("/parent/noticeboard");
     expect(notificationsPathFor("CHAPERONE")).toBe("/chaperone/noticeboard");
+  });
+});
+
+describe("guardianSeesGrades", () => {
+  it("shows grades to the student and their parents, never to a chaperone", () => {
+    expect(guardianSeesGrades("PARENT")).toBe(true);
+    expect(guardianSeesGrades("STUDENT")).toBe(true);
+    expect(guardianSeesGrades("CHAPERONE")).toBe(false);
   });
 });

@@ -20,7 +20,8 @@ export default async function ParentChildTestsPage({
   const { locale, studentId } = await params;
   // A parent's linked child, or a chaperone's approved student — shared by
   // both portals (the chaperone routes re-export this page).
-  const { home, studentIds } = await guardianAccess(locale);
+  // Chaperones see the test dates, never the marks.
+  const { home, studentIds, canSeeGrades } = await guardianAccess(locale);
   if (!studentIds.has(studentId)) redirect(home);
 
   const student = await db.studentProfile.findUnique({
@@ -53,10 +54,12 @@ export default async function ParentChildTestsPage({
           orderBy: [{ date: "asc" }, { period: "asc" }],
         })
       : Promise.resolve([]),
-    db.testGrade.findMany({
-      where: { studentId: student.id },
-      select: { testScheduleId: true, value: true },
-    }),
+    canSeeGrades
+      ? db.testGrade.findMany({
+          where: { studentId: student.id },
+          select: { testScheduleId: true, value: true },
+        })
+      : Promise.resolve([]),
   ]);
 
   const gradeMap = new Map(gradeRows.map((g) => [g.testScheduleId, g.value]));
@@ -143,7 +146,9 @@ export default async function ParentChildTestsPage({
                     <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colSubject")}</th>
                     <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colPeriod")}</th>
                     <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colType")}</th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colGrade")}</th>
+                    {canSeeGrades && (
+                      <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{t("colGrade")}</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
@@ -155,15 +160,17 @@ export default async function ParentChildTestsPage({
                         <td className="px-5 py-3 text-slate-700">{row.course.name}</td>
                         <td className="px-5 py-3 text-xs text-slate-400">{fmtPeriod(row.period, row.periodCount)}</td>
                         <td className="px-5 py-3"><TypeBadge type={row.type} /></td>
-                        <td className="px-5 py-3">
-                          {grade != null ? (
-                            <span className={`text-base ${gradeColor(Number(grade))}`}>
-                              {Number(grade).toFixed(1)}
-                            </span>
-                          ) : (
-                            <span className="text-slate-300">—</span>
-                          )}
-                        </td>
+                        {canSeeGrades && (
+                          <td className="px-5 py-3">
+                            {grade != null ? (
+                              <span className={`text-base ${gradeColor(Number(grade))}`}>
+                                {Number(grade).toFixed(1)}
+                              </span>
+                            ) : (
+                              <span className="text-slate-300">—</span>
+                            )}
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
