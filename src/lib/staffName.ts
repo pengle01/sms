@@ -63,3 +63,15 @@ export function signatureName(
   const parts = [user.firstName?.trim(), user.lastName?.trim()].filter(Boolean).join(" ");
   return parts || user.name?.trim() || "";
 }
+
+/**
+ * A teacher as parents and students see them on a timetable: the timetable's
+ * coding ("ΗΥ-ΜΑΣΙΑ Μ. ΒΔ") followed by their specialty from their profile
+ * («Πληροφορικής/Επιστήμης Η.Υ.») when known. Null when there is no name.
+ */
+export function teacherWithSpecialty(coding: string | null | undefined, specialty: string | null | undefined): string | null {
+  const name = coding?.trim();
+  if (!name) return null;
+  const spec = specialty?.trim();
+  return spec ? `${name} · ${spec}` : name;
+}

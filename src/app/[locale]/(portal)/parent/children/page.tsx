@@ -41,6 +41,7 @@ export default async function ParentChildrenPage({
         locale={locale}
         studentIds={parent.children.map((c) => c.studentProfileId)}
         basePath={`/${locale}/parent/children`}
+        showSchedule
       />
     </div>
   );

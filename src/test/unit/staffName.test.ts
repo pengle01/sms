@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { slotTeacherName, staffAuthorLabel, staffDisplayName, signatureName } from "@/lib/staffName";
+import { slotTeacherName, staffAuthorLabel, staffDisplayName, signatureName, teacherWithSpecialty } from "@/lib/staffName";
 
 describe("staffDisplayName", () => {
   it("prefers the schedule coding over the account name", () => {
@@ -75,5 +75,18 @@ describe("signatureName", () => {
   it("returns empty for no user, leaving the line blank to sign by hand", () => {
     expect(signatureName(null)).toBe("");
     expect(signatureName({})).toBe("");
+  });
+});
+
+describe("teacherWithSpecialty", () => {
+  it("puts the specialty next to the timetable coding", () => {
+    expect(teacherWithSpecialty("ΗΥ-ΜΑΣΙΑ Μ. ΒΔ", "Πληροφορικής/Επιστήμης Η.Υ.")).toBe("ΗΥ-ΜΑΣΙΑ Μ. ΒΔ · Πληροφορικής/Επιστήμης Η.Υ.");
+  });
+
+  it("shows the coding alone without a specialty, and nothing without a name", () => {
+    expect(teacherWithSpecialty("Μ-ΑΛΦΑ Α.", null)).toBe("Μ-ΑΛΦΑ Α.");
+    expect(teacherWithSpecialty("Μ-ΑΛΦΑ Α.", " ")).toBe("Μ-ΑΛΦΑ Α.");
+    expect(teacherWithSpecialty(null, "Μαθηματικών")).toBeNull();
+    expect(teacherWithSpecialty(" ", "Μαθηματικών")).toBeNull();
   });
 });

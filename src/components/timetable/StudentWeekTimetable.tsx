@@ -12,6 +12,7 @@ import { loadActivityIndex } from "@/server/activityAbsences";
 import { activityForAbsence } from "@/lib/activities";
 import { changeForLesson, type LessonChange, type PlanEntryLite } from "@/lib/studentDayChanges";
 import { periodLabel } from "@/lib/periods";
+import { teacherWithSpecialty } from "@/lib/staffName";
 import { cn } from "@/lib/utils";
 
 /**
@@ -79,7 +80,7 @@ export async function StudentWeekTimetable({
         period: e.period,
         groupId: e.groupId,
         timetableSlotId: e.timetableSlotId,
-        substituteName: e.substituteStaff?.scheduleName ?? null,
+        substituteName: teacherWithSpecialty(e.substituteStaff?.scheduleName, e.substituteStaff?.department),
         newRoom: e.newRoom,
       }));
   const dayEntries = new Map(days.map((d) => [d, entriesOn(d)]));
@@ -92,7 +93,9 @@ export async function StudentWeekTimetable({
     grid.set(s.dayOfWeek * 100 + s.period, { ...s, isSubjectGroup: true });
   }
 
-  const teacherName = (s: Slot) => s.staff?.scheduleName ?? s.staffName ?? s.staff?.user?.name ?? null;
+  // The timetable's coding ("ΗΥ-ΜΑΣΙΑ Μ. ΒΔ") with the teacher's specialty next to it
+  const teacherName = (s: Slot) =>
+    teacherWithSpecialty(s.staff?.scheduleName ?? s.staffName ?? s.staff?.user?.name, s.staff?.department);
   const changeText = (c: LessonChange) =>
     c.kind === "substitute" && c.substituteName ? `${t("substituteLabel")}: ${c.substituteName}` : t(c.kind);
 

@@ -301,7 +301,8 @@ export async function getDayOverrides(date: Date) {
         include: {
           group: { select: { id: true, name: true } },
           absentStaff: { select: { id: true, scheduleName: true } },
-          substituteStaff: { select: { id: true, scheduleName: true } },
+          // department: the specialty shown next to the coding on student timetables
+          substituteStaff: { select: { id: true, scheduleName: true, department: true } },
           timetableSlot: { include: { course: { select: { name: true } } } },
         },
         orderBy: { period: "asc" },

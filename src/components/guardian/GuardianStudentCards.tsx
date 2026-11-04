@@ -22,7 +22,7 @@ export async function GuardianStudentCards({
   locale: string;
   studentIds: string[];
   basePath: string;
-  /** A «Πρόγραμμα» link to the student's week with today's changes (chaperones). */
+  /** A «Πρόγραμμα» link to the student's week with today's changes. */
   showSchedule?: boolean;
   /** The «Βαθμοί» link — off for chaperones, who never see grades. */
   showGrades?: boolean;
