@@ -18,7 +18,7 @@ import { StudentsDropdown } from "@/components/referrals/StudentsDropdown";
 import { ResponsibleHeadteachers } from "@/components/referrals/ResponsibleHeadteachers";
 import { ReferralInfo } from "@/components/referrals/ReferralInfo";
 import { ReferralTabs } from "@/components/referrals/ReferralTabs";
-import { canDeleteReferral, canEditDraft, overallStatus } from "@/lib/referralStatus";
+import { canDeleteReferral, canEditDraft, overallStatus, editRequestState } from "@/lib/referralStatus";
 import { referralRecommendations, recommendationsLabel, resolutionSummary, expulsionDayLabel } from "@/lib/referralLabels";
 import { parseReferralSearchTab, referralSearchWhere } from "@/lib/referralSearch";
 import { UnlockResolutionDialog } from "./UnlockResolutionDialog";
@@ -30,6 +30,7 @@ import {
   canResolve as canResolveStudent,
   canEscalate,
   canCarryOut,
+  canRequestReturn,
   nextLevel,
   expulsionLimitFor,
   EXPULSION_MAX_DAYS,
@@ -38,6 +39,8 @@ import {
 } from "@/lib/referralLevels";
 import { EscalateReferralDialog } from "./EscalateReferralDialog";
 import { DecideExpulsionDialog } from "./DecideExpulsionDialog";
+import { RequestEditDialog } from "./RequestEditDialog";
+import { ReturnReferralDialog } from "./ReturnReferralDialog";
 
 // Include shape — same as in router
 const referralInclude = {
@@ -57,12 +60,16 @@ const referralInclude = {
       unlockRequests: { where: { status: "PENDING" as const }, select: { id: true } },
       // Referred up a level: by whom, why (src/lib/referralLevels.ts)
       escalations: {
-        select: { id: true, toLevel: true, reason: true, createdAt: true, escalatedBy: { select: { name: true } } },
+        select: { id: true, toLevel: true, reason: true, createdAt: true, returnedAt: true, escalatedBy: { select: { name: true } } },
         orderBy: { createdAt: "asc" as const },
       },
+      // The headmaster's pending request to send it back (admin decides)
+      returnRequests: { where: { status: "PENDING" as const }, select: { id: true } },
     },
     orderBy: { student: { user: { name: "asc" as const } } },
   },
+  // The filer's requests to edit it once filed (approval returns it to drafts)
+  editRequests: { select: { status: true } },
 } as const;
 
 export default async function TeacherReferralsPage({
@@ -327,8 +334,27 @@ export default async function TeacherReferralsPage({
               {tr("editDraftButton")}
             </Link>
           )}
-          {canDeleteReferral(r, staff.id) && (
-            <DeleteReferralButton referralId={r.id} number={r.number} isDraft={r.isDraft} />
+          {canDeleteReferral(
+            {
+              ...r,
+              students: r.students.map((rs) => ({
+                status: rs.status,
+                level: rs.level,
+                hasResolution: !!rs.resolution,
+                escalationCount: rs.escalations.filter((e) => !e.returnedAt).length,
+              })),
+            },
+            staff.id,
+          ) && <DeleteReferralButton referralId={r.id} number={r.number} isDraft={r.isDraft} />}
+          {/* A filed referral: ask the admin to return it to the drafts to edit */}
+          {editRequestState(r, staff.id, r.editRequests) !== "none" && (
+            <div className="mt-1.5">
+              <RequestEditDialog
+                referralId={r.id}
+                number={r.number}
+                pending={editRequestState(r, staff.id, r.editRequests) === "pending"}
+              />
+            </div>
           )}
           {canResolve && (
             <ResolveReferralDialog
@@ -484,7 +510,8 @@ export default async function TeacherReferralsPage({
             <div className="mt-2 space-y-1">
               {escalations.map((e) => (
                 <p key={e.id} className="rounded-lg bg-orange-50 border border-orange-200 px-2.5 py-1.5 text-xs text-orange-800">
-                  <span className="font-semibold">Παραπομπή → {LEVEL_LABEL[e.toLevel]}</span> · {e.student} ·{" "}
+                  <span className="font-semibold">Παραπομπή → {LEVEL_LABEL[e.toLevel]}</span>
+                  {e.returnedAt && <span className="font-semibold text-slate-600"> (ακυρώθηκε — επέστρεψε στον/στη Β.Δ.)</span>} · {e.student} ·{" "}
                   {e.escalatedBy.name ?? "—"} · {fmtDisplayDate(e.createdAt)}
                   <span className="block text-orange-700 whitespace-pre-wrap">{e.reason}</span>
                 </p>
@@ -632,7 +659,7 @@ export default async function TeacherReferralsPage({
                   <p className="text-xs text-slate-400">{rs.group?.name}</p>
                 </div>
                 <span className="text-xs font-medium text-orange-700 bg-orange-100 border border-orange-200 px-2.5 py-1 rounded-lg">
-                  Παραπέμφθηκε: {LEVEL_LABEL[rs.level]}
+                  {rs.level === "HOMEGROUP" ? "Επέστρεψε στον/στη Β.Δ. τμήματος" : `Παραπέμφθηκε: ${LEVEL_LABEL[rs.level]}`}
                 </span>
               </div>
             ) : (
@@ -658,14 +685,25 @@ export default async function TeacherReferralsPage({
                     recommendation={referralRecommendations(r).length > 0 ? recommendationsLabel(referralRecommendations(r)) : null}
                   />
                 )}
-                {canEscalate(lite(rs), viewer) && (
-                  <div className="mt-2">
-                    <EscalateReferralDialog
-                      referralId={r.id}
-                      referralStudentIds={[rs.id]}
-                      studentNames={[rs.student.user?.name ?? "—"]}
-                      label={ESCALATE_TO_LABEL[nextLevel(rs.level)!]!}
-                    />
+                {(canEscalate(lite(rs), viewer) ||
+                  canRequestReturn({ level: rs.level, resolved: !!rs.resolution, pendingReturn: false }, viewer)) && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {canEscalate(lite(rs), viewer) && (
+                      <EscalateReferralDialog
+                        referralId={r.id}
+                        referralStudentIds={[rs.id]}
+                        studentNames={[rs.student.user?.name ?? "—"]}
+                        label={ESCALATE_TO_LABEL[nextLevel(rs.level)!]!}
+                      />
+                    )}
+                    {/* Referred to the headmaster by mistake: back to the Β.Δ. (admin approves) */}
+                    {canRequestReturn({ level: rs.level, resolved: !!rs.resolution, pendingReturn: false }, viewer) && (
+                      <ReturnReferralDialog
+                        referralStudentId={rs.id}
+                        studentName={rs.student.user?.name ?? "—"}
+                        pending={rs.returnRequests.length > 0}
+                      />
+                    )}
                   </div>
                 )}
                 <div className="flex items-center justify-between gap-2 mt-1 pl-1">

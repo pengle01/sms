@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { overallStatus, referralColor, referralColorScoped, referralGroupSignals, canDeleteReferral, canEditDraft, draftStudentChanges, responsibleHeadteachers } from "@/lib/referralStatus";
+import { overallStatus, referralColor, referralColorScoped, referralGroupSignals, canDeleteReferral, canEditDraft, draftStudentChanges, editRequestState, lockedStudentIds, responsibleHeadteachers } from "@/lib/referralStatus";
 
 const students = (statuses: string[]) => statuses.map((status) => ({ status }));
 
@@ -153,12 +153,14 @@ describe("canDeleteReferral", () => {
     ).toBe(false);
   });
 
-  it("still allows a draft even if it somehow carries a resolved student", () => {
-    // Drafts are never visible to a resolver, so this cannot arise in practice;
-    // the draft branch is unconditional on purpose and this pins that down.
-    expect(
-      canDeleteReferral({ ...base, isDraft: true, students: [{ status: "RESOLVED" }] }, ME),
-    ).toBe(true);
+  it("refuses a draft returned for editing once it was opened, decided or referred up", () => {
+    // After admin approval a filed referral goes back to the filer's drafts —
+    // it must not become deletable.
+    expect(canDeleteReferral({ ...base, isDraft: true, students: [{ status: "RESOLVED" }] }, ME)).toBe(false);
+    expect(canDeleteReferral({ ...base, isDraft: true, openedAt: new Date() }, ME)).toBe(false);
+    expect(canDeleteReferral({ ...base, isDraft: true, students: [{ status: "PENDING", level: "HEADMASTER" }] }, ME)).toBe(false);
+    expect(canDeleteReferral({ ...base, isDraft: true, students: [{ status: "PENDING", hasResolution: true }] }, ME)).toBe(false);
+    expect(canDeleteReferral({ ...base, isDraft: true, students: [{ status: "PENDING", escalationCount: 1 }] }, ME)).toBe(false);
   });
 
   it("allows a filed referral with no students yet", () => {
@@ -222,5 +224,29 @@ describe("editing a draft", () => {
   it("adds the newly picked students and removes the unpicked ones", () => {
     expect(draftStudentChanges(["a", "b"], ["b", "c", "c"])).toEqual({ add: ["c"], remove: ["a"] });
     expect(draftStudentChanges(["a"], ["a"])).toEqual({ add: [], remove: [] });
+  });
+});
+
+describe("returning a filed referral to drafts for editing", () => {
+  it("lets only the filer ask, for a filed referral, one request at a time", () => {
+    const filed = { isDraft: false, filerId: "s1" };
+    expect(editRequestState(filed, "s1", [])).toBe("canRequest");
+    expect(editRequestState(filed, "s1", [{ status: "REJECTED" }, { status: "APPROVED" }])).toBe("canRequest");
+    expect(editRequestState(filed, "s1", [{ status: "PENDING" }])).toBe("pending");
+    expect(editRequestState(filed, "s2", [])).toBe("none");
+    expect(editRequestState({ isDraft: true, filerId: "s1" }, "s1", [])).toBe("none");
+    expect(editRequestState(filed, null, [])).toBe("none");
+  });
+
+  it("locks the students who were decided or referred up", () => {
+    expect(
+      lockedStudentIds([
+        { studentId: "a", status: "PENDING" },
+        { studentId: "b", status: "RESOLVED" },
+        { studentId: "c", status: "PENDING", hasResolution: true },
+        { studentId: "d", status: "PENDING", level: "COUNCIL" },
+        { studentId: "e", status: "PENDING", level: "HOMEGROUP", escalationCount: 2 },
+      ]),
+    ).toEqual(["b", "c", "d", "e"]);
   });
 });

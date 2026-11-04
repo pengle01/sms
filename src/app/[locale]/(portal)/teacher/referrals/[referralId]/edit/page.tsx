@@ -7,7 +7,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTranslations } from "next-intl/server";
-import { canEditDraft } from "@/lib/referralStatus";
+import { canEditDraft, lockedStudentIds } from "@/lib/referralStatus";
 import { ReferralForm } from "../../new/ReferralForm";
 
 /** Edit a saved draft: the new-referral form with its values; save again or file it. */
@@ -24,7 +24,16 @@ export default async function EditDraftReferralPage({
   const [staff, claim, referral] = await Promise.all([
     db.staffProfile.findUnique({ where: { userId: session.user.id }, select: { id: true } }),
     db.teacherClaim.findUnique({ where: { userId: session.user.id }, select: { staffName: true } }),
-    db.referral.findUnique({ where: { id: referralId }, include: { students: { select: { studentId: true } } } }),
+    db.referral.findUnique({
+      where: { id: referralId },
+      include: {
+        students: {
+          select: { studentId: true, status: true, level: true, resolution: { select: { id: true } }, _count: { select: { escalations: { where: { returnedAt: null } } } } },
+        },
+        // Returned to drafts by an approved edit request: it was filed before.
+        editRequests: { where: { status: "APPROVED" }, select: { id: true }, take: 1 },
+      },
+    }),
   ]);
   // Only the filer's own draft; a filed referral no longer changes.
   if (!referral || !canEditDraft(referral, staff?.id)) redirect(`/${locale}/teacher/referrals`);
@@ -43,6 +52,12 @@ export default async function EditDraftReferralPage({
       </Link>
 
       <h2 className="text-2xl font-bold text-slate-900">{t("editDraft")}</h2>
+      {referral.editRequests.length > 0 && (
+        <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
+          Η καταγγελία #{referral.number} επέστρεψε στα πρόχειρα μετά από έγκριση της Διαχείρισης. Διορθώστε τη και υποβάλετέ τη ξανά —
+          οι αποφάσεις που έχουν ήδη ληφθεί παραμένουν.
+        </p>
+      )}
 
       <Card>
         <CardHeader className="pb-3">
@@ -63,6 +78,15 @@ export default async function EditDraftReferralPage({
               incidentTime: referral.incidentTime ?? "",
               extraInfo: referral.extraInfo ?? "",
               recommendations: referral.recommendations,
+              lockedStudentIds: lockedStudentIds(
+                referral.students.map((rs) => ({
+                  studentId: rs.studentId,
+                  status: rs.status,
+                  level: rs.level,
+                  hasResolution: !!rs.resolution,
+                  escalationCount: rs._count.escalations,
+                })),
+              ),
             }}
           />
         </CardContent>

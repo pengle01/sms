@@ -65,7 +65,7 @@ export default async function PrintResolutionPage({
               },
             },
             escalations: {
-              select: { id: true, toLevel: true, reason: true, createdAt: true, escalatedBy: { select: { name: true } } },
+              select: { id: true, toLevel: true, reason: true, createdAt: true, returnedAt: true, escalatedBy: { select: { name: true } } },
               orderBy: { createdAt: "asc" },
             },
           },
@@ -378,7 +378,8 @@ export default async function PrintResolutionPage({
                   <ul className="space-y-1 text-sm text-slate-700">
                     {rs.escalations.map((e) => (
                       <li key={e.id}>
-                        <span className="font-medium">{LEVEL_LABEL[e.toLevel]}</span> ({e.createdAt.toLocaleDateString("el-GR", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                        <span className="font-medium">{LEVEL_LABEL[e.toLevel]}</span>
+                        {e.returnedAt && " — ακυρώθηκε, επέστρεψε στον/στη Β.Δ."} ({e.createdAt.toLocaleDateString("el-GR", { day: "2-digit", month: "2-digit", year: "numeric" })}
                         {e.escalatedBy.name && `, ${e.escalatedBy.name}`}): {e.reason}
                       </li>
                     ))}

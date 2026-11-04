@@ -7,6 +7,7 @@ import {
   expulsionLimitFor,
   decisionOutcome,
   canCarryOut,
+  canRequestReturn,
   EXPULSION_MAX_DAYS,
   type ReferralViewer,
 } from "@/lib/referralLevels";
@@ -77,5 +78,22 @@ describe("a higher level's measure returns to the homegroup headteacher", () => 
   it("does not let the homegroup headteacher decide again once a measure was chosen", () => {
     expect(canResolve({ groupId: "g1", level: "HOMEGROUP", resolved: true }, bd)).toBe(false);
     expect(canEscalate({ groupId: "g1", level: "HOMEGROUP", resolved: true }, bd)).toBe(false);
+  });
+});
+
+describe("sending a mistaken referral back to the homegroup headteacher", () => {
+  const atHead = { level: "HEADMASTER" as const, resolved: false, pendingReturn: false };
+
+  it("lets the headmaster ask for a student still waiting on them", () => {
+    expect(canRequestReturn(atHead, head)).toBe(true);
+  });
+
+  it("refuses others, decided students, other levels and a second pending request", () => {
+    expect(canRequestReturn(atHead, bd)).toBe(false);
+    expect(canRequestReturn(atHead, council)).toBe(false);
+    expect(canRequestReturn({ ...atHead, resolved: true }, head)).toBe(false);
+    expect(canRequestReturn({ ...atHead, pendingReturn: true }, head)).toBe(false);
+    expect(canRequestReturn({ ...atHead, level: "COUNCIL" }, head)).toBe(false);
+    expect(canRequestReturn({ ...atHead, level: "HOMEGROUP" }, head)).toBe(false);
   });
 });

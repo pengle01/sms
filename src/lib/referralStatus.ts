@@ -42,14 +42,58 @@ export function canDeleteReferral(
     isDraft: boolean;
     openedAt?: Date | string | null;
     filerId: string;
-    students: { status: string }[];
+    students: LockableStudent[];
   },
   staffId: string | null | undefined,
 ): boolean {
   if (!staffId || r.filerId !== staffId) return false;
-  if (r.isDraft) return true;
+  // A draft returned for editing (after admin approval) may already have been
+  // opened, decided or referred up — then it is part of the record, like a
+  // filed one; a never-filed draft has none of these and stays deletable.
   if (r.openedAt) return false;
-  return r.students.every((s) => s.status !== "RESOLVED");
+  if (r.students.some((s) => s.status === "RESOLVED" || isLockedStudent(s))) return false;
+  return true;
+}
+
+/** A student on a referral, with what may lock them in place. */
+export type LockableStudent = {
+  status: string;
+  level?: string | null;
+  hasResolution?: boolean;
+  escalationCount?: number;
+};
+
+/**
+ * Has something already happened to this student on the referral — a
+ * decision, or a referral up? Then they can't be removed from it (that would
+ * delete the decision) and the referral can't be deleted.
+ */
+export function isLockedStudent(s: LockableStudent): boolean {
+  return (
+    s.status === "RESOLVED" ||
+    !!s.hasResolution ||
+    (s.level != null && s.level !== "HOMEGROUP") ||
+    (s.escalationCount ?? 0) > 0
+  );
+}
+
+/** The students of a referral that can no longer be removed from it. */
+export function lockedStudentIds(students: readonly (LockableStudent & { studentId: string })[]): string[] {
+  return students.filter(isLockedStudent).map((s) => s.studentId);
+}
+
+/**
+ * May the filer ask to edit this FILED referral? `canRequest`, or `pending`
+ * while a request awaits the admin; `none` for a draft or someone else's.
+ * Approval returns it to the filer's drafts.
+ */
+export function editRequestState(
+  r: { isDraft: boolean; filerId: string },
+  staffId: string | null | undefined,
+  requests: readonly { status: string }[],
+): "none" | "canRequest" | "pending" {
+  if (!staffId || r.filerId !== staffId || r.isDraft) return "none";
+  return requests.some((q) => q.status === "PENDING") ? "pending" : "canRequest";
 }
 
 /** May this staff member edit the referral? Only its filer, only while it is a draft. */

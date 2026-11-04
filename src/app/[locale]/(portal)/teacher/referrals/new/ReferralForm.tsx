@@ -30,6 +30,11 @@ export interface ReferralDraft {
   incidentTime: string;
   extraInfo: string;
   recommendations: ReferralRecommendation[];
+  /**
+   * Returned from filed for editing: students already decided or referred up
+   * — they can't be removed (that would delete the decision).
+   */
+  lockedStudentIds?: string[];
 }
 
 interface Props {
@@ -56,7 +61,10 @@ export function ReferralForm({ groups, filerName, locale, draft }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
 
-  const [selectedIds, setSelectedIds] = useState<string[]>(draft?.studentIds ?? []);
+  const [selectedIds, setSelectedIdsRaw] = useState<string[]>(draft?.studentIds ?? []);
+  const locked = draft?.lockedStudentIds ?? [];
+  // Locked students stay ticked whatever the picker does.
+  const setSelectedIds = (ids: string[]) => setSelectedIdsRaw([...new Set([...ids, ...locked])]);
   // Today in Cyprus, when the form opens — an incident is today or earlier.
   const [today] = useState(() => localDateStr(getNow()));
   const [date, setDate] = useState(draft?.date ?? today);
@@ -131,6 +139,12 @@ export function ReferralForm({ groups, filerName, locale, draft }: Props) {
           )}
         </label>
         <StudentPicker groups={groups} selectedIds={selectedIds} onChange={setSelectedIds} />
+        {locked.length > 0 && (
+          <p className="text-xs text-amber-700">
+            {locked.length === 1 ? "Ένας/μία μαθητής/τρια δεν μπορεί να αφαιρεθεί" : `${locked.length} μαθητές δεν μπορούν να αφαιρεθούν`}
+            {" "}— έχει ήδη ληφθεί απόφαση ή έγινε παραπομπή.
+          </p>
+        )}
       </div>
 
       {/* Date / Location / Time */}

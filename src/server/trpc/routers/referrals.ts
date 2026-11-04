@@ -13,11 +13,11 @@ import { DEFAULT_PERIODS_PER_DAY } from "@/lib/periods";
 import { getPeriodsPerDay } from "@/lib/schoolConfig";
 import { validatePunishment, PUNISHMENT_ERROR_EL } from "@/lib/punishment";
 import { ACTION_ORDER, actionLabel, resolutionSummary } from "@/lib/referralLabels";
-import { canDeleteReferral, canEditDraft, draftStudentChanges } from "@/lib/referralStatus";
+import { canDeleteReferral, canEditDraft, draftStudentChanges, editRequestState, lockedStudentIds } from "@/lib/referralStatus";
 import { writeAudit } from "@/server/audit";
 import type { Prisma, Role } from "@/generated/prisma/client";
 import { parentCard } from "@/lib/smsContacts";
-import { canResolve, canEscalate, canCarryOut, decisionOutcome, expulsionLimitFor, nextLevel, LEVEL_LABEL } from "@/lib/referralLevels";
+import { canResolve, canEscalate, canCarryOut, canRequestReturn, decisionOutcome, expulsionLimitFor, nextLevel, LEVEL_LABEL } from "@/lib/referralLevels";
 import { loadReferralViewer } from "@/server/referralViewer";
 
 function reqMeta(req?: Request) {
@@ -68,6 +68,7 @@ async function notifyHeadteachersOfFiling(
   students: { group: { homeroomHeadteacher: { user: { id: string } | null } | null } | null }[],
   filerDisplayName: string,
   description: string,
+  title = "Νέα καταγγελία",
 ) {
   const notified = new Set<string>();
   for (const s of students) {
@@ -78,7 +79,7 @@ async function notifyHeadteachersOfFiling(
         data: {
           userId: headUserId,
           type: "REFERRAL_CREATED",
-          title: "Νέα καταγγελία",
+          title,
           body: `${filerDisplayName}: ${description.slice(0, 80)}`,
           linkUrl: `/teacher/referrals`,
           read: false,
@@ -181,7 +182,16 @@ export const referralsRouter = createTRPCRouter({
 
       const referral = await ctx.db.referral.findUnique({
         where: { id: input.referralId },
-        select: { isDraft: true, filerId: true, students: { select: { studentId: true } } },
+        select: {
+          isDraft: true,
+          filerId: true,
+          number: true,
+          students: {
+            select: { studentId: true, status: true, level: true, resolution: { select: { id: true } }, _count: { select: { escalations: { where: { returnedAt: null } } } } },
+          },
+          // Returned to drafts by an approved edit request: it was filed before.
+          editRequests: { where: { status: "APPROVED" }, select: { id: true }, take: 1 },
+        },
       });
       if (!referral) throw new TRPCError({ code: "NOT_FOUND" });
       if (!canEditDraft(referral, staff.id)) {
@@ -203,6 +213,23 @@ export const referralsRouter = createTRPCRouter({
         referral.students.map((rs) => rs.studentId),
         students.map((s) => s.id),
       );
+      // A student already decided or referred up stays on the referral —
+      // removing them would delete the decision.
+      const locked = new Set(
+        lockedStudentIds(
+          referral.students.map((rs) => ({
+            studentId: rs.studentId,
+            status: rs.status,
+            level: rs.level,
+            hasResolution: !!rs.resolution,
+            escalationCount: rs._count.escalations,
+          })),
+        ),
+      );
+      if (remove.some((id) => locked.has(id))) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Δεν μπορείτε να αφαιρέσετε μαθητή/τρια για τον/την οποίο/α υπάρχει ήδη απόφαση ή παραπομπή." });
+      }
+      const refiled = referral.editRequests.length > 0;
 
       return ctx.db.$transaction(async (tx) => {
         // Guard against a concurrent filing/withdrawal between the read and here.
@@ -217,8 +244,9 @@ export const referralsRouter = createTRPCRouter({
             recommendations: [...new Set(input.recommendations)],
             date: new Date(input.date),
             isDraft: input.isDraft,
-            // Filing: it reaches the headteachers now, so it counts as new from now.
-            ...(input.isDraft ? {} : { createdAt: new Date() }),
+            // Filing: it reaches the headteachers now, so it counts as new from
+            // now — unless it was filed before and returned for editing.
+            ...(input.isDraft || refiled ? {} : { createdAt: new Date() }),
           },
         });
         if (changed.count === 0) {
@@ -242,10 +270,73 @@ export const referralsRouter = createTRPCRouter({
           }
         }
 
-        if (!input.isDraft) await notifyHeadteachersOfFiling(tx, students, filerDisplayName, input.description);
+        if (!input.isDraft) {
+          await notifyHeadteachersOfFiling(
+            tx,
+            students,
+            filerDisplayName,
+            input.description,
+            refiled ? `Τροποποιημένη καταγγελία #${referral.number}` : undefined,
+          );
+        }
 
         return { id: input.referralId, isDraft: input.isDraft };
       });
+    }),
+
+  // The filer asks to edit a FILED referral — even one a headteacher has
+  // opened. The admin decides (admin «Καταγγελίες»); approval returns it to
+  // the filer's drafts to edit and file again.
+  requestEdit: staffProcedure
+    .input(z.object({ referralId: z.string(), reason: z.string().trim().min(5, "Γράψτε τον λόγο της τροποποίησης") }))
+    .mutation(async ({ ctx, input }) => {
+      const staff = await ctx.db.staffProfile.findUnique({ where: { userId: ctx.session.user.id }, select: { id: true } });
+      if (!staff) throw new TRPCError({ code: "NOT_FOUND" });
+      const referral = await ctx.db.referral.findUnique({
+        where: { id: input.referralId },
+        select: { number: true, isDraft: true, filerId: true, editRequests: { select: { status: true } } },
+      });
+      if (!referral) throw new TRPCError({ code: "NOT_FOUND" });
+      const state = editRequestState(referral, staff.id, referral.editRequests);
+      if (state !== "canRequest") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: state === "pending" ? "Υπάρχει ήδη αίτημα σε αναμονή" : "Δεν μπορείτε να ζητήσετε τροποποίηση αυτής της καταγγελίας",
+        });
+      }
+
+      const created = await ctx.db.$transaction(async (tx) => {
+        const req = await tx.referralEditRequest.create({
+          data: { referralId: input.referralId, requestedById: ctx.session.user.id, reason: input.reason },
+        });
+        const admins = await tx.user.findMany({
+          where: { isActive: true, OR: [{ role: "SUPER_ADMIN" }, { extraRoles: { has: "SUPER_ADMIN" } }] },
+          select: { id: true },
+        });
+        for (const admin of admins) {
+          await tx.notification.create({
+            data: {
+              userId: admin.id,
+              type: "REFERRAL_EDIT_REQUESTED",
+              title: `Αίτημα τροποποίησης καταγγελίας #${referral.number}`,
+              body: input.reason.slice(0, 120),
+              linkUrl: `/admin/referrals`,
+              read: false,
+            },
+          });
+        }
+        return req;
+      });
+
+      await writeAudit({
+        userId: ctx.session.user.id,
+        action: "referral.editRequest",
+        resource: "ReferralEditRequest",
+        resourceId: created.id,
+        details: { referralId: input.referralId, number: referral.number, reason: input.reason },
+        ...reqMeta(ctx.req),
+      });
+      return { ok: true };
     }),
 
   // Withdraw a referral: a draft, or one filed but not yet opened by a
@@ -264,14 +355,23 @@ export const referralsRouter = createTRPCRouter({
           isDraft: true,
           openedAt: true,
           filerId: true,
-          students: { select: { status: true } },
+          students: { select: { status: true, level: true, resolution: { select: { id: true } }, _count: { select: { escalations: { where: { returnedAt: null } } } } } },
           resolution: { select: { id: true } },
         },
       });
       if (!referral) throw new TRPCError({ code: "NOT_FOUND" });
       if (referral.filerId !== staff.id) throw new TRPCError({ code: "FORBIDDEN" });
 
-      if (!canDeleteReferral(referral, staff.id)) {
+      const lockable = {
+        ...referral,
+        students: referral.students.map((rs) => ({
+          status: rs.status,
+          level: rs.level,
+          hasResolution: !!rs.resolution,
+          escalationCount: rs._count.escalations,
+        })),
+      };
+      if (!canDeleteReferral(lockable, staff.id)) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Η καταγγελία έχει ήδη ανοιχτεί και δεν διαγράφεται.",
@@ -435,6 +535,7 @@ export const referralsRouter = createTRPCRouter({
         },
       });
       if (!referral) throw new TRPCError({ code: "NOT_FOUND" });
+      if (referral.isDraft) throw new TRPCError({ code: "BAD_REQUEST", message: "Η καταγγελία επέστρεψε στα πρόχειρα του/της εκπαιδευτικού για τροποποίηση — περιμένετε να υποβληθεί ξανά." });
 
       // Each student is decided at their level (src/lib/referralLevels.ts): the
       // homegroup headteacher, the headmaster or the «Πειθαρχικό Συμβούλιο».
@@ -564,6 +665,62 @@ export const referralsRouter = createTRPCRouter({
       return result;
     }),
 
+  // The headmaster asks to send a student referred to them by mistake back to
+  // the homegroup headteacher; the admin decides (admin «Καταγγελίες»).
+  requestReturn: managementProcedure
+    .input(z.object({ referralStudentId: z.string(), reason: z.string().trim().min(5, "Γράψτε τον λόγο") }))
+    .mutation(async ({ ctx, input }) => {
+      const viewer = await loadReferralViewer(ctx.session.user.id, ctx.effectiveRoles);
+      if (!viewer) throw new TRPCError({ code: "NOT_FOUND" });
+      const rs = await ctx.db.referralStudent.findUnique({
+        where: { id: input.referralStudentId },
+        select: {
+          level: true,
+          resolution: { select: { id: true } },
+          returnRequests: { where: { status: "PENDING" }, select: { id: true } },
+          referral: { select: { id: true, number: true, isDraft: true } },
+          student: { select: { user: { select: { name: true } } } },
+        },
+      });
+      if (!rs || rs.referral.isDraft) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!canRequestReturn({ level: rs.level, resolved: !!rs.resolution, pendingReturn: rs.returnRequests.length > 0 }, viewer)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Δεν μπορείτε να ζητήσετε επιστροφή αυτής της παραπομπής" });
+      }
+
+      const created = await ctx.db.$transaction(async (tx) => {
+        const req = await tx.referralReturnRequest.create({
+          data: { referralStudentId: input.referralStudentId, requestedById: ctx.session.user.id, reason: input.reason },
+        });
+        const admins = await tx.user.findMany({
+          where: { isActive: true, OR: [{ role: "SUPER_ADMIN" }, { extraRoles: { has: "SUPER_ADMIN" } }] },
+          select: { id: true },
+        });
+        for (const admin of admins) {
+          await tx.notification.create({
+            data: {
+              userId: admin.id,
+              type: "REFERRAL_RETURN_REQUESTED",
+              title: `Αίτημα ακύρωσης παραπομπής — καταγγελία #${rs.referral.number}`,
+              body: `${rs.student.user?.name ?? ""}: ${input.reason.slice(0, 100)}`,
+              linkUrl: `/admin/referrals`,
+              read: false,
+            },
+          });
+        }
+        return req;
+      });
+
+      await writeAudit({
+        userId: ctx.session.user.id,
+        action: "referral.returnRequest",
+        resource: "ReferralReturnRequest",
+        resourceId: created.id,
+        details: { referralId: rs.referral.id, referralStudentId: input.referralStudentId, reason: input.reason },
+        ...reqMeta(ctx.req),
+      });
+      return { ok: true };
+    }),
+
   // The headmaster / «Πειθαρχικό Συμβούλιο» decide a referred student: always
   // an expulsion, only its number of days (up to the level's limit). The
   // student returns to the homegroup headteacher, who picks the dates and does
@@ -584,6 +741,7 @@ export const referralsRouter = createTRPCRouter({
         where: { id: input.referralId },
         select: {
           number: true,
+          isDraft: true,
           students: {
             where: { id: { in: input.referralStudentIds } },
             select: {
@@ -597,6 +755,7 @@ export const referralsRouter = createTRPCRouter({
         },
       });
       if (!referral || referral.students.length !== input.referralStudentIds.length) throw new TRPCError({ code: "NOT_FOUND" });
+      if (referral.isDraft) throw new TRPCError({ code: "BAD_REQUEST", message: "Η καταγγελία επέστρεψε στα πρόχειρα του/της εκπαιδευτικού για τροποποίηση — περιμένετε να υποβληθεί ξανά." });
       for (const rs of referral.students) {
         if (rs.level === "HOMEGROUP" || !canResolve({ groupId: rs.groupId, level: rs.level, resolved: !!rs.resolution }, viewer)) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Cannot decide this student" });
@@ -679,7 +838,7 @@ export const referralsRouter = createTRPCRouter({
       const viewer = await loadReferralViewer(ctx.session.user.id, ctx.effectiveRoles);
       if (!viewer) throw new TRPCError({ code: "NOT_FOUND" });
       const students = await ctx.db.referralStudent.findMany({
-        where: { id: { in: input.referralStudentIds }, referralId: input.referralId },
+        where: { id: { in: input.referralStudentIds }, referralId: input.referralId, referral: { isDraft: false } },
         select: {
           id: true,
           groupId: true,

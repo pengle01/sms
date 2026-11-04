@@ -197,6 +197,10 @@ model User {
   resolutionUnlockRequests   ResolutionUnlockRequest[]   @relation("ResolutionUnlockRequester")
   referralEscalations        ReferralEscalation[]        @relation("ReferralEscalator")
   carriedOutReferrals        ReferralStudentResolution[] @relation("ReferralCarrier")
+  referralEditRequests       ReferralEditRequest[]       @relation("ReferralEditRequester")
+  referralEditDecisions      ReferralEditRequest[]       @relation("ReferralEditDecider")
+  referralReturnRequests     ReferralReturnRequest[]     @relation("ReferralReturnRequester")
+  referralReturnDecisions    ReferralReturnRequest[]     @relation("ReferralReturnDecider")
   resolutionUnlockDecisions  ResolutionUnlockRequest[]   @relation("ResolutionUnlockDecider")
   substitutionPlansGenerated SubstitutionPlan[]          @relation("SubstitutionPlanGenerator")
   substitutionPlansFinalized SubstitutionPlan[]          @relation("SubstitutionPlanFinalizer")
@@ -880,11 +884,32 @@ model Referral {
   counselorNotes String?                @db.Text
 
   students ReferralStudent[]
+  editRequests ReferralEditRequest[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([isDraft])
+}
+
+// The filer asks to edit a FILED referral (even one a headteacher has opened);
+// the admin approves or rejects. Approval returns the referral to the filer's
+// drafts («Προσωρινή Αποθήκευση») to edit and file again; its decisions stay.
+model ReferralEditRequest {
+  id            String            @id @default(cuid())
+  referralId    String
+  referral      Referral          @relation(fields: [referralId], references: [id], onDelete: Cascade)
+  requestedById String
+  requestedBy   User              @relation("ReferralEditRequester", fields: [requestedById], references: [id])
+  reason        String            @db.Text
+  status        EditRequestStatus @default(PENDING)
+  decidedById   String?
+  decidedBy     User?             @relation("ReferralEditDecider", fields: [decidedById], references: [id])
+  decidedAt     DateTime?
+  createdAt     DateTime          @default(now())
+
+  @@index([referralId])
+  @@index([status])
 }
 
 enum ReferralStudentStatus {
@@ -915,6 +940,7 @@ model ReferralStudent {
   resolution     ReferralStudentResolution?
   unlockRequests ResolutionUnlockRequest[]
   escalations    ReferralEscalation[]
+  returnRequests ReferralReturnRequest[]
 
   @@unique([referralId, studentId])
   @@index([studentId])
@@ -997,8 +1023,30 @@ model ReferralEscalation {
   escalatedById     String
   escalatedBy       User            @relation("ReferralEscalator", fields: [escalatedById], references: [id])
   createdAt         DateTime        @default(now())
+  // Sent back down (a referral to the headmaster by mistake, returned with the
+  // admin's approval) — kept on the trail, marked returned.
+  returnedAt        DateTime?
 
   @@index([referralStudentId])
+}
+
+// The headmaster asks to send a student referred to them by mistake back to
+// the homegroup headteacher; the admin approves or rejects.
+model ReferralReturnRequest {
+  id                String            @id @default(cuid())
+  referralStudentId String
+  referralStudent   ReferralStudent   @relation(fields: [referralStudentId], references: [id], onDelete: Cascade)
+  requestedById     String
+  requestedBy       User              @relation("ReferralReturnRequester", fields: [requestedById], references: [id])
+  reason            String            @db.Text
+  status            EditRequestStatus @default(PENDING)
+  decidedById       String?
+  decidedBy         User?             @relation("ReferralReturnDecider", fields: [decidedById], references: [id])
+  decidedAt         DateTime?
+  createdAt         DateTime          @default(now())
+
+  @@index([referralStudentId])
+  @@index([status])
 }
 
 model ReferralExpulsionDay {

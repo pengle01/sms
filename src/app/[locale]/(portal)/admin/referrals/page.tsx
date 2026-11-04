@@ -14,7 +14,7 @@ import { fmtDisplayDate, fmtDisplayDateTime } from "@/lib/dates";
 import { getTranslations } from "next-intl/server";
 import { resolutionSummary, actionLabel } from "@/lib/referralLabels";
 import { parseReferralSearchTab, referralSearchWhere } from "@/lib/referralSearch";
-import { decideResolutionUnlock } from "./actions";
+import { decideResolutionUnlock, decideReferralEdit, decideReferralReturn } from "./actions";
 import { CompactReferralTable, ReferralViewToggle } from "@/components/referrals/CompactReferrals";
 import { expulsionDayLabel } from "@/lib/referralLabels";
 import { LEVEL_LABEL } from "@/lib/referralLevels";
@@ -54,6 +54,38 @@ export default async function ReferralsPage({
     ...(groupFilter ? { students: { some: { groupId: groupFilter } } } : {}),
     ...(searchWhere ? { AND: [searchWhere] } : {}),
   };
+
+  // Teachers' requests to edit a filed referral (approval returns it to drafts)
+  const editRequests = await db.referralEditRequest.findMany({
+    where: { status: "PENDING" },
+    include: {
+      requestedBy: { select: { name: true } },
+      referral: { select: { number: true, title: true, description: true, isDraft: true } },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+
+  // The headmaster's requests to send a mistaken referral back to the Β.Δ.
+  const returnRequests = await db.referralReturnRequest.findMany({
+    where: { status: "PENDING" },
+    include: {
+      requestedBy: { select: { name: true } },
+      referralStudent: {
+        select: {
+          referral: { select: { number: true, title: true } },
+          student: { select: { user: { select: { name: true } } } },
+          group: { select: { name: true } },
+          escalations: {
+            where: { toLevel: "HEADMASTER", returnedAt: null },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: { reason: true, escalatedBy: { select: { name: true } } },
+          },
+        },
+      },
+    },
+    orderBy: { createdAt: "asc" },
+  });
 
   // Pending resolution-unlock requests awaiting an admin decision
   const unlockRequests = await db.resolutionUnlockRequest.findMany({
@@ -192,6 +224,95 @@ export default async function ReferralsPage({
                 </div>
               );
             })}
+          </CardContent>
+        </Card>
+      )}
+
+      {returnRequests.length > 0 && (
+        <Card className="border-orange-200 bg-orange-50/40">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base text-orange-800">Αιτήματα ακύρωσης παραπομπής ({returnRequests.length})</CardTitle>
+            <p className="text-xs text-orange-700">Ο/Η Διευθυντής/ντρια ζητά να επιστρέψει ο/η μαθητής/τρια στον/στη Β.Δ. του τμήματος.</p>
+          </CardHeader>
+          <CardContent className="divide-y divide-orange-100">
+            {returnRequests.map((rr) => {
+              const rs = rr.referralStudent;
+              const esc = rs.escalations[0];
+              return (
+                <div key={rr.id} className="py-4 first:pt-0 last:pb-0 flex items-start justify-between gap-4 flex-wrap">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-900">
+                      #{rs.referral.number} · {rs.student.user?.name}
+                      {rs.group?.name && <span className="ml-2 text-xs font-normal text-slate-400">{rs.group.name}</span>}
+                    </p>
+                    {rs.referral.title && <p className="text-xs text-slate-600 mt-0.5">{rs.referral.title}</p>}
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Αίτημα από {rr.requestedBy.name ?? "—"} · {fmtDisplayDateTime(rr.createdAt)}
+                    </p>
+                    <p className="text-xs text-orange-800 mt-1">
+                      <span className="font-semibold">Αιτιολογία:</span> {rr.reason}
+                    </p>
+                    {esc && (
+                      <p className="text-xs text-slate-500 mt-1">
+                        Παραπομπή από {esc.escalatedBy.name ?? "—"}: {esc.reason}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <form action={decideReferralReturn.bind(null, rr.id, true)}>
+                      <button type="submit" className="h-8 px-3 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700">
+                        Έγκριση — επιστροφή στον/στη Β.Δ.
+                      </button>
+                    </form>
+                    <form action={decideReferralReturn.bind(null, rr.id, false)}>
+                      <button type="submit" className="h-8 px-3 rounded-lg border border-red-200 text-red-600 text-xs font-semibold hover:bg-red-50">
+                        Απόρριψη
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
+      {editRequests.length > 0 && (
+        <Card className="border-sky-200 bg-sky-50/40">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base text-sky-800">Αιτήματα τροποποίησης καταγγελίας ({editRequests.length})</CardTitle>
+            <p className="text-xs text-sky-700">Η έγκριση επιστρέφει την καταγγελία στα πρόχειρα του/της εκπαιδευτικού για τροποποίηση· οι αποφάσεις παραμένουν.</p>
+          </CardHeader>
+          <CardContent className="divide-y divide-sky-100">
+            {editRequests.map((er) => (
+              <div key={er.id} className="py-4 first:pt-0 last:pb-0 flex items-start justify-between gap-4 flex-wrap">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-900">
+                    #{er.referral.number}
+                    {er.referral.title && <span className="ml-2 font-normal text-slate-700">{er.referral.title}</span>}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Αίτημα από {er.requestedBy.name ?? "—"} · {fmtDisplayDateTime(er.createdAt)}
+                  </p>
+                  <p className="text-xs text-sky-800 mt-1">
+                    <span className="font-semibold">Αιτιολογία:</span> {er.reason}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1 line-clamp-2 max-w-xl">{er.referral.description}</p>
+                </div>
+                <div className="flex gap-2 flex-shrink-0">
+                  <form action={decideReferralEdit.bind(null, er.id, true)}>
+                    <button type="submit" className="h-8 px-3 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700">
+                      Έγκριση — επιστροφή στα πρόχειρα
+                    </button>
+                  </form>
+                  <form action={decideReferralEdit.bind(null, er.id, false)}>
+                    <button type="submit" className="h-8 px-3 rounded-lg border border-red-200 text-red-600 text-xs font-semibold hover:bg-red-50">
+                      Απόρριψη
+                    </button>
+                  </form>
+                </div>
+              </div>
+            ))}
           </CardContent>
         </Card>
       )}

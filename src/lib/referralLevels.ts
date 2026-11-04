@@ -86,6 +86,18 @@ export function canCarryOut(
   return rs.hasDecision && rs.pending && rs.level === "HOMEGROUP" && canDecideAt(rs, viewer);
 }
 
+/**
+ * May this viewer ask to send a student back to the homegroup headteacher (a
+ * referral to the headmaster by mistake)? The headmaster, for a student still
+ * waiting on them, with no request already pending. The admin decides.
+ */
+export function canRequestReturn(
+  rs: { level: ReferralLevel; resolved: boolean; pendingReturn: boolean },
+  viewer: ReferralViewer,
+): boolean {
+  return rs.level === "HEADMASTER" && !rs.resolved && !rs.pendingReturn && viewer.roles.includes("HEADMASTER");
+}
+
 /** The expulsion limit when several students are resolved at once: the strictest. */
 export function expulsionLimitFor(levels: readonly ReferralLevel[]): number {
   return Math.min(...levels.map((l) => EXPULSION_MAX_DAYS[l]));
