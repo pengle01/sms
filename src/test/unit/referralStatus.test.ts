@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { overallStatus, referralColor, referralColorScoped, referralGroupSignals, canDeleteReferral, canEditDraft, draftStudentChanges, editRequestState, lockedStudentIds, responsibleHeadteachers } from "@/lib/referralStatus";
+import { overallStatus, referralColor, referralColorScoped, referralGroupSignals, canDeleteReferral, canEditDraft, draftStudentChanges, editRequestState, mentionsReferral, responsibleHeadteachers } from "@/lib/referralStatus";
 
 const students = (statuses: string[]) => statuses.map((status) => ({ status }));
 
@@ -153,14 +153,18 @@ describe("canDeleteReferral", () => {
     ).toBe(false);
   });
 
-  it("refuses a draft returned for editing once it was opened, decided or referred up", () => {
-    // After admin approval a filed referral goes back to the filer's drafts —
-    // it must not become deletable.
-    expect(canDeleteReferral({ ...base, isDraft: true, students: [{ status: "RESOLVED" }] }, ME)).toBe(false);
-    expect(canDeleteReferral({ ...base, isDraft: true, openedAt: new Date() }, ME)).toBe(false);
-    expect(canDeleteReferral({ ...base, isDraft: true, students: [{ status: "PENDING", level: "HEADMASTER" }] }, ME)).toBe(false);
-    expect(canDeleteReferral({ ...base, isDraft: true, students: [{ status: "PENDING", hasResolution: true }] }, ME)).toBe(false);
-    expect(canDeleteReferral({ ...base, isDraft: true, students: [{ status: "PENDING", escalationCount: 1 }] }, ME)).toBe(false);
+  it("lets the filer delete their draft even when it was returned decided or referred up", () => {
+    // After admin approval a filed referral goes back to the drafts; deleting
+    // it then removes it with everything linked to it.
+    expect(canDeleteReferral({ ...base, isDraft: true, students: [{ status: "RESOLVED" }] }, ME)).toBe(true);
+    expect(canDeleteReferral({ ...base, isDraft: true, openedAt: new Date() }, ME)).toBe(true);
+    expect(canDeleteReferral({ ...base, isDraft: true, students: [{ status: "PENDING", level: "HEADMASTER" }] }, ME)).toBe(true);
+    expect(canDeleteReferral({ ...base, isDraft: true }, "sp_other")).toBe(false);
+  });
+
+  it("still refuses a filed referral once referred up or decided", () => {
+    expect(canDeleteReferral({ ...base, students: [{ status: "PENDING", level: "HEADMASTER" }] }, ME)).toBe(false);
+    expect(canDeleteReferral({ ...base, students: [{ status: "PENDING", hasResolution: true }] }, ME)).toBe(false);
   });
 
   it("allows a filed referral with no students yet", () => {
@@ -238,15 +242,12 @@ describe("returning a filed referral to drafts for editing", () => {
     expect(editRequestState(filed, null, [])).toBe("none");
   });
 
-  it("locks the students who were decided or referred up", () => {
-    expect(
-      lockedStudentIds([
-        { studentId: "a", status: "PENDING" },
-        { studentId: "b", status: "RESOLVED" },
-        { studentId: "c", status: "PENDING", hasResolution: true },
-        { studentId: "d", status: "PENDING", level: "COUNCIL" },
-        { studentId: "e", status: "PENDING", level: "HOMEGROUP", escalationCount: 2 },
-      ]),
-    ).toEqual(["b", "c", "d", "e"]);
+  it("finds a deleted referral's notifications by its number or link, and nothing else", () => {
+    const n = (type: string, title: string, linkUrl: string | null = null) => ({ type, title, linkUrl });
+    expect(mentionsReferral(n("REFERRAL_DECIDED", "Καταγγελία #4: αποβολή 2 ημερών — προς εκτέλεση"), 4, "r4")).toBe(true);
+    expect(mentionsReferral(n("REFERRAL_RETURN_REJECTED", "Το αίτημα ακύρωσης παραπομπής (#4) απορρίφθηκε"), 4, "r4")).toBe(true);
+    expect(mentionsReferral(n("REFERRAL_EDIT_APPROVED", "επέστρεψε", "/teacher/referrals/r4/edit"), 4, "r4")).toBe(true);
+    expect(mentionsReferral(n("REFERRAL_DECIDED", "Καταγγελία #42: αποβολή"), 4, "r4")).toBe(false);
+    expect(mentionsReferral(n("MESSAGE", "Μήνυμα #4"), 4, "r4")).toBe(false);
   });
 });

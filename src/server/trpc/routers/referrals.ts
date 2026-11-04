@@ -13,7 +13,7 @@ import { DEFAULT_PERIODS_PER_DAY } from "@/lib/periods";
 import { getPeriodsPerDay } from "@/lib/schoolConfig";
 import { validatePunishment, PUNISHMENT_ERROR_EL } from "@/lib/punishment";
 import { ACTION_ORDER, actionLabel, resolutionSummary } from "@/lib/referralLabels";
-import { canDeleteReferral, canEditDraft, draftStudentChanges, editRequestState, lockedStudentIds } from "@/lib/referralStatus";
+import { canDeleteReferral, canEditDraft, draftStudentChanges, editRequestState, isLockedStudent, mentionsReferral } from "@/lib/referralStatus";
 import { writeAudit } from "@/server/audit";
 import type { Prisma, Role } from "@/generated/prisma/client";
 import { parentCard } from "@/lib/smsContacts";
@@ -213,22 +213,15 @@ export const referralsRouter = createTRPCRouter({
         referral.students.map((rs) => rs.studentId),
         students.map((s) => s.id),
       );
-      // A student already decided or referred up stays on the referral —
-      // removing them would delete the decision.
-      const locked = new Set(
-        lockedStudentIds(
-          referral.students.map((rs) => ({
-            studentId: rs.studentId,
-            status: rs.status,
-            level: rs.level,
-            hasResolution: !!rs.resolution,
-            escalationCount: rs._count.escalations,
-          })),
-        ),
-      );
-      if (remove.some((id) => locked.has(id))) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Δεν μπορείτε να αφαιρέσετε μαθητή/τρια για τον/την οποίο/α υπάρχει ήδη απόφαση ή παραπομπή." });
-      }
+      // Removing a student who was already decided or referred up deletes that
+      // decision with them (cascade) — recorded below.
+      const removedDecided = referral.students
+        .filter(
+          (rs) =>
+            remove.includes(rs.studentId) &&
+            isLockedStudent({ status: rs.status, level: rs.level, hasResolution: !!rs.resolution, escalationCount: rs._count.escalations }),
+        )
+        .map((rs) => rs.studentId);
       const refiled = referral.editRequests.length > 0;
 
       return ctx.db.$transaction(async (tx) => {
@@ -281,6 +274,18 @@ export const referralsRouter = createTRPCRouter({
         }
 
         return { id: input.referralId, isDraft: input.isDraft };
+      }).then(async (res) => {
+        if (removedDecided.length) {
+          await writeAudit({
+            userId: ctx.session.user.id,
+            action: "referral.removeStudents",
+            resource: "Referral",
+            resourceId: input.referralId,
+            details: { number: referral.number, studentIds: removedDecided, hadDecisions: true },
+            ...reqMeta(ctx.req),
+          });
+        }
+        return res;
       });
     }),
 
@@ -357,6 +362,8 @@ export const referralsRouter = createTRPCRouter({
           filerId: true,
           students: { select: { status: true, level: true, resolution: { select: { id: true } }, _count: { select: { escalations: { where: { returnedAt: null } } } } } },
           resolution: { select: { id: true } },
+          // Returned to drafts by an approved edit request: it was filed before.
+          editRequests: { where: { status: "APPROVED" }, select: { id: true }, take: 1 },
         },
       });
       if (!referral) throw new TRPCError({ code: "NOT_FOUND" });
@@ -377,16 +384,50 @@ export const referralsRouter = createTRPCRouter({
           message: "Η καταγγελία έχει ήδη ανοιχτεί και δεν διαγράφεται.",
         });
       }
-      // ReferralResolution has no cascade (deleting would hit a FK restrict),
-      // and its presence means the referral was acted on regardless.
-      if (referral.resolution) {
+      // The legacy ReferralResolution has no cascade (deleting would hit a FK
+      // restrict); on a filed referral it means it was acted on.
+      if (referral.resolution && !referral.isDraft) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Η καταγγελία έχει ήδη ανοιχτεί και δεν διαγράφεται.",
         });
       }
 
-      await ctx.db.referral.delete({ where: { id: input.referralId } });
+      // Everything linked goes with it: students, decisions, expulsion days,
+      // referrals up and requests cascade; the legacy resolution and the
+      // referral's notifications are removed here.
+      await ctx.db.$transaction(async (tx) => {
+        if (referral.resolution) await tx.referralResolution.delete({ where: { id: referral.resolution.id } });
+        const notes = await tx.notification.findMany({
+          where: {
+            OR: [{ type: { startsWith: "REFERRAL_" } }, { type: { startsWith: "RESOLUTION_UNLOCK" } }],
+            AND: [{ OR: [{ title: { contains: `#${referral.number}` } }, { linkUrl: { contains: referral.id } }] }],
+          },
+          select: { id: true, type: true, title: true, linkUrl: true },
+        });
+        const ids = notes.filter((n) => mentionsReferral(n, referral.number, referral.id)).map((n) => n.id);
+        if (ids.length) await tx.notification.deleteMany({ where: { id: { in: ids } } });
+        await tx.referral.delete({ where: { id: input.referralId } });
+      });
+
+      // A draft that was filed before (returned for editing) was part of the
+      // record: one line that it was deleted — who, when, which number.
+      const wasFiled = referral.editRequests.length > 0;
+      if (referral.isDraft && wasFiled) {
+        await writeAudit({
+          userId: ctx.session.user.id,
+          action: "referral.delete",
+          resource: "Referral",
+          resourceId: input.referralId,
+          details: {
+            number: referral.number,
+            students: referral.students.length,
+            wasFiled,
+            hadDecisions: lockable.students.some(isLockedStudent),
+          },
+          ...reqMeta(ctx.req),
+        });
+      }
 
       // Drafts were never visible to anyone else; a filed referral was, so its
       // withdrawal is a real event in the disciplinary record.

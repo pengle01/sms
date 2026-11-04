@@ -47,9 +47,10 @@ export function canDeleteReferral(
   staffId: string | null | undefined,
 ): boolean {
   if (!staffId || r.filerId !== staffId) return false;
-  // A draft returned for editing (after admin approval) may already have been
-  // opened, decided or referred up — then it is part of the record, like a
-  // filed one; a never-filed draft has none of these and stays deletable.
+  // A draft is always the filer's to delete — even one returned for editing
+  // (after admin approval) that was already decided or referred up: deleting
+  // removes it with everything linked to it.
+  if (r.isDraft) return true;
   if (r.openedAt) return false;
   if (r.students.some((s) => s.status === "RESOLVED" || isLockedStudent(s))) return false;
   return true;
@@ -77,11 +78,20 @@ export function isLockedStudent(s: LockableStudent): boolean {
   );
 }
 
-/** The students of a referral that can no longer be removed from it. */
-export function lockedStudentIds(students: readonly (LockableStudent & { studentId: string })[]): string[] {
-  return students.filter(isLockedStudent).map((s) => s.studentId);
+/**
+ * Is this notification about referral #number (id)? Its title names «#N» (not
+ * #N0…), or its link points at the referral. Only referral notification types
+ * — used to remove a deleted referral's notifications.
+ */
+export function mentionsReferral(
+  n: { type: string; title: string; linkUrl?: string | null },
+  number: number,
+  referralId: string,
+): boolean {
+  if (!n.type.startsWith("REFERRAL_") && !n.type.startsWith("RESOLUTION_UNLOCK")) return false;
+  if (n.linkUrl?.includes(referralId)) return true;
+  return new RegExp(`#${number}(?!\\d)`).test(n.title);
 }
-
 /**
  * May the filer ask to edit this FILED referral? `canRequest`, or `pending`
  * while a request awaits the admin; `none` for a draft or someone else's.

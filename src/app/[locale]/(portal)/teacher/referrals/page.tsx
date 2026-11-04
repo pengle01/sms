@@ -18,7 +18,7 @@ import { StudentsDropdown } from "@/components/referrals/StudentsDropdown";
 import { ResponsibleHeadteachers } from "@/components/referrals/ResponsibleHeadteachers";
 import { ReferralInfo } from "@/components/referrals/ReferralInfo";
 import { ReferralTabs } from "@/components/referrals/ReferralTabs";
-import { canDeleteReferral, canEditDraft, overallStatus, editRequestState } from "@/lib/referralStatus";
+import { canDeleteReferral, canEditDraft, overallStatus, editRequestState, isLockedStudent } from "@/lib/referralStatus";
 import { referralRecommendations, recommendationsLabel, resolutionSummary, expulsionDayLabel } from "@/lib/referralLabels";
 import { parseReferralSearchTab, referralSearchWhere } from "@/lib/referralSearch";
 import { UnlockResolutionDialog } from "./UnlockResolutionDialog";
@@ -334,18 +334,24 @@ export default async function TeacherReferralsPage({
               {tr("editDraftButton")}
             </Link>
           )}
-          {canDeleteReferral(
-            {
-              ...r,
-              students: r.students.map((rs) => ({
-                status: rs.status,
-                level: rs.level,
-                hasResolution: !!rs.resolution,
-                escalationCount: rs.escalations.filter((e) => !e.returnedAt).length,
-              })),
-            },
-            staff.id,
-          ) && <DeleteReferralButton referralId={r.id} number={r.number} isDraft={r.isDraft} />}
+          {(() => {
+            const lockable = r.students.map((rs) => ({
+              status: rs.status,
+              level: rs.level,
+              hasResolution: !!rs.resolution,
+              escalationCount: rs.escalations.filter((e) => !e.returnedAt).length,
+            }));
+            return (
+              canDeleteReferral({ ...r, students: lockable }, staff.id) && (
+                <DeleteReferralButton
+                  referralId={r.id}
+                  number={r.number}
+                  isDraft={r.isDraft}
+                  hasDecisions={lockable.some(isLockedStudent)}
+                />
+              )
+            );
+          })()}
           {/* A filed referral: ask the admin to return it to the drafts to edit */}
           {editRequestState(r, staff.id, r.editRequests) !== "none" && (
             <div className="mt-1.5">

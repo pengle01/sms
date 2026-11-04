@@ -31,10 +31,10 @@ export interface ReferralDraft {
   extraInfo: string;
   recommendations: ReferralRecommendation[];
   /**
-   * Returned from filed for editing: students already decided or referred up
-   * — they can't be removed (that would delete the decision).
+   * Returned from filed for editing: students already decided or referred up.
+   * Removing one deletes their decision — the form says so.
    */
-  lockedStudentIds?: string[];
+  decidedStudentIds?: string[];
 }
 
 interface Props {
@@ -61,10 +61,9 @@ export function ReferralForm({ groups, filerName, locale, draft }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
 
-  const [selectedIds, setSelectedIdsRaw] = useState<string[]>(draft?.studentIds ?? []);
-  const locked = draft?.lockedStudentIds ?? [];
-  // Locked students stay ticked whatever the picker does.
-  const setSelectedIds = (ids: string[]) => setSelectedIdsRaw([...new Set([...ids, ...locked])]);
+  const [selectedIds, setSelectedIds] = useState<string[]>(draft?.studentIds ?? []);
+  const decided = draft?.decidedStudentIds ?? [];
+  const droppingDecided = decided.filter((id) => !selectedIds.includes(id)).length;
   // Today in Cyprus, when the form opens — an incident is today or earlier.
   const [today] = useState(() => localDateStr(getNow()));
   const [date, setDate] = useState(draft?.date ?? today);
@@ -139,10 +138,11 @@ export function ReferralForm({ groups, filerName, locale, draft }: Props) {
           )}
         </label>
         <StudentPicker groups={groups} selectedIds={selectedIds} onChange={setSelectedIds} />
-        {locked.length > 0 && (
-          <p className="text-xs text-amber-700">
-            {locked.length === 1 ? "Ένας/μία μαθητής/τρια δεν μπορεί να αφαιρεθεί" : `${locked.length} μαθητές δεν μπορούν να αφαιρεθούν`}
-            {" "}— έχει ήδη ληφθεί απόφαση ή έγινε παραπομπή.
+        {decided.length > 0 && (
+          <p className={droppingDecided > 0 ? "text-xs font-medium text-red-700" : "text-xs text-amber-700"}>
+            {droppingDecided > 0
+              ? `Αφαιρείτε ${droppingDecided === 1 ? "μαθητή/τρια" : `${droppingDecided} μαθητές`} με απόφαση ή παραπομπή — η απόφαση θα διαγραφεί με την αποθήκευση.`
+              : "Για κάποιους/ες μαθητές υπάρχει ήδη απόφαση ή παραπομπή· αν τους/τις αφαιρέσετε, η απόφαση διαγράφεται."}
           </p>
         )}
       </div>

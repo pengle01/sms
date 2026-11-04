@@ -16,10 +16,13 @@ export function DeleteReferralButton({
   referralId,
   number,
   isDraft,
+  hasDecisions = false,
 }: {
   referralId: string;
   number: number;
   isDraft: boolean;
+  /** A draft returned for editing that already carries decisions / referrals up. */
+  hasDecisions?: boolean;
 }) {
   const t = useTranslations("referrals");
   const router = useRouter();
@@ -32,7 +35,11 @@ export function DeleteReferralButton({
   });
 
   const handleClick = () => {
-    const question = isDraft ? t("confirmDeleteDraft") : t("confirmWithdraw", { number });
+    const question = !isDraft
+      ? t("confirmWithdraw", { number })
+      : hasDecisions
+        ? `Διαγραφή της καταγγελίας #${number}; Θα διαγραφούν και οι αποφάσεις (αποβολές, παραπομπές) — δεν αναιρείται.`
+        : t("confirmDeleteDraft");
     if (!confirm(question)) return;
     mutate({ referralId });
   };

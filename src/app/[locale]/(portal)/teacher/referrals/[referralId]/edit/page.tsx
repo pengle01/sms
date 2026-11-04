@@ -7,7 +7,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTranslations } from "next-intl/server";
-import { canEditDraft, lockedStudentIds } from "@/lib/referralStatus";
+import { canEditDraft, isLockedStudent } from "@/lib/referralStatus";
 import { ReferralForm } from "../../new/ReferralForm";
 
 /** Edit a saved draft: the new-referral form with its values; save again or file it. */
@@ -78,15 +78,16 @@ export default async function EditDraftReferralPage({
               incidentTime: referral.incidentTime ?? "",
               extraInfo: referral.extraInfo ?? "",
               recommendations: referral.recommendations,
-              lockedStudentIds: lockedStudentIds(
-                referral.students.map((rs) => ({
-                  studentId: rs.studentId,
-                  status: rs.status,
-                  level: rs.level,
-                  hasResolution: !!rs.resolution,
-                  escalationCount: rs._count.escalations,
-                })),
-              ),
+              decidedStudentIds: referral.students
+                .filter((rs) =>
+                  isLockedStudent({
+                    status: rs.status,
+                    level: rs.level,
+                    hasResolution: !!rs.resolution,
+                    escalationCount: rs._count.escalations,
+                  }),
+                )
+                .map((rs) => rs.studentId),
             }}
           />
         </CardContent>
