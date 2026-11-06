@@ -6,6 +6,7 @@ import { letterPunishment, letterOffence, parentLines, letterDate } from "@/lib/
 import { getSchoolName } from "@/lib/schoolConfig";
 import { getHeadmasterSignature } from "@/server/headmasterSigner";
 import { signatureName } from "@/lib/staffName";
+import { headmasterSigns } from "@/lib/referralLevels";
 import { PrintBar } from "@/app/[locale]/(portal)/teacher/substitutions/plan/[date]/print/PrintBar";
 
 /**
@@ -48,8 +49,10 @@ export default async function ReferralParentLetterPage({
                 smsContacts: { select: { role: true, name: true, phone: true } },
               },
             },
+            escalations: { select: { returnedAt: true } },
             resolution: {
               select: {
+                decidedLevel: true,
                 action: true,
                 actionDetails: true,
                 resolvedAt: true,
@@ -109,6 +112,7 @@ export default async function ReferralParentLetterPage({
           // council's decision), and the headmaster — both sign.
           const signer = signatureName(res.carriedOutBy ?? res.resolvedBy);
           const headmasterName = headmaster;
+          const withHeadmaster = headmasterSigns({ decidedLevel: res.decidedLevel, escalations: rs.escalations });
           const label = "py-1.5 pr-4 align-top text-[12px] font-semibold uppercase tracking-wide text-slate-500 w-36";
           return (
             <div key={rs.id} className="letter-page bg-white text-black">
@@ -214,18 +218,20 @@ export default async function ReferralParentLetterPage({
                   παιδιού σας με τους σχολικούς κανονισμούς.
                 </p>
 
-                {/* Signatures — the headteacher and the headmaster */}
-                <div className="mt-6 flex justify-between gap-10">
+                {/* Signatures — the headteacher; the headmaster only when involved */}
+                <div className={`mt-6 flex gap-10 ${withHeadmaster ? "justify-between" : "justify-end"}`}>
                   <div className="w-64 text-center">
                     <p>Ο/Η Β. Διευθυντής/ντρια</p>
                     <p className="mt-12 border-b border-black" />
                     <p className="mt-1 font-semibold">{signer}</p>
                   </div>
-                  <div className="w-64 text-center">
-                    <p>Ο/Η Διευθυντής/ντρια</p>
-                    <p className="mt-12 border-b border-black" />
-                    <p className="mt-1 font-semibold">{headmasterName}</p>
-                  </div>
+                  {withHeadmaster && (
+                    <div className="w-64 text-center">
+                      <p>Ο/Η Διευθυντής/ντρια</p>
+                      <p className="mt-12 border-b border-black" />
+                      <p className="mt-1 font-semibold">{headmasterName}</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Acknowledgement slip — cut off and returned */}

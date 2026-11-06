@@ -10,7 +10,7 @@ import { getPeriodsPerDay, DEFAULT_PERIODS_PER_DAY, totalPeriodsForDays } from "
 import { PrintTrigger, PrintButton } from "./PrintTrigger";
 import { expulsionDayPeriods, isPartialDay } from "@/lib/periods";
 import { actionLabel, expulsionLength, lengthLabel, resolutionSummary } from "@/lib/referralLabels";
-import { LEVEL_LABEL } from "@/lib/referralLevels";
+import { LEVEL_LABEL, headmasterSigns } from "@/lib/referralLevels";
 import { getHeadmasterSignature } from "@/server/headmasterSigner";
 
 function fmt(date: Date | null | undefined): string {
@@ -388,8 +388,12 @@ export default async function PrintResolutionPage({
               )}
 
               {/* Signatures — the headteacher (who resolved it, or carried out the
-                  headmaster's / council's decision) and the headmaster */}
-              <section className="mt-12 flex justify-between gap-10 text-center text-xs text-slate-600">
+                  headmaster's / council's decision); the headmaster only when involved */}
+              <section
+                className={`mt-12 flex gap-10 text-center text-xs text-slate-600 ${
+                  headmasterSigns({ decidedLevel: res?.decidedLevel, escalations: rs.escalations }) ? "justify-between" : "justify-end"
+                }`}
+              >
                 <div className="w-64">
                   <div className="border-t border-slate-400 pt-2 mt-8">
                     Ο/Η Βοηθός Διευθυντής/ντρια
@@ -398,12 +402,14 @@ export default async function PrintResolutionPage({
                     )}
                   </div>
                 </div>
-                <div className="w-64">
-                  <div className="border-t border-slate-400 pt-2 mt-8">
-                    Ο/Η Διευθυντής/ντρια
-                    {headmaster && <div className="mt-0.5 font-medium text-slate-800">{headmaster}</div>}
+                {headmasterSigns({ decidedLevel: res?.decidedLevel, escalations: rs.escalations }) && (
+                  <div className="w-64">
+                    <div className="border-t border-slate-400 pt-2 mt-8">
+                      Ο/Η Διευθυντής/ντρια
+                      {headmaster && <div className="mt-0.5 font-medium text-slate-800">{headmaster}</div>}
+                    </div>
                   </div>
-                </div>
+                )}
               </section>
             </div>
           );

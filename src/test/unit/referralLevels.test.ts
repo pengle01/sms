@@ -8,6 +8,7 @@ import {
   decisionOutcome,
   canCarryOut,
   canRequestReturn,
+  headmasterSigns,
   EXPULSION_MAX_DAYS,
   type ReferralViewer,
 } from "@/lib/referralLevels";
@@ -95,5 +96,25 @@ describe("sending a mistaken referral back to the homegroup headteacher", () => 
     expect(canRequestReturn({ ...atHead, pendingReturn: true }, head)).toBe(false);
     expect(canRequestReturn({ ...atHead, level: "COUNCIL" }, head)).toBe(false);
     expect(canRequestReturn({ ...atHead, level: "HOMEGROUP" }, head)).toBe(false);
+  });
+});
+
+describe("headmasterSigns", () => {
+  it("leaves the homegroup headteacher to sign alone when the headmaster was not involved", () => {
+    expect(headmasterSigns({ decidedLevel: "HOMEGROUP", escalations: [] })).toBe(false);
+    expect(headmasterSigns({ decidedLevel: null, escalations: [] })).toBe(false);
+  });
+
+  it("adds the headmaster when the headmaster or the council decided", () => {
+    expect(headmasterSigns({ decidedLevel: "HEADMASTER", escalations: [{ returnedAt: null }] })).toBe(true);
+    expect(headmasterSigns({ decidedLevel: "COUNCIL", escalations: [] })).toBe(true);
+  });
+
+  it("adds the headmaster for a live referral up, even before a decision", () => {
+    expect(headmasterSigns({ escalations: [{ returnedAt: null }] })).toBe(true);
+  });
+
+  it("ignores a referral up that was cancelled and returned", () => {
+    expect(headmasterSigns({ decidedLevel: "HOMEGROUP", escalations: [{ returnedAt: new Date() }] })).toBe(false);
   });
 });

@@ -98,6 +98,20 @@ export function canRequestReturn(
   return rs.level === "HEADMASTER" && !rs.resolved && !rs.pendingReturn && viewer.roles.includes("HEADMASTER");
 }
 
+/**
+ * Does the headmaster sign this student's documents (decision, parent letter)?
+ * Only when they were involved: a referral up that was not cancelled, or a
+ * measure decided above the homegroup level (the council is reached only
+ * through the headmaster). Otherwise the homegroup headteacher signs alone.
+ */
+export function headmasterSigns(rs: {
+  decidedLevel?: ReferralLevel | null;
+  escalations: readonly { returnedAt: Date | string | null }[];
+}): boolean {
+  if (rs.decidedLevel && rs.decidedLevel !== "HOMEGROUP") return true;
+  return rs.escalations.some((e) => !e.returnedAt);
+}
+
 /** The expulsion limit when several students are resolved at once: the strictest. */
 export function expulsionLimitFor(levels: readonly ReferralLevel[]): number {
   return Math.min(...levels.map((l) => EXPULSION_MAX_DAYS[l]));
