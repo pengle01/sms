@@ -7,9 +7,12 @@ import { staffDisplayName } from "@/lib/staffName";
 import { utcMidnight } from "@/lib/dates";
 import { SCHOOL_ABSENCE_SOURCE, readImportMeta } from "@/lib/substitutionImport";
 import { safeBack } from "@/lib/timetablePrint";
+import { canSeeAbsenceReasons } from "@/lib/dutyRoster";
+import { getCoordinatorStaff } from "@/server/substitutions";
 import { PrintBar } from "./PrintBar";
 
-// The posted daily substitution sheet (A4). Any educator may view/print it.
+// The posted daily substitution sheet (A4). Any educator may view/print it; the
+// reasons for absences appear only for canSeeAbsenceReasons.
 // `back` returns to the page it was opened from (e.g. «Εφημερίες»), since
 // only the coordinators may open the planning page it defaults to.
 export default async function PrintSubstitutionPlanPage({
@@ -29,6 +32,9 @@ export default async function PrintSubstitutionPlanPage({
 
   const date = utcMidnight(dateStr);
   if (isNaN(date.getTime())) notFound();
+
+  const showReasons = canSeeAbsenceReasons(auth.roles, !!(await getCoordinatorStaff(auth.userId)));
+  const absenceHead = showReasons ? ["Εκπαιδευτικός", "Λόγος"] : ["Εκπαιδευτικός", "Περίοδοι"];
 
   const [plan, schoolName, requests] = await Promise.all([
     db.substitutionPlan.findUnique({
@@ -207,13 +213,13 @@ export default async function PrintSubstitutionPlanPage({
           {meta && meta.absences.length + meta.exemptions.length > 0 &&
             section(
               "Δ. Απουσίες εκπαιδευτικών",
-              ["Εκπαιδευτικός", "Λόγος"],
+              absenceHead,
               [...meta.absences, ...meta.exemptions.map((x) => ({ ...x, reason: `Εξαίρεση — ${x.reason}` }))].map((a) => (
                 <tr key={`${a.staffId}-${a.reason}`} className="border-b border-slate-100">
                   <td className="py-1.5 pr-3 font-medium">{a.teacher}</td>
                   <td className="py-1.5 text-slate-600">
-                    {a.reason}
-                    {a.periods.length > 0 && ` (Π: ${a.periods.join(", ")})`}
+                    {showReasons && a.reason}
+                    {a.periods.length > 0 && (showReasons ? ` (Π: ${a.periods.join(", ")})` : `Π: ${a.periods.join(", ")}`)}
                   </td>
                 </tr>
               ))
@@ -234,14 +240,14 @@ export default async function PrintSubstitutionPlanPage({
           {!meta && requests.length > 0 &&
             section(
               "Δ. Απουσίες εκπαιδευτικών",
-              ["Εκπαιδευτικός", "Λόγος"],
+              absenceHead,
               requests.map((r) => (
                 <tr key={r.id} className="border-b border-slate-100">
                   <td className="py-1.5 pr-3 font-medium">{staffDisplayName(r.staff)}</td>
                   <td className="py-1.5 text-slate-600">
-                    {r.reason}
-                    {r.reasonDetails && ` — ${r.reasonDetails}`}
-                    {r.periods.length > 0 && ` (Π: ${r.periods.join(", ")})`}
+                    {showReasons && r.reason}
+                    {showReasons && r.reasonDetails && ` — ${r.reasonDetails}`}
+                    {r.periods.length > 0 && (showReasons ? ` (Π: ${r.periods.join(", ")})` : `Π: ${r.periods.join(", ")}`)}
                   </td>
                 </tr>
               ))

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { DUTY_ELIGIBLE_ROLES, isDutyEligible, dutyDowFor, rosterByDay, isOnDuty } from "@/lib/dutyRoster";
+import { canSeeAbsenceReasons, DUTY_ELIGIBLE_ROLES, isDutyEligible, dutyDowFor, rosterByDay, isOnDuty } from "@/lib/dutyRoster";
 
 describe("isDutyEligible", () => {
   it("accepts both headteacher roles", () => {
@@ -115,5 +115,27 @@ describe("canIssueExitPermit", () => {
     expect(canIssueExitPermit("HEADTEACHER_A", null)).toBe(false);
     expect(canIssueExitPermit("HEADMASTER", 2)).toBe(false);
     expect(canIssueExitPermit("TEACHER", 2)).toBe(false);
+  });
+});
+
+describe("canSeeAbsenceReasons", () => {
+  it("allows the deputies and the headmaster", () => {
+    expect(canSeeAbsenceReasons(["HEADTEACHER_A"], false)).toBe(true);
+    expect(canSeeAbsenceReasons(["HEADTEACHER_B"], false)).toBe(true);
+    expect(canSeeAbsenceReasons(["HEADMASTER"], false)).toBe(true);
+  });
+
+  it("allows a substitution coordinator of any role", () => {
+    expect(canSeeAbsenceReasons(["TEACHER"], true)).toBe(true);
+  });
+
+  it("counts an added role", () => {
+    expect(canSeeAbsenceReasons(["TEACHER", "HEADTEACHER_B"], false)).toBe(true);
+  });
+
+  it("refuses everyone else", () => {
+    expect(canSeeAbsenceReasons(["TEACHER"], false)).toBe(false);
+    expect(canSeeAbsenceReasons(["STUDENT_COUNSELOR"], false)).toBe(false);
+    expect(canSeeAbsenceReasons(["SUPER_ADMIN"], false)).toBe(false);
   });
 });

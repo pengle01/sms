@@ -24,6 +24,15 @@ export function canViewDutyDesk(role: Role): boolean {
 }
 
 /**
+ * Who reads WHY a colleague is absent on the daily sheet (it can be health
+ * data): the substitution coordinators, the deputies and the headmaster.
+ * Everyone else gets the same sheet with names and periods only.
+ */
+export function canSeeAbsenceReasons(roles: readonly Role[], isCoordinator: boolean): boolean {
+  return isCoordinator || roles.some(canViewDutyDesk);
+}
+
+/**
  * Roster day-of-week (1 Mon – 5 Fri) for a date, or null on weekends.
  * Uses UTC like all date-only values in this codebase (see utcMidnight).
  */
