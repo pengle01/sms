@@ -1,75 +1,12 @@
 import { z } from "zod";
-import { createTRPCRouter, staffProcedure, protectedProcedure } from "../init";
+import { createTRPCRouter, protectedProcedure } from "../init";
 import { isStaff, guardianSeesGrades } from "@/lib/rbac";
 import { TRPCError } from "@trpc/server";
-import { GRADES_UNLOCKED_KEY, parseGradesUnlocked, gradeSchoolYear, TERM_GRADE_MIN, GRADE_MAX } from "@/lib/grades";
+import { gradeSchoolYear } from "@/lib/grades";
 import { getSchoolYear } from "@/lib/schoolConfig";
 import type { Role } from "@/generated/prisma/client";
 
 export const gradesRouter = createTRPCRouter({
-  // Enter or update a grade (teacher only — their assigned courses)
-  upsert: staffProcedure
-    .input(
-      z.object({
-        studentId: z.string(),
-        courseId: z.string(),
-        period: z.enum(["TERM1", "TERM2"]),
-        value: z.number().min(TERM_GRADE_MIN).max(GRADE_MAX),
-        notes: z.string().optional(),
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      const staff = await ctx.db.staffProfile.findUnique({
-        where: { userId: ctx.session.user.id },
-      });
-      if (!staff) throw new TRPCError({ code: "NOT_FOUND" });
-
-      // Terms stay frozen until the super admin unlocks them in Settings.
-      const unlockSetting = await ctx.db.globalSetting.findUnique({
-        where: { key: GRADES_UNLOCKED_KEY },
-      });
-      if (!parseGradesUnlocked(unlockSetting?.value)[input.period]) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Grades for this term are locked" });
-      }
-
-      // Verify teacher is assigned to this course (unless management)
-      const role = ctx.session.user.role as Role;
-      if (role === "TEACHER") {
-        const assignment = await ctx.db.courseAssignment.findFirst({
-          where: { courseId: input.courseId, staffId: staff.id },
-        });
-        if (!assignment) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Not assigned to this course" });
-        }
-      }
-
-      const schoolYear = gradeSchoolYear(await getSchoolYear());
-      return ctx.db.grade.upsert({
-        where: {
-          studentId_courseId_period_schoolYear: {
-            studentId: input.studentId,
-            courseId: input.courseId,
-            period: input.period,
-            schoolYear,
-          },
-        },
-        create: {
-          studentId: input.studentId,
-          courseId: input.courseId,
-          staffId: staff.id,
-          period: input.period,
-          schoolYear,
-          value: input.value,
-          notes: input.notes,
-        },
-        update: {
-          value: input.value,
-          notes: input.notes,
-          staffId: staff.id,
-        },
-      });
-    }),
-
   // Get grades for a student (student, parent, or teacher of the course)
   forStudent: protectedProcedure
     .input(
