@@ -5,6 +5,15 @@ import { getSuperAdminAuth } from "@/server/authz";
 import { db } from "@/server/db";
 import { Prisma } from "@/generated/prisma/client";
 import { relinkTimetableSlots } from "@/server/staffLink";
+import { applyTeacherHandovers } from "@/server/teacherHandover";
+import {
+  HANDOVER_DESIGNATIONS,
+  mayDeactivateLogin,
+  parseHandover,
+  suggestReplacement,
+  type HandoverDesignation,
+  type HandoverEntry,
+} from "@/lib/teacherHandover";
 import { parseCourseCell } from "@/lib/timetableParse";
 import {
   claimAfterUpdate,
@@ -35,7 +44,30 @@ export interface ScheduleImportResult {
   removalSkipped: RemovalSkipReason | null;
   /** Teachers no longer in the file's roster — no longer offered at sign-up. */
   staffLeft: number;
+  /** Departed teachers whose work was handed over. */
+  handovers: number;
+  /** Tests that moved to the teacher who now has the lesson. */
+  testsHandedOver: number;
   errors: string[];
+}
+
+/** One departing teacher on the import's confirmation step. */
+export interface HandoverCandidate {
+  name: string;
+  /** Has a login the handover may switch off. */
+  canDeactivate: boolean;
+  homegroups: number;
+  tests: number;
+  dutyPosts: number;
+  rooms: number;
+  designations: HandoverDesignation[];
+  suggestion: string | null;
+}
+
+export interface HandoverPreview {
+  left: HandoverCandidate[];
+  /** Everyone named in the file, sorted: the possible replacements. */
+  names: string[];
 }
 
 const EMPTY_RESULT = {
@@ -50,6 +82,8 @@ const EMPTY_RESULT = {
   slotsRetired: 0,
   removalSkipped: null,
   staffLeft: 0,
+  handovers: 0,
+  testsHandedOver: 0,
 } as const;
 
 // Column layout: cols 3-42 are the 5×8 timetable grid.
@@ -77,6 +111,102 @@ function toCourseCode(name: string): string {
   return name.trim().toLowerCase().slice(0, 100);
 }
 
+function readBlocks(buffer: ArrayBuffer) {
+  const workbook = XLSX.read(buffer, { type: "array" });
+  const sheet    = workbook.Sheets[workbook.SheetNames[0]!]!;
+  const rows     = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "" }) as string[][];
+  return splitTeacherBlocks(rows);
+}
+
+/**
+ * Before anything is written: who would leave the timetable with this file, what
+ * they hold, and who could take over. Empty when the import would skip removals
+ * anyway (a file that looks partial must not offer a handover).
+ */
+export async function previewTeacherHandover(formData: FormData): Promise<HandoverPreview> {
+  const empty: HandoverPreview = { left: [], names: [] };
+  const auth = await getSuperAdminAuth();
+  const file = formData.get("file") as File | null;
+  if (!auth || !file || file.size === 0) return empty;
+
+  const { blocks, desyncRows } = readBlocks(await file.arrayBuffer());
+  const names = [...new Set(blocks.map((b) => b.staffName))];
+  let lessons = 0;
+  let unreadable = 0;
+  for (const { teacherRow, detailRow } of blocks) {
+    for (let col = SLOT_START; col <= SLOT_END; col++) {
+      const group = String(teacherRow[col] ?? "").trim();
+      const course = String(detailRow[col] ?? "").trim();
+      if (!group || !course) continue;
+      if (parseCourseCell(course)) lessons++;
+      else unreadable++;
+    }
+  }
+  const guard = removalGuard({
+    cellErrors: unreadable + desyncRows.length,
+    importedLessons: lessons,
+    activeLessons: await db.timetableSlot.count(),
+  });
+  if (guard) return empty;
+
+  const profiles = await db.staffProfile.findMany({
+    where: { scheduleName: { not: null } },
+    select: {
+      scheduleName: true,
+      leftTimetableAt: true,
+      userId: true,
+      user: { select: { isActive: true, role: true, extraRoles: true } },
+      specialEducation: true,
+      substitutionCoordinator: true,
+      ddkCoordinator: true,
+      disciplinaryCouncil: true,
+      itMaintenance: true,
+      itManager: true,
+      parentMessaging: true,
+      _count: {
+        select: {
+          homeroomGroups: true,
+          homeroomHeadGroups: true,
+          homeroomCounselorGroups: true,
+          testSchedules: true,
+          breakDutyPosts: true,
+          roomsMaintained: true,
+        },
+      },
+    },
+  });
+  const { left } = rosterChanges(
+    profiles.map((p) => ({ scheduleName: p.scheduleName, leftTimetable: p.leftTimetableAt !== null })),
+    names,
+  );
+  const newNames = newStaffProfileNames(names, profiles.map((p) => p.scheduleName));
+  const byName = new Map(profiles.map((p) => [p.scheduleName!.trim(), p]));
+  return {
+    names: [...names].sort((a, b) => a.localeCompare(b, "el")),
+    left: left.map((name) => {
+      const p = byName.get(name)!;
+      return {
+        name,
+        canDeactivate:
+          !!p.userId &&
+          !!p.user?.isActive &&
+          mayDeactivateLogin({
+            targetUserId: p.userId,
+            actorUserId: auth.userId,
+            targetRole: p.user.role,
+            targetExtraRoles: p.user.extraRoles,
+          }),
+        homegroups: p._count.homeroomGroups + p._count.homeroomHeadGroups + p._count.homeroomCounselorGroups,
+        tests: p._count.testSchedules,
+        dutyPosts: p._count.breakDutyPosts,
+        rooms: p._count.roomsMaintained,
+        designations: HANDOVER_DESIGNATIONS.filter((d) => p[d]),
+        suggestion: suggestReplacement(name, newNames),
+      };
+    }),
+  };
+}
+
 export async function importSchedule(
   _prev: ScheduleImportResult | null,
   formData: FormData,
@@ -91,10 +221,7 @@ export async function importSchedule(
     return { success: false, ...EMPTY_RESULT, errors: ["No file provided"] };
   }
 
-  const buffer   = await file.arrayBuffer();
-  const workbook = XLSX.read(buffer, { type: "array" });
-  const sheet    = workbook.Sheets[workbook.SheetNames[0]!]!;
-  const rows     = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "" }) as string[][];
+  const buffer = await file.arrayBuffer();
 
   let slotsCreated = 0, slotsUpdated = 0, coursesCreated = 0, groupsCreated = 0;
   const errors: string[] = [];
@@ -142,7 +269,7 @@ export async function importSchedule(
 
   // Teacher row (name in col 0) + detail row, in pairs. splitTeacherBlocks owns
   // the stride and reports rows where the two-row pairing has slipped.
-  const { blocks, desyncRows } = splitTeacherBlocks(rows);
+  const { blocks, desyncRows } = readBlocks(buffer);
   for (const rowIndex of desyncRows) {
     errors.push(
       `Row ${rowIndex + 1}: expected a room/course row but found a teacher name — ` +
@@ -293,6 +420,7 @@ export async function importSchedule(
   // substitution history and a login. Same guard as lesson removal: a file that
   // looks partial must not hide half the staff.
   let staffLeft = 0;
+  let handoverEntries: HandoverEntry[] = [];
   if (!removalSkipped) {
     const { left, back } = rosterChanges(
       knownStaff.map((p) => ({ scheduleName: p.scheduleName, leftTimetable: p.leftTimetableAt !== null })),
@@ -305,6 +433,7 @@ export async function importSchedule(
       ]);
       staffLeft = marked.count;
     }
+    handoverEntries = parseHandover(formData.get("handover") as string | null, left, importedStaffNames);
   }
 
   // Attach every lesson to the account whose timetable name matches it: new
@@ -312,6 +441,9 @@ export async function importSchedule(
   // to an account with another name (e.g. after its name was corrected) are
   // moved to the right one. See slotRelinks.
   const { linked: slotsLinked, released: slotsReleased } = await relinkTimetableSlots();
+
+  const handover = await applyTeacherHandovers(handoverEntries, auth.userId);
+  errors.push(...handover.errors);
 
   // Slots feed the admin timetable, teacher schedules/mark sheets and group
   // pages across portals. Imports are rare admin operations, so refresh
@@ -321,6 +453,7 @@ export async function importSchedule(
 
   return {
     success: true, slotsCreated, slotsUpdated, slotsLinked, slotsReleased, staffProfilesCreated, coursesCreated, groupsCreated,
-    slotsRemoved, slotsRetired, removalSkipped, staffLeft, errors,
+    slotsRemoved, slotsRetired, removalSkipped, staffLeft,
+    handovers: handover.applied, testsHandedOver: handover.testsMoved, errors,
   };
 }
