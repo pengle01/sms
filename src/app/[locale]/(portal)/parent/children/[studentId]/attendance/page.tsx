@@ -43,6 +43,7 @@ export default async function ParentChildAttendancePage({
   const records = await withTaughtCourses(await db.attendance.findMany({
     where: {
       studentId,
+      waived: false,
       date: { gte: start, lt: end },
       OR: [{ status: "ABSENT" }, { status: "LATE" }],
     },
@@ -59,7 +60,7 @@ export default async function ParentChildAttendancePage({
   });
 
   const allRecords = await db.attendance.findMany({
-    where: { studentId, date: { gte: start, lt: end } },
+    where: { studentId, waived: false, date: { gte: start, lt: end } },
   });
   const absent = allRecords.filter((r) => r.status === "ABSENT" || r.isAutoAbsent).length;
   const late = allRecords.filter((r) => r.status === "LATE").length;

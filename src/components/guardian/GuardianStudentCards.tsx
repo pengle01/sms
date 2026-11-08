@@ -41,6 +41,7 @@ export async function GuardianStudentCards({
       by: ["studentId"],
       where: {
         studentId: { in: studentIds },
+        waived: false,
         date: { gte: thisMonthStart },
         OR: [{ status: "ABSENT" }, { isAutoAbsent: true }],
       },

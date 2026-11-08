@@ -50,6 +50,7 @@ export default async function StudentAttendancePage({
   const records = await withTaughtCourses(await db.attendance.findMany({
     where: {
       studentId: student.id,
+      waived: false,
       date: { gte: start, lt: end },
       OR: [{ status: "ABSENT" }, { status: "LATE" }],
     },
@@ -77,7 +78,7 @@ export default async function StudentAttendancePage({
 
   // Summary stats for the month (unfiltered)
   const allRecords = await db.attendance.findMany({
-    where: { studentId: student.id, date: { gte: start, lt: end } },
+    where: { studentId: student.id, waived: false, date: { gte: start, lt: end } },
   });
   const absent = allRecords.filter((r) => r.status === "ABSENT" || r.isAutoAbsent).length;
   const late = allRecords.filter((r) => r.status === "LATE").length;
@@ -85,7 +86,7 @@ export default async function StudentAttendancePage({
   // Whole-school-year totals, split per term (dates set by the super admin)
   const ranges = await getSchoolYear();
   const yearRecords = await db.attendance.findMany({
-    where: { studentId: student.id, date: { gte: ranges.yearStart, lt: ranges.yearEnd } },
+    where: { studentId: student.id, waived: false, date: { gte: ranges.yearStart, lt: ranges.yearEnd } },
     select: { date: true, status: true, isAutoAbsent: true },
   });
   // Year totals count every record in the school year, even between terms.
