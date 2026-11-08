@@ -310,13 +310,108 @@ export default async function StudentSchedulePage({
         )}
       </div>
 
+      {/* Authorised viewers read the absences first, then any referrals. */}
+      {canViewFull && (
+        <div className="space-y-5">
+          {/* Absences for the school year */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <CalendarX className="w-4 h-4" /> {t("absences", { count: absenceRecords.length })}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {absenceRecords.length === 0 ? (
+                <p className="text-sm text-slate-400">{t("noAbsences")}</p>
+              ) : (
+                <ul className="space-y-1.5 max-h-80 overflow-y-auto">
+                  {absenceRecords.map((a) => {
+                    const badge = absenceBadge[a.status] ?? absenceBadge.ABSENT!;
+                    const period = a.timetableSlot?.period ?? a.intercalaryPeriod;
+                    const course = a.timetableSlot
+                      ? a.timetableSlot.course.nameEl || a.timetableSlot.course.name
+                      : null;
+                    return (
+                      <li
+                        key={a.id}
+                        className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 px-3 py-1.5"
+                      >
+                        <div className="min-w-0 text-sm">
+                          <span className="font-medium text-slate-700">{fmtDisplayDate(a.date)}</span>
+                          {period != null && <span className="text-slate-400"> · {t("periodShort", { period })}</span>}
+                          {course && <span className="text-slate-500"> · {course}</span>}
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {a.exitPermitId && (
+                            <span className="text-[10px] font-semibold text-yellow-700 bg-yellow-50 border border-yellow-200 px-1 py-px rounded">
+                              {t("exitPermit")}
+                            </span>
+                          )}
+                          <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded border ${badge.cls}`}>
+                            {badge.label}
+                            {a.status === "ABSENT" && a.isAutoAbsent && ` ${t("autoAbsentSuffix")}`}
+                          </span>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Referrals */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <FileWarning className="w-4 h-4" /> {t("referrals", { count: referralRecords.length })}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {referralRecords.length === 0 ? (
+                <p className="text-sm text-slate-400">{t("noReferrals")}</p>
+              ) : (
+                <ul className="space-y-2">
+                  {referralRecords.map((rs) => (
+                    <li key={rs.id} className="rounded-lg border border-slate-200 px-3 py-2">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <Link
+                          href={`/${locale}/teacher/referrals/${rs.referral.id}/print`}
+                          target="_blank"
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-800"
+                        >
+                          <span className="text-slate-700 font-semibold">#{rs.referral.number}</span>
+                          {fmtDisplayDate(rs.referral.date)}
+                          {rs.referral.location && <span className="text-slate-400">· {rs.referral.location}</span>}
+                        </Link>
+                        {rs.status === "RESOLVED" ? (
+                          <span className="text-[11px] font-medium text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded">
+                            {/* «Αποβολή · 1 ημέρα + 3 περίοδοι», «Αποβολή με Αναστολή · 2 ημέρες», … */}
+                            {rs.resolution ? resolutionSummary(rs.resolution) : t("resolved")}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                            {t("pending")}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-slate-700 line-clamp-2">{rs.referral.description}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {canManageCode && <AccessCodeCard studentProfileId={studentId} />}
 
       {specialEdMode && (
         <SpecialEdCard studentId={studentId} mode={specialEdMode} data={specialEdData} locale={locale} />
       )}
 
-      {/* Full dossier — personal info, contacts, referrals (authorised viewers only) */}
+      {/* The rest of the dossier — personal info, contacts, toilet breaks */}
       {canViewFull && (
         <div className="space-y-5">
           {/* Personal information */}
@@ -371,99 +466,6 @@ export default async function StudentSchedulePage({
                         </a>
                       </li>
                     ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Referrals */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <FileWarning className="w-4 h-4" /> {t("referrals", { count: referralRecords.length })}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {referralRecords.length === 0 ? (
-                  <p className="text-sm text-slate-400">{t("noReferrals")}</p>
-                ) : (
-                  <ul className="space-y-2">
-                    {referralRecords.map((rs) => (
-                      <li key={rs.id} className="rounded-lg border border-slate-200 px-3 py-2">
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <Link
-                            href={`/${locale}/teacher/referrals/${rs.referral.id}/print`}
-                            target="_blank"
-                            className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-800"
-                          >
-                            <span className="text-slate-700 font-semibold">#{rs.referral.number}</span>
-                            {fmtDisplayDate(rs.referral.date)}
-                            {rs.referral.location && <span className="text-slate-400">· {rs.referral.location}</span>}
-                          </Link>
-                          {rs.status === "RESOLVED" ? (
-                            <span className="text-[11px] font-medium text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded">
-                              {/* «Αποβολή · 1 ημέρα + 3 περίοδοι», «Αποβολή με Αναστολή · 2 ημέρες», … */}
-                              {rs.resolution ? resolutionSummary(rs.resolution) : t("resolved")}
-                            </span>
-                          ) : (
-                            <span className="text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
-                              {t("pending")}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm text-slate-700 line-clamp-2">{rs.referral.description}</p>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Absences + toilet breaks */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {/* Absences for the school year */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <CalendarX className="w-4 h-4" /> {t("absences", { count: absenceRecords.length })}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {absenceRecords.length === 0 ? (
-                  <p className="text-sm text-slate-400">{t("noAbsences")}</p>
-                ) : (
-                  <ul className="space-y-1.5 max-h-80 overflow-y-auto">
-                    {absenceRecords.map((a) => {
-                      const badge = absenceBadge[a.status] ?? absenceBadge.ABSENT!;
-                      const period = a.timetableSlot?.period ?? a.intercalaryPeriod;
-                      const course = a.timetableSlot
-                        ? a.timetableSlot.course.nameEl || a.timetableSlot.course.name
-                        : null;
-                      return (
-                        <li
-                          key={a.id}
-                          className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 px-3 py-1.5"
-                        >
-                          <div className="min-w-0 text-sm">
-                            <span className="font-medium text-slate-700">{fmtDisplayDate(a.date)}</span>
-                            {period != null && <span className="text-slate-400"> · {t("periodShort", { period })}</span>}
-                            {course && <span className="text-slate-500"> · {course}</span>}
-                          </div>
-                          <div className="flex items-center gap-1.5 flex-shrink-0">
-                            {a.exitPermitId && (
-                              <span className="text-[10px] font-semibold text-yellow-700 bg-yellow-50 border border-yellow-200 px-1 py-px rounded">
-                                {t("exitPermit")}
-                              </span>
-                            )}
-                            <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded border ${badge.cls}`}>
-                              {badge.label}
-                              {a.status === "ABSENT" && a.isAutoAbsent && ` ${t("autoAbsentSuffix")}`}
-                            </span>
-                          </div>
-                        </li>
-                      );
-                    })}
                   </ul>
                 )}
               </CardContent>
