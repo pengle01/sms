@@ -98,7 +98,7 @@ export async function issueExitPermit(locale: string, formData: FormData) {
   const slots = groupIds.length
     ? await db.timetableSlot.findMany({
         where: { groupId: { in: groupIds }, dayOfWeek: dow, period: { gte: fromPeriod } },
-        select: { id: true, groupId: true, period: true },
+        select: { id: true, groupId: true, period: true, courseId: true },
       })
     : [];
   const absenceSlots = permitAbsenceSlots(slots, student.groupId);
@@ -132,6 +132,7 @@ export async function issueExitPermit(locale: string, formData: FormData) {
           status: "ABSENT",
           exitPermitId: created.id,
           permitPremarked: true,
+          courseId: slot.courseId,
         },
         // A register already taken for that period keeps its row (not pre-marked).
         update: { status: "ABSENT", exitPermitId: created.id },

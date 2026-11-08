@@ -45,6 +45,13 @@ enum AttendanceStatus {
   EXCUSED
 }
 
+// How an attendance register was held: the teacher's own lesson or in someone
+// else's place.
+enum AttendanceLessonKind {
+  LESSON
+  SUBSTITUTION
+}
+
 enum ReferralRecommendation {
   NO_RECOMMENDATION
   EXPULSION
@@ -469,6 +476,7 @@ model Course {
   timetableSlots TimetableSlot[]
   testSchedules  TestSchedule[]
   addedLessons   AddedLesson[]
+  attendance     Attendance[]
 }
 
 model CourseAssignment {
@@ -533,6 +541,15 @@ model Attendance {
   // that register since). Cancelling the permit deletes these and merely
   // unlinks the rest; a teacher's register clears the flag.
   permitPremarked    Boolean          @default(false)
+  // The record's own facts, saved with the register, so re-importing the timetable
+  // cannot rewrite them: the subject held and how it was held. The teacher is
+  // staffId, whoever marked it. Null on rows older than these columns until an
+  // import is about to change their lesson (see attendanceFreeze.ts).
+  courseId           String?
+  course             Course?          @relation(fields: [courseId], references: [id])
+  lessonKind         AttendanceLessonKind?
+  // Whose lesson it was, when someone else took the register («αντί για …»).
+  lessonTeacherName  String?
   // Intercalary period attendance (when timetableSlotId is null)
   intercalaryGroupId String?
   intercalaryPeriod  Int?

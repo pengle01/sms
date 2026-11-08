@@ -54,7 +54,7 @@ export default async function StudentAttendancePage({
       date: { gte: start, lt: end },
       OR: [{ status: "ABSENT" }, { status: "LATE" }],
     },
-    include: { timetableSlot: { include: { course: true } } },
+    include: { timetableSlot: { include: { course: true } }, course: true },
     orderBy: [{ date: "desc" }, { timetableSlot: { period: "asc" } }],
   }));
 

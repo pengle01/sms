@@ -6,6 +6,7 @@ import { db } from "@/server/db";
 import { Prisma } from "@/generated/prisma/client";
 import { relinkTimetableSlots } from "@/server/staffLink";
 import { applyTeacherHandovers } from "@/server/teacherHandover";
+import { freezeSlotAttendance } from "@/server/attendanceFreeze";
 import {
   HANDOVER_DESIGNATIONS,
   mayDeactivateLogin,
@@ -311,10 +312,20 @@ export async function importSchedule(
 
         const existing = await db.timetableSlot.findUnique({
           where: { groupId_dayOfWeek_period: { groupId, dayOfWeek, period } },
-          select: { id: true, staffId: true, staffName: true },
+          select: {
+            id: true,
+            staffId: true,
+            staffName: true,
+            courseId: true,
+            staff: { select: { scheduleName: true } },
+          },
         });
 
         if (existing) {
+          // Past registers keep what this lesson was when they were taken.
+          if (existing.courseId !== courseId || existing.staffName !== staffName) {
+            await freezeSlotAttendance(existing);
+          }
           const updateData: Prisma.TimetableSlotUncheckedUpdateInput = {
             courseId,
             room:     room || null,

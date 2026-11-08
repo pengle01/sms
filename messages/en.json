@@ -1456,6 +1456,8 @@
     "periodShort": "P{period}",
     "exitPermit": "Exit permit",
     "autoAbsentSuffix": "(auto)",
+    "lessonKindLesson": "Lesson",
+    "lessonKindSubstitution": "Substitution",
     "toiletBreaks": "Toilet Breaks ({count})",
     "noToiletBreaks": "No recorded breaks.",
     "inProgress": "In progress",

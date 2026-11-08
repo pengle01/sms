@@ -46,6 +46,7 @@ export default async function AttendancePage({
           },
         },
         timetableSlot: { include: { course: true } },
+        course: true,
         staff: { include: { user: { select: { name: true } } } },
       },
       orderBy: [{ timetableSlot: { period: "asc" } }],
@@ -123,7 +124,7 @@ export default async function AttendancePage({
                     <Badge variant="outline" className="text-xs">{a.student.group?.name ?? "—"}</Badge>
                   </td>
                   <td className="px-5 py-3.5 text-slate-600">{a.timetableSlot?.period ?? a.intercalaryPeriod ?? "—"}</td>
-                  <td className="px-5 py-3.5 text-slate-600">{a.timetableSlot?.course.name ?? "—"}</td>
+                  <td className="px-5 py-3.5 text-slate-600">{a.course?.name ?? a.timetableSlot?.course.name ?? "—"}</td>
                   <td className="px-5 py-3.5">
                     <Badge
                       variant="outline"

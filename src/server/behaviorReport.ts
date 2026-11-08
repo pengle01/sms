@@ -143,6 +143,8 @@ export async function loadGroupBehavior(groupId: string, since: Date | null, unt
         waived: true,
         isAutoAbsent: true,
         intercalaryPeriod: true,
+        courseId: true,
+        course: { select: { nameEl: true, name: true } },
         timetableSlot: {
           select: { period: true, dayOfWeek: true, courseId: true, course: { select: { nameEl: true, name: true } } },
         },
@@ -209,8 +211,12 @@ export async function loadGroupBehavior(groupId: string, since: Date | null, unt
       date: localDateStr(a.date),
       dayOfWeek: a.timetableSlot?.dayOfWeek ?? isoWeekday(a.date),
       period,
-      courseId: a.timetableSlot?.courseId ?? null,
-      courseName: a.timetableSlot ? a.timetableSlot.course.nameEl || a.timetableSlot.course.name : null,
+      courseId: a.courseId ?? a.timetableSlot?.courseId ?? null,
+      courseName: a.course
+        ? a.course.nameEl || a.course.name
+        : a.timetableSlot
+          ? a.timetableSlot.course.nameEl || a.timetableSlot.course.name
+          : null,
       status: a.status,
       waived: a.waived,
       isAutoAbsent: a.isAutoAbsent,

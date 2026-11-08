@@ -29,20 +29,25 @@ export async function addedLessonsFor(
 }
 
 /**
- * The same attendance rows with each «Δικό μου μάθημα» lesson's course
- * replaced by the subject actually taught — for pages that list a student's
- * records by subject. Other rows come back unchanged.
+ * The same attendance rows naming the subject actually held: the one the record
+ * saved, or — on older rows — a «Δικό μου μάθημα» lesson's subject. For pages
+ * that list a student's records by subject. Other rows come back unchanged.
  */
 export async function withTaughtCourses<
-  T extends { timetableSlotId: string | null; date: Date; timetableSlot: { course: { name: string } } | null },
+  T extends {
+    timetableSlotId: string | null;
+    date: Date;
+    timetableSlot: { course: { name: string } } | null;
+    course?: { name: string; nameEl: string } | null;
+  },
 >(rows: T[]): Promise<T[]> {
-  const added = await addedLessonsFor(rows);
-  if (added.size === 0) return rows;
+  const added = await addedLessonsFor(rows.filter((r) => !r.course));
   return rows.map((r) => {
     const own = r.timetableSlotId ? added.get(markedKey(r.timetableSlotId, r.date)) : undefined;
-    if (!own || !r.timetableSlot) return r;
-    const course = { ...r.timetableSlot.course, name: own.courseName };
-    if ("nameEl" in course) (course as { nameEl: string }).nameEl = own.courseNameEl;
+    const held = r.course ?? (own ? { name: own.courseName, nameEl: own.courseNameEl } : null);
+    if (!held || !r.timetableSlot) return r;
+    const course = { ...r.timetableSlot.course, name: held.name };
+    if ("nameEl" in course) (course as { nameEl: string }).nameEl = held.nameEl;
     return { ...r, timetableSlot: { ...r.timetableSlot, course } };
   });
 }

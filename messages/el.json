@@ -1456,6 +1456,8 @@
     "periodShort": "Π{period}",
     "exitPermit": "Άδεια εξόδου",
     "autoAbsentSuffix": "(αυτ.)",
+    "lessonKindLesson": "Μάθημα",
+    "lessonKindSubstitution": "Αναπλήρωση",
     "toiletBreaks": "Έξοδοι Τουαλέτας ({count})",
     "noToiletBreaks": "Καμία καταγεγραμμένη έξοδος.",
     "inProgress": "Σε εξέλιξη",

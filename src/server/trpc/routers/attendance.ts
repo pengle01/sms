@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, staffProcedure, managementProcedure } from "../init";
 import { TRPCError } from "@trpc/server";
+import { lessonKindForHomegroup, lessonKindForSlot, lessonTeacherNameFor } from "@/lib/attendanceLesson";
 import { permitByStudent, permitLinkFor } from "@/lib/exitPermit";
 import { utcMidnight } from "@/lib/dates";
 import { writeAudit } from "@/server/audit";
@@ -85,6 +86,21 @@ export const attendanceRouter = createTRPCRouter({
         }
       }
 
+      const lessonFacts = new Map(
+        (
+          await ctx.db.timetableSlot.findMany({
+            where: { id: { in: slotIds } },
+            select: {
+              id: true,
+              courseId: true,
+              staffId: true,
+              staffName: true,
+              staff: { select: { scheduleName: true } },
+            },
+          })
+        ).map((l) => [l.id, l]),
+      );
+
       // «Δικό μου μάθημα» only on someone else's lesson, with a subject I teach
       // that group (one slot, so the whole register is the same lesson).
       const addedCourseId = input.addedCourseId;
@@ -161,6 +177,19 @@ export const attendanceRouter = createTRPCRouter({
           const isAutoAbsent = r.minutesDelayed > threshold;
           const status = isAutoAbsent ? "ABSENT" : r.status;
           const exitPermitId = permitLinkFor(status, permitFor[r.studentId]);
+          const lesson = lessonFacts.get(r.timetableSlotId);
+          const courseId = addedCourseId ?? lesson?.courseId ?? null;
+          const lessonKind = lessonKindForSlot({
+            markerStaffId: staff.id,
+            slotStaffId: lesson?.staffId ?? null,
+            addedLesson: !!addedCourseId,
+          });
+          const lessonTeacherName = lessonTeacherNameFor({
+            markerStaffId: staff.id,
+            slotStaffId: lesson?.staffId ?? null,
+            slotStaffName: lesson?.staffName ?? null,
+            linkedScheduleName: lesson?.staff?.scheduleName,
+          });
 
           return tx.attendance.upsert({
             where: {
@@ -179,6 +208,9 @@ export const attendanceRouter = createTRPCRouter({
               minutesDelayed: r.minutesDelayed,
               isAutoAbsent,
               exitPermitId,
+              courseId,
+              lessonKind,
+              lessonTeacherName,
             },
             update: {
               status,
@@ -186,6 +218,9 @@ export const attendanceRouter = createTRPCRouter({
               isAutoAbsent,
               staffId: staff.id,
               exitPermitId,
+              courseId,
+              lessonKind,
+              lessonTeacherName,
               // The teacher's register now owns this row, however it was created.
               permitPremarked: false,
             },
@@ -247,6 +282,7 @@ export const attendanceRouter = createTRPCRouter({
       });
       if (!group) throw new TRPCError({ code: "NOT_FOUND" });
       const ownStaff = [group.homeroomTeacherId, group.homeroomHeadteacherId, group.counselorId];
+      const homegroupLessonKind = lessonKindForHomegroup(staff.id, ownStaff);
       if (!ownStaff.includes(staff.id)) {
         await writeAudit({
           userId: ctx.session.user.id,
@@ -299,6 +335,7 @@ export const attendanceRouter = createTRPCRouter({
               intercalaryGroupId: input.groupId,
               intercalaryPeriod: input.period,
               exitPermitId,
+              lessonKind: homegroupLessonKind,
             },
             update: {
               status,
@@ -306,6 +343,7 @@ export const attendanceRouter = createTRPCRouter({
               isAutoAbsent,
               staffId: staff.id,
               exitPermitId,
+              lessonKind: homegroupLessonKind,
               // The teacher's register now owns this row, however it was created.
               permitPremarked: false,
             },

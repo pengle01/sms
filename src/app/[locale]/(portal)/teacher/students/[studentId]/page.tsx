@@ -22,6 +22,8 @@ import { SpecialEdCard } from "@/components/special-ed/SpecialEdCard";
 import type { Role } from "@/generated/prisma/client";
 import { PrintTimetableLink } from "@/components/timetable/PrintTimetableLink";
 import { resolutionSummary } from "@/lib/referralLabels";
+import { shownLessonKind } from "@/lib/attendanceLesson";
+import { staffDisplayName } from "@/lib/staffName";
 
 function Field({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;
@@ -177,7 +179,12 @@ export default async function StudentSchedulePage({
             exitPermitId: true,
             intercalaryPeriod: true,
             timetableSlotId: true,
-            timetableSlot: { select: { period: true, course: { select: { nameEl: true, name: true } } } },
+            staffId: true,
+            permitPremarked: true,
+            lessonKind: true,
+            course: { select: { nameEl: true, name: true } },
+            staff: { select: { scheduleName: true, user: { select: { name: true } } } },
+            timetableSlot: { select: { period: true, staffId: true, course: { select: { nameEl: true, name: true } } } },
           },
           orderBy: [{ date: "desc" }],
           take: 200,
@@ -327,6 +334,13 @@ export default async function StudentSchedulePage({
                 <ul className="space-y-1.5 max-h-80 overflow-y-auto">
                   {absenceRecords.map((a) => {
                     const badge = absenceBadge[a.status] ?? absenceBadge.ABSENT!;
+                    const kind = shownLessonKind({
+                      saved: a.lessonKind,
+                      permitPremarked: a.permitPremarked,
+                      markerStaffId: a.staffId,
+                      slotStaffId: a.timetableSlot?.staffId,
+                      hasSlot: !!a.timetableSlot,
+                    });
                     const period = a.timetableSlot?.period ?? a.intercalaryPeriod;
                     const course = a.timetableSlot
                       ? a.timetableSlot.course.nameEl || a.timetableSlot.course.name
@@ -340,8 +354,14 @@ export default async function StudentSchedulePage({
                           <span className="font-medium text-slate-700">{fmtDisplayDate(a.date)}</span>
                           {period != null && <span className="text-slate-400"> · {t("periodShort", { period })}</span>}
                           {course && <span className="text-slate-500"> · {course}</span>}
+                          <span className="text-slate-400"> · {staffDisplayName(a.staff)}</span>
                         </div>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {kind && (
+                            <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-1 py-px rounded">
+                              {kind === "SUBSTITUTION" ? t("lessonKindSubstitution") : t("lessonKindLesson")}
+                            </span>
+                          )}
                           {a.exitPermitId && (
                             <span className="text-[10px] font-semibold text-yellow-700 bg-yellow-50 border border-yellow-200 px-1 py-px rounded">
                               {t("exitPermit")}

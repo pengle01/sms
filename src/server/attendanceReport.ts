@@ -4,6 +4,7 @@ import type { ReportRow } from "@/lib/attendanceReport";
 import type { Role } from "@/generated/prisma/enums";
 import { getSpecialDaysInRange } from "@/lib/calendar";
 import { effectiveStaffRole } from "@/lib/staffRole";
+import { resolveMarkKind, type LessonKind } from "@/lib/attendanceLesson";
 import { managementTag, markKind, registerLabel, type MarkKind, type RegisterLabel } from "@/lib/attendanceMarker";
 import { addedLessonsFor } from "@/server/addedLessons";
 import { markedKey } from "@/lib/coverMarked";
@@ -104,6 +105,7 @@ export async function substitutionKinds(
 
 /** Prisma include for the fields `markerDetails` needs on an Attendance row. */
 export const MARKER_INCLUDE = {
+  course: { select: { name: true } },
   staff: { select: { id: true, scheduleName: true, plannedRole: true, user: { select: { name: true, role: true } } } },
   timetableSlot: {
     include: {
@@ -119,6 +121,10 @@ type MarkerSource = {
   staffId: string;
   timetableSlotId: string | null;
   intercalaryGroupId: string | null;
+  course: { name: string } | null;
+  lessonKind: LessonKind | null;
+  lessonTeacherName: string | null;
+  permitPremarked: boolean;
   staff: { scheduleName: string | null; plannedRole: Role | null; user: { name: string | null; role: Role } | null };
   timetableSlot: {
     staffId: string | null;
@@ -188,22 +194,29 @@ export async function markerDetails(rows: MarkerSource[]): Promise<Map<string, M
     // «Δικό μου μάθημα»: the subject the marker taught replaces the timetable's.
     const own = a.timetableSlotId ? added.get(markedKey(a.timetableSlotId, a.date)) : undefined;
     const ownByMarker = own?.staffId === a.staffId ? own : undefined;
-    const kind = markKind({
-      markerStaffId: a.staffId,
-      slotStaffId: slot?.staffId ?? null,
-      plannedKind: p && p !== "CLAIM" ? p : null,
-      homegroupStaffIds: a.intercalaryGroupId ? homegroupStaff.get(a.intercalaryGroupId) ?? [] : null,
-      addedLesson: !!ownByMarker,
-    });
+    const kind = resolveMarkKind(
+      markKind({
+        markerStaffId: a.staffId,
+        slotStaffId: slot?.staffId ?? null,
+        plannedKind: p && p !== "CLAIM" ? p : null,
+        homegroupStaffIds: a.intercalaryGroupId ? homegroupStaff.get(a.intercalaryGroupId) ?? [] : null,
+        addedLesson: !!ownByMarker,
+      }),
+      a.lessonKind,
+      a.permitPremarked,
+    );
     out.set(a.id, {
       lesson: registerLabel({ hasSlot: !!slot, dayType: dayType.get(a.id) }),
-      courseName: ownByMarker?.courseName ?? slot?.course.name ?? null,
+      courseName: a.course?.name ?? ownByMarker?.courseName ?? slot?.course.name ?? null,
       marker: a.staff.scheduleName ?? a.staff.user?.name ?? "—",
       tag: managementTag(
         effectiveStaffRole({ accountRole: a.staff.user?.role, plannedRole: a.staff.plannedRole, scheduleName: a.staff.scheduleName }),
       ),
       kind,
-      lessonTeacher: kind && slot ? slot.staff?.scheduleName ?? slot.staffName ?? slot.staff?.user?.name ?? null : null,
+      lessonTeacher:
+        kind && slot
+          ? a.lessonTeacherName ?? slot.staff?.scheduleName ?? slot.staffName ?? slot.staff?.user?.name ?? null
+          : null,
     });
   }
   return out;
