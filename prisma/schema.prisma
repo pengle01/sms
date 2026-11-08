@@ -550,6 +550,7 @@ model Attendance {
   @@unique([studentId, intercalaryGroupId, intercalaryPeriod, date])
   @@index([date])
   @@index([studentId, date])
+  @@index([createdAt]) // the office attendance log and its export filter on it
 }
 
 // «Δικό μου μάθημα»: a lesson a teacher holds with one of their own groups in a
