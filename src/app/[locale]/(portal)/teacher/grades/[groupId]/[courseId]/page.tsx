@@ -7,8 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronLeft } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import { cn } from "@/lib/utils";
-import { GRADE_PERIODS, parseGradePeriod } from "@/lib/grades";
-import { getGradesUnlocked } from "@/lib/schoolConfig";
+import { GRADE_PERIODS, parseGradePeriod, gradeSchoolYear } from "@/lib/grades";
+import { getGradesUnlocked, getSchoolYear } from "@/lib/schoolConfig";
 import { isManagement } from "@/lib/rbac";
 import { parseSupportGroup } from "@/lib/specialEd";
 import { Lock } from "lucide-react";
@@ -65,8 +65,9 @@ export default async function LessonGradesPage({
     orderBy: { user: { name: "asc" } },
   });
 
+  const schoolYear = gradeSchoolYear(await getSchoolYear());
   const existing = await db.grade.findMany({
-    where: { courseId, period, studentId: { in: students.map((s) => s.id) } },
+    where: { courseId, period, schoolYear, studentId: { in: students.map((s) => s.id) } },
     select: { studentId: true, value: true },
   });
   const gradeMap = new Map(existing.map((g) => [g.studentId, g.value]));

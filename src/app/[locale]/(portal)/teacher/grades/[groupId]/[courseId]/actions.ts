@@ -5,8 +5,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { revalidatePath } from "next/cache";
 import { isManagement } from "@/lib/rbac";
-import { parseGradeInput, isGradePeriod, TERM_GRADE_MIN } from "@/lib/grades";
-import { getGradesUnlocked } from "@/lib/schoolConfig";
+import { parseGradeInput, isGradePeriod, gradeSchoolYear, TERM_GRADE_MIN } from "@/lib/grades";
+import { getGradesUnlocked, getSchoolYear } from "@/lib/schoolConfig";
 import { writeAudit, requestMeta } from "@/server/audit";
 import type { Role } from "@/generated/prisma/client";
 
@@ -62,18 +62,22 @@ export async function saveGrades(input: {
     parsed.push({ studentId: g.studentId, value: r.value });
   }
 
+  // This school year's grades only — last year's for the same course stay.
+  const schoolYear = gradeSchoolYear(await getSchoolYear());
+
   await db.$transaction(
     parsed.map((g) =>
       g.value === null
         ? db.grade.deleteMany({
-            where: { studentId: g.studentId, courseId: input.courseId, period: input.period },
+            where: { studentId: g.studentId, courseId: input.courseId, period: input.period, schoolYear },
           })
         : db.grade.upsert({
             where: {
-              studentId_courseId_period: {
+              studentId_courseId_period_schoolYear: {
                 studentId: g.studentId,
                 courseId: input.courseId,
                 period: input.period,
+                schoolYear,
               },
             },
             create: {
@@ -81,6 +85,7 @@ export async function saveGrades(input: {
               courseId: input.courseId,
               staffId: staff.id,
               period: input.period,
+              schoolYear,
               value: g.value,
             },
             update: { value: g.value, staffId: staff.id },
@@ -94,7 +99,7 @@ export async function saveGrades(input: {
     action: "grade.save",
     resource: "Grade",
     resourceId: `${input.groupId}:${input.courseId}:${input.period}`,
-    details: { count: parsed.length },
+    details: { count: parsed.length, schoolYear },
     ...meta,
   });
 

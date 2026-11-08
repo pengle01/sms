@@ -2,7 +2,8 @@ import { z } from "zod";
 import { createTRPCRouter, staffProcedure, protectedProcedure } from "../init";
 import { isStaff, guardianSeesGrades } from "@/lib/rbac";
 import { TRPCError } from "@trpc/server";
-import { GRADES_UNLOCKED_KEY, parseGradesUnlocked, TERM_GRADE_MIN, GRADE_MAX } from "@/lib/grades";
+import { GRADES_UNLOCKED_KEY, parseGradesUnlocked, gradeSchoolYear, TERM_GRADE_MIN, GRADE_MAX } from "@/lib/grades";
+import { getSchoolYear } from "@/lib/schoolConfig";
 import type { Role } from "@/generated/prisma/client";
 
 export const gradesRouter = createTRPCRouter({
@@ -42,12 +43,14 @@ export const gradesRouter = createTRPCRouter({
         }
       }
 
+      const schoolYear = gradeSchoolYear(await getSchoolYear());
       return ctx.db.grade.upsert({
         where: {
-          studentId_courseId_period: {
+          studentId_courseId_period_schoolYear: {
             studentId: input.studentId,
             courseId: input.courseId,
             period: input.period,
+            schoolYear,
           },
         },
         create: {
@@ -55,6 +58,7 @@ export const gradesRouter = createTRPCRouter({
           courseId: input.courseId,
           staffId: staff.id,
           period: input.period,
+          schoolYear,
           value: input.value,
           notes: input.notes,
         },
@@ -108,6 +112,7 @@ export const gradesRouter = createTRPCRouter({
       return ctx.db.grade.findMany({
         where: {
           studentId: input.studentId,
+          schoolYear: gradeSchoolYear(await getSchoolYear()),
           ...(input.period ? { period: input.period } : {}),
         },
         include: { course: true },

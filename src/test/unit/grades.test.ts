@@ -8,6 +8,7 @@ import {
   GRADE_PERIODS,
   parseGradesUnlocked,
   TERM_GRADE_MIN,
+  gradeSchoolYear,
 } from "@/lib/grades";
 
 describe("grade periods", () => {
@@ -100,5 +101,16 @@ describe("parseGradesUnlocked", () => {
   it("ignores junk values and unknown keys", () => {
     expect(parseGradesUnlocked('{"TERM1":"yes","TERM3":true}')).toEqual({ TERM1: false, TERM2: false });
     expect(parseGradesUnlocked("not json")).toEqual({ TERM1: false, TERM2: false });
+  });
+});
+
+describe("gradeSchoolYear", () => {
+  it("keys a grade by the school year its term belongs to", () => {
+    expect(gradeSchoolYear({ yearStart: new Date("2025-09-01T00:00:00Z") })).toBe("2025-2026");
+    expect(gradeSchoolYear({ yearStart: new Date("2026-09-07T00:00:00Z") })).toBe("2026-2027");
+  });
+
+  it("uses the UTC start date, so a midnight start is not shifted into the previous year", () => {
+    expect(gradeSchoolYear({ yearStart: new Date("2025-01-01T00:00:00Z") })).toBe("2025-2026");
   });
 });

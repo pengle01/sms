@@ -1,4 +1,6 @@
 import { db } from "@/server/db";
+import { gradeSchoolYear } from "@/lib/grades";
+import { getSchoolYear } from "@/lib/schoolConfig";
 import { guardianAccess } from "@/server/guardianAccess";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
@@ -27,7 +29,7 @@ export default async function ParentChildGradesPage({
 
   // Term marks only — test marks live on the child's Tests page.
   const grades = await db.grade.findMany({
-    where: { studentId },
+    where: { studentId, schoolYear: gradeSchoolYear(await getSchoolYear()) },
     include: { course: true },
     orderBy: [{ course: { name: "asc" } }, { period: "asc" }],
   });

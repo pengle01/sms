@@ -2,7 +2,15 @@
 
 // The grading periods a teacher records per lesson. Stored verbatim in
 // `Grade.period` (the @@unique([studentId, courseId, period]) key component).
+import type { SchoolYearRanges } from "@/lib/schoolYear";
+
 export const GRADE_PERIODS = ["TERM1", "TERM2"] as const;
+
+/** The school-year key a term grade is stored under ("2025-2026"). */
+export function gradeSchoolYear(ranges: Pick<SchoolYearRanges, "yearStart">): string {
+  const start = ranges.yearStart.getUTCFullYear();
+  return `${start}-${start + 1}`;
+}
 export type GradePeriod = (typeof GRADE_PERIODS)[number];
 
 export function isGradePeriod(v: string | undefined | null): v is GradePeriod {

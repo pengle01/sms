@@ -804,12 +804,17 @@ model Grade {
   staff     StaffProfile   @relation(fields: [staffId], references: [id])
   value     Decimal        @db.Decimal(4, 2)
   period    String
+  // "2025-2026" — a course repeats every year, so the term grade is keyed by
+  // school year as well. The default only fills rows written before the column
+  // existed (all from 2025-26); the app always sets it explicitly.
+  schoolYear String        @default("2025-2026")
   notes     String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([studentId, courseId, period])
+  @@unique([studentId, courseId, period, schoolYear])
+  @@index([studentId, schoolYear])
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
