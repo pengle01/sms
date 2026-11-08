@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { permitCoversPeriod, permitByStudent, permitContactLabel, permitAbsenceSlots } from "@/lib/exitPermit";
+import { permitCoversPeriod, permitByStudent, permitContactLabel, permitAbsenceSlots, permitLinkFor } from "@/lib/exitPermit";
 
 const day = (s: string) => new Date(`${s}T00:00:00.000Z`);
 
@@ -119,5 +119,23 @@ describe("permitAbsenceSlots", () => {
   it("handles empty input and missing homegroup", () => {
     expect(permitAbsenceSlots([], "hg")).toEqual([]);
     expect(permitAbsenceSlots([slot("a", "g1", 2)], null).map((s) => s.id)).toEqual(["a"]);
+  });
+});
+
+describe("permitLinkFor", () => {
+  const permit = { id: "permit-1" };
+
+  it("links an absence to the covering permit", () => {
+    expect(permitLinkFor("ABSENT", permit)).toBe("permit-1");
+  });
+
+  it("leaves present and late rows unlinked even when a permit covers the period", () => {
+    expect(permitLinkFor("PRESENT", permit)).toBeNull();
+    expect(permitLinkFor("LATE", permit)).toBeNull();
+    expect(permitLinkFor("EXCUSED", permit)).toBeNull();
+  });
+
+  it("returns null when no permit covers the student", () => {
+    expect(permitLinkFor("ABSENT", undefined)).toBeNull();
   });
 });

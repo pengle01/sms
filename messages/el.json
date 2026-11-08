@@ -195,6 +195,7 @@
     "issue": "Έκδοση Άδειας",
     "print": "Εκτύπωση",
     "cancelPermit": "Ακύρωση",
+    "permitCancelled": "Ακυρώθηκε",
     "todayPermits": "Σημερινές Άδειες",
     "noPermitsToday": "Καμία άδεια σήμερα.",
     "leavesFrom": "Αποχωρεί από Π{period}",
@@ -1928,6 +1929,7 @@
     "next": "Επόμενη"
   },
   "adminPermits": {
+    "cancelled": "Ακυρώθηκε",
     "title": "Άδειες Εξόδου",
     "permitCount": "{count, plural, one {# άδεια} other {# άδειες}}",
     "onDate": "στις {date}",

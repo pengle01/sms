@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, staffProcedure, managementProcedure } from "../init";
 import { TRPCError } from "@trpc/server";
-import { permitByStudent } from "@/lib/exitPermit";
+import { permitByStudent, permitLinkFor } from "@/lib/exitPermit";
 import { utcMidnight } from "@/lib/dates";
 import { writeAudit } from "@/server/audit";
 import { getAttendanceLockConfig, getSchoolYear } from "@/lib/schoolConfig";
@@ -160,7 +160,7 @@ export const attendanceRouter = createTRPCRouter({
         return Promise.all(input.records.map((r) => {
           const isAutoAbsent = r.minutesDelayed > threshold;
           const status = isAutoAbsent ? "ABSENT" : r.status;
-          const exitPermitId = permitFor[r.studentId]?.id ?? null;
+          const exitPermitId = permitLinkFor(status, permitFor[r.studentId]);
 
           return tx.attendance.upsert({
             where: {
@@ -186,6 +186,8 @@ export const attendanceRouter = createTRPCRouter({
               isAutoAbsent,
               staffId: staff.id,
               exitPermitId,
+              // The teacher's register now owns this row, however it was created.
+              permitPremarked: false,
             },
           });
         }));
@@ -276,7 +278,7 @@ export const attendanceRouter = createTRPCRouter({
         input.records.map((r) => {
           const isAutoAbsent = r.minutesDelayed > threshold;
           const status = isAutoAbsent ? "ABSENT" : r.status;
-          const exitPermitId = permitFor[r.studentId]?.id ?? null;
+          const exitPermitId = permitLinkFor(status, permitFor[r.studentId]);
 
           return ctx.db.attendance.upsert({
             where: {
@@ -304,6 +306,8 @@ export const attendanceRouter = createTRPCRouter({
               isAutoAbsent,
               staffId: staff.id,
               exitPermitId,
+              // The teacher's register now owns this row, however it was created.
+              permitPremarked: false,
             },
           });
         })

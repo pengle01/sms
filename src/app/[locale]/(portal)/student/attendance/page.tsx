@@ -61,7 +61,7 @@ export default async function StudentAttendancePage({
   // Exit permits (Άδεια Εξόδου) covering this month — the student sees a record
   // of every early departure the on-duty deputy issued for them.
   const permits = await db.exitPermit.findMany({
-    where: { studentId: student.id, date: { gte: start, lt: end } },
+    where: { studentId: student.id, active: true, date: { gte: start, lt: end } },
     include: { issuer: { select: { scheduleName: true, user: { select: { name: true } } } } },
     orderBy: [{ date: "desc" }, { fromPeriod: "asc" }],
   });

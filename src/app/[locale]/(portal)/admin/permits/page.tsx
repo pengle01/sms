@@ -105,7 +105,14 @@ export default async function AdminExitPermitsPage({
                     )}
                   </td>
                   <td className="px-4 py-3 text-slate-600">P{p.fromPeriod}</td>
-                  <td className="px-4 py-3 text-slate-600 max-w-56 truncate" title={p.reason}>{p.reason}</td>
+                  <td className="px-4 py-3 text-slate-600 max-w-56 truncate" title={p.reason}>
+                    {p.reason}
+                    {!p.active && (
+                      <span className="ml-2 inline-flex items-center rounded border border-slate-200 bg-slate-100 px-1.5 py-px text-[11px] font-medium text-slate-500">
+                        {t("cancelled")}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-slate-600 max-w-64 truncate">
                     {permitContactLabel(p.smsContact, p.contactNote) ?? "—"}
                   </td>

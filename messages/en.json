@@ -195,6 +195,7 @@
     "issue": "Issue Permit",
     "print": "Print",
     "cancelPermit": "Cancel",
+    "permitCancelled": "Cancelled",
     "todayPermits": "Today's Permits",
     "noPermitsToday": "No permits today.",
     "leavesFrom": "Leaves from P{period}",
@@ -1928,6 +1929,7 @@
     "next": "Next"
   },
   "adminPermits": {
+    "cancelled": "Cancelled",
     "title": "Exit Permits",
     "permitCount": "{count, plural, one {# permit} other {# permits}}",
     "onDate": "on {date}",

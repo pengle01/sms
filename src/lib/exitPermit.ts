@@ -71,6 +71,18 @@ export function permitCoversPeriod(
 }
 
 /**
+ * The permit an attendance row links to: only an ABSENT row is "covered" by a
+ * permit. PRESENT and LATE rows carry no link, so they neither inflate the
+ * «with permit» totals nor get touched when the permit is cancelled.
+ */
+export function permitLinkFor(
+  status: "PRESENT" | "ABSENT" | "LATE" | "EXCUSED",
+  permit: { id: string } | undefined,
+): string | null {
+  return status === "ABSENT" && permit ? permit.id : null;
+}
+
+/**
  * One slot per period for pre-marking a permit's absences: where a homegroup
  * slot and a subject-group slot share a period, the subject-group slot wins
  * (same precedence as the student schedule grid).

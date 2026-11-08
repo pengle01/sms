@@ -529,6 +529,10 @@ model Attendance {
   // Absence covered by an exit permit (Άδεια Εξόδου) — informs the office admin
   exitPermitId       String?
   exitPermit         ExitPermit?      @relation(fields: [exitPermitId], references: [id], onDelete: SetNull)
+  // The row exists only because the permit pre-marked it (no teacher has taken
+  // that register since). Cancelling the permit deletes these and merely
+  // unlinks the rest; a teacher's register clears the flag.
+  permitPremarked    Boolean          @default(false)
   // Intercalary period attendance (when timetableSlotId is null)
   intercalaryGroupId String?
   intercalaryPeriod  Int?

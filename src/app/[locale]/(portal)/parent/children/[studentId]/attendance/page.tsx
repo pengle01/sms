@@ -54,7 +54,7 @@ export default async function ParentChildAttendancePage({
   // Exit permits covering this month — the deputy issues these after phoning the
   // guardian, so the parent gets a record of every early departure.
   const permits = await db.exitPermit.findMany({
-    where: { studentId, date: { gte: start, lt: end } },
+    where: { studentId, active: true, date: { gte: start, lt: end } },
     include: { issuer: { select: { scheduleName: true, user: { select: { name: true } } } } },
     orderBy: [{ date: "desc" }, { fromPeriod: "asc" }],
   });

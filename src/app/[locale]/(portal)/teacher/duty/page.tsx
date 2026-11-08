@@ -370,6 +370,11 @@ export default async function TeacherDutyPage({
                         </p>
                         <p className="text-xs text-slate-500 mt-0.5">
                           {t("leavesFrom", { period: p.fromPeriod })} · {p.reason}
+                          {!p.active && (
+                            <span className="ml-2 inline-flex items-center rounded border border-slate-200 bg-slate-100 px-1.5 py-px text-[11px] font-medium text-slate-500">
+                              {t("permitCancelled")}
+                            </span>
+                          )}
                         </p>
                         {!isToday && (
                           <p className="text-xs text-slate-400 mt-0.5">{t("issuedBy", { name: staffDisplayName(p.issuer) })}</p>
@@ -382,14 +387,16 @@ export default async function TeacherDutyPage({
                         )}
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <Link
-                          href={`/${locale}/teacher/duty/permits/${p.id}/print?back=${encodeURIComponent(historyQs)}`}
-                          className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-emerald-700"
-                        >
-                          <Printer className="w-3.5 h-3.5" />
-                          {t("print")}
-                        </Link>
-                        {canCancel && (
+                        {p.active && (
+                          <Link
+                            href={`/${locale}/teacher/duty/permits/${p.id}/print?back=${encodeURIComponent(historyQs)}`}
+                            className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-emerald-700"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                            {t("print")}
+                          </Link>
+                        )}
+                        {canCancel && p.active && (
                           <form action={cancelExitPermit.bind(null, locale, p.id, currentQs)}>
                             <button
                               type="submit"

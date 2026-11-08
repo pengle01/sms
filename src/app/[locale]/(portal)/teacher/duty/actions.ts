@@ -131,7 +131,9 @@ export async function issueExitPermit(locale: string, formData: FormData) {
           date: ctx.today,
           status: "ABSENT",
           exitPermitId: created.id,
+          permitPremarked: true,
         },
+        // A register already taken for that period keeps its row (not pre-marked).
         update: { status: "ABSENT", exitPermitId: created.id },
       });
     }
@@ -159,17 +161,19 @@ export async function cancelExitPermit(locale: string, permitId: string, returnQ
   const ctx = await requirePermitIssuer();
   if (!ctx) redirect(back);
 
-  // Only today's permits can be cancelled (yesterday's are history).
+  // Only today's live permits can be cancelled (yesterday's are history).
   const permit = await db.exitPermit.findFirst({
-    where: { id: permitId, date: ctx.today },
+    where: { id: permitId, date: ctx.today, active: true },
   });
   if (!permit) redirect(back);
 
-  // A cancelled permit is removed outright, along with its pre-marked
-  // absences — the audit log keeps the trace.
+  // Cancelling undoes what the permit created and nothing else: the absences
+  // it pre-marked go, registers teachers took since stay (merely unlinked),
+  // and the permit itself stays on record as cancelled.
   await db.$transaction([
-    db.attendance.deleteMany({ where: { exitPermitId: permit.id } }),
-    db.exitPermit.delete({ where: { id: permit.id } }),
+    db.attendance.deleteMany({ where: { exitPermitId: permit.id, permitPremarked: true } }),
+    db.attendance.updateMany({ where: { exitPermitId: permit.id }, data: { exitPermitId: null } }),
+    db.exitPermit.update({ where: { id: permit.id }, data: { active: false } }),
   ]);
   await writeAudit({
     userId: ctx.auth.userId,
