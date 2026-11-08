@@ -381,7 +381,7 @@ model SpecialEdRecord {
   fileNo          String? // ΑΡ. ΦΑΚ.
   remarks         String? // ΠΑΡΑΤΗΡΗΣΕΙΣ — full-access viewers only
   frenchExempt    Boolean        @default(false) // Απαλλαγή Γαλλικών
-  otherExemptions String? // Άλλες Απαλλαγές — full-access viewers only
+  otherExemptions String? // Άλλες Απαλλαγές — full-access viewers and the student's teachers
 
   problems       SpecialEdProblemCode[]   @relation("RecordProblems")
   accommodations SpecialEdAccommodation[] @relation("RecordAccommodations")

@@ -304,17 +304,17 @@ export type TeacherSpecialEdStudent = {
   registryNo: string;
   name: string;
   group: string | null;
-  remarks: string | null;
   frenchExempt: boolean;
   otherExemptions: string | null;
-  problems: { code: string; label: string }[];
   accommodations: { code: string; label: string }[];
 };
 
 /**
- * Full special-ed info for every active student the teacher teaches who has a
- * record. Scoped strictly to the teacher's own groups (homeroom + subject) — the
- * same teaches-this-student boundary as the audited dossier reveal.
+ * What a teacher needs for lessons, for every active student they teach who has
+ * a record: accommodations and exemptions. Scoped strictly to the teacher's own
+ * groups (homeroom + subject) — the same teaches-this-student boundary as the
+ * audited reveal. Remarks are full-access only; problem codes come only through
+ * that reveal, so neither is selected here.
  */
 export async function listSpecialEdForTeacher(staffId: string): Promise<TeacherSpecialEdStudent[]> {
   const groupIds = await teacherGroupIds(staffId);
@@ -327,10 +327,8 @@ export async function listSpecialEdForTeacher(staffId: string): Promise<TeacherS
       },
     },
     select: {
-      remarks: true,
       frenchExempt: true,
       otherExemptions: true,
-      problems: { select: { code: true, label: true }, orderBy: { code: "asc" } },
       accommodations: { select: { code: true, label: true } },
       student: {
         select: {
@@ -351,10 +349,8 @@ export async function listSpecialEdForTeacher(staffId: string): Promise<TeacherS
         registryNo: r.student.studentId,
         name: r.student.user?.name ?? "—",
         group: r.student.group?.name ?? null,
-        remarks: r.remarks,
         frenchExempt: r.frenchExempt,
         otherExemptions: r.otherExemptions,
-        problems: r.problems,
         accommodations,
       };
     })
@@ -363,17 +359,13 @@ export async function listSpecialEdForTeacher(staffId: string): Promise<TeacherS
 
 /** Distinct code→label legend built from a teacher's roster (no extra query). */
 export function specialEdLegend(students: TeacherSpecialEdStudent[]): {
-  problems: { code: string; label: string }[];
   accommodations: { code: string; label: string }[];
 } {
-  const p = new Map<string, string>();
   const a = new Map<string, string>();
   for (const s of students) {
-    for (const c of s.problems) p.set(c.code, c.label);
     for (const c of s.accommodations) a.set(c.code, c.label);
   }
   return {
-    problems: [...p].map(([code, label]) => ({ code, label })).sort((x, y) => x.code.localeCompare(y.code)),
     accommodations: [...a].map(([code, label]) => ({ code, label })).sort((x, y) => Number(x.code) - Number(y.code)),
   };
 }

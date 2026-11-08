@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { suggestionList } from "@/lib/textSearch";
 import { SuggestInput } from "@/components/SuggestInput";
 import { pickQueryString } from "@/lib/listFilters";
+import { RevealProblemCodes } from "@/components/special-ed/RevealProblemCodes";
 import { Search } from "lucide-react";
 import {
   listSpecialEdStudents,
@@ -52,13 +53,14 @@ export default async function SpecialEdDeskPage({
   // Reading the dossier and owning the register are different things.
   const canManageRegister = canManageSpecialEdRegister(auth.roles, !!staff?.specialEducation);
 
-  // ── Regular teacher: read-only view of the students THEY teach, with codes,
-  // accommodations and a legend. Scoped to their own groups (same boundary as
+  // ── Regular teacher: read-only view of the students THEY teach: accommodations,
+  // exemptions and a legend; problem codes behind the audited reveal. Scoped to their own groups (same boundary as
   // the audited dossier reveal). Full-access roles fall through to the desk. ──
   if (!full) {
     if (!staff) redirect(`/${locale}/teacher/dashboard`);
     // No audit here: a server render fires on prefetch too, so auditing this
-    // read would spam/falsify the trail. The dossier codes-reveal stays audited.
+    // read would spam/falsify the trail. Remarks and problem codes are not in
+    // this data; the problem-code reveal is an explicit click, and audited.
     const myStudents = await listSpecialEdForTeacher(staff.id);
     const legend = specialEdLegend(myStudents);
     return <TeacherSpecialEdView students={myStudents} legend={legend} />;
@@ -398,7 +400,7 @@ function TeacherSpecialEdView({
   legend,
 }: {
   students: TeacherSpecialEdStudent[];
-  legend: { problems: { code: string; label: string }[]; accommodations: { code: string; label: string }[] };
+  legend: { accommodations: { code: string; label: string }[] };
 }) {
   return (
     <div className="space-y-6">
@@ -414,7 +416,7 @@ function TeacherSpecialEdView({
 
       <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50/50 px-4 py-2.5 text-xs text-amber-800">
         <ShieldAlert className="w-4 h-4 flex-shrink-0 mt-0.5" />
-        <span>Εμπιστευτικά στοιχεία. Προβάλλονται μόνο οι μαθητές/τριες που διδάσκετε και η πρόσβαση καταγράφεται.</span>
+        <span>Εμπιστευτικά στοιχεία. Προβάλλονται μόνο οι μαθητές/τριες που διδάσκετε. Οι κωδικοί προβλημάτων εμφανίζονται μόνο αν το ζητήσετε, και η προβολή τους καταγράφεται.</span>
       </div>
 
       {students.length === 0 ? (
@@ -427,7 +429,7 @@ function TeacherSpecialEdView({
       ) : (
         <>
           {/* Code legend */}
-          {(legend.problems.length > 0 || legend.accommodations.length > 0) && (
+          {legend.accommodations.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
@@ -435,37 +437,15 @@ function TeacherSpecialEdView({
                   Επεξήγηση κωδικών
                 </CardTitle>
               </CardHeader>
-              <CardContent className="grid gap-5 sm:grid-cols-2">
-                <div>
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Κωδικοί προβλημάτων</p>
-                  {legend.problems.length === 0 ? (
-                    <p className="text-sm text-slate-300">—</p>
-                  ) : (
-                    <ul className="space-y-1.5">
-                      {legend.problems.map((c) => (
-                        <li key={c.code} className="flex gap-2 text-sm">
-                          <Badge variant="outline" className="font-semibold flex-shrink-0">{c.code}</Badge>
-                          <span className="text-slate-600">{c.label}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Διευκολύνσεις</p>
-                  {legend.accommodations.length === 0 ? (
-                    <p className="text-sm text-slate-300">—</p>
-                  ) : (
-                    <ul className="space-y-1.5">
-                      {legend.accommodations.map((c) => (
-                        <li key={c.code} className="flex gap-2 text-sm">
-                          <Badge variant="outline" className="font-semibold flex-shrink-0">{c.code}</Badge>
-                          <span className="text-slate-600">{c.label}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
+              <CardContent>
+                <ul className="space-y-1.5">
+                  {legend.accommodations.map((c) => (
+                    <li key={c.code} className="flex gap-2 text-sm">
+                      <Badge variant="outline" className="font-semibold flex-shrink-0">{c.code}</Badge>
+                      <span className="text-slate-600">{c.label}</span>
+                    </li>
+                  ))}
+                </ul>
               </CardContent>
             </Card>
           )}
@@ -484,18 +464,7 @@ function TeacherSpecialEdView({
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div>
                       <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Κωδικοί προβλημάτων</p>
-                      {s.problems.length === 0 ? (
-                        <span className="text-sm text-slate-300">—</span>
-                      ) : (
-                        <div className="flex flex-wrap gap-1.5">
-                          {s.problems.map((c) => (
-                            <Badge key={c.code} variant="outline" className="font-normal" title={c.label}>
-                              <span className="font-semibold">{c.code}</span>
-                              <span className="ml-1.5 text-slate-500">{c.label}</span>
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
+                      <RevealProblemCodes studentId={s.studentId} />
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Διευκολύνσεις</p>
@@ -514,14 +483,8 @@ function TeacherSpecialEdView({
                     </div>
                   </div>
 
-                  {(s.remarks || s.frenchExempt || s.otherExemptions) && (
+                  {(s.frenchExempt || s.otherExemptions) && (
                     <div className="space-y-1.5 border-t border-slate-100 pt-3">
-                      {s.remarks && (
-                        <p className="text-sm text-slate-700">
-                          <span className="text-slate-400">Παρατηρήσεις: </span>
-                          {s.remarks}
-                        </p>
-                      )}
                       {s.frenchExempt && (
                         <Badge variant="outline" className="text-xs">Απαλλαγή Γαλλικών</Badge>
                       )}
