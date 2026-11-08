@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { testAudience, audienceGroupIds, parseStudentTestFilters, rangeEnd, filterAudience, type TaughtStudent } from "@/lib/studentTests";
+import { studentGroupIds, testAudience, audienceGroupIds, parseStudentTestFilters, rangeEnd, filterAudience, type TaughtStudent } from "@/lib/studentTests";
 
 // My groups: homegroup B31 (a, b, c) and the elective FYS (a, d from B32).
 const students: TaughtStudent[] = [
@@ -91,5 +91,20 @@ describe("filterAudience", () => {
   it("with «only partial», keeps a test only if a remaining group is partial", () => {
     expect(filterAudience(rows, { ...f, partialOnly: true })).toHaveLength(2);
     expect(filterAudience(rows, { ...f, groupId: "B31", partialOnly: true })).toBeNull();
+  });
+});
+
+describe("studentGroupIds", () => {
+  it("lists the homegroup and the subject groups", () => {
+    expect(studentGroupIds("B31", ["FYS", "ΧΗΜ"])).toEqual(["B31", "FYS", "ΧΗΜ"]);
+  });
+
+  it("counts a group once when a subject-group row repeats the homegroup", () => {
+    expect(studentGroupIds("B31", ["B31", "FYS"])).toEqual(["B31", "FYS"]);
+  });
+
+  it("works without a homegroup", () => {
+    expect(studentGroupIds(null, ["FYS"])).toEqual(["FYS"]);
+    expect(studentGroupIds(undefined, [])).toEqual([]);
   });
 });

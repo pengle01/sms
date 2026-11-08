@@ -4,6 +4,14 @@
 // subject groups. Seen from each of my groups, a test can concern the whole
 // group or only some of its students (e.g. those taking an elective).
 
+/**
+ * Every group a student sits tests in, each once: a subject-group row can repeat
+ * the student's own homegroup, and its tests must not be counted twice.
+ */
+export function studentGroupIds(homegroupId: string | null | undefined, subjectGroupIds: readonly string[]): string[] {
+  return [...new Set([...(homegroupId ? [homegroupId] : []), ...subjectGroupIds])];
+}
+
 export interface TaughtStudent {
   id: string;
   /** Every group the student belongs to: homegroup + subject groups. */

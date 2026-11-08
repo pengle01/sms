@@ -239,7 +239,18 @@ describe("buildPlan", () => {
     expect(entries.some((e) => e.kind === "SWAP")).toBe(false);
   });
 
-  it("merges support classes back to their regular class", () => {
+  it.each(["ΣΤ_ΕΓ2_ΜΑΘ1", "ΑΣΤ_ΜΕ2_ΕΛΛ"])("merges support class %s back to its regular class", (groupName) => {
+    const entries = buildPlan(
+      planInput({
+        slots: [slot({ staffId: "a", period: 2, groupName })],
+        teachers: [teacher({ staffId: "a" })],
+        requests: [absence("a")],
+      })
+    );
+    expect(entries[0]!.kind).toBe("SUPPORT_MERGE");
+  });
+
+  it("does not treat a group merely starting with ΣΤ as a support class", () => {
     const entries = buildPlan(
       planInput({
         slots: [slot({ staffId: "a", period: 2, groupName: "ΣΤ1" })],
@@ -247,7 +258,7 @@ describe("buildPlan", () => {
         requests: [absence("a")],
       })
     );
-    expect(entries[0]!.kind).toBe("SUPPORT_MERGE");
+    expect(entries[0]!.kind).not.toBe("SUPPORT_MERGE");
   });
 
   it("covers with a free, eligible teacher and records the rank trace", () => {

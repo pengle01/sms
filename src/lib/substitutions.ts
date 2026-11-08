@@ -22,6 +22,7 @@
 // not a room, so it is never a relocation target).
 
 import { pickFreeRoom, type Room } from "@/lib/rooms";
+import { parseSupportGroup } from "@/lib/specialEd";
 
 export type SubRequestType = "ABSENCE" | "EXEMPTION" | "ROOM_CHANGE";
 
@@ -303,8 +304,8 @@ export function buildPlan(input: BuildPlanInput): PlanEntryDraft[] {
       continue;
     }
 
-    // 4. SUPPORT_MERGE — support classes (ΣΤ…)
-    if (v.slot.groupName.startsWith("ΣΤ")) {
+    // 4. SUPPORT_MERGE — support classes (ΣΤ_… and ΑΣΤ_…)
+    if (parseSupportGroup(v.slot.groupName)) {
       entries.push({
         kind: "SUPPORT_MERGE",
         ...baseFields(v),

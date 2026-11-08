@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/server/auth";
 import { revalidatePath } from "next/cache";
 import { utcMidnight } from "@/lib/dates";
+import { studentGroupIds } from "@/lib/studentTests";
 import { getActiveTermInfo, getMaxTestsPerWeek } from "@/lib/schoolConfig";
 import { isSchoolClosed } from "@/lib/calendar";
 import { TestType } from "@/generated/prisma/client";
@@ -151,10 +152,7 @@ export async function scheduleTest(data: {
   const conflicts: TestConflict[] = [];
 
   for (const s of students) {
-    const groups = [
-      ...(s.groupId ? [s.groupId] : []),
-      ...s.subjectGroups.map((sg) => sg.groupId),
-    ];
+    const groups = studentGroupIds(s.groupId, s.subjectGroups.map((sg) => sg.groupId));
     const studentWeekTests = groups.flatMap((gId) => testsByGroupId.get(gId) ?? []);
     const studentDayTests = studentWeekTests.filter(
       (t) => t.date.getTime() === targetDate.getTime()
