@@ -5,7 +5,7 @@ import { notificationsRouter } from "./notifications";
 import { gradesRouter } from "./grades";
 import { noticesRouter } from "./notices";
 import { settingsRouter } from "./settings";
-import { studentsRouter, parentsRouter } from "./students";
+import { parentsRouter } from "./students";
 import { groupsRouter } from "./groups";
 import { preferencesRouter } from "./preferences";
 import { accessCodesRouter } from "./accessCodes";
@@ -22,7 +22,6 @@ export const appRouter = createTRPCRouter({
   grades: gradesRouter,
   notices: noticesRouter,
   settings: settingsRouter,
-  students: studentsRouter,
   parents: parentsRouter,
   groups: groupsRouter,
   preferences: preferencesRouter,
