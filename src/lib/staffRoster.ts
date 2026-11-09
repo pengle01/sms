@@ -11,6 +11,15 @@ export type RosterProfile = {
 };
 
 /**
+ * The claims that reserve a name: only those awaiting a decision. An approved
+ * claim has done its job — the profile's login protects the name from then on —
+ * so once an admin unlinks that login the name is free to claim again.
+ */
+export function pendingClaimNames(claims: readonly { staffName: string; status: string }[]): string[] {
+  return claims.filter((c) => c.status === "PENDING").map((c) => c.staffName);
+}
+
+/**
  * The names offered in the sign-up and claim pickers.
  *
  * Two sources, unioned:
@@ -24,7 +33,8 @@ export type RosterProfile = {
  *    of the first.
  *
  * Minus, in both cases, a name already spoken for: held by a profile with a
- * live login, or carrying a claim that has not been rejected.
+ * live login, or carrying a claim still waiting for approval (see
+ * pendingClaimNames).
  */
 export function availableStaffNames(input: {
   profiles: RosterProfile[];

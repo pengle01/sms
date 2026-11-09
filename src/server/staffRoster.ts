@@ -1,5 +1,5 @@
 import { db } from "@/server/db";
-import { availableStaffNames } from "@/lib/staffRoster";
+import { availableStaffNames, pendingClaimNames } from "@/lib/staffRoster";
 
 /**
  * Schedule names a person may still claim. Shared by the public sign-up page,
@@ -17,16 +17,13 @@ export async function loadAvailableStaffNames(): Promise<string[]> {
       select: { staffName: true },
       distinct: ["staffName"],
     }),
-    db.teacherClaim.findMany({
-      where: { status: { not: "REJECTED" } },
-      select: { staffName: true },
-    }),
+    db.teacherClaim.findMany({ select: { staffName: true, status: true } }),
   ]);
 
   return availableStaffNames({
     profiles: profiles.map((p) => ({ ...p, leftTimetable: p.leftTimetableAt !== null })),
     slotNames: slots.map((s) => s.staffName),
-    claimedNames: claims.map((c) => c.staffName),
+    claimedNames: pendingClaimNames(claims),
   });
 }
 

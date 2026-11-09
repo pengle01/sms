@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { availableStaffNames } from "@/lib/staffRoster";
+import { availableStaffNames, pendingClaimNames } from "@/lib/staffRoster";
 
 const call = (input: Partial<Parameters<typeof availableStaffNames>[0]>) =>
   availableStaffNames({ profiles: [], slotNames: [], claimedNames: [], ...input });
@@ -28,7 +28,7 @@ describe("availableStaffNames", () => {
     })).toEqual([]);
   });
 
-  it("excludes a name with a pending or approved claim", () => {
+  it("excludes a name the claims list reserves", () => {
     expect(call({
       profiles: [{ scheduleName: "Μ-ΑΡΝΟΣ Σ.", userId: null }],
       claimedNames: ["Μ-ΑΡΝΟΣ Σ."],
@@ -97,5 +97,39 @@ describe("availableStaffNames — teachers who left the timetable", () => {
         slotNames: ["Χ-ΑΛΛΟΣ Γ."],
       }),
     ).toEqual(["Φ-ΝΕΟΣ Β.", "Χ-ΑΛΛΟΣ Γ."]);
+  });
+});
+
+describe("pendingClaimNames", () => {
+  it("reserves a name only while its claim awaits approval", () => {
+    expect(
+      pendingClaimNames([
+        { staffName: "Α", status: "PENDING" },
+        { staffName: "Β", status: "APPROVED" },
+        { staffName: "Γ", status: "REJECTED" },
+      ]),
+    ).toEqual(["Α"]);
+  });
+
+  it("offers an unlinked name again though an earlier holder's claim was approved", () => {
+    const claims = [{ staffName: "Δ-ΝΕΟΣ", status: "APPROVED" }];
+    expect(
+      availableStaffNames({
+        profiles: [{ scheduleName: "Δ-ΝΕΟΣ", userId: null }],
+        slotNames: [],
+        claimedNames: pendingClaimNames(claims),
+      }),
+    ).toEqual(["Δ-ΝΕΟΣ"]);
+  });
+
+  it("keeps a name with a login off the list even with an approved claim", () => {
+    const claims = [{ staffName: "Δ-ΠΑΛΙΟΣ", status: "APPROVED" }];
+    expect(
+      availableStaffNames({
+        profiles: [{ scheduleName: "Δ-ΠΑΛΙΟΣ", userId: "u1" }],
+        slotNames: [],
+        claimedNames: pendingClaimNames(claims),
+      }),
+    ).toEqual([]);
   });
 });

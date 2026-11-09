@@ -68,7 +68,7 @@ export async function registerAction(_prev: RegisterState, formData: FormData): 
       return fail("errorStaffNameNotFound");
     }
     const existing = await db.teacherClaim.findFirst({
-      where: { staffName, status: { not: "REJECTED" } },
+      where: { staffName, status: "PENDING" },
     });
     if (existing) return fail("errorStaffNameTaken");
   }
