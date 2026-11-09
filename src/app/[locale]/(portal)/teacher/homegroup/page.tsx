@@ -54,6 +54,7 @@ export default async function HomegroupPage({
   if (!session) redirect(`/${locale}/login/staff`);
 
   const t = await getTranslations("investigate");
+  const tVisits = await getTranslations("visitHours");
   const groups = await groupsForStaff(session.user.id);
 
   if (groups.length === 0) {
@@ -183,6 +184,13 @@ export default async function HomegroupPage({
         </div>
         </div>
       </div>
+
+      <Link
+        href={`/${locale}/teacher/homegroup/visits?groupId=${activeGroup.id}`}
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 hover:underline"
+      >
+        {tVisits("title")}
+      </Link>
 
       {/* «Εβδομάδα»: step through the weeks, never past this one */}
       {isWeek && (() => {

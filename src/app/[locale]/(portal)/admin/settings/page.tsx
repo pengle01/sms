@@ -14,6 +14,7 @@ import { getRooms } from "@/server/rooms";
 import { getSpecialEdCodeTables } from "@/server/specialEd";
 import { getTranslations } from "next-intl/server";
 import { ChaperoneListCard } from "./ChaperoneListCard";
+import { VisitScheduleCard } from "./VisitScheduleCard";
 
 export default async function AdminSettingsPage({
   params,
@@ -261,6 +262,11 @@ export default async function AdminSettingsPage({
       {/* «Συνοδοί»: the uploaded chaperone ↔ student list */}
       <div className="max-w-2xl">
         <ChaperoneListCard />
+      </div>
+
+      {/* «Πρόγραμμα επισκέψεων γονέων»: the uploaded visit schedule */}
+      <div className="max-w-2xl">
+        <VisitScheduleCard />
       </div>
 
       <Card className="max-w-sm">

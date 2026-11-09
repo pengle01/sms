@@ -17,6 +17,7 @@ export async function GuardianStudentCards({
   studentIds,
   basePath,
   showSchedule = false,
+  showVisits = false,
   showGrades = true,
 }: {
   locale: string;
@@ -24,10 +25,13 @@ export async function GuardianStudentCards({
   basePath: string;
   /** A «Πρόγραμμα» link to the student's week with today's changes. */
   showSchedule?: boolean;
+  /** The «Πρόγραμμα επισκέψεων» link — parents only, never chaperones. */
+  showVisits?: boolean;
   /** The «Βαθμοί» link — off for chaperones, who never see grades. */
   showGrades?: boolean;
 }) {
   const t = await getTranslations({ locale, namespace: "parentChildren" });
+  const tVisits = await getTranslations({ locale, namespace: "visitHours" });
   const [curYear, curMonth] = localDateStr().split("-").map(Number) as [number, number];
   const thisMonthStart = monthStart(curYear, curMonth);
 
@@ -104,6 +108,15 @@ export async function GuardianStudentCards({
                   >
                     <CalendarDays className="w-3.5 h-3.5" />
                     {t("linkSchedule")}
+                  </Link>
+                )}
+                {showVisits && (
+                  <Link
+                    href={`${basePath}/${s.id}/visits`}
+                    className="flex items-center justify-center gap-1.5 h-9 rounded-lg border border-slate-200 text-slate-600 text-xs font-medium hover:bg-slate-50"
+                  >
+                    <CalendarDays className="w-3.5 h-3.5" />
+                    {tVisits("title")}
                   </Link>
                 )}
                 <div className="flex gap-2">

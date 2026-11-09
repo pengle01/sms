@@ -292,6 +292,8 @@ model StaffProfile {
   ddkAwards               DdkAward[]              @relation("DdkAwarder")
   conversations           Conversation[]
   roomsMaintained         RoomMaintainer[]
+  visitHours              VisitHour[]
+  visitHourMatches        VisitHourMatch[]
   addedLessons            AddedLesson[]
   breakDutyPosts          DutyPostAssignment[]
   breakDutyChecked        DutyCheck[]          @relation("DutyCheckChecker")
@@ -1659,4 +1661,35 @@ model LessonNote {
 
   @@unique([authorId, groupId, period, date])
   @@index([authorId, date])
+}
+
+// «Πρόγραμμα επισκέψεων γονέων»: the school's uploaded sheet, replaced whole by
+// each upload. A row with no staff record is on no list. A phone is kept only
+// for headteachers (ΒΔ / ΒΔΑ); the sheet's other numbers are never stored.
+model VisitHour {
+  id             String        @id @default(cuid())
+  staffProfileId String?
+  staffProfile   StaffProfile? @relation(fields: [staffProfileId], references: [id], onDelete: SetNull)
+  entryKey       String
+  fileName       String
+  section        String
+  slotText       String
+  dayOfWeek      Int?
+  period         Int?
+  startTime      String?
+  endTime        String?
+  byAppointment  Boolean       @default(false)
+  phone          String?
+  sortOrder      Int           @default(0)
+  createdAt      DateTime      @default(now())
+
+  @@index([staffProfileId])
+}
+
+// The admin's manual matches between a sheet row and a staff record, remembered
+// for the next upload.
+model VisitHourMatch {
+  entryKey       String       @id
+  staffProfileId String
+  staffProfile   StaffProfile @relation(fields: [staffProfileId], references: [id], onDelete: Cascade)
 }

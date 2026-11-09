@@ -24,6 +24,7 @@ import { Fragment } from "react";
 import { groupByPeriod } from "@/lib/periods";
 import { coverMarkedKeys, markedKey } from "@/lib/coverMarked";
 import { getTranslations } from "next-intl/server";
+import { visitHourText } from "@/components/visits/VisitList";
 import { RefreshAfterAttendance } from "@/components/attendance/RefreshAfterAttendance";
 
 function resolveFirstName(...candidates: (string | null | undefined)[]): string {
@@ -225,6 +226,15 @@ export default async function TeacherDashboardPage({
   // No break duty on a weekend or a day the school is closed.
   const dutyToday = !isWeekend && !isHolidayType(todaySpecialDay) ? dutyDays.get(todayDow) ?? [] : [];
   const dowNames = t.raw("dowFull") as string[];
+  const tVisits = await getTranslations("visitHours");
+  const myVisitHours = staff
+    ? await db.visitHour.findMany({
+        where: { staffProfileId: staff.id },
+        select: { slotText: true, dayOfWeek: true, period: true, startTime: true, endTime: true, byAppointment: true, phone: true },
+        orderBy: { sortOrder: "asc" },
+      })
+    : [];
+  const myVisitTexts = await Promise.all(myVisitHours.map(visitHourText));
 
   return (
     <div className="space-y-6">
@@ -237,6 +247,25 @@ export default async function TeacherDashboardPage({
       </div>
 
       <AnnouncementsCard announcements={announcements} />
+
+      {/* «Πρόγραμμα επισκέψεων γονέων»: this teacher's own hour */}
+      {myVisitHours.length > 0 && (
+        <div
+          className={`rounded-xl border px-5 py-3 ${
+            myVisitHours.some((h) => h.dayOfWeek === todayDow)
+              ? "border-emerald-300 bg-emerald-50"
+              : "border-slate-200 bg-white"
+          }`}
+        >
+          <p className="text-sm font-semibold text-slate-800">{tVisits("myHours")}</p>
+          {myVisitHours.map((h, i) => (
+            <p key={i} className="text-sm text-slate-700 mt-0.5">
+              {myVisitTexts[i]}
+              {h.dayOfWeek === todayDow && <span className="ml-2 text-xs font-medium text-emerald-700">{tVisits("today")}</span>}
+            </p>
+          ))}
+        </div>
+      )}
 
       {/* «Η εφημερία μου» — that they have break duty today, and where; otherwise the week's duty days */}
       {dutyToday.length > 0 ? (
