@@ -1372,6 +1372,13 @@
     "thisWeek": "this week",
     "lowGradesHint": "Test grades below 10 (out of 20) in the period",
     "colActivityAbsences": "Due to activities",
+    "detailPeriod": "P{period}",
+    "detailActivity": "Activity: {name}",
+    "detailMinutes": "{minutes} min",
+    "detailInProgress": "in progress",
+    "detailPending": "Pending",
+    "detailEmpty": "Nothing recorded for this period.",
+    "detailNone": "Nothing recorded for {count} students.",
     "activityAbsencesHint": "Of the absences, those while the student was on a school activity (they still count as absences)."
   },
   "specialEd": {

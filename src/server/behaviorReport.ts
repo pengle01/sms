@@ -10,6 +10,8 @@ import { GRADE_PASS } from "@/lib/grades";
 import { weekMonday, weekRange } from "@/lib/behaviorWeek";
 import { activityForAbsence } from "@/lib/activities";
 import { activityIndexFor } from "@/server/activityAbsences";
+import { resolutionSummary } from "@/lib/referralLabels";
+import { buildDetailLines, type BehaviorColumn, type DetailAtt } from "@/lib/behaviorDetail";
 import {
   analyzeStudent,
   riskScore,
@@ -53,9 +55,9 @@ export async function groupsForStaff(userId: string): Promise<AccessibleGroup[]>
 export type BehaviorWindow = "week" | "30" | "term" | "year";
 export const BEHAVIOR_WINDOWS: BehaviorWindow[] = ["week", "30", "term", "year"];
 
-/** The window from a URL value; default the current τετράμηνο. */
+/** The window from a URL value; default the current week. */
 export function parseBehaviorWindow(v: string | undefined): BehaviorWindow {
-  return BEHAVIOR_WINDOWS.includes(v as BehaviorWindow) ? (v as BehaviorWindow) : "term";
+  return BEHAVIOR_WINDOWS.includes(v as BehaviorWindow) ? (v as BehaviorWindow) : "week";
 }
 
 /**
@@ -87,6 +89,87 @@ export async function behaviorWindowSince(window: BehaviorWindow): Promise<Date>
 /** ISO weekday 1=Mon … 7=Sun from a @db.Date (UTC-midnight) value. */
 function isoWeekday(d: Date): number {
   return ((d.getUTCDay() + 6) % 7) + 1;
+}
+
+const ATT_SELECT = {
+  studentId: true,
+  date: true,
+  status: true,
+  waived: true,
+  isAutoAbsent: true,
+  minutesDelayed: true,
+  intercalaryPeriod: true,
+  courseId: true,
+  course: { select: { nameEl: true, name: true } },
+  timetableSlot: {
+    select: { period: true, dayOfWeek: true, courseId: true, course: { select: { nameEl: true, name: true } } },
+  },
+} as const;
+
+type AttRow = {
+  date: Date;
+  status: AttRecord["status"];
+  waived: boolean;
+  isAutoAbsent: boolean;
+  intercalaryPeriod: number | null;
+  courseId: string | null;
+  course: { nameEl: string; name: string } | null;
+  timetableSlot: {
+    period: number;
+    dayOfWeek: number;
+    courseId: string;
+    course: { nameEl: string; name: string };
+  } | null;
+};
+
+/** One attendance row as the flags and the column reports read it. */
+function toAttRecord(a: AttRow): AttRecord {
+  return {
+    date: localDateStr(a.date),
+    dayOfWeek: a.timetableSlot?.dayOfWeek ?? isoWeekday(a.date),
+    period: a.timetableSlot?.period ?? a.intercalaryPeriod ?? null,
+    courseId: a.courseId ?? a.timetableSlot?.courseId ?? null,
+    courseName: a.course
+      ? a.course.nameEl || a.course.name
+      : a.timetableSlot
+        ? a.timetableSlot.course.nameEl || a.timetableSlot.course.name
+        : null,
+    status: a.status,
+    waived: a.waived,
+    isAutoAbsent: a.isAutoAbsent,
+  };
+}
+
+type ToiletRow = { date: Date; period: number | null; groupId: string | null; leftAt: Date; returnedAt: Date | null };
+
+/** Toilet breaks as records, each lesson found from its group, weekday and period. */
+async function toToiletRecords(breaks: readonly ToiletRow[]): Promise<ToiletRecord[]> {
+  const groupIds = [...new Set(breaks.map((b) => b.groupId).filter(Boolean))] as string[];
+  const slotCourse = new Map<string, { id: string; name: string }>();
+  if (groupIds.length) {
+    const slots = await db.timetableSlot.findMany({
+      where: { groupId: { in: groupIds } },
+      select: { groupId: true, dayOfWeek: true, period: true, courseId: true, course: { select: { nameEl: true, name: true } } },
+    });
+    for (const s of slots) {
+      slotCourse.set(`${s.groupId}:${s.dayOfWeek}:${s.period}`, {
+        id: s.courseId,
+        name: s.course.nameEl || s.course.name,
+      });
+    }
+  }
+  return breaks.map((b) => {
+    const course = b.groupId && b.period != null
+      ? slotCourse.get(`${b.groupId}:${isoWeekday(b.date)}:${b.period}`)
+      : undefined;
+    return {
+      date: localDateStr(b.date),
+      period: b.period,
+      minutes: b.returnedAt ? Math.round((b.returnedAt.getTime() - b.leftAt.getTime()) / 60000) : null,
+      courseId: course?.id ?? null,
+      courseName: course?.name ?? null,
+    };
+  });
 }
 
 export type BehaviorTotals = {
@@ -136,19 +219,7 @@ export async function loadGroupBehavior(groupId: string, since: Date | null, unt
   const [attendance, toiletBreaks, referralCounts, lowGradeCounts] = await Promise.all([
     db.attendance.findMany({
       where: { studentId: { in: studentIds }, ...(dateFilter ? { date: dateFilter } : {}) },
-      select: {
-        studentId: true,
-        date: true,
-        status: true,
-        waived: true,
-        isAutoAbsent: true,
-        intercalaryPeriod: true,
-        courseId: true,
-        course: { select: { nameEl: true, name: true } },
-        timetableSlot: {
-          select: { period: true, dayOfWeek: true, courseId: true, course: { select: { nameEl: true, name: true } } },
-        },
-      },
+      select: ATT_SELECT,
     }),
     db.toiletBreak.findMany({
       where: { studentId: { in: studentIds }, ...(dateFilter ? { date: dateFilter } : {}) },
@@ -173,22 +244,6 @@ export async function loadGroupBehavior(groupId: string, since: Date | null, unt
     }),
   ]);
 
-  // Map a toilet break's (group, weekday, period) to its lesson via the timetable.
-  const toiletGroupIds = [...new Set(toiletBreaks.map((b) => b.groupId).filter(Boolean))] as string[];
-  const slotCourse = new Map<string, { id: string; name: string }>();
-  if (toiletGroupIds.length) {
-    const slots = await db.timetableSlot.findMany({
-      where: { groupId: { in: toiletGroupIds } },
-      select: { groupId: true, dayOfWeek: true, period: true, courseId: true, course: { select: { nameEl: true, name: true } } },
-    });
-    for (const s of slots) {
-      slotCourse.set(`${s.groupId}:${s.dayOfWeek}:${s.period}`, {
-        id: s.courseId,
-        name: s.course.nameEl || s.course.name,
-      });
-    }
-  }
-
   // Absences while on an activity (matched by student, date and period).
   const absentRows = attendance.filter((a) => !a.waived && (a.status === "ABSENT" || a.isAutoAbsent));
   const activities = await activityIndexFor(absentRows);
@@ -206,43 +261,20 @@ export async function loadGroupBehavior(groupId: string, since: Date | null, unt
   // Bucket attendance + toilet records per student.
   const attByStudent = new Map<string, AttRecord[]>();
   for (const a of attendance) {
-    const period = a.timetableSlot?.period ?? a.intercalaryPeriod ?? null;
-    const rec: AttRecord = {
-      date: localDateStr(a.date),
-      dayOfWeek: a.timetableSlot?.dayOfWeek ?? isoWeekday(a.date),
-      period,
-      courseId: a.courseId ?? a.timetableSlot?.courseId ?? null,
-      courseName: a.course
-        ? a.course.nameEl || a.course.name
-        : a.timetableSlot
-          ? a.timetableSlot.course.nameEl || a.timetableSlot.course.name
-          : null,
-      status: a.status,
-      waived: a.waived,
-      isAutoAbsent: a.isAutoAbsent,
-    };
+    const rec = toAttRecord(a);
     const arr = attByStudent.get(a.studentId);
     if (arr) arr.push(rec);
     else attByStudent.set(a.studentId, [rec]);
   }
 
   const toiletByStudent = new Map<string, ToiletRecord[]>();
-  for (const b of toiletBreaks) {
-    const minutes = b.returnedAt ? Math.round((b.returnedAt.getTime() - b.leftAt.getTime()) / 60000) : null;
-    const course = b.groupId && b.period != null
-      ? slotCourse.get(`${b.groupId}:${isoWeekday(b.date)}:${b.period}`)
-      : undefined;
-    const rec: ToiletRecord = {
-      date: localDateStr(b.date),
-      period: b.period,
-      minutes,
-      courseId: course?.id ?? null,
-      courseName: course?.name ?? null,
-    };
+  const toiletRecords = await toToiletRecords(toiletBreaks);
+  toiletBreaks.forEach((b, i) => {
+    const rec = toiletRecords[i]!;
     const arr = toiletByStudent.get(b.studentId);
     if (arr) arr.push(rec);
     else toiletByStudent.set(b.studentId, [rec]);
-  }
+  });
 
   const rows: StudentBehaviorRow[] = students.map((s) => {
     const att = attByStudent.get(s.id) ?? [];
@@ -273,4 +305,114 @@ export async function loadGroupBehavior(groupId: string, since: Date | null, unt
   });
 
   return { groupName: group?.name ?? "—", students: rows };
+}
+
+/**
+ * What stands behind one column of a homegroup's students table over a window:
+ * one line per student with every entry. The same filters as loadGroupBehavior.
+ */
+export async function loadGroupColumnDetail(
+  groupId: string,
+  column: BehaviorColumn,
+  since: Date | null,
+  until: Date | null = null,
+) {
+  const rows = await db.studentProfile.findMany({
+    where: { groupId, user: { isActive: true } },
+    select: { id: true, studentId: true, user: { select: { name: true } } },
+  });
+  const students = rows.map((s) => ({ id: s.id, name: s.user?.name ?? "—", registryNo: s.studentId }));
+  const studentIds = students.map((s) => s.id);
+  if (studentIds.length === 0) return { lines: [], none: 0 };
+  const date = since || until ? { ...(since ? { gte: since } : {}), ...(until ? { lte: until } : {}) } : undefined;
+
+  if (column === "toilet") {
+    const breaks = await db.toiletBreak.findMany({
+      where: { studentId: { in: studentIds }, ...(date ? { date } : {}) },
+      select: { studentId: true, date: true, period: true, groupId: true, leftAt: true, returnedAt: true },
+    });
+    const records = await toToiletRecords(breaks);
+    return buildDetailLines({
+      column,
+      students,
+      toilet: records.map((r, i) => ({ ...r, studentId: breaks[i]!.studentId })),
+    });
+  }
+
+  if (column === "referrals") {
+    const referrals = await db.referralStudent.findMany({
+      where: { studentId: { in: studentIds }, referral: { isDraft: false, ...(date ? { date } : {}) } },
+      select: {
+        studentId: true,
+        status: true,
+        referral: { select: { id: true, number: true, date: true } },
+        resolution: {
+          select: {
+            action: true,
+            suspendedDays: true,
+            suspendedPeriods: true,
+            decidedDays: true,
+            expulsionDays: { select: { date: true, fromPeriod: true, toPeriod: true } },
+          },
+        },
+      },
+    });
+    return buildDetailLines({
+      column,
+      students,
+      other: referrals.map((r) => ({
+        studentId: r.studentId,
+        entry: {
+          date: localDateStr(r.referral.date),
+          referralId: r.referral.id,
+          referralNumber: r.referral.number,
+          outcome: r.status === "RESOLVED" && r.resolution ? resolutionSummary(r.resolution) : null,
+        },
+      })),
+    });
+  }
+
+  if (column === "lowGrades") {
+    const grades = await db.testGrade.findMany({
+      where: {
+        studentId: { in: studentIds },
+        value: { lt: GRADE_PASS },
+        ...(date ? { testSchedule: { date } } : {}),
+      },
+      select: {
+        studentId: true,
+        value: true,
+        testSchedule: { select: { date: true, course: { select: { nameEl: true, name: true } } } },
+      },
+    });
+    return buildDetailLines({
+      column,
+      students,
+      other: grades.map((g) => ({
+        studentId: g.studentId,
+        entry: {
+          date: localDateStr(g.testSchedule.date),
+          label: g.testSchedule.course.nameEl || g.testSchedule.course.name,
+          mark: String(g.value),
+        },
+      })),
+    });
+  }
+
+  const attendance = await db.attendance.findMany({
+    where: { studentId: { in: studentIds }, ...(date ? { date } : {}) },
+    select: ATT_SELECT,
+  });
+  const absent = attendance.filter((a) => !a.waived && (a.status === "ABSENT" || a.isAutoAbsent));
+  const activities = await activityIndexFor(absent);
+  const records: DetailAtt[] = attendance.map((a) => {
+    const rec = toAttRecord(a);
+    return {
+      ...rec,
+      studentId: a.studentId,
+      minutesDelayed: a.minutesDelayed,
+      activity: activityForAbsence(activities, a.studentId, a.date.toISOString().slice(0, 10), rec.period),
+    };
+  });
+  return buildDetailLines({ column, students, attendance: records });
 }

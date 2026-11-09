@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTranslations } from "next-intl/server";
-import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Printer, RotateCcw, Search, Users } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Printer, RotateCcw, Search, Users } from "lucide-react";
 import {
   BEHAVIOR_WINDOWS,
   behaviorRange,
@@ -14,6 +14,7 @@ import {
   type StudentBehaviorRow,
 } from "@/server/behaviorReport";
 import type { Flag, Severity } from "@/lib/behaviorFlags";
+import type { BehaviorColumn } from "@/lib/behaviorDetail";
 import { db } from "@/server/db";
 import { fmtDisplayDate, localDateStr, utcMidnight } from "@/lib/dates";
 import { addDaysIso } from "@/lib/attendanceLock";
@@ -42,7 +43,7 @@ export default async function HomegroupPage({
 }) {
   const { locale } = await params;
   const { groupId: selectedGroupId, window: windowParam, week: weekParam } = await searchParams;
-  // default: the current τετράμηνο, from the super-admin settings
+  // default: the current week
   const windowKey = parseBehaviorWindow(windowParam);
   // «Εβδομάδα»: the Monday of the week shown (default this week)
   const todayIso = localDateStr();
@@ -120,6 +121,9 @@ export default async function HomegroupPage({
     `/${locale}/teacher/students/${s.studentProfileId}?from=homegroup&groupId=${activeGroup.id}`;
 
   const groupParam = `&groupId=${activeGroup.id}`;
+  // A column's report for this window; a student's number lands on their line.
+  const reportHref = (column: BehaviorColumn, studentId?: string) =>
+    `/${locale}/teacher/homegroup/report?${windowQs}${groupParam}&column=${column}${studentId ? `#s-${studentId}` : ""}`;
   const printHref = (all: boolean) =>
     `/${locale}/teacher/homegroup/print?${windowQs}${groupParam}${all ? "&all=1" : ""}&auto=1`;
 
@@ -242,13 +246,17 @@ export default async function HomegroupPage({
 
       {/* Watchlist */}
       <Card className="border-amber-200">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2 text-amber-800">
-            <AlertTriangle className="w-4 h-4" />
-            {t("watchlistTitle", { count: watchlist.length })}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
+        <details className="group">
+          <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2 text-amber-800">
+                <AlertTriangle className="w-4 h-4" />
+                {t("watchlistTitle", { count: watchlist.length })}
+                <ChevronDown className="w-4 h-4 ml-auto transition-transform group-open:rotate-180" />
+              </CardTitle>
+            </CardHeader>
+          </summary>
+          <CardContent className="space-y-3 pt-3">
           {watchlist.length === 0 && <p className="text-sm text-slate-400">{t("watchlistEmpty")}</p>}
           {watchlist.map((s) => (
             <div key={s.studentProfileId} className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between border-b border-slate-50 pb-3 last:border-0 last:pb-0">
@@ -311,7 +319,8 @@ export default async function HomegroupPage({
               </div>
             </details>
           )}
-        </CardContent>
+          </CardContent>
+        </details>
       </Card>
 
       {/* Full roster */}
@@ -327,13 +336,13 @@ export default async function HomegroupPage({
             <thead>
               <tr className="border-b border-slate-100 text-xs font-semibold text-slate-400 uppercase tracking-wide">
                 <th className="text-left px-5 py-3">{t("colStudent")}</th>
-                <th className="text-center px-3 py-3">{t("colAbsences")}</th>
-                <th className="text-center px-3 py-3" title={t("activityAbsencesHint")}>{t("colActivityAbsences")}</th>
-                <th className="text-center px-3 py-3">{t("colPartial")}</th>
-                <th className="text-center px-3 py-3">{t("colLates")}</th>
-                <th className="text-center px-3 py-3">{t("colReferrals")}</th>
-                <th className="text-center px-3 py-3">{t("colToilet")}</th>
-                <th className="text-center px-3 py-3" title={t("lowGradesHint")}>{t("colLowGrades")}</th>
+                <th className="text-center px-3 py-3"><Link href={reportHref("absences")} className="hover:text-emerald-700 hover:underline">{t("colAbsences")}</Link></th>
+                <th className="text-center px-3 py-3" title={t("activityAbsencesHint")}><Link href={reportHref("activityAbsences")} className="hover:text-emerald-700 hover:underline">{t("colActivityAbsences")}</Link></th>
+                <th className="text-center px-3 py-3"><Link href={reportHref("partialDays")} className="hover:text-emerald-700 hover:underline">{t("colPartial")}</Link></th>
+                <th className="text-center px-3 py-3"><Link href={reportHref("lates")} className="hover:text-emerald-700 hover:underline">{t("colLates")}</Link></th>
+                <th className="text-center px-3 py-3"><Link href={reportHref("referrals")} className="hover:text-emerald-700 hover:underline">{t("colReferrals")}</Link></th>
+                <th className="text-center px-3 py-3"><Link href={reportHref("toilet")} className="hover:text-emerald-700 hover:underline">{t("colToilet")}</Link></th>
+                <th className="text-center px-3 py-3" title={t("lowGradesHint")}><Link href={reportHref("lowGrades")} className="hover:text-emerald-700 hover:underline">{t("colLowGrades")}</Link></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -344,20 +353,20 @@ export default async function HomegroupPage({
                       {s.studentName}
                     </Link>
                   </td>
-                  <NumCell value={s.totals.absences} warn={5} alert={10} />
+                  <NumCell value={s.totals.absences} warn={5} alert={10} href={reportHref("absences", s.studentProfileId)} />
                   {/* Of the absences, those while on an activity — informative, never a warning */}
                   <td className="px-3 py-3 text-center tabular-nums">
                     {s.totals.activityAbsences > 0 ? (
-                      <span className="text-violet-700 font-medium">{s.totals.activityAbsences}</span>
+                      <Link href={reportHref("activityAbsences", s.studentProfileId)} className="text-violet-700 font-medium hover:underline">{s.totals.activityAbsences}</Link>
                     ) : (
                       <span className="text-slate-200">—</span>
                     )}
                   </td>
-                  <NumCell value={s.totals.partialDays} warn={2} alert={3} />
-                  <NumCell value={s.totals.lates} warn={4} alert={8} />
-                  <NumCell value={s.totals.referrals} warn={1} alert={3} tone="orange" />
-                  <NumCell value={s.totals.toilet} warn={5} alert={10} />
-                  <NumCell value={s.totals.lowGrades} warn={1} alert={3} tone="orange" />
+                  <NumCell value={s.totals.partialDays} warn={2} alert={3} href={reportHref("partialDays", s.studentProfileId)} />
+                  <NumCell value={s.totals.lates} warn={4} alert={8} href={reportHref("lates", s.studentProfileId)} />
+                  <NumCell value={s.totals.referrals} warn={1} alert={3} tone="orange" href={reportHref("referrals", s.studentProfileId)} />
+                  <NumCell value={s.totals.toilet} warn={5} alert={10} href={reportHref("toilet", s.studentProfileId)} />
+                  <NumCell value={s.totals.lowGrades} warn={1} alert={3} tone="orange" href={reportHref("lowGrades", s.studentProfileId)} />
                 </tr>
               ))}
               {students.length === 0 && (
@@ -378,7 +387,9 @@ function NumCell({
   warn,
   alert,
   tone = "amber",
+  href,
 }: {
+  href: string;
   value: number;
   warn: number;
   alert: number;
@@ -401,9 +412,9 @@ function NumCell({
         : "bg-slate-100 text-slate-600";
   return (
     <td className="px-3 py-3 text-center">
-      <span className={`inline-flex items-center justify-center min-w-7 h-7 px-2 rounded-full text-xs font-bold ${cls}`}>
+      <Link href={href} className={`inline-flex items-center justify-center min-w-7 h-7 px-2 rounded-full text-xs font-bold hover:ring-2 hover:ring-slate-300 ${cls}`}>
         {value}
-      </span>
+      </Link>
     </td>
   );
 }

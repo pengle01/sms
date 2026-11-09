@@ -83,7 +83,7 @@ export const THRESHOLDS = {
 const SEVERITY_WEIGHT: Record<Severity, number> = { low: 1, medium: 2, high: 3 };
 
 /** Counts as an absence for pattern purposes (unexcused, on-record). */
-function isAbsence(r: AttRecord): boolean {
+export function isAbsence(r: AttRecord): boolean {
   return !r.waived && (r.status === "ABSENT" || !!r.isAutoAbsent);
 }
 
@@ -93,24 +93,33 @@ function isAtSchool(r: AttRecord): boolean {
 }
 
 /**
+ * The dates where the student was ABSENT for ≥1 period but PRESENT/LATE for ≥1
+ * other, with the absent periods. Shared by the flag and the column's report.
+ */
+export function partialDayDates(att: readonly AttRecord[]): { date: string; absentPeriods: number[] }[] {
+  const byDate = new Map<string, { absent: number[]; present: boolean }>();
+  for (const r of att) {
+    if (r.period == null) continue; // need period granularity
+    let d = byDate.get(r.date);
+    if (!d) {
+      d = { absent: [], present: false };
+      byDate.set(r.date, d);
+    }
+    if (isAbsence(r)) d.absent.push(r.period);
+    else if (isAtSchool(r)) d.present = true;
+  }
+  return [...byDate.entries()]
+    .filter(([, d]) => d.absent.length > 0 && d.present)
+    .map(([date, d]) => ({ date, absentPeriods: [...d.absent].sort((a, b) => a - b) }));
+}
+
+/**
  * Partial-day absences — a date where the student was ABSENT for ≥1 period but
  * PRESENT/LATE for ≥1 other period: at school, skipping isolated periods.
  * Raised early (one incident already flags, low severity).
  */
 export function partialDayAbsences(att: AttRecord[]): Flag | null {
-  const byDate = new Map<string, { absent: boolean; present: boolean }>();
-  for (const r of att) {
-    if (r.period == null) continue; // need period granularity
-    let d = byDate.get(r.date);
-    if (!d) {
-      d = { absent: false, present: false };
-      byDate.set(r.date, d);
-    }
-    if (isAbsence(r)) d.absent = true;
-    else if (isAtSchool(r)) d.present = true;
-  }
-  let count = 0;
-  for (const d of byDate.values()) if (d.absent && d.present) count += 1;
+  const count = partialDayDates(att).length;
   if (count < 1) return null;
   const severity: Severity =
     count >= THRESHOLDS.partialDayHigh ? "high" : count >= THRESHOLDS.partialDayMedium ? "medium" : "low";

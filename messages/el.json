@@ -1372,6 +1372,13 @@
     "thisWeek": "τρέχουσα εβδομάδα",
     "lowGradesHint": "Βαθμοί διαγωνισμάτων κάτω από 10 (στα 20) στην περίοδο",
     "colActivityAbsences": "Λόγω δραστηριότητας",
+    "detailPeriod": "Π{period}",
+    "detailActivity": "Δραστηριότητα: {name}",
+    "detailMinutes": "{minutes}′",
+    "detailInProgress": "σε εξέλιξη",
+    "detailPending": "Εκκρεμής",
+    "detailEmpty": "Καμία καταγραφή για αυτή την περίοδο.",
+    "detailNone": "Χωρίς καταγραφές: {count} μαθητές/τριες.",
     "activityAbsencesHint": "Από τις απουσίες, όσες έγιναν ενώ ο/η μαθητής/τρια ήταν σε δραστηριότητα του σχολείου (μετρούν και στις απουσίες)."
   },
   "specialEd": {
