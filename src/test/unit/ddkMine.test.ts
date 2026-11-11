@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { groupAwardsByActivity, myDdkSummary, type MyDdkAward } from "@/lib/ddk";
+import { duplicateDdkAwards, groupAwardsByActivity, myDdkSummary, type MyDdkAward } from "@/lib/ddk";
 
 const act = (id: string, iso: string, name = id) => ({ id, name, date: new Date(`${iso}T00:00:00.000Z`) });
 const award = (id: string, studentId: string, studentName: string, points: number, activity: MyDdkAward["activity"]): MyDdkAward => ({
@@ -38,5 +38,34 @@ describe("Τα ΔΔΚ μου", () => {
 
   it("returns nothing for no awards", () => {
     expect(groupAwardsByActivity([])).toEqual([]);
+  });
+});
+
+describe("duplicateDdkAwards", () => {
+  const row = (id: string, activityId: string | null, studentId: string, minute: number) => ({
+    id, activityId, studentId, createdAt: new Date(Date.UTC(2026, 10, 10, 9, minute)),
+  });
+
+  it("keeps each student's first row per activity and returns the repeats", () => {
+    const { ids, byActivity } = duplicateDdkAwards([
+      row("a", "act", "s1", 0),
+      row("b", "act", "s1", 1),
+      row("c", "act", "s1", 2),
+      row("d", "act", "s2", 0),
+      row("e", "act", "s2", 3),
+      row("f", "other", "s1", 5),
+    ]);
+    expect(ids.sort()).toEqual(["b", "c", "e"]);
+    expect(byActivity.get("act")).toEqual({ extra: 3, students: 2 });
+    expect(byActivity.has("other")).toBe(false);
+  });
+
+  it("ignores rows of deleted activities and finds nothing when each student has one row", () => {
+    expect(duplicateDdkAwards([row("a", null, "s1", 0), row("b", null, "s1", 1)]).ids).toEqual([]);
+    expect(duplicateDdkAwards([row("a", "act", "s1", 0), row("b", "act", "s2", 0)]).ids).toEqual([]);
+  });
+
+  it("keeps the earliest even when the rows arrive out of order", () => {
+    expect(duplicateDdkAwards([row("late", "act", "s1", 9), row("early", "act", "s1", 1)]).ids).toEqual(["late"]);
   });
 });

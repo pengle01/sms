@@ -1,6 +1,6 @@
 import { db } from "@/server/db";
 import type { SchoolYearRanges } from "@/lib/schoolYear";
-import { COUNTED_DDK_AWARD, fullAttendanceAward, ddkCategoryLabel, FULL_ATTENDANCE_CODE, FULL_ATTENDANCE_POINTS, type DerivedAward, type MyDdkAward } from "@/lib/ddk";
+import { COUNTED_DDK_AWARD, duplicateDdkAwards, fullAttendanceAward, ddkCategoryLabel, FULL_ATTENDANCE_CODE, FULL_ATTENDANCE_POINTS, type DerivedAward, type MyDdkAward } from "@/lib/ddk";
 import { staffDisplayName } from "@/lib/staffName";
 import { carriedAbsenceMap } from "@/server/carriedAbsences";
 
@@ -158,4 +158,29 @@ export async function myDdkYears(staffId: string): Promise<string[]> {
     distinct: ["schoolYear"],
   });
   return rows.map((r) => r.schoolYear).sort().reverse();
+}
+
+/** Activities whose ΔΔΚ was saved more than once, for «Έλεγχοι». */
+export async function loadDdkDuplicates() {
+  const rows = await db.ddkAward.findMany({
+    where: COUNTED_DDK_AWARD,
+    select: { id: true, activityId: true, studentId: true, createdAt: true },
+  });
+  const { ids, byActivity } = duplicateDdkAwards(rows);
+  if (ids.length === 0) return { ids, activities: [] };
+  const activities = await db.activity.findMany({
+    where: { id: { in: [...byActivity.keys()] } },
+    select: { id: true, name: true, date: true, filer: { select: { scheduleName: true, user: { select: { name: true } } } } },
+    orderBy: { date: "desc" },
+  });
+  return {
+    ids,
+    activities: activities.map((a) => ({
+      id: a.id,
+      name: a.name,
+      date: a.date,
+      filer: staffDisplayName(a.filer),
+      ...byActivity.get(a.id)!,
+    })),
+  };
 }

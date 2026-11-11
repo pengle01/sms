@@ -12,6 +12,9 @@ import { computeIntegrityReport } from "@/lib/integrityChecks";
 import { FixStudentGroupsDialog, type GroupOption } from "./FixStudentGroupsDialog";
 import { CleanupRedundantButton } from "./CleanupRedundantButton";
 import { RelinkLessonsButton } from "./RelinkLessonsButton";
+import { RemoveDdkDuplicatesButton } from "./RemoveDdkDuplicatesButton";
+import { loadDdkDuplicates } from "@/server/ddk";
+import { fmtDisplayDate } from "@/lib/dates";
 import { misattachedSlots } from "@/server/staffLink";
 import { DeleteGroupButton } from "@/components/groups/DeleteGroupButton";
 
@@ -26,7 +29,7 @@ export default async function ChecksPage({
 
   const t = await getTranslations("checks");
 
-  const [students, slots, groups, periodsPerDay, smsFlagged, misattached] = await Promise.all([
+  const [students, slots, groups, periodsPerDay, smsFlagged, misattached, ddkDuplicates] = await Promise.all([
     db.studentProfile.findMany({
       where: { user: { isActive: true } },
       select: {
@@ -64,6 +67,7 @@ export default async function ChecksPage({
     }),
     // Lessons attached to an account whose timetable name is different
     misattachedSlots(),
+    loadDdkDuplicates(),
   ]);
 
   const report = computeIntegrityReport({
@@ -104,7 +108,7 @@ export default async function ChecksPage({
         <p className="text-slate-500 text-sm mt-1">{t("subtitle")}</p>
       </div>
 
-      {report.totalIssues === 0 && smsFlagged.length === 0 && misattached.length === 0 ? (
+      {report.totalIssues === 0 && smsFlagged.length === 0 && misattached.length === 0 && ddkDuplicates.ids.length === 0 ? (
         <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-emerald-800">
           <ShieldCheck className="w-6 h-6 shrink-0" />
           <p className="font-medium">{t("noIssues")}</p>
@@ -112,8 +116,36 @@ export default async function ChecksPage({
       ) : (
         <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-amber-800">
           <AlertTriangle className="w-6 h-6 shrink-0" />
-          <p className="font-medium">{t("issueCount", { count: report.totalIssues + smsFlagged.length + misattached.length })}</p>
+          <p className="font-medium">{t("issueCount", { count: report.totalIssues + smsFlagged.length + misattached.length + ddkDuplicates.activities.length })}</p>
         </div>
+      )}
+
+      {/* ΔΔΚ conversions saved more than once: the same student's points repeated */}
+      {ddkDuplicates.ids.length > 0 && (
+        <Card>
+          <CardHeader className="pb-1">
+            <CardTitle className="text-base flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" />
+              {t("ddkDuplicatesTitle")} ({ddkDuplicates.activities.length})
+            </CardTitle>
+            <p className="text-xs text-slate-400 mt-1">{t("ddkDuplicatesHint")}</p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <ul className="divide-y divide-slate-100 text-sm">
+              {ddkDuplicates.activities.map((a) => (
+                <li key={a.id} className="py-1.5 flex flex-wrap items-baseline gap-x-2">
+                  <Link href={`/${locale}/teacher/activities/${a.id}`} className="font-medium text-slate-800 hover:underline">
+                    {a.name}
+                  </Link>
+                  <span className="text-xs text-slate-500">
+                    {fmtDisplayDate(a.date)} · {a.filer} · {t("ddkDuplicatesRow", { students: a.students, extra: a.extra })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <RemoveDdkDuplicatesButton count={ddkDuplicates.ids.length} />
+          </CardContent>
+        </Card>
       )}
 
       {/* Lessons attached to the wrong teacher's account */}

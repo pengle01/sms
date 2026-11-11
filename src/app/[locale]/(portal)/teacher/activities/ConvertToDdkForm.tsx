@@ -1,7 +1,8 @@
 "use client";
 
+import { useFormStatus } from "react-dom";
 import { useMemo, useState } from "react";
-import { Award, ChevronDown } from "lucide-react";
+import { Award, ChevronDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   CONVERTIBLE_CATALOG,
@@ -180,14 +181,7 @@ export function ConvertToDdkForm({
       )}
 
       <div className="flex items-center gap-2">
-        <button
-          type="submit"
-          disabled={!category || awarded === 0}
-          className="inline-flex items-center gap-2 h-9 px-5 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 disabled:opacity-50"
-        >
-          <Award className="w-4 h-4" />
-          Ολοκλήρωση
-        </button>
+        <SubmitButton disabled={!category || awarded === 0} />
         <button
           type="button"
           onClick={() => setOpen(false)}
@@ -197,5 +191,23 @@ export function ConvertToDdkForm({
         </button>
       </div>
     </form>
+  );
+}
+
+/**
+ * «Ολοκλήρωση», inactive while the server saves: a second press would send the
+ * whole conversion again.
+ */
+function SubmitButton({ disabled }: { disabled: boolean }) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={disabled || pending}
+      className="inline-flex items-center gap-2 h-9 px-5 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 disabled:opacity-50"
+    >
+      {pending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Award className="w-4 h-4" />}
+      {pending ? "Αποθήκευση…" : "Ολοκλήρωση"}
+    </button>
   );
 }

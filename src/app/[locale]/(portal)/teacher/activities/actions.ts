@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { authOptions } from "@/server/auth";
 import { isEducator } from "@/lib/rbac";
 import { db } from "@/server/db";
+import { Prisma } from "@/generated/prisma/client";
 import type { Role } from "@/generated/prisma/client";
 import { utcMidnight, normalizeIsoDate } from "@/lib/dates";
 import { weeklyOccurrences } from "@/lib/activities";
@@ -218,7 +219,22 @@ export async function convertActivityToDdk(formData: FormData) {
     });
 
   if (rows.length === 0) return;
-  await db.ddkAward.createMany({ data: rows });
+  // Serializable: two submissions arriving together both see «not converted
+  // yet»; Postgres lets only one of them commit, so points are never doubled.
+  let created = 0;
+  try {
+    created = await db.$transaction(
+      async (tx) => {
+        if (await tx.ddkAward.count({ where: { activityId } })) return 0;
+        return (await tx.ddkAward.createMany({ data: rows })).count;
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2034") return; // the other one won
+    throw e;
+  }
+  if (created === 0) return;
   await writeAudit({
     userId: staff.userId ?? "",
     action: "ddk.convert",

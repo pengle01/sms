@@ -583,6 +583,12 @@
     "guardCta": "Complete profile"
   },
   "checks": {
+    "ddkDuplicatesTitle": "ΔΔΚ saved more than once",
+    "ddkDuplicatesHint": "The same ΔΔΚ conversion was saved several times, so students got the points several times. The fix keeps each student's first entry and deletes the repeats.",
+    "ddkDuplicatesRow": "{students} students, {extra} extra entries",
+    "ddkDuplicatesRemove": "Delete {count} repeats",
+    "ddkDuplicatesConfirm": "Delete {count} repeated ΔΔΚ entries? Each student's first entry stays.",
+    "ddkDuplicatesRemoved": "Deleted {count} repeats.",
     "title": "Data Checks",
     "subtitle": "Timetable coverage and group integrity, computed live",
     "noIssues": "All checks passed — no issues found.",

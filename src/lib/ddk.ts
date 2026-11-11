@@ -332,3 +332,31 @@ export function myDdkSummary(awards: MyDdkAward[]): { awards: number; students: 
  * deleted its points lose their link (activityId → null) and stop counting.
  */
 export const COUNTED_DDK_AWARD = { activityId: { not: null } };
+
+/**
+ * Extra ΔΔΚ rows: the same student given points more than once for one activity
+ * (a conversion saved twice). The earliest row of each pair stays; the rest are
+ * returned for deletion, with how many each activity has.
+ */
+export function duplicateDdkAwards(
+  rows: readonly { id: string; activityId: string | null; studentId: string; createdAt: Date }[],
+): { ids: string[]; byActivity: Map<string, { extra: number; students: number }> } {
+  const groups = new Map<string, typeof rows[number][]>();
+  for (const r of rows) {
+    if (!r.activityId) continue;
+    const key = `${r.activityId}|${r.studentId}`;
+    groups.set(key, [...(groups.get(key) ?? []), r]);
+  }
+  const ids: string[] = [];
+  const byActivity = new Map<string, { extra: number; students: number }>();
+  for (const list of groups.values()) {
+    if (list.length < 2) continue;
+    const [, ...extra] = [...list].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id));
+    ids.push(...extra.map((r) => r.id));
+    const a = byActivity.get(list[0]!.activityId!) ?? { extra: 0, students: 0 };
+    a.extra += extra.length;
+    a.students += 1;
+    byActivity.set(list[0]!.activityId!, a);
+  }
+  return { ids, byActivity };
+}

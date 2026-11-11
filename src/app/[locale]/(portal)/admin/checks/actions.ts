@@ -5,6 +5,7 @@ import { getSuperAdminAuth } from "@/server/authz";
 import { revalidatePath } from "next/cache";
 import { writeAudit, requestMeta } from "@/server/audit";
 import { relinkTimetableSlots } from "@/server/staffLink";
+import { loadDdkDuplicates } from "@/server/ddk";
 
 export type FixResult = { ok: true } | { ok: false; error: string };
 
@@ -153,4 +154,26 @@ export async function relinkLessons(): Promise<{ ok: true; released: number; lin
   });
   revalidatePath("/", "layout");
   return { ok: true, released, linked };
+}
+
+/**
+ * Delete the extra ΔΔΚ rows of conversions saved more than once: for each
+ * activity and student the first row stays. Recomputed here, never trusted from
+ * the page.
+ */
+export async function removeDuplicateDdkAwards(): Promise<{ ok: true; removed: number } | { ok: false; error: string }> {
+  const adminId = await requireSuperAdmin();
+  if (!adminId) return { ok: false, error: "Forbidden" };
+  const { ids, activities } = await loadDdkDuplicates();
+  if (ids.length === 0) return { ok: true, removed: 0 };
+  const { count } = await db.ddkAward.deleteMany({ where: { id: { in: ids } } });
+  await writeAudit({
+    userId: adminId,
+    action: "ddk.removeDuplicates",
+    resource: "DdkAward",
+    details: { removed: count, activities: activities.map((a) => ({ id: a.id, extra: a.extra })) },
+    ...(await requestMeta()),
+  });
+  revalidatePath("/", "layout");
+  return { ok: true, removed: count };
 }
