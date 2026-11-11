@@ -316,6 +316,7 @@ export async function loadGroupColumnDetail(
   column: BehaviorColumn,
   since: Date | null,
   until: Date | null = null,
+  carriedFor?: (studentIds: string[]) => Promise<ReadonlyMap<string, number>>,
 ) {
   const rows = await db.studentProfile.findMany({
     where: { groupId, user: { isActive: true } },
@@ -414,5 +415,6 @@ export async function loadGroupColumnDetail(
       activity: activityForAbsence(activities, a.studentId, a.date.toISOString().slice(0, 10), rec.period),
     };
   });
-  return buildDetailLines({ column, students, attendance: records });
+  const carried = column === "absences" && carriedFor ? await carriedFor(studentIds) : undefined;
+  return buildDetailLines({ column, students, attendance: records, carried });
 }

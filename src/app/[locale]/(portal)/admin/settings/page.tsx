@@ -15,6 +15,7 @@ import { getSpecialEdCodeTables } from "@/server/specialEd";
 import { getTranslations } from "next-intl/server";
 import { ChaperoneListCard } from "./ChaperoneListCard";
 import { VisitScheduleCard } from "./VisitScheduleCard";
+import { CarriedAbsencesCard } from "./CarriedAbsencesCard";
 
 export default async function AdminSettingsPage({
   params,
@@ -267,6 +268,11 @@ export default async function AdminSettingsPage({
       {/* «Πρόγραμμα επισκέψεων γονέων»: the uploaded visit schedule */}
       <div className="max-w-2xl">
         <VisitScheduleCard />
+      </div>
+
+      {/* «Απουσίες προηγούμενου συστήματος»: temporary, this school year only */}
+      <div className="max-w-2xl">
+        <CarriedAbsencesCard />
       </div>
 
       <Card className="max-w-sm">

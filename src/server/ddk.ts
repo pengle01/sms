@@ -2,6 +2,7 @@ import { db } from "@/server/db";
 import type { SchoolYearRanges } from "@/lib/schoolYear";
 import { fullAttendanceAward, ddkCategoryLabel, FULL_ATTENDANCE_CODE, FULL_ATTENDANCE_POINTS, type DerivedAward, type MyDdkAward } from "@/lib/ddk";
 import { staffDisplayName } from "@/lib/staffName";
+import { carriedAbsenceMap } from "@/server/carriedAbsences";
 
 // Official wording for the auto full-attendance entry (per the printed report).
 export const FULL_ATTENDANCE_DESC =
@@ -36,10 +37,12 @@ export async function fullAttendanceAwardForStudent(
   studentId: string,
   ranges: SchoolYearRanges
 ): Promise<DerivedAward | null> {
-  const absences = await db.attendance.count({
-    where: { studentId, ...absenceWhere(ranges) },
-  });
-  return fullAttendanceAward(absences);
+  const [absences, carried] = await Promise.all([
+    db.attendance.count({ where: { studentId, ...absenceWhere(ranges) } }),
+    carriedAbsenceMap([studentId], ranges),
+  ]);
+  // Absences carried over from the previous system count too.
+  return fullAttendanceAward(absences + (carried.get(studentId) ?? 0));
 }
 
 /** Auto full-attendance awards for many students, keyed by studentId. Students
@@ -57,9 +60,10 @@ export async function fullAttendanceAwards(
     _count: { _all: true },
   });
   const counts = new Map(grouped.map((g) => [g.studentId, g._count._all]));
+  const carried = await carriedAbsenceMap(studentIds, ranges);
 
   for (const id of studentIds) {
-    result.set(id, fullAttendanceAward(counts.get(id) ?? 0));
+    result.set(id, fullAttendanceAward((counts.get(id) ?? 0) + (carried.get(id) ?? 0)));
   }
   return result;
 }

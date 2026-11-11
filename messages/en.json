@@ -1378,6 +1378,7 @@
     "detailInProgress": "in progress",
     "detailPending": "Pending",
     "detailEmpty": "Nothing recorded for this period.",
+    "detailCarried": "Previous system: {count} (up to {date})",
     "detailNone": "Nothing recorded for {count} students.",
     "activityAbsencesHint": "Of the absences, those while the student was on a school activity (they still count as absences)."
   },
@@ -1459,6 +1460,7 @@
     "expulsionDays": "{count}d",
     "pending": "Pending",
     "absences": "Absences ({count})",
+    "carriedLine": "From the previous system: {count} (up to {date})",
     "noAbsences": "No absences.",
     "periodShort": "P{period}",
     "exitPermit": "Exit permit",
@@ -1501,6 +1503,7 @@
     "contactAdmin": "Contact the system administrator — your schedule may not have been imported yet."
   },
   "parentAttendance": {
+    "yearAbsences": "Absences this school year",
     "subtitle": "Attendance · {group}",
     "noGroup": "No group",
     "absences": "Absences",
@@ -2732,5 +2735,25 @@
     "day_3": "Wednesday",
     "day_4": "Thursday",
     "day_5": "Friday"
+  },
+  "carriedAbsences": {
+    "title": "Absences from the previous system",
+    "explain": "Periods of absence from the previous system, up to {until}. They count only for the {year} school year and stop counting when the year changes.",
+    "state": "Set for {students} students, {periods} periods in total. Last updated {date}.",
+    "empty": "No numbers uploaded.",
+    "uploadHint": "Excel with «Αρ. Μητρώου» and «Απουσίες» (periods) columns. Each file updates only the students it lists; 0 removes the number.",
+    "previewSummary": "Before saving:",
+    "savedSummary": "Saved:",
+    "summary": "new {added}, changed {changed}, removed {removed}, unchanged {unchanged}.",
+    "save": "Save",
+    "deleteAll": "Delete all",
+    "deleteConfirm": "Delete all absence numbers from the previous system?",
+    "deleted": "Deleted {count} entries.",
+    "err_noFile": "Choose a file.",
+    "err_empty": "The file has no rows.",
+    "err_noRegistryColumn": "No «Αρ. Μητρώου» column found.",
+    "err_noCountColumn": "No «Απουσίες» column found.",
+    "err_badRows": "File refused: rows with a wrong or repeated number (row: registry number):",
+    "err_unknownRegistry": "File refused: unknown registry numbers:"
   }
 }

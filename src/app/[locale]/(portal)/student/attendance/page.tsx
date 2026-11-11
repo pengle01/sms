@@ -10,6 +10,7 @@ import { monthStart, monthEnd, localDateStr, fmtDisplayDate } from "@/lib/dates"
 import { staffDisplayName } from "@/lib/staffName";
 import { termOf } from "@/lib/schoolYear";
 import { getSchoolYear } from "@/lib/schoolConfig";
+import { carriedAbsenceFor } from "@/server/carriedAbsences";
 import { getTranslations } from "next-intl/server";
 import { matchesSearch, suggestionList } from "@/lib/textSearch";
 import { pickQueryString } from "@/lib/listFilters";
@@ -102,6 +103,10 @@ export default async function StudentAttendancePage({
     if (isAbsent) tally[term].absent++;
     else if (isLate) tally[term].late++;
   }
+  // Absences carried over from the previous system: all in the Α΄ τετράμηνο.
+  const carried = await carriedAbsenceFor(student.id, ranges);
+  yearTotals.absent += carried;
+  tally.TERM1.absent += carried;
 
   const prevYear = month === 1 ? year - 1 : year;
   const prevMonth = month === 1 ? 12 : month - 1;

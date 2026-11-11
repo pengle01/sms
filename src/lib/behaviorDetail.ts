@@ -42,6 +42,8 @@ export interface DetailLine {
   studentName: string;
   registryNo: string;
   entries: DetailEntry[];
+  /** Absences carried over from the previous system (absences column only). */
+  carried: number;
 }
 
 export type DetailStudent = { id: string; name: string; registryNo: string };
@@ -88,6 +90,8 @@ export function buildDetailLines(input: {
   attendance?: readonly DetailAtt[];
   toilet?: readonly DetailToilet[];
   other?: readonly { studentId: string; entry: DetailEntry }[];
+  /** Carried-over absences per student, already limited to the period shown. */
+  carried?: ReadonlyMap<string, number>;
 }): { lines: DetailLine[]; none: number } {
   const entriesFor = (id: string): DetailEntry[] => {
     if (input.column === "toilet") {
@@ -112,8 +116,9 @@ export function buildDetailLines(input: {
       studentName: s.name,
       registryNo: s.registryNo,
       entries: entriesFor(s.id).sort(byDateThenPeriod),
+      carried: input.column === "absences" ? input.carried?.get(s.id) ?? 0 : 0,
     }))
-    .filter((l) => l.entries.length > 0)
+    .filter((l) => l.entries.length > 0 || l.carried > 0)
     .sort((a, b) => a.studentName.localeCompare(b.studentName, "el"));
   return { lines, none: input.students.length - lines.length };
 }

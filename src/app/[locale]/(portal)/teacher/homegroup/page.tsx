@@ -15,6 +15,8 @@ import {
 } from "@/server/behaviorReport";
 import type { Flag, Severity } from "@/lib/behaviorFlags";
 import type { BehaviorColumn } from "@/lib/behaviorDetail";
+import { carriedAbsencesForWindow } from "@/server/carriedAbsences";
+import { formatAbsenceTotal } from "@/lib/carriedAbsences";
 import { db } from "@/server/db";
 import { fmtDisplayDate, localDateStr, utcMidnight } from "@/lib/dates";
 import { addDaysIso } from "@/lib/attendanceLock";
@@ -72,6 +74,8 @@ export default async function HomegroupPage({
   // Window boundary drawn from the super-admin's School Year & Terms settings.
   const range = await behaviorRange(windowKey, week);
   const { students } = await loadGroupBehavior(activeGroup.id, range.since, range.until);
+  // Absences carried over from the previous system: shown in the total only, never in the flags or colours.
+  const carried = await carriedAbsencesForWindow(students.map((s) => s.studentProfileId), windowKey);
   // Resolving is done over a running window, not one past week.
   const canResolve = canResolveWatchlist(activeGroup.roles) && !isWeek;
   // Students the deputy marked as resolved — they stay off the list until a
@@ -353,7 +357,7 @@ export default async function HomegroupPage({
                       {s.studentName}
                     </Link>
                   </td>
-                  <NumCell value={s.totals.absences} warn={5} alert={10} href={reportHref("absences", s.studentProfileId)} />
+                  <NumCell value={s.totals.absences} warn={5} alert={10} href={reportHref("absences", s.studentProfileId)} label={formatAbsenceTotal(carried.get(s.studentProfileId) ?? 0, s.totals.absences)} />
                   {/* Of the absences, those while on an activity — informative, never a warning */}
                   <td className="px-3 py-3 text-center tabular-nums">
                     {s.totals.activityAbsences > 0 ? (
@@ -388,14 +392,17 @@ function NumCell({
   alert,
   tone = "amber",
   href,
+  label,
 }: {
   href: string;
+  /** Shown instead of the value (e.g. «12 + 22 = 34»); the colour still follows `value`. */
+  label?: string;
   value: number;
   warn: number;
   alert: number;
   tone?: "amber" | "orange";
 }) {
-  if (value === 0) {
+  if (value === 0 && !label?.includes("+")) {
     return (
       <td className="px-3 py-3 text-center">
         <span className="text-slate-200">—</span>
@@ -412,8 +419,8 @@ function NumCell({
         : "bg-slate-100 text-slate-600";
   return (
     <td className="px-3 py-3 text-center">
-      <Link href={href} className={`inline-flex items-center justify-center min-w-7 h-7 px-2 rounded-full text-xs font-bold hover:ring-2 hover:ring-slate-300 ${cls}`}>
-        {value}
+      <Link href={href} className={`inline-flex items-center justify-center min-w-7 h-7 px-2 rounded-full text-xs font-bold whitespace-nowrap hover:ring-2 hover:ring-slate-300 ${cls}`}>
+        {label ?? value}
       </Link>
     </td>
   );

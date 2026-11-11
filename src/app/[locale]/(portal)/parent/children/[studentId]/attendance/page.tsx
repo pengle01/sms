@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { ClipboardList, LogOut } from "lucide-react";
 import { monthStart, monthEnd, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { staffDisplayName } from "@/lib/staffName";
+import { getSchoolYear } from "@/lib/schoolConfig";
+import { carriedAbsenceFor } from "@/server/carriedAbsences";
 
 export default async function ParentChildAttendancePage({
   params,
@@ -63,6 +65,20 @@ export default async function ParentChildAttendancePage({
     where: { studentId, waived: false, date: { gte: start, lt: end } },
   });
   const absent = allRecords.filter((r) => r.status === "ABSENT" || r.isAutoAbsent).length;
+  // The school year's total, including absences carried over from the previous
+  // system — parents see only the total, never the split.
+  const ranges = await getSchoolYear();
+  const [yearAbsent, carried] = await Promise.all([
+    db.attendance.count({
+      where: {
+        studentId,
+        waived: false,
+        date: { gte: ranges.yearStart, lt: ranges.yearEnd },
+        OR: [{ status: "ABSENT" }, { isAutoAbsent: true }],
+      },
+    }),
+    carriedAbsenceFor(studentId, ranges),
+  ]);
   const late = allRecords.filter((r) => r.status === "LATE").length;
 
   const prevYear = month === 1 ? year - 1 : year;
@@ -106,6 +122,12 @@ export default async function ParentChildAttendancePage({
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold text-amber-600">{late}</p>
             <p className="text-xs text-slate-500 mt-1">{t("lateArrivals")}</p>
+          </CardContent>
+        </Card>
+        <Card className="col-span-2">
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold text-red-700">{yearAbsent + carried}</p>
+            <p className="text-xs text-slate-500 mt-1">{t("yearAbsences")}</p>
           </CardContent>
         </Card>
       </div>

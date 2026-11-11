@@ -16,6 +16,8 @@ import type { Role } from "@/generated/prisma/client";
 import { resolutionSummary } from "@/lib/referralLabels";
 import { shownLessonKind } from "@/lib/attendanceLesson";
 import { staffDisplayName } from "@/lib/staffName";
+import { carriedAbsenceFor } from "@/server/carriedAbsences";
+import { CARRIED_UNTIL, carriedAppliesToRange, formatAbsenceTotal } from "@/lib/carriedAbsences";
 
 const ABSENCE_BADGE: Record<string, { label: string; cls: string }> = {
   ABSENT: { label: "Απουσία", cls: "text-red-700 bg-red-50 border-red-200" },
@@ -94,6 +96,9 @@ export default async function StudentRecordsPage({
     : "all";
 
   const dateRange = { gte: from, lte: to };
+  // Absences carried over from the previous system, when the range reaches back to them.
+  const carried =
+    carriedAppliesToRange(fromStr, toStr, yearStartStr) ? await carriedAbsenceFor(studentId, ranges) : 0;
   const wantAbs = cat === "all" || cat === "absences";
   const wantRef = cat === "all" || cat === "referrals";
   const wantToilet = cat === "all" || cat === "toilet";
@@ -194,10 +199,19 @@ export default async function StudentRecordsPage({
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <CalendarX className="w-4 h-4" /> Απουσίες ({absences.length})
+              <CalendarX className="w-4 h-4" /> Απουσίες (
+              {carried > 0
+                ? formatAbsenceTotal(carried, absences.filter((a) => a.status === "ABSENT" || a.isAutoAbsent).length)
+                : absences.length}
+              )
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {carried > 0 && (
+              <p className="mb-2 text-sm text-slate-600">
+                Από το προηγούμενο σύστημα: {carried} (έως {fmtDisplayDate(CARRIED_UNTIL)})
+              </p>
+            )}
             {absences.length === 0 ? (
               <p className="text-sm text-slate-400">Καμία απουσία στο διάστημα.</p>
             ) : (

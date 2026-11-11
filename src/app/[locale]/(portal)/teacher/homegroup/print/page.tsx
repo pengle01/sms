@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import { carriedAbsencesForWindow } from "@/server/carriedAbsences";
+import { formatAbsenceTotal } from "@/lib/carriedAbsences";
 import { getTranslations } from "next-intl/server";
 import { getActiveAuth } from "@/server/authz";
 import { getSchoolName } from "@/lib/schoolConfig";
@@ -60,6 +62,11 @@ export default async function HomegroupPrintPage({
     windowKey === "week" ? t("windowWeek") : windowKey === "30" ? t("windowDays", { days: 30 }) : windowKey === "term" ? t("windowTerm") : t("windowYear");
   // A past week ends on its Sunday; the other windows run to today.
   const today = until ?? getNow();
+  // Absences carried over from the previous system, for the year / Α΄ term only.
+  const carried = await carriedAbsencesForWindow(
+    reports.flatMap((r) => r.students.map((s) => s.studentProfileId)),
+    windowKey,
+  );
 
   return (
     <>
@@ -102,7 +109,9 @@ export default async function HomegroupPrintPage({
                       <td className="border border-black px-2 py-1">{s.studentName}</td>
                       {COLUMNS.map((c) => (
                         <td key={c.key} className="border border-black px-1.5 py-1 text-center tabular-nums">
-                          {s.totals[c.key] || ""}
+                          {c.key === "absences" && (carried.get(s.studentProfileId) ?? 0) > 0
+                            ? formatAbsenceTotal(carried.get(s.studentProfileId)!, s.totals.absences)
+                            : s.totals[c.key] || ""}
                         </td>
                       ))}
                     </tr>

@@ -13,6 +13,8 @@ import { BEHAVIOR_COLUMNS, parseBehaviorColumn, type BehaviorColumn, type Detail
 import { parseBehaviorWeek, weekMonday } from "@/lib/behaviorWeek";
 import { fmtDisplayDate, getNow, localDateStr } from "@/lib/dates";
 import { getSchoolName } from "@/lib/schoolConfig";
+import { carriedAbsencesForWindow } from "@/server/carriedAbsences";
+import { CARRIED_UNTIL, formatAbsenceTotal } from "@/lib/carriedAbsences";
 import { PrintBar } from "@/app/[locale]/(portal)/teacher/substitutions/plan/[date]/print/PrintBar";
 
 const COLUMN_LABEL: Record<BehaviorColumn, string> = {
@@ -56,7 +58,7 @@ export default async function HomegroupColumnReportPage({
   const [t, schoolName, { lines, none }] = await Promise.all([
     getTranslations("investigate"),
     getSchoolName(),
-    loadGroupColumnDetail(active.id, column, since, until),
+    loadGroupColumnDetail(active.id, column, since, until, (ids) => carriedAbsencesForWindow(ids, windowKey)),
   ]);
   const windowLabel = (w: string) =>
     w === "week" ? t("windowWeek") : w === "30" ? t("windowDays", { days: 30 }) : w === "term" ? t("windowTerm") : t("windowYear");
@@ -134,10 +136,15 @@ export default async function HomegroupColumnReportPage({
                 <p className="text-sm font-semibold text-slate-900">
                   {l.studentName}
                   <span className="ml-2 inline-flex min-w-6 justify-center rounded-full bg-slate-100 px-1.5 text-xs font-bold text-slate-700">
-                    {l.entries.length}
+                    {formatAbsenceTotal(l.carried, l.entries.length)}
                   </span>
                 </p>
                 <div className="mt-1 flex flex-wrap gap-1.5">
+                  {l.carried > 0 && (
+                    <span className="rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-xs text-amber-800 print:border-slate-400">
+                      {t("detailCarried", { count: l.carried, date: fmtDisplayDate(CARRIED_UNTIL) })}
+                    </span>
+                  )}
                   {l.entries.map((e, i) =>
                     e.referralId ? (
                       <Link

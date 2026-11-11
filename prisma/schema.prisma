@@ -336,6 +336,7 @@ model StudentProfile {
   smsFlagged               Boolean                   @default(false)
   smsFlagReason            String?
   chaperoneListEntries     ChaperoneListEntry[]
+  carriedAbsences          CarriedAbsence[]
 }
 
 model ParentProfile {
@@ -1692,4 +1693,20 @@ model VisitHourMatch {
   entryKey       String       @id
   staffProfileId String
   staffProfile   StaffProfile @relation(fields: [staffProfileId], references: [id], onDelete: Cascade)
+}
+
+// Absences from the school's previous system: periods missed before the app
+// started recording (19/10/2026), one number per student and school year. Read
+// only for the current school year, so it stops counting when the year changes.
+// Temporary — see src/lib/carriedAbsences.ts.
+model CarriedAbsence {
+  id          String         @id @default(cuid())
+  studentId   String
+  student     StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  schoolYear  String
+  periods     Int
+  updatedById String?
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([studentId, schoolYear])
 }

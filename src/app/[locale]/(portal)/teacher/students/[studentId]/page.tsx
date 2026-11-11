@@ -24,6 +24,8 @@ import { PrintTimetableLink } from "@/components/timetable/PrintTimetableLink";
 import { resolutionSummary } from "@/lib/referralLabels";
 import { shownLessonKind } from "@/lib/attendanceLesson";
 import { staffDisplayName } from "@/lib/staffName";
+import { carriedAbsenceFor } from "@/server/carriedAbsences";
+import { CARRIED_UNTIL, formatAbsenceTotal } from "@/lib/carriedAbsences";
 
 function Field({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;
@@ -192,6 +194,9 @@ export default async function StudentSchedulePage({
       ])
     : [[], [], [], []];
 
+  // Absences carried over from the previous system (this school year only).
+  const carriedAbsences = canViewFull ? await carriedAbsenceFor(studentId, yearRanges) : 0;
+
   type SlotEntry = (typeof allSlots)[0] & { isSubjectGroup?: boolean };
   const grid: Record<number, Record<number, SlotEntry>> = {};
 
@@ -324,10 +329,20 @@ export default async function StudentSchedulePage({
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <CalendarX className="w-4 h-4" /> {t("absences", { count: absenceRecords.length })}
+                <CalendarX className="w-4 h-4" />{" "}
+                {t("absences", {
+                  count: carriedAbsences > 0
+                    ? formatAbsenceTotal(carriedAbsences, absenceRecords.filter((a) => a.status === "ABSENT" || a.isAutoAbsent).length)
+                    : absenceRecords.length,
+                })}
               </CardTitle>
             </CardHeader>
             <CardContent>
+              {carriedAbsences > 0 && (
+                <p className="mb-2 text-sm text-slate-600">
+                  {t("carriedLine", { count: carriedAbsences, date: fmtDisplayDate(CARRIED_UNTIL) })}
+                </p>
+              )}
               {absenceRecords.length === 0 ? (
                 <p className="text-sm text-slate-400">{t("noAbsences")}</p>
               ) : (
