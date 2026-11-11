@@ -3,7 +3,7 @@ import { getActiveAuth } from "@/server/authz";
 import { isEducator } from "@/lib/rbac";
 import { redirect, notFound } from "next/navigation";
 import { getSchoolName, getSchoolYear } from "@/lib/schoolConfig";
-import { ddkRating, schoolYearLabel, FULL_ATTENDANCE_POINTS } from "@/lib/ddk";
+import { COUNTED_DDK_AWARD, ddkRating, schoolYearLabel, FULL_ATTENDANCE_POINTS } from "@/lib/ddk";
 import { fullAttendanceAwards } from "@/server/ddk";
 import { PrintBar } from "../report/PrintBar";
 
@@ -38,7 +38,7 @@ export default async function DdkPointsPage({
   const ids = students.map((s) => s.id);
 
   const [sums, auto] = await Promise.all([
-    db.ddkAward.groupBy({ by: ["studentId"], where: { studentId: { in: ids }, schoolYear }, _sum: { points: true } }),
+    db.ddkAward.groupBy({ by: ["studentId"], where: { studentId: { in: ids }, schoolYear, ...COUNTED_DDK_AWARD }, _sum: { points: true } }),
     fullAttendanceAwards(ids, ranges),
   ]);
   const sumMap = new Map(sums.map((s) => [s.studentId, s._sum.points ?? 0]));

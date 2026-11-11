@@ -12,7 +12,7 @@ import { breakMinutes } from "@/lib/toilet";
 import { getNow, utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { getPeriodsPerDay, periodsForDow, maxPeriodCount, getSchoolYear } from "@/lib/schoolConfig";
-import { ddkTotal, ddkRating, schoolYearLabel, summarizeBySection, ddkCategoryLabel } from "@/lib/ddk";
+import { COUNTED_DDK_AWARD, ddkTotal, ddkRating, schoolYearLabel, summarizeBySection, ddkCategoryLabel } from "@/lib/ddk";
 import { fullAttendanceAwardForStudent } from "@/server/ddk";
 import { canViewAccessCode } from "@/lib/rbac";
 import { canViewSpecialEdFull } from "@/lib/specialEd";
@@ -246,7 +246,7 @@ export default async function StudentSchedulePage({
   const ddkRanges = yearRanges;
   const ddkSchoolYear = schoolYearLabel(ddkRanges.yearStart.getUTCFullYear());
   const ddkStored = await db.ddkAward.findMany({
-    where: { studentId, schoolYear: ddkSchoolYear },
+    where: { studentId, schoolYear: ddkSchoolYear, ...COUNTED_DDK_AWARD },
     orderBy: { createdAt: "asc" },
   });
   // The Πλήρης Φοίτηση point is computed from absences, not stored.

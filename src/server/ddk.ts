@@ -1,6 +1,6 @@
 import { db } from "@/server/db";
 import type { SchoolYearRanges } from "@/lib/schoolYear";
-import { fullAttendanceAward, ddkCategoryLabel, FULL_ATTENDANCE_CODE, FULL_ATTENDANCE_POINTS, type DerivedAward, type MyDdkAward } from "@/lib/ddk";
+import { COUNTED_DDK_AWARD, fullAttendanceAward, ddkCategoryLabel, FULL_ATTENDANCE_CODE, FULL_ATTENDANCE_POINTS, type DerivedAward, type MyDdkAward } from "@/lib/ddk";
 import { staffDisplayName } from "@/lib/staffName";
 import { carriedAbsenceMap } from "@/server/carriedAbsences";
 
@@ -80,7 +80,7 @@ export async function loadDdkAwardsForStudents(
   if (studentIds.length === 0) return out;
 
   const awards = await db.ddkAward.findMany({
-    where: { studentId: { in: studentIds }, schoolYear },
+    where: { studentId: { in: studentIds }, schoolYear, ...COUNTED_DDK_AWARD },
     include: {
       activity: {
         select: {

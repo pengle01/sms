@@ -31,8 +31,8 @@ describe("Τα ΔΔΚ μου", () => {
     expect(groups[0]!.awards.map((a) => a.studentName)).toEqual(["Ανδρέας", "Μαρία"]);
   });
 
-  it("counts awards, distinct students and points", () => {
-    expect(myDdkSummary(awards)).toEqual({ awards: 4, students: 3, points: 8 });
+  it("counts awards, distinct students and points, leaving out deleted activities", () => {
+    expect(myDdkSummary(awards)).toEqual({ awards: 3, students: 2, points: 6 });
     expect(myDdkSummary([])).toEqual({ awards: 0, students: 0, points: 0 });
   });
 

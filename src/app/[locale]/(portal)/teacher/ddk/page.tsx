@@ -5,10 +5,10 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Award, Printer, BarChart3 } from "lucide-react";
+import { Award, Printer, BarChart3, ListChecks } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getSchoolYear } from "@/lib/schoolConfig";
-import { ddkTotal, ddkRating, schoolYearLabel } from "@/lib/ddk";
+import { COUNTED_DDK_AWARD, ddkTotal, ddkRating, schoolYearLabel } from "@/lib/ddk";
 import { fullAttendanceAwards } from "@/server/ddk";
 
 // The ΔΔΚ coordinator's desk: pick a year + class, see every student's running
@@ -50,7 +50,7 @@ export default async function DdkOverviewPage({
         where: { groupId, user: { isActive: true } },
         include: {
           user: { select: { name: true } },
-          ddkAwards: { where: { schoolYear }, select: { points: true } },
+          ddkAwards: { where: { schoolYear, ...COUNTED_DDK_AWARD }, select: { points: true } },
         },
         orderBy: { user: { name: "asc" } },
       })
@@ -80,7 +80,14 @@ export default async function DdkOverviewPage({
             Δημιουργικότητα · Δράση · Κοινωνική Προσφορά — Σχολική χρονιά {schoolYear}
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
+          <Link
+            href={`/${locale}/teacher/ddk/activities`}
+            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50"
+          >
+            <ListChecks className="w-4 h-4" />
+            Δραστηριότητες
+          </Link>
           <Link
             href={`/${locale}/teacher/ddk/points`}
             target="_blank"

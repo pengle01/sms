@@ -318,9 +318,17 @@ export function groupAwardsByActivity(awards: MyDdkAward[]): MyDdkActivityGroup[
 
 /** Totals for the header: awards, distinct students, points. */
 export function myDdkSummary(awards: MyDdkAward[]): { awards: number; students: number; points: number } {
+  // Points whose activity was deleted are listed for cleaning up, not counted.
+  const counted = awards.filter((a) => a.activity);
   return {
-    awards: awards.length,
-    students: new Set(awards.map((a) => a.studentId)).size,
-    points: ddkTotal(awards),
+    awards: counted.length,
+    students: new Set(counted.map((a) => a.studentId)).size,
+    points: ddkTotal(counted),
   };
 }
+
+/**
+ * ΔΔΚ points that count: those still tied to an activity. When an activity is
+ * deleted its points lose their link (activityId → null) and stop counting.
+ */
+export const COUNTED_DDK_AWARD = { activityId: { not: null } };
