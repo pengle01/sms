@@ -25,7 +25,7 @@ function fmtDay(iso: string): string {
 }
 
 /**
- * The disciplinary decision (ΑΠΟΦΑΣΗ ΠΕΙΘΑΡΧΙΚΟΥ ΜΕΤΡΟΥ), one A4 per student:
+ * The disciplinary decision (ΑΠΟΦΑΣΗ ΠΑΙΔΑΓΩΓΙΚΟΥ ΜΕΤΡΟΥ), one A4 per student:
  * name, homegroup and registry no., the incident, the decision and — for an
  * expulsion — its days and the lessons (subject + teacher) the student misses.
  * `?student=<referralStudentId>` prints just that student.
@@ -196,7 +196,7 @@ export default async function PrintResolutionPage({
               {/* Header */}
               <div className="text-center mb-6 pb-5 border-b-2 border-slate-800">
                 {schoolName && <p className="text-xs uppercase tracking-widest text-slate-500 mb-1">{schoolName}</p>}
-                <h1 className="text-xl font-bold text-slate-900 mt-2">ΑΠΟΦΑΣΗ ΠΕΙΘΑΡΧΙΚΟΥ ΜΕΤΡΟΥ</h1>
+                <h1 className="text-xl font-bold text-slate-900 mt-2">ΑΠΟΦΑΣΗ ΠΑΙΔΑΓΩΓΙΚΟΥ ΜΕΤΡΟΥ</h1>
                 <p className="text-sm font-semibold text-slate-700 mt-1">Αρ. Καταγγελίας: #{referral.number}</p>
                 <p className="text-xs text-slate-500 mt-1">Ημερομηνία έκδοσης: {today}</p>
               </div>
