@@ -10,6 +10,8 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { AttendanceMarkForm } from "./AttendanceMarkForm";
+import { LastInRoomBanner } from "@/components/attendance/LastInRoomBanner";
+import { lastInRoomFor } from "@/server/lastInRoom";
 import { LessonNoteCard } from "../../lesson-notes/LessonNoteCard";
 import { ClaimPicker, LessonSwitcher, ScrollIntoViewOnMount, type ClaimOption } from "./ClaimPicker";
 import { myCoursesWithGroup, type TeachingSlot } from "@/lib/addedLesson";
@@ -380,6 +382,12 @@ export default async function TeacherMarkAttendancePage({
   }
 
   const t = await getTranslations("attendance");
+  // «Τελευταίο μάθημα στην αίθουσα»: today's register of a room's last lesson.
+  const remind = isToday && !isIntercalary && !isExcursion;
+  const [lastRoomOwn, lastRoomClaimed] = await Promise.all([
+    remind && slot ? lastInRoomFor(slot.id, attendanceDateObj) : Promise.resolve(null),
+    remind && claimed ? lastInRoomFor(claimed.slot.id, attendanceDateObj) : Promise.resolve(null),
+  ]);
 
   // The viewer's own private note for this lesson, if any.
   const lessonNote =
@@ -427,6 +435,7 @@ export default async function TeacherMarkAttendancePage({
       </div>
 
       {/* Own lesson */}
+      {groupId && lastRoomOwn && <LastInRoomBanner room={lastRoomOwn} />}
       {groupId && (
         <AttendanceMarkForm
           students={students}
@@ -510,7 +519,8 @@ export default async function TeacherMarkAttendancePage({
             </span>
           </div>
           )}
-          <div className="p-4 bg-white">
+          <div className="p-4 bg-white space-y-3">
+            {lastRoomClaimed && <LastInRoomBanner room={lastRoomClaimed} />}
             <AttendanceMarkForm
               students={claimed.students}
               slot={claimed.added ? { ...claimed.slot, course: { name: claimed.added.name } } : claimed.slot}

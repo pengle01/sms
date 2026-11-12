@@ -2800,5 +2800,9 @@
     "awarded": "to {count} students",
     "notConverted": "Not converted",
     "none": "No activities found."
+  },
+  "lastInRoom": {
+    "message": "Last lesson in this room: switch off the lights, air conditioning and electronic devices, and close the windows.",
+    "room": "Room {room}"
   }
 }
