@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { permitCoversPeriod, permitByStudent, permitContactLabel, permitAbsenceSlots, permitLinkFor } from "@/lib/exitPermit";
+import { permitCoversPeriod, permitByStudent, permitContactLabel, permitAbsenceSlots, permitLinkFor, isPermitPremark } from "@/lib/exitPermit";
 
 const day = (s: string) => new Date(`${s}T00:00:00.000Z`);
 
@@ -137,5 +137,20 @@ describe("permitLinkFor", () => {
 
   it("returns null when no permit covers the student", () => {
     expect(permitLinkFor("ABSENT", undefined)).toBeNull();
+  });
+});
+
+describe("isPermitPremark", () => {
+  it("recognises a flagged pre-mark", () => {
+    expect(isPermitPremark({ staffId: "dep", permitPremarked: true, exitPermit: { issuerId: "dep" } })).toBe(true);
+  });
+
+  it("recognises an older unflagged row saved by the permit's own issuer", () => {
+    expect(isPermitPremark({ staffId: "dep", permitPremarked: false, exitPermit: { issuerId: "dep" } })).toBe(true);
+  });
+
+  it("treats a teacher's own register as a register, permit or not", () => {
+    expect(isPermitPremark({ staffId: "teacher", permitPremarked: false, exitPermit: { issuerId: "dep" } })).toBe(false);
+    expect(isPermitPremark({ staffId: "teacher", permitPremarked: false, exitPermit: null })).toBe(false);
   });
 });

@@ -82,6 +82,26 @@ export function permitLinkFor(
   return status === "ABSENT" && permit ? permit.id : null;
 }
 
+/** The attendance fields isPermitPremark needs — spread into a Prisma select. */
+export const PREMARK_SELECT = {
+  staffId: true,
+  permitPremarked: true,
+  exitPermit: { select: { issuerId: true } },
+} as const;
+
+/**
+ * An absence the exit permit wrote when it was issued, not a register anyone
+ * took. Newer rows carry the flag; older ones are those linked to a permit and
+ * saved by that permit's own issuer. Such a row never makes a lesson «taken».
+ */
+export function isPermitPremark(row: {
+  staffId: string;
+  permitPremarked?: boolean | null;
+  exitPermit?: { issuerId: string } | null;
+}): boolean {
+  return !!row.permitPremarked || (!!row.exitPermit && row.exitPermit.issuerId === row.staffId);
+}
+
 /**
  * One slot per period for pre-marking a permit's absences: where a homegroup
  * slot and a subject-group slot share a period, the subject-group slot wins

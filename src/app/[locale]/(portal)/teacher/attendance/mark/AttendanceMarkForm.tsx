@@ -32,6 +32,8 @@ interface Props {
   attendanceDate?: string;
   isToday?: boolean;
   existingRecords?: Record<string, { status: AttendanceStatus; minutesDelayed: number }>;
+  /** A register was already saved; a permit's pre-marked absences alone don't count. */
+  registerTaken?: boolean;
   studentLocations?: Record<string, { type: "activity" | "support"; name: string }>;
   /** Active exit permits (Άδεια Εξόδου) covering this period — shown yellow. */
   exitPermits?: Record<string, { reason: string; fromPeriod: number }>;
@@ -122,6 +124,7 @@ export function AttendanceMarkForm({
   attendanceDate,
   isToday = true,
   existingRecords = {},
+  registerTaken,
   studentLocations = {},
   exitPermits = {},
   toiletBreaks = {},
@@ -246,7 +249,7 @@ export function AttendanceMarkForm({
     return acc;
   }, {});
 
-  const isResubmit = Object.keys(existingRecords).length > 0;
+  const isResubmit = registerTaken ?? Object.keys(existingRecords).length > 0;
 
   if (!selectedGroupId) {
     return <p className="text-slate-400 text-sm">{t("noGroup")}</p>;

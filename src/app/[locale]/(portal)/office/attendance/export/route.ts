@@ -50,7 +50,7 @@ export async function GET(
     include: {
       student: { include: { user: { select: { name: true } }, group: { select: { name: true } } } },
       ...MARKER_INCLUDE,
-      exitPermit: { select: { reason: true } },
+      exitPermit: { select: { reason: true, issuerId: true } },
     },
     orderBy: [{ date: "asc" }, { student: { user: { name: "asc" } } }, { timetableSlot: { period: "asc" } }],
   });

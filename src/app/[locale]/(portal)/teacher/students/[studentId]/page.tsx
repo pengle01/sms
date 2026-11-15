@@ -23,6 +23,7 @@ import type { Role } from "@/generated/prisma/client";
 import { PrintTimetableLink } from "@/components/timetable/PrintTimetableLink";
 import { resolutionSummary } from "@/lib/referralLabels";
 import { shownLessonKind } from "@/lib/attendanceLesson";
+import { isPermitPremark } from "@/lib/exitPermit";
 import { staffDisplayName } from "@/lib/staffName";
 import { carriedAbsenceFor } from "@/server/carriedAbsences";
 import { CARRIED_UNTIL, formatAbsenceTotal } from "@/lib/carriedAbsences";
@@ -183,6 +184,7 @@ export default async function StudentSchedulePage({
             timetableSlotId: true,
             staffId: true,
             permitPremarked: true,
+            exitPermit: { select: { issuerId: true } },
             lessonKind: true,
             course: { select: { nameEl: true, name: true } },
             staff: { select: { scheduleName: true, user: { select: { name: true } } } },
@@ -351,7 +353,7 @@ export default async function StudentSchedulePage({
                     const badge = absenceBadge[a.status] ?? absenceBadge.ABSENT!;
                     const kind = shownLessonKind({
                       saved: a.lessonKind,
-                      permitPremarked: a.permitPremarked,
+                      permitPremarked: isPermitPremark(a),
                       markerStaffId: a.staffId,
                       slotStaffId: a.timetableSlot?.staffId,
                       hasSlot: !!a.timetableSlot,

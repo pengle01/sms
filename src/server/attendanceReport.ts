@@ -5,6 +5,7 @@ import type { Role } from "@/generated/prisma/enums";
 import { getSpecialDaysInRange } from "@/lib/calendar";
 import { effectiveStaffRole } from "@/lib/staffRole";
 import { resolveMarkKind, type LessonKind } from "@/lib/attendanceLesson";
+import { isPermitPremark } from "@/lib/exitPermit";
 import { managementTag, markKind, registerLabel, type MarkKind, type RegisterLabel } from "@/lib/attendanceMarker";
 import { addedLessonsFor } from "@/server/addedLessons";
 import { markedKey } from "@/lib/coverMarked";
@@ -106,6 +107,7 @@ export async function substitutionKinds(
 /** Prisma include for the fields `markerDetails` needs on an Attendance row. */
 export const MARKER_INCLUDE = {
   course: { select: { name: true } },
+  exitPermit: { select: { issuerId: true } },
   staff: { select: { id: true, scheduleName: true, plannedRole: true, user: { select: { name: true, role: true } } } },
   timetableSlot: {
     include: {
@@ -125,6 +127,7 @@ type MarkerSource = {
   lessonKind: LessonKind | null;
   lessonTeacherName: string | null;
   permitPremarked: boolean;
+  exitPermit: { issuerId: string } | null;
   staff: { scheduleName: string | null; plannedRole: Role | null; user: { name: string | null; role: Role } | null };
   timetableSlot: {
     staffId: string | null;
@@ -203,7 +206,7 @@ export async function markerDetails(rows: MarkerSource[]): Promise<Map<string, M
         addedLesson: !!ownByMarker,
       }),
       a.lessonKind,
-      a.permitPremarked,
+      isPermitPremark(a),
     );
     out.set(a.id, {
       lesson: registerLabel({ hasSlot: !!slot, dayType: dayType.get(a.id) }),

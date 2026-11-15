@@ -1,6 +1,7 @@
 import { db } from "@/server/db";
 import { slotTeacherName } from "@/lib/staffName";
 import { adHocCovers, markedKey, type AdHocCover } from "@/lib/coverMarked";
+import { PREMARK_SELECT, isPermitPremark } from "@/lib/exitPermit";
 
 /**
  * The classes this teacher covered ad hoc («Αναπλήρωση τμήματος») between two
@@ -15,9 +16,9 @@ export async function loadAdHocCovers(staffId: string, from: Date, to: Date): Pr
         date: { gte: from, lte: to },
         timetableSlot: { removedAt: null, OR: [{ staffId: null }, { staffId: { not: staffId } }] },
       },
-      distinct: ["timetableSlotId", "date"],
       select: {
         date: true,
+        ...PREMARK_SELECT,
         timetableSlot: {
           select: {
             id: true,
@@ -47,7 +48,9 @@ export async function loadAdHocCovers(staffId: string, from: Date, to: Date): Pr
   const planSlots = new Set(planEntries.map((e) => markedKey(e.timetableSlotId!, e.plan.date)));
   const addedCourse = new Map(added.map((a) => [markedKey(a.timetableSlotId, a.date), a.course.name]));
   return adHocCovers(
-    rows.flatMap(({ date, timetableSlot: s }) =>
+    // An exit permit's pre-marked absences are saved in the issuing deputy's
+    // name on other teachers' lessons — they are not covers.
+    rows.filter((r) => !isPermitPremark(r)).flatMap(({ date, timetableSlot: s }) =>
       s
         ? [{
             date,

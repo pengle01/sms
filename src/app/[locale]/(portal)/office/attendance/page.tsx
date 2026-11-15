@@ -77,7 +77,7 @@ export default async function OfficeAttendancePage({
       include: {
         student: { include: { user: { select: { name: true } }, group: true } },
         ...MARKER_INCLUDE,
-        exitPermit: { select: { reason: true, fromPeriod: true } },
+        exitPermit: { select: { reason: true, fromPeriod: true, issuerId: true } },
       },
       orderBy: [
         { date: "asc" },

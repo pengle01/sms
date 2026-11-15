@@ -23,6 +23,7 @@ import Link from "next/link";
 import { Fragment } from "react";
 import { groupByPeriod } from "@/lib/periods";
 import { coverMarkedKeys, markedKey } from "@/lib/coverMarked";
+import { PREMARK_SELECT, isPermitPremark } from "@/lib/exitPermit";
 import { getTranslations } from "next-intl/server";
 import { visitHourText } from "@/components/visits/VisitList";
 import { RefreshAfterAttendance } from "@/components/attendance/RefreshAfterAttendance";
@@ -101,8 +102,7 @@ export default async function TeacherDashboardPage({
     staff && !isWeekend && !isTodayExcursion
       ? db.attendance.findMany({
           where: { date: today, timetableSlot: { staffId: staff.id } },
-          select: { timetableSlotId: true },
-          distinct: ["timetableSlotId"],
+          select: { timetableSlotId: true, ...PREMARK_SELECT },
         })
       : Promise.resolve([]),
     meeting && myHomegroups.length > 0
@@ -147,7 +147,8 @@ export default async function TeacherDashboardPage({
   ]);
 
   const todaySlots = allSlots.filter((s) => s.dayOfWeek === todayDow);
-  const markedSlotIds = new Set(markedRaw.map((r) => r.timetableSlotId));
+  // A permit's pre-marked absence is not the register — only a real one ticks the lesson.
+  const markedSlotIds = new Set(markedRaw.filter((r) => !isPermitPremark(r)).map((r) => r.timetableSlotId));
 
   // Substitution overrides for today (finalized plan only): lessons I cover
   // and my own lessons that are covered/released. Study-hall groups are NOT
@@ -170,9 +171,8 @@ export default async function TeacherDashboardPage({
     coverSlotIds.length > 0
       ? await db.attendance.findMany({
           where: { date: today, timetableSlotId: { in: coverSlotIds } },
-          select: { timetableSlotId: true, date: true },
-          distinct: ["timetableSlotId"],
-        })
+          select: { timetableSlotId: true, date: true, ...PREMARK_SELECT },
+        }).then((rows) => rows.filter((r) => !isPermitPremark(r)))
       : [],
   );
   // Classes I covered ad hoc today («Αναπλήρωση τμήματος»)

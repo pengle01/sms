@@ -10,6 +10,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { AttendanceMarkForm } from "./AttendanceMarkForm";
+import { PREMARK_SELECT, isPermitPremark } from "@/lib/exitPermit";
 import { LastInRoomBanner } from "@/components/attendance/LastInRoomBanner";
 import { lastInRoomFor } from "@/server/lastInRoom";
 import { LessonNoteCard } from "../../lesson-notes/LessonNoteCard";
@@ -38,6 +39,8 @@ export default async function TeacherMarkAttendancePage({
   let students: { id: string; user: { name: string | null }; studentId: string }[] = [];
   let slot: { id: string; room: string | null; course: { name: string } } | null = null;
   let existingRecords: Record<string, { status: "PRESENT" | "ABSENT" | "LATE"; minutesDelayed: number }> = {};
+  // Whether a register was really taken: a permit's pre-marked absence alone isn't one.
+  let registerTaken: boolean | null = null;
   let studentLocations: Record<string, { type: "activity" | "support"; name: string }> = {};
   let exitPermits: Record<string, { reason: string; fromPeriod: number }> = {};
   let prevPeriodsRecords: Record<string, Record<number, { status: string; minutesDelayed: number; isAutoAbsent: boolean; exitPermit?: boolean }>> = {};
@@ -123,8 +126,9 @@ export default async function TeacherMarkAttendancePage({
           date: todayMidnight,
           studentId: { in: studentIds },
         },
-        select: { studentId: true, status: true, minutesDelayed: true },
+        select: { studentId: true, status: true, minutesDelayed: true, ...PREMARK_SELECT },
       });
+      registerTaken = marked.some((r) => !isPermitPremark(r));
       for (const r of marked) {
         existingRecords[r.studentId] = {
           status: (r.status === "EXCUSED" ? "ABSENT" : r.status) as "PRESENT" | "ABSENT" | "LATE",
@@ -273,6 +277,7 @@ export default async function TeacherMarkAttendancePage({
 
   // The claimed group's own slot + students + existing marks for that date
   let claimed: {
+    registerTaken: boolean;
     slot: { id: string; room: string | null; course: { name: string } };
     groupName: string;
     teacherLabel: string | null;
@@ -304,7 +309,7 @@ export default async function TeacherMarkAttendancePage({
         }),
         db.attendance.findMany({
           where: { timetableSlotId: claimedSlot.id, date: attendanceDateObj },
-          select: { studentId: true, status: true, minutesDelayed: true },
+          select: { studentId: true, status: true, minutesDelayed: true, ...PREMARK_SELECT },
         }),
         db.addedLesson.findUnique({
           where: { timetableSlotId_date: { timetableSlotId: claimedSlot.id, date: attendanceDateObj } },
@@ -324,6 +329,7 @@ export default async function TeacherMarkAttendancePage({
         };
       }
       claimed = {
+        registerTaken: claimedMarked.some((r) => !isPermitPremark(r)),
         slot: claimedSlot,
         groupName: claimedSlot.group.name,
         teacherLabel: claimedSlot.staff?.scheduleName ?? claimedSlot.staffName ?? claimedSlot.staff?.user?.name ?? null,
@@ -447,6 +453,7 @@ export default async function TeacherMarkAttendancePage({
           attendanceDate={attendanceDateStr}
           isToday={isToday}
           existingRecords={existingRecords}
+          registerTaken={registerTaken ?? undefined}
           studentLocations={studentLocations}
           exitPermits={exitPermits}
           toiletBreaks={toiletBreaks}
@@ -531,6 +538,7 @@ export default async function TeacherMarkAttendancePage({
               attendanceDate={attendanceDateStr}
               isToday={isToday}
               existingRecords={claimed.existing}
+              registerTaken={claimed.registerTaken}
               toiletBreaks={toiletBreaks}
               sheetGroupName={claimed.groupName}
               teacherName={staffDisplayName(staff)}
