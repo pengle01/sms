@@ -3,8 +3,7 @@ import {
   canSendStaffNotifications,
   composeErrorKey,
   groupSentNotifications,
-  type SentNotificationRow,
-} from "@/lib/staffNotifications";
+  type SentNotificationRow, canSendHomegroupNotifications } from "@/lib/staffNotifications";
 
 const row = (over: Partial<SentNotificationRow>): SentNotificationRow => ({
   title: "T",
@@ -98,5 +97,13 @@ describe("composeErrorKey", () => {
     expect(composeErrorKey("nonsense")).toBeNull();
     expect(composeErrorKey("")).toBeNull();
     expect(composeErrorKey(undefined)).toBeNull();
+  });
+});
+
+describe("canSendHomegroupNotifications", () => {
+  it("lets a homegroup teacher send, and nobody without a homegroup", () => {
+    expect(canSendHomegroupNotifications(1)).toBe(true);
+    expect(canSendHomegroupNotifications(2)).toBe(true);
+    expect(canSendHomegroupNotifications(0)).toBe(false);
   });
 });

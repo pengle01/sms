@@ -1,3 +1,4 @@
+import { parseSupportGroup } from "@/lib/specialEd";
 // Choosing recipients of a staff notification: a sender's own saved groups
 // («Οι ομάδες μου») and «Καθηγητές τμήματος» — everyone who teaches any
 // student of a homegroup. Pure; unit-tested in recipientGroups.test.ts.
@@ -28,7 +29,9 @@ export function keepAvailable(memberIds: readonly string[], recipientIds: Iterab
 export function homegroupTeacherUserIds(
   homegroupId: string,
   students: readonly { homegroupId: string | null; groupIds: readonly string[] }[],
-  slots: readonly { groupId: string; userId: string | null }[],
+  slots: readonly { groupId: string; groupName?: string; userId: string | null }[],
+  /** Leave out support (ΣΤ_/ΑΣΤ_) groups' teachers — the slots must carry `groupName`. */
+  opts: { skipSupport?: boolean } = {},
 ): string[] {
   const groups = new Set<string>();
   for (const s of students) {
@@ -38,7 +41,11 @@ export function homegroupTeacherUserIds(
   }
   if (groups.size === 0) return [];
   const out = new Set<string>();
-  for (const sl of slots) if (sl.userId && groups.has(sl.groupId)) out.add(sl.userId);
+  for (const sl of slots) {
+    if (!sl.userId || !groups.has(sl.groupId)) continue;
+    if (opts.skipSupport && sl.groupName && parseSupportGroup(sl.groupName)) continue;
+    out.add(sl.userId);
+  }
   return [...out];
 }
 

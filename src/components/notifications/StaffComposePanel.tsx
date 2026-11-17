@@ -3,7 +3,8 @@ import Link from "next/link";
 import { db } from "@/server/db";
 import { getActiveAuth } from "@/server/authz";
 import { EDUCATOR_ROLES } from "@/lib/rbac";
-import { canSendStaffNotifications, composeErrorKey } from "@/lib/staffNotifications";
+import { canSendHomegroupNotifications, canSendStaffNotifications, composeErrorKey } from "@/lib/staffNotifications";
+import { homegroupRecipientIds, myHomegroups } from "@/server/homegroupTeachers";
 import { specialtyPrefix } from "@/lib/substitutions";
 import { isHomegroupWhere } from "@/lib/homegroupFilter";
 import { homegroupTeacherUserIds, keepAvailable } from "@/lib/recipientGroups";
@@ -11,7 +12,7 @@ import { getTranslations } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import { StaffNotificationForm } from "./StaffNotificationForm";
-import { sendStaffNotification } from "./staff-notify-actions";
+import { sendHomegroupNotification, sendStaffNotification } from "./staff-notify-actions";
 
 /**
  * Compose an ad-hoc notification to the teaching staff.
@@ -34,7 +35,11 @@ export async function StaffComposePanel({
   const auth = await getActiveAuth();
   if (!auth) redirect(`/${locale}/login/staff`);
   // Same predicate the action enforces, so the page and the send cannot disagree.
-  if (!canSendStaffNotifications(auth.roles)) redirect(hub);
+  const fullSender = canSendStaffNotifications(auth.roles);
+  // A homegroup teacher who may not message the whole staff gets the same
+  // composer, limited to the teachers of their own homegroup(s).
+  const ownHomegroups = fullSender ? [] : await myHomegroups(auth.userId);
+  if (!fullSender && !canSendHomegroupNotifications(ownHomegroups.length)) redirect(hub);
 
   const t = await getTranslations("staffNotify");
   // Allowlisted, so a hand-edited ?error= cannot throw on the dynamic lookup.
@@ -76,6 +81,17 @@ export async function StaffComposePanel({
   });
 
   const recipientIds = recipients.map((r) => r.id);
+
+  const homegroupOnly = fullSender
+    ? undefined
+    : await Promise.all(
+        ownHomegroups.map(async (g) => ({
+          id: g.id,
+          name: g.name,
+          grade: null,
+          teacherIds: await homegroupRecipientIds(g.id, auth.userId),
+        })),
+      );
 
   // «Οι ομάδες μου» — the sender's own saved groups, members still available.
   // «Καθηγητές τμήματος» — per homegroup, everyone who teaches any of its students.
@@ -135,7 +151,7 @@ export async function StaffComposePanel({
           <CardTitle className="text-base">{t("newMessage")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <StaffNotificationForm recipients={recipients} groups={groups} homegroups={homegroupTeachers} action={sendStaffNotification.bind(null, locale, `${hub}/compose`)} />
+          <StaffNotificationForm recipients={recipients} groups={groups} homegroups={homegroupTeachers} homegroupOnly={homegroupOnly} action={homegroupOnly ? sendHomegroupNotification.bind(null, locale, `${hub}/compose`) : sendStaffNotification.bind(null, locale, `${hub}/compose`)} />
         </CardContent>
       </Card>
     </div>

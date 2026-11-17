@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { db } from "@/server/db";
 import { getActiveAuth } from "@/server/authz";
 import { EDUCATOR_ROLES } from "@/lib/rbac";
-import { canSendStaffNotifications } from "@/lib/staffNotifications";
+import { canSendHomegroupNotifications, canSendStaffNotifications } from "@/lib/staffNotifications";
+import { homegroupRecipientIds, myHomegroups } from "@/server/homegroupTeachers";
 import { writeAudit, requestMeta } from "@/server/audit";
 import { ATTACHMENT_MAX_COUNT } from "@/lib/attachments";
 
@@ -31,17 +32,7 @@ export async function sendStaffNotification(locale: string, backTo: string, form
   if (!body) redirect(`${back}?error=body`);
   if (mode !== "all" && picked.length === 0) redirect(`${back}?error=recipients`);
 
-  // Every attachment must be one this sender just uploaded — otherwise any file
-  // id could be pushed to every teacher, including one from a staff-only notice.
-  const fileIds = [...new Set(formData.getAll("fileId").map(String).filter(Boolean))];
-  if (fileIds.length > 0) {
-    const owned = await db.storedFile.count({
-      where: { id: { in: fileIds }, uploadedById: auth.userId },
-    });
-    if (fileIds.length > ATTACHMENT_MAX_COUNT || owned !== fileIds.length) {
-      redirect(`${back}?error=attachment`);
-    }
-  }
+  const fileIds = await ownedFileIds(formData, auth.userId, back);
 
   // Resolve recipients server-side: active educators only, never the sender
   const recipients = await db.user.findMany({
@@ -54,36 +45,7 @@ export async function sendStaffNotification(locale: string, backTo: string, form
   });
   if (recipients.length === 0) redirect(`${back}?error=recipients`);
 
-  // Sign the message so recipients see who sent it
-  const sender = await db.user.findUnique({
-    where: { id: auth.userId },
-    select: { name: true, staffProfile: { select: { scheduleName: true } } },
-  });
-  const signature = sender?.staffProfile?.scheduleName ?? sender?.name ?? "";
-
-  const signedBody = signature ? `${body}\n— ${signature}` : body;
-
-  // createMany cannot write relations, so attachments force one create per
-  // recipient. Wrapped in a transaction so a partial send is impossible; the
-  // staff list is at most ~130 people, well within a single transaction.
-  await db.$transaction(
-    recipients.map((r) =>
-      db.notification.create({
-        data: {
-          userId: r.id,
-          senderId: auth.userId,
-          type: "STAFF_MESSAGE",
-          title,
-          body: signedBody,
-          read: false,
-          // The files are stored once; every recipient's row links to the same rows.
-          files: { connect: fileIds.map((id) => ({ id })) },
-        },
-        select: { id: true },
-      }),
-    ),
-  );
-
+  await deliver(auth.userId, title, body, fileIds, recipients.map((r) => r.id));
   await writeAudit({
     ...(await requestMeta()),
     userId: auth.userId,
@@ -98,4 +60,86 @@ export async function sendStaffNotification(locale: string, backTo: string, form
   });
 
   redirect(`${back}?sent=${recipients.length}`);
+}
+
+/**
+ * A homegroup teacher's notification to the teachers of one of their homegroups.
+ * The recipients are always all of them, worked out here — whatever the form sends.
+ */
+export async function sendHomegroupNotification(locale: string, backTo: string, formData: FormData) {
+  const auth = await getActiveAuth();
+  if (!auth) redirect(`/${locale}/login/staff`);
+  const homegroups = await myHomegroups(auth.userId);
+  if (!canSendHomegroupNotifications(homegroups.length)) redirect(backTo);
+
+  const title = (formData.get("title") as string | null)?.trim() ?? "";
+  const body = (formData.get("body") as string | null)?.trim() ?? "";
+  const homegroupId = (formData.get("homegroupId") as string | null) ?? "";
+  if (!title) redirect(`${backTo}?error=title`);
+  if (!body) redirect(`${backTo}?error=body`);
+  const group = homegroups.find((g) => g.id === homegroupId);
+  if (!group) redirect(`${backTo}?error=recipients`);
+
+  const fileIds = await ownedFileIds(formData, auth.userId, backTo);
+  const recipients = await homegroupRecipientIds(group.id, auth.userId);
+  if (recipients.length === 0) redirect(`${backTo}?error=recipients`);
+
+  await deliver(auth.userId, title, body, fileIds, recipients);
+  await writeAudit({
+    ...(await requestMeta()),
+    userId: auth.userId,
+    action: "notification.homegroupSend",
+    resource: "Notification",
+    details: {
+      title,
+      homegroup: group.name,
+      recipients: recipients.length,
+      ...(fileIds.length > 0 ? { fileIds } : {}),
+    },
+  });
+  redirect(`${backTo}?sent=${recipients.length}`);
+}
+
+/**
+ * Every attachment must be one this sender just uploaded — otherwise any file id
+ * could be pushed to teachers, including one from a staff-only notice.
+ */
+async function ownedFileIds(formData: FormData, userId: string, back: string): Promise<string[]> {
+  const fileIds = [...new Set(formData.getAll("fileId").map(String).filter(Boolean))];
+  if (fileIds.length > 0) {
+    const owned = await db.storedFile.count({ where: { id: { in: fileIds }, uploadedById: userId } });
+    if (fileIds.length > ATTACHMENT_MAX_COUNT || owned !== fileIds.length) redirect(`${back}?error=attachment`);
+  }
+  return fileIds;
+}
+
+/**
+ * One notification per recipient, signed with the sender's timetable coding.
+ * createMany cannot write relations, so attachments force one create each; in a
+ * transaction so a partial send is impossible (at most ~130 teachers).
+ */
+async function deliver(senderUserId: string, title: string, body: string, fileIds: string[], recipientIds: string[]) {
+  const sender = await db.user.findUnique({
+    where: { id: senderUserId },
+    select: { name: true, staffProfile: { select: { scheduleName: true } } },
+  });
+  const signature = sender?.staffProfile?.scheduleName ?? sender?.name ?? "";
+  const signedBody = signature ? `${body}\n— ${signature}` : body;
+  await db.$transaction(
+    recipientIds.map((id) =>
+      db.notification.create({
+        data: {
+          userId: id,
+          senderId: senderUserId,
+          type: "STAFF_MESSAGE",
+          title,
+          body: signedBody,
+          read: false,
+          // The files are stored once; every recipient's row links to the same rows.
+          files: { connect: fileIds.map((f) => ({ id: f })) },
+        },
+        select: { id: true },
+      }),
+    ),
+  );
 }

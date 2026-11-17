@@ -35,11 +35,14 @@ export function StaffNotificationForm({
   recipients,
   groups = [],
   homegroups = [],
+  homegroupOnly,
   action,
 }: {
   recipients: Recipient[];
   groups?: SavedGroup[];
   homegroups?: HomegroupTeachers[];
+  /** A homegroup teacher: only their homegroup(s), always all of its teachers. */
+  homegroupOnly?: HomegroupTeachers[];
   action: (formData: FormData) => Promise<void>;
 }) {
   const t = useTranslations("staffNotify");
@@ -54,6 +57,7 @@ export function StaffNotificationForm({
   const [pending, startTransition] = useTransition();
   const [filter, setFilter] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [ownGroup, setOwnGroup] = useState(homegroupOnly?.[0]?.id ?? "");
 
   // The attachments are uploaded before the action runs — server actions cap
   // request bodies at 1 MB, far under what a set of files may be.
@@ -177,6 +181,45 @@ export function StaffNotificationForm({
       </div>
 
       {/* Recipients */}
+      {homegroupOnly ? (
+        <div>
+          <p className="text-sm font-medium text-slate-700 mb-2">{t("recipients")}</p>
+          <input type="hidden" name="homegroupId" value={ownGroup} />
+          {homegroupOnly.length > 1 && (
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {homegroupOnly.map((h) => (
+                <button
+                  key={h.id}
+                  type="button"
+                  onClick={() => setOwnGroup(h.id)}
+                  aria-pressed={ownGroup === h.id}
+                  className={cn(
+                    "h-8 px-3 rounded-lg border text-sm font-medium transition-colors",
+                    ownGroup === h.id
+                      ? "bg-emerald-600 border-emerald-600 text-white"
+                      : "bg-white border-slate-200 text-slate-600 hover:border-emerald-400 hover:text-emerald-700",
+                  )}
+                >
+                  {h.name}
+                </button>
+              ))}
+            </div>
+          )}
+          {(() => {
+            const chosen = homegroupOnly.find((h) => h.id === ownGroup);
+            const names = recipients.filter((r) => chosen?.teacherIds.includes(r.id)).map((r) => r.label);
+            return (
+              <div className="rounded-xl border border-slate-200 p-3 text-sm">
+                <p className="font-medium text-slate-700">
+                  {t("homegroupOnlyTo", { group: chosen?.name ?? "", count: names.length })}
+                </p>
+                {names.length > 0 && <p className="text-xs text-slate-500 mt-0.5">{names.join(" · ")}</p>}
+                <p className="text-xs text-slate-400 mt-1">{t("homegroupOnlyHint")}</p>
+              </div>
+            );
+          })()}
+        </div>
+      ) : (
       <div>
         <p className="text-sm font-medium text-slate-700 mb-2">{t("recipients")}</p>
         <input type="hidden" name="mode" value={mode === "all" ? "all" : "pick"} />
@@ -399,6 +442,7 @@ export function StaffNotificationForm({
           </div>
         )}
       </div>
+      )}
 
       {/* Attachment */}
       <div>
@@ -410,7 +454,10 @@ export function StaffNotificationForm({
 
       <button
         type="submit"
-        disabled={busy || nothingChosen}
+        disabled={
+          busy ||
+          (homegroupOnly ? !homegroupOnly.find((h) => h.id === ownGroup)?.teacherIds.length : nothingChosen)
+        }
         className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
       >
         {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}

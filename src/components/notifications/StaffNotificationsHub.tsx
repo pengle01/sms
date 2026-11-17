@@ -3,7 +3,8 @@ import Link from "next/link";
 import { getActiveAuth } from "@/server/authz";
 import { db } from "@/server/db";
 import { canManageAnnouncements, canDeleteAnnouncement, canEditAnnouncement, announcementErrorKey } from "@/lib/announcements";
-import { canSendStaffNotifications, groupSentNotifications } from "@/lib/staffNotifications";
+import { canSendHomegroupNotifications, canSendStaffNotifications, groupSentNotifications } from "@/lib/staffNotifications";
+import { myHomegroups } from "@/server/homegroupTeachers";
 import { staffAuthorLabel } from "@/lib/staffName";
 import { getUpcomingAnnouncements } from "@/server/announcements";
 import { getTranslations } from "next-intl/server";
@@ -42,7 +43,10 @@ export async function StaffNotificationsHub({
   const tNav = await getTranslations("nav");
 
   const canManage = canManageAnnouncements(auth.roles);
-  const canSend = canSendStaffNotifications(auth.roles);
+  // Homegroup teachers send too — to their own homegroup's teachers only.
+  const canSend =
+    canSendStaffNotifications(auth.roles) ||
+    canSendHomegroupNotifications((await myHomegroups(auth.userId)).length);
   const announcementError = announcementErrorKey(error);
 
   // The two halves are gated separately: announcements belong to whoever may

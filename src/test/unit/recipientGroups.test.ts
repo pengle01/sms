@@ -99,3 +99,22 @@ describe("homegroupsByGrade", () => {
     ]);
   });
 });
+
+describe("homegroupTeacherUserIds without support", () => {
+  const students = [{ homegroupId: "B31", groupIds: ["B31_FYS", "ST_SUP"] }];
+  const slots = [
+    { groupId: "B31", groupName: "B31", userId: "math" },
+    { groupId: "B31_FYS", groupName: "ΦΥΣ2", userId: "physics" },
+    { groupId: "ST_SUP", groupName: "ΣΤ_Β31_ΜΑΘ1", userId: "support" },
+    { groupId: "ST_SUP", groupName: "ΑΣΤ_Β31_ΕΛΛ", userId: "atomic" },
+    { groupId: "B31", groupName: "B31", userId: null },
+  ];
+
+  it("keeps the class's and its electives' teachers but leaves out support teachers", () => {
+    expect(homegroupTeacherUserIds("B31", students, slots, { skipSupport: true }).sort()).toEqual(["math", "physics"]);
+  });
+
+  it("still includes support teachers when not asked to skip them", () => {
+    expect(homegroupTeacherUserIds("B31", students, slots).sort()).toEqual(["atomic", "math", "physics", "support"]);
+  });
+});

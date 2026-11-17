@@ -19,6 +19,14 @@ export function canSendStaffNotifications(roles: Role[]): boolean {
   return roles.some((r) => isManagement(r) || isOfficeAdmin(r) || r === "STUDENT_COUNSELOR");
 }
 
+/**
+ * A homegroup teacher (Υπεύθυνος/η τμήματος) may notify the teachers of their
+ * own homegroup — that list only, always all of them.
+ */
+export function canSendHomegroupNotifications(homegroupCount: number): boolean {
+  return homegroupCount > 0;
+}
+
 export interface SentNotificationRow {
   title: string;
   body: string | null;

@@ -1169,6 +1169,8 @@
     "kind_SUPPORT_MERGE": "Support → class"
   },
   "staffNotify": {
+    "homegroupOnlyTo": "To the teachers of {group} ({count})",
+    "homegroupOnlyHint": "It goes to everyone who teaches the class or its students' subject groups, except support.",
     "myGroups": "My groups",
     "saveAsGroup": "Save selection as a group",
     "groupNamePrompt": "Group name",
