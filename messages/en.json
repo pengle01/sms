@@ -938,7 +938,21 @@
     "errAfterDeadline": "This date is after the test deadline for the current term.",
     "errNoLesson": "You do not have a lesson in this period on the selected date.",
     "errNoConsecutive": "You do not have a lesson in {period} on this day — a 2-period test requires consecutive slots.",
-    "errNoStudents": "No students in this group."
+    "errNoStudents": "No students in this group.",
+    "tabHomegroups": "My homegroups",
+    "homegroupsIntro": "View only: the tests your homegroups' students sat (electives included), with how many were graded and their average.",
+    "homegroupsNone": "No tests for {group} in this period.",
+    "termAll": "Whole year",
+    "colGrading": "Grades",
+    "colAverage": "Avg.",
+    "statusNone": "No grades",
+    "statusPartial": "{graded}/{total} graded",
+    "statusDone": "✓ Graded",
+    "reportK9": "K9 report",
+    "filterAllMine": "All",
+    "filterUngraded": "Not fully graded",
+    "ungradedNone": "Every test held has its grades.",
+    "pastYear": "Held (this school year)"
   },
   "testGrades": {
     "title": "Test Grades",
@@ -950,7 +964,10 @@
     "colRegistry": "Registry No.",
     "colScore": "Score (0–20)",
     "invalidGrade": "Invalid grade (must be 0–20)",
-    "beforeTestDate": "Grading opens on the day of the test."
+    "beforeTestDate": "Grading opens on the day of the test.",
+    "reportK9": "«Test results» report (K9)",
+    "readOnlyDeputy": "View only — you see the grades of your homegroups' students.",
+    "noGrade": "No grade"
   },
   "myTests": {
     "title": "My Tests",

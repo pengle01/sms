@@ -7,7 +7,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, CalendarCheck } from "lucide-react";
 import { utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
-import { getActiveTermInfo } from "@/lib/schoolConfig";
+import { getActiveTermInfo, getSchoolYear } from "@/lib/schoolConfig";
+import { gradingStatus } from "@/lib/testReport";
+import { studentGroupIds } from "@/lib/studentTests";
+import { HomegroupTestsTab } from "./HomegroupTestsTab";
 import { getTranslations } from "next-intl/server";
 import { DeleteTestButton } from "./DeleteTestButton";
 import { StudentsTestsTab } from "./StudentsTestsTab";
@@ -18,11 +21,12 @@ export default async function TeacherTestsPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ tab?: string; group?: string; range?: string; type?: string; partial?: string; view?: string; month?: string }>;
+  searchParams: Promise<{ tab?: string; ungraded?: string; hg?: string; term?: string; group?: string; range?: string; type?: string; partial?: string; view?: string; month?: string }>;
 }) {
   const { locale } = await params;
   const sp = await searchParams;
-  const tab = sp.tab === "students" ? "students" : "mine";
+  const tab = sp.tab === "students" ? "students" : sp.tab === "homegroups" ? "homegroups" : "mine";
+  const ungradedOnly = sp.ungraded === "1";
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login/staff`);
 
@@ -42,24 +46,54 @@ export default async function TeacherTestsPage({
   }
 
   const today = utcMidnight(localDateStr());
-  const thirtyDaysAgo = new Date(today);
   const activeTerm = await getActiveTermInfo(today);
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const year = await getSchoolYear();
+  // Deputies heading a homegroup get the read-only «Τμήματα ευθύνης μου» tab.
+  const headsHomegroups = (await db.group.count({ where: { homeroomHeadteacherId: staff.id } })) > 0;
 
   const tests = await db.testSchedule.findMany({
     where: {
       staffId: staff.id,
-      date: { gte: thirtyDaysAgo },
+      date: { gte: year.yearStart },
     },
     include: {
       course: { select: { name: true } },
       group: { select: { name: true, grade: true } },
+      testGrades: { where: { value: { not: null } }, select: { studentId: true } },
     },
     orderBy: [{ date: "asc" }, { period: "asc" }],
   });
 
-  const upcoming = tests.filter((t) => t.date >= today);
-  const past = tests.filter((t) => t.date < today);
+  // How many students sit each test (homegroup + subject-enrolled, active) —
+  // one query for all the groups, counted per group.
+  const testGroupIds = [...new Set(tests.map((t) => t.groupId))];
+  const sitters = testGroupIds.length
+    ? await db.studentProfile.findMany({
+        where: {
+          user: { isActive: true },
+          OR: [{ groupId: { in: testGroupIds } }, { subjectGroups: { some: { groupId: { in: testGroupIds } } } }],
+        },
+        select: { id: true, groupId: true, subjectGroups: { select: { groupId: true } } },
+      })
+    : [];
+  const sittersByGroup = new Map<string, Set<string>>();
+  for (const st of sitters) {
+    for (const g of studentGroupIds(st.groupId, st.subjectGroups.map((x) => x.groupId))) {
+      if (!sittersByGroup.has(g)) sittersByGroup.set(g, new Set());
+      sittersByGroup.get(g)!.add(st.id);
+    }
+  }
+  const statusOf = (t: (typeof tests)[number]) => {
+    const who = sittersByGroup.get(t.groupId) ?? new Set<string>();
+    const graded = t.testGrades.filter((g) => who.has(g.studentId)).length;
+    return gradingStatus(graded, who.size, t.date <= today);
+  };
+
+  const upcoming = ungradedOnly ? [] : tests.filter((t) => t.date > today);
+  const past = tests
+    .filter((t) => t.date <= today)
+    .filter((t) => !ungradedOnly || statusOf(t).kind !== "done")
+    .reverse(); // most recent first
 
   const DOW = tTests.raw("dow") as string[];
 
@@ -85,14 +119,35 @@ export default async function TeacherTestsPage({
           {t.type === "BIG" ? tTests("typeBig") : tTests("typeSmall")}
         </Badge>
       </td>
+      <td className="px-5 py-3">
+        {(() => {
+          const st = statusOf(t);
+          if (st.kind === "upcoming") return null;
+          if (st.kind === "none") {
+            return <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">{tTests("statusNone")}</Badge>;
+          }
+          if (st.kind === "partial") {
+            return <Badge variant="outline" className="text-xs bg-slate-50 text-slate-600 border-slate-200">{tTests("statusPartial", { graded: st.graded, total: st.total })}</Badge>;
+          }
+          return <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">{tTests("statusDone")}</Badge>;
+        })()}
+      </td>
       <td className="px-3 py-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3 whitespace-nowrap">
           <Link
             href={`/${locale}/teacher/tests/${t.id}/grades`}
             className="text-xs font-medium text-emerald-600 hover:text-emerald-700"
           >
             {tTests("grades")}
           </Link>
+          {t.date <= today && t.testGrades.length > 0 && (
+            <Link
+              href={`/${locale}/teacher/tests/${t.id}/report`}
+              className="text-xs font-medium text-slate-500 hover:text-slate-800"
+            >
+              {tTests("reportK9")}
+            </Link>
+          )}
           {t.date >= today && <DeleteTestButton testId={t.id} />}
         </div>
       </td>
@@ -102,7 +157,7 @@ export default async function TeacherTestsPage({
   const TestTable = ({ rows, faded }: { rows: typeof tests; faded?: boolean }) => (
     <Card>
       <CardContent className="p-0 overflow-x-auto">
-        <table className="w-full text-sm min-w-[560px]">
+        <table className="w-full text-sm min-w-[720px]">
           <thead>
             <tr className="border-b border-slate-100">
               <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{tTests("colDate")}</th>
@@ -110,6 +165,7 @@ export default async function TeacherTestsPage({
               <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{tTests("colGroup")}</th>
               <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{tTests("colPeriod")}</th>
               <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{tTests("colType")}</th>
+              <th className="text-left px-5 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">{tTests("colGrading")}</th>
               <th className="w-10" />
             </tr>
           </thead>
@@ -147,25 +203,46 @@ export default async function TeacherTestsPage({
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-slate-200">
-        {(["mine", "students"] as const).map((key) => (
+        {(headsHomegroups ? (["mine", "students", "homegroups"] as const) : (["mine", "students"] as const)).map((key) => (
           <Link
             key={key}
-            href={key === "mine" ? `/${locale}/teacher/tests` : `/${locale}/teacher/tests?tab=students`}
+            href={key === "mine" ? `/${locale}/teacher/tests` : `/${locale}/teacher/tests?tab=${key}`}
             className={cn(
               "px-4 py-2 text-sm font-medium border-b-2 -mb-px",
               tab === key ? "border-emerald-600 text-emerald-700" : "border-transparent text-slate-500 hover:text-slate-800"
             )}
           >
-            {key === "mine" ? tTests("tabMine") : tTests("tabStudents")}
+            {key === "mine" ? tTests("tabMine") : key === "students" ? tTests("tabStudents") : tTests("tabHomegroups")}
           </Link>
         ))}
       </div>
 
       {tab === "students" ? (
         <StudentsTestsTab staffId={staff.id} today={today} params={sp} baseHref={`/${locale}/teacher/tests`} locale={locale} />
+      ) : tab === "homegroups" && headsHomegroups ? (
+        <HomegroupTestsTab staffId={staff.id} today={today} year={year} params={sp} locale={locale} />
       ) : (
       <>
-      {upcoming.length === 0 && past.length === 0 && (
+      <div className="flex gap-2 text-sm">
+        <Link
+          href={`/${locale}/teacher/tests`}
+          className={cn("px-3 py-1 rounded-full border", !ungradedOnly ? "bg-slate-800 text-white border-slate-800" : "border-slate-200 text-slate-600 hover:bg-slate-50")}
+        >
+          {tTests("filterAllMine")}
+        </Link>
+        <Link
+          href={`/${locale}/teacher/tests?ungraded=1`}
+          className={cn("px-3 py-1 rounded-full border", ungradedOnly ? "bg-slate-800 text-white border-slate-800" : "border-slate-200 text-slate-600 hover:bg-slate-50")}
+        >
+          {tTests("filterUngraded")}
+        </Link>
+      </div>
+
+      {ungradedOnly && past.length === 0 && (
+        <p className="text-sm text-slate-400">{tTests("ungradedNone")}</p>
+      )}
+
+      {!ungradedOnly && upcoming.length === 0 && past.length === 0 && (
         <div className="text-center py-20 text-slate-400">
           <CalendarCheck className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="font-medium">{tTests("noTests")}</p>
@@ -182,7 +259,7 @@ export default async function TeacherTestsPage({
 
       {past.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{tTests("past30")}</p>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{tTests("pastYear")}</p>
           <TestTable rows={past} faded />
         </div>
       )}
