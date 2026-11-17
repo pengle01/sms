@@ -26,6 +26,7 @@ import {
   type RemovalSkipReason,
 } from "@/lib/timetableImport";
 import * as XLSX from "xlsx";
+import { supportNameIssues } from "@/lib/specialEd";
 
 export interface ScheduleImportResult {
   success: boolean;
@@ -234,6 +235,8 @@ export async function importSchedule(
   const seenSlotIds = new Set<string>();
   let cellErrors = 0;
   const unreadableCells: string[] = [];
+  // Every group name in the file, to check the support prefixes' spelling.
+  const seenGroupNames = new Set<string>();
 
   // Cache to avoid redundant DB round-trips within the same import.
   const courseCache = new Map<string, string>(); // code → id
@@ -303,6 +306,7 @@ export async function importSchedule(
       // as ONE group (the combined class). This matches how the student-enrollment
       // file will reference them.
       const groupName = groupCell;
+      seenGroupNames.add(groupName);
 
       try {
         const [courseId, groupId] = await Promise.all([
@@ -363,6 +367,23 @@ export async function importSchedule(
     errors.push(
       `${unreadableCells.length} cell(s) have a class but no readable "room / lesson" ` +
       `under it (${shown}${more}) — is this the timetable export?`,
+    );
+  }
+
+  // Support groups are recognised by their prefix (ΣΤ_, ΑΣΤ_/ΑΤ_/ΑΤΣΤ_, ΕΞΣΤ_).
+  // Misspelt ones are still read as support, but should be fixed in the file;
+  // ones that cannot be read are imported as ordinary lessons.
+  const supportIssues = supportNameIssues(seenGroupNames);
+  if (supportIssues.typos.length > 0) {
+    errors.push(
+      `Ομάδες στήριξης με λάθος γραφή (αναγνωρίστηκαν ως στήριξη — διορθώστε τες στο αρχείο): ` +
+      supportIssues.typos.join(", "),
+    );
+  }
+  if (supportIssues.unknown.length > 0) {
+    errors.push(
+      `Μοιάζουν με ομάδες στήριξης αλλά ΔΕΝ αναγνωρίστηκαν (εισήχθησαν ως κανονικά μαθήματα) — ` +
+      `γράψτε τες ως ΣΤ_…, ΑΣΤ_…, ΑΤ_…, ΑΤΣΤ_… ή ΕΞΣΤ_…: ` + supportIssues.unknown.join(", "),
     );
   }
 

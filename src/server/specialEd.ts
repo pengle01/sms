@@ -1,19 +1,21 @@
 import { db } from "@/server/db";
 import type { Prisma } from "@/generated/prisma/client";
-import { parseSupportGroup, SPECIAL_ED_ACCOMMODATIONS, SPECIAL_ED_PROBLEM_CODES, type SupportKind } from "@/lib/specialEd";
+import {
+  parseSupportGroup, SPECIAL_ED_ACCOMMODATIONS, SPECIAL_ED_PROBLEM_CODES, type SupportKind, type SupportEnrolment,
+} from "@/lib/specialEd";
 
 /**
- * The prefixes that mark a timetable group as support, as a Prisma filter.
+ * The ids of every support group (ΣΤ / ΑΣΤ / ΑΤ / ΑΤΣΤ / ΕΞΣΤ), as a Prisma filter
+ * on a student's enrolments.
  *
- * One definition. parseSupportGroup() in @/lib/specialEd is the pure classifier
- * and owns the same two prefixes; keeping the query's copy here rather than
- * inlining it at each call site means a third reader cannot quietly disagree
- * about what a support group is — which is exactly what happened to the
- * substitutions engine.
+ * Classified in memory by parseSupportGroup() — the one definition of a support
+ * group, which tolerates typos a SQL `startsWith` could not. Groups number in
+ * the hundreds, so reading their names is cheap.
  */
-export const SUPPORT_GROUP_WHERE: Prisma.StudentGroupWhereInput = {
-  OR: [{ group: { name: { startsWith: "ΣΤ_" } } }, { group: { name: { startsWith: "ΑΣΤ_" } } }],
-};
+export async function supportGroupWhere(): Promise<Prisma.StudentGroupWhereInput> {
+  const groups = await db.group.findMany({ select: { id: true, name: true } });
+  return { groupId: { in: groups.filter((g) => parseSupportGroup(g.name)).map((g) => g.id) } };
+}
 
 export type SupportEntry = {
   kind: SupportKind;
@@ -27,12 +29,12 @@ export type SupportEntry = {
 
 /**
  * Derives a student's support (ΣΤΗΡ) from the timetable — never stored. Reads the
- * student's enrolment in ΣΤ_ (group) / ΑΣΤ_ (atomic) support groups and expands
+ * student's enrolment in support groups (group / atomic / individualised) and expands
  * each into its timetable slots.
  */
 export async function getStudentSupport(studentId: string): Promise<SupportEntry[]> {
   const enrolments = await db.studentGroup.findMany({
-    where: { studentProfileId: studentId, ...SUPPORT_GROUP_WHERE },
+    where: { studentProfileId: studentId, ...(await supportGroupWhere()) },
     select: {
       group: {
         select: {
@@ -136,7 +138,7 @@ export async function supportSlotsByStudent(
   if (studentIds.length === 0) return byStudent;
 
   const enrolments = await db.studentGroup.findMany({
-    where: { studentProfileId: { in: studentIds }, ...SUPPORT_GROUP_WHERE },
+    where: { studentProfileId: { in: studentIds }, ...(await supportGroupWhere()) },
     select: {
       studentProfileId: true,
       group: { select: { timetableSlots: { where: { removedAt: null }, select: { dayOfWeek: true, period: true } } } },
@@ -152,6 +154,69 @@ export async function supportSlotsByStudent(
     list.sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.period - b.period);
   }
   return byStudent;
+}
+
+/**
+ * Every active student enrolled in a support group, one entry per enrolment —
+ * for the «Στήριξη» roster. Includes students outside the special-ed register.
+ */
+export async function listSupportEnrolments(): Promise<SupportEnrolment[]> {
+  const groups = (await db.group.findMany({ select: { id: true, name: true } }))
+    .map((g) => ({ ...g, parsed: parseSupportGroup(g.name) }))
+    .filter((g) => g.parsed);
+  if (groups.length === 0) return [];
+  const kindOf = new Map(groups.map((g) => [g.id, g.parsed!.kind]));
+
+  const [enrolments, slots, records] = await Promise.all([
+    db.studentGroup.findMany({
+      where: { groupId: { in: groups.map((g) => g.id) }, studentProfile: { user: { isActive: true } } },
+      select: {
+        groupId: true,
+        studentProfile: {
+          select: {
+            id: true,
+            studentId: true,
+            user: { select: { name: true } },
+            group: { select: { name: true, grade: true } },
+          },
+        },
+      },
+    }),
+    db.timetableSlot.findMany({
+      where: { groupId: { in: groups.map((g) => g.id) }, removedAt: null },
+      select: { groupId: true, course: { select: { nameEl: true, name: true } } },
+    }),
+    db.specialEdRecord.findMany({ select: { studentId: true } }),
+  ]);
+
+  // A support group's subject: its lessons' course names, else the code in its name.
+  const subjectsOf = new Map<string, Set<string>>();
+  for (const s of slots) {
+    const set = subjectsOf.get(s.groupId) ?? new Set<string>();
+    set.add(s.course.nameEl || s.course.name);
+    subjectsOf.set(s.groupId, set);
+  }
+  const codeOf = new Map(groups.map((g) => [g.id, g.parsed!.subjectCode]));
+  const inRegister = new Set(records.map((r) => r.studentId));
+
+  const out: SupportEnrolment[] = [];
+  for (const e of enrolments) {
+    const st = e.studentProfile;
+    const subjects = subjectsOf.get(e.groupId);
+    for (const subject of subjects && subjects.size ? subjects : [codeOf.get(e.groupId) ?? ""]) {
+      out.push({
+        studentId: st.id,
+        name: st.user?.name ?? "—",
+        registryNo: st.studentId,
+        homegroup: st.group?.name ?? null,
+        grade: st.group?.grade ?? null,
+        kind: kindOf.get(e.groupId)!,
+        subject,
+        inRegister: inRegister.has(st.id),
+      });
+    }
+  }
+  return out;
 }
 
 /** The special-ed cohort (students with a record) — for the coordinator desk. */

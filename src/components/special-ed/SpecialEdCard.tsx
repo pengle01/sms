@@ -7,10 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ShieldAlert, Eye, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { SUPPORT_KIND_BADGE, SUPPORT_KIND_LABEL_KEY, type SupportKind } from "@/lib/specialEd";
 
 type Code = { code: string; label: string };
 export type SupportRow = {
-  kind: "ATOMIC" | "GROUP";
+  kind: SupportKind;
   subject: string;
   teacher: string | null;
   period: number;
@@ -138,9 +139,9 @@ export function SpecialEdCard({
                 <li key={i} className="flex items-center gap-2 text-sm text-slate-700">
                   <Badge
                     variant="outline"
-                    className={s.kind === "ATOMIC" ? "border-violet-200 text-violet-700" : "border-sky-200 text-sky-700"}
+                    className={SUPPORT_KIND_BADGE[s.kind]}
                   >
-                    {s.kind === "ATOMIC" ? t("supportAtomic") : t("supportGroup")}
+                    {t(SUPPORT_KIND_LABEL_KEY[s.kind])}
                   </Badge>
                   <span className="font-medium">{s.subject}</span>
                   {s.teacher && <span className="text-slate-400">· {s.teacher}</span>}

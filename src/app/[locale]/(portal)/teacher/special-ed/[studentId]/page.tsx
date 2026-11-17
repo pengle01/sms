@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ChevronLeft, Pencil, Check } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { canViewSpecialEdFull, canManageSpecialEdRegister, COHORT_KEYS } from "@/lib/specialEd";
+import { canViewSpecialEdFull, canManageSpecialEdRegister, COHORT_KEYS, SUPPORT_KIND_BADGE, SUPPORT_KIND_LABEL_KEY } from "@/lib/specialEd";
 import { getTranslations } from "next-intl/server";
 import { getSpecialEdCatalog, getStudentSupport } from "@/server/specialEd";
 import { EditSpecialEdForm } from "./EditSpecialEdForm";
@@ -144,8 +144,8 @@ export default async function EditSpecialEdPage({
             <ul className="space-y-1">
               {support.map((s, i) => (
                 <li key={i} className="flex items-center gap-2 text-sm text-slate-700">
-                  <Badge variant="outline" className={s.kind === "ATOMIC" ? "border-violet-200 text-violet-700" : "border-sky-200 text-sky-700"}>
-                    {s.kind === "ATOMIC" ? "Ατομική" : "Ομαδική"}
+                  <Badge variant="outline" className={SUPPORT_KIND_BADGE[s.kind]}>
+                    {t(SUPPORT_KIND_LABEL_KEY[s.kind])}
                   </Badge>
                   <span className="font-medium">{s.subject}</span>
                   {s.teacher && <span className="text-slate-400">· {s.teacher}</span>}

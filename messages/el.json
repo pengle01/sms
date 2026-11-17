@@ -1439,7 +1439,20 @@
     "allDays": "Όλες",
     "allPeriods": "Όλες",
     "colSupport": "Στήριξη",
-    "noSupportShort": "—"
+    "noSupportShort": "—",
+    "supportIndividual": "Εξατομικευμένη",
+    "supportRosterTitle": "Στήριξη",
+    "supportRosterBack": "Ειδική Αγωγή",
+    "supportRosterIntro": "Οι μαθητές/τριες στις ομάδες στήριξης του ωρολογίου προγράμματος: Ομαδική (ΣΤ), Ατομική (ΑΣΤ/ΑΤ/ΑΤΣΤ) και Εξατομικευμένη (ΕΞΣΤ) — και όσοι/ες δεν είναι στο μητρώο ειδικής αγωγής.",
+    "supportAllGrades": "Όλες οι τάξεις",
+    "supportGrade": "{grade}η τάξη",
+    "supportSearch": "Όνομα ή αρ. μητρώου…",
+    "supportRosterEmpty": "Δεν υπάρχουν μαθητές/τριες σε ομάδες στήριξης στο ωρολόγιο πρόγραμμα.",
+    "supportRosterNoneFiltered": "Κανένας/καμία μαθητής/τρια με αυτά τα φίλτρα.",
+    "supportColStudent": "Μαθητής/τρια",
+    "supportColHomegroup": "Τμήμα",
+    "supportNotInRegister": "εκτός μητρώου ΕΑ",
+    "supportShowing": "{shown} από {total} μαθητές/τριες"
   },
   "studentFile": {
     "dow1": "Δευτέρα",

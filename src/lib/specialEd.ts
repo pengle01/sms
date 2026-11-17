@@ -100,26 +100,105 @@ export function specialEdCodesSeeded(problemCount: number, accommodationCount: n
   return problemCount > 0 || accommodationCount > 0;
 }
 
-export type SupportKind = "ATOMIC" | "GROUP";
+export type SupportKind = "ATOMIC" | "GROUP" | "INDIVIDUAL";
+
+/** Display order of the support kinds: group, one-to-one, individualised. */
+export const SUPPORT_KINDS: readonly SupportKind[] = ["GROUP", "ATOMIC", "INDIVIDUAL"];
+
+/** Badge colours per support kind (shared by every support list). */
+export const SUPPORT_KIND_BADGE: Record<SupportKind, string> = {
+  GROUP: "border-sky-200 text-sky-700",
+  ATOMIC: "border-violet-200 text-violet-700",
+  INDIVIDUAL: "border-amber-200 text-amber-700",
+};
+
+/** The `specialEd` message key naming each support kind. */
+export const SUPPORT_KIND_LABEL_KEY: Record<SupportKind, "supportGroup" | "supportAtomic" | "supportIndividual"> = {
+  GROUP: "supportGroup",
+  ATOMIC: "supportAtomic",
+  INDIVIDUAL: "supportIndividual",
+};
+
+/**
+ * Latin capitals that look like Greek ones. A name typed on an English layout
+ * («AΣT_…» with a Latin A and T) looks right on screen but would not match.
+ */
+const LATIN_LOOKALIKE: Record<string, string> = {
+  A: "Α", B: "Β", E: "Ε", Z: "Ζ", H: "Η", I: "Ι", K: "Κ", M: "Μ",
+  N: "Ν", O: "Ο", P: "Ρ", T: "Τ", X: "Χ", Y: "Υ",
+};
+
+/** Upper-case, accent-free, Greek-only spelling of a group name, for matching. */
+export function normalizeSupportName(name: string): string {
+  return (name ?? "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toUpperCase()
+    .replace(/[A-Z]/g, (c) => LATIN_LOOKALIKE[c] ?? c)
+    .trim();
+}
+
+/**
+ * Prefix spellings, longest first so that ΑΤΣΤ is not read as ΑΤ and ΕΞΣΤ /
+ * ΑΣΤ are not read as ΣΤ. ΑΣΤ, ΑΤ and ΑΤΣΤ are the same thing (one-to-one);
+ * ΕΞΑΣΤ is a misspelling of ΕΞΣΤ.
+ */
+const SUPPORT_PREFIXES: readonly [string, SupportKind][] = [
+  ["ΕΞΑΣΤ", "INDIVIDUAL"],
+  ["ΕΞΣΤ", "INDIVIDUAL"],
+  ["ΑΤΣΤ", "ATOMIC"],
+  ["ΑΣΤ", "ATOMIC"],
+  ["ΑΤ", "ATOMIC"],
+  ["ΣΤ", "GROUP"],
+];
+/** What may follow the prefix: _ (the norm), or a typo'd -, space or dot. */
+const SEPARATOR = /^[_\-.\s]+/;
 
 /**
  * Classify a timetable group by its support prefix.
- *   ΑΣΤ_… → atomic (one-on-one) support
- *   ΣΤ_…  → group support
+ *   ΣΤ_…                → group support
+ *   ΑΣΤ_… / ΑΤ_… / ΑΤΣΤ_… → atomic (one-to-one) support
+ *   ΕΞΣΤ_…              → individualised support (Εξατομικευμένη)
  * Returns null for ordinary (non-support) groups. The subject code is the last
- * underscore-separated segment of the group name (e.g. "ΕΛΛ", "ΜΑΘ").
+ * segment of the group name (e.g. "ΕΛΛ", "ΜΑΘ").
  *
- * Note: ΑΣΤ_ must be tested before ΣΤ_ because "ΑΣΤ" contains "ΣΤ".
+ * Tolerant of typos: accents, lower case, Latin look-alike letters and a
+ * -, space or . instead of the underscore. The prefix must still be followed by
+ * a separator, so an ordinary group that merely starts with those letters is
+ * not support. supportNameIssue() reports both the tolerated typos and names
+ * that look like support but do not parse, so the timetable gets fixed.
  */
 export function parseSupportGroup(name: string): { kind: SupportKind; subjectCode: string } | null {
-  const n = (name ?? "").trim();
-  let kind: SupportKind;
-  if (n.startsWith("ΑΣΤ_")) kind = "ATOMIC";
-  else if (n.startsWith("ΣΤ_")) kind = "GROUP";
-  else return null;
-  const parts = n.split("_");
-  const subjectCode = parts.length > 1 ? parts[parts.length - 1]!.trim() : "";
-  return { kind, subjectCode };
+  const n = normalizeSupportName(name);
+  for (const [prefix, kind] of SUPPORT_PREFIXES) {
+    if (!n.startsWith(prefix)) continue;
+    if (!SEPARATOR.test(n.slice(prefix.length))) return null;
+    const raw = (name ?? "").trim();
+    const parts = raw.includes("_") ? raw.split("_") : raw.split(/[-.\s]+/);
+    const subjectCode = parts.length > 1 ? parts[parts.length - 1]!.trim() : "";
+    return { kind, subjectCode };
+  }
+  return null;
+}
+
+/**
+ * Whether a timetable group name needs fixing:
+ *   "typo"    — read as support, but not written the standard way
+ *               (ΣΤ_ / ΑΣΤ_ / ΑΤ_ / ΑΤΣΤ_ / ΕΞΣΤ_ in Greek capitals);
+ *   "unknown" — starts like a support prefix but cannot be read as one
+ *               (e.g. «ΣΤΕΛΛ», «ΣΤ/ΕΛΛ»), so it is treated as an ordinary lesson.
+ * null when the name is fine.
+ */
+export function supportNameIssue(name: string): "typo" | "unknown" | null {
+  const raw = (name ?? "").trim();
+  if (parseSupportGroup(raw)) {
+    return /^(ΕΞΣΤ|ΑΤΣΤ|ΑΣΤ|ΑΤ|ΣΤ)_/.test(raw) ? null : "typo";
+  }
+  const n = normalizeSupportName(raw);
+  // ΕΞΣΤ/ΑΤΣΤ/ΑΣΤ are distinctive, so any name starting with them is suspect. A
+  // bare ΣΤ only when no letter follows («ΣΤ/ΕΛΛ», «ΣΤ1»), and a bare ΑΤ never:
+  // ordinary codes may start with those letters.
+  return /^(ΕΞΑ?ΣΤ|ΑΤΣΤ|ΑΣΤ)/.test(n) || /^ΣΤ(?![Α-Ω])/.test(n) ? "unknown" : null;
 }
 
 /**
@@ -269,3 +348,95 @@ export function cohortSupportPeriods(
  * the page and the record page both serialise it and could otherwise drift.
  */
 export const COHORT_KEYS = ["grade", "code", "acc", "day", "period", "q"] as const;
+
+// ── Support roster («Στήριξη») ─────────────────────────────────────────────────
+
+/** One student's enrolment in one support group. */
+export interface SupportEnrolment {
+  studentId: string;
+  name: string;
+  registryNo: string;
+  homegroup: string | null;
+  grade: number | null;
+  kind: SupportKind;
+  /** The lesson(s) of the support group, e.g. «Ελληνικά». */
+  subject: string;
+  /** Whether the student is in the special-ed register (has a record). */
+  inRegister: boolean;
+}
+
+export interface SupportRosterRow {
+  studentId: string;
+  name: string;
+  registryNo: string;
+  homegroup: string | null;
+  grade: number | null;
+  inRegister: boolean;
+  /** Subjects per kind, sorted and de-duplicated; empty when not in that kind. */
+  subjects: Record<SupportKind, string[]>;
+}
+
+/**
+ * One row per student, with the subjects of each support kind they attend.
+ * Sorted by homegroup, then name.
+ */
+export function supportRoster(enrolments: readonly SupportEnrolment[]): SupportRosterRow[] {
+  const rows = new Map<string, SupportRosterRow>();
+  for (const e of enrolments) {
+    let row = rows.get(e.studentId);
+    if (!row) {
+      row = {
+        studentId: e.studentId,
+        name: e.name,
+        registryNo: e.registryNo,
+        homegroup: e.homegroup,
+        grade: e.grade,
+        inRegister: e.inRegister,
+        subjects: { GROUP: [], ATOMIC: [], INDIVIDUAL: [] },
+      };
+      rows.set(e.studentId, row);
+    }
+    if (e.subject && !row.subjects[e.kind].includes(e.subject)) row.subjects[e.kind].push(e.subject);
+  }
+  for (const row of rows.values()) {
+    for (const k of SUPPORT_KINDS) row.subjects[k].sort((a, b) => a.localeCompare(b, "el"));
+  }
+  return [...rows.values()].sort(
+    (a, b) => (a.homegroup ?? "").localeCompare(b.homegroup ?? "", "el") || a.name.localeCompare(b.name, "el"),
+  );
+}
+
+export interface SupportRosterFilter {
+  kind?: SupportKind;
+  grade?: number;
+  q?: string;
+}
+
+/** Narrow the support roster by kind, year and name/registry search. */
+export function filterSupportRoster(rows: SupportRosterRow[], f: SupportRosterFilter): SupportRosterRow[] {
+  const q = (f.q ?? "").trim();
+  return rows.filter((r) => {
+    if (f.kind && r.subjects[f.kind].length === 0) return false;
+    if (f.grade != null && r.grade !== f.grade) return false;
+    if (q && !matchesSearch(r.name, q) && !r.registryNo.includes(q)) return false;
+    return true;
+  });
+}
+
+/** Parse the «Στήριξη» page's `kind` query value. */
+export function parseSupportKind(v: string | undefined | null): SupportKind | undefined {
+  return v === "GROUP" || v === "ATOMIC" || v === "INDIVIDUAL" ? v : undefined;
+}
+
+/** The timetable's group names that need fixing, sorted (see supportNameIssue). */
+export function supportNameIssues(names: Iterable<string>): { typos: string[]; unknown: string[] } {
+  const typos = new Set<string>();
+  const unknown = new Set<string>();
+  for (const name of names) {
+    const issue = supportNameIssue(name);
+    if (issue === "typo") typos.add(name);
+    else if (issue === "unknown") unknown.add(name);
+  }
+  const sort = (s: Set<string>) => [...s].sort((a, b) => a.localeCompare(b, "el"));
+  return { typos: sort(typos), unknown: sort(unknown) };
+}

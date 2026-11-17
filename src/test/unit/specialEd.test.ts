@@ -11,6 +11,12 @@ import {
   splitKnownCodes,
   cohortSupportDays,
   cohortSupportPeriods,
+  supportNameIssue,
+  supportNameIssues,
+  supportRoster,
+  filterSupportRoster,
+  parseSupportKind,
+  type SupportEnrolment,
 } from "@/lib/specialEd";
 import { specialEdLegend } from "@/server/specialEd";
 import type { Role } from "@/generated/prisma/client";
@@ -30,6 +36,83 @@ describe("parseSupportGroup", () => {
     expect(parseSupportGroup("ΕΓ2")).toBeNull();
     expect(parseSupportGroup("ΗΥ1")).toBeNull();
     expect(parseSupportGroup("")).toBeNull();
+  });
+
+  it("reads ΑΤ_ and ΑΤΣΤ_ as one-to-one, like ΑΣΤ_", () => {
+    expect(parseSupportGroup("ΑΤ_ΜΕ2_ΦΥΣ")).toEqual({ kind: "ATOMIC", subjectCode: "ΦΥΣ" });
+    expect(parseSupportGroup("ΑΤΣΤ_ΜΕ2_ΕΛΛ")).toEqual({ kind: "ATOMIC", subjectCode: "ΕΛΛ" });
+  });
+
+  it("reads ΕΞΣΤ_ as individualised support, not as ΣΤ", () => {
+    expect(parseSupportGroup("ΕΞΣΤ_ΒΑ1_ΜΑΘ")).toEqual({ kind: "INDIVIDUAL", subjectCode: "ΜΑΘ" });
+    expect(parseSupportGroup("ΕΞΑΣΤ_ΒΑ1_ΜΑΘ")).toEqual({ kind: "INDIVIDUAL", subjectCode: "ΜΑΘ" });
+  });
+
+  it("tolerates accents, lower case, Latin look-alikes and other separators", () => {
+    expect(parseSupportGroup("ΆΣΤ_ΜΕ2_ΦΥΣ")?.kind).toBe("ATOMIC");
+    expect(parseSupportGroup("στ_εγ2_μαθ")?.kind).toBe("GROUP");
+    expect(parseSupportGroup("AΣT_ME2_ΦΥΣ")?.kind).toBe("ATOMIC"); // Latin A, T, M, E
+    expect(parseSupportGroup("ΣΤ-ΕΓ2-ΜΑΘ")).toEqual({ kind: "GROUP", subjectCode: "ΜΑΘ" });
+    expect(parseSupportGroup("ΣΤ ΕΛΛ")).toEqual({ kind: "GROUP", subjectCode: "ΕΛΛ" });
+  });
+
+  it("needs a separator after the prefix, so ordinary codes are not support", () => {
+    expect(parseSupportGroup("ΣΤΕΛΛ")).toBeNull();
+    expect(parseSupportGroup("ΑΤΜ1")).toBeNull();
+  });
+});
+
+describe("supportNameIssue (timetable import warning)", () => {
+  it("accepts the standard spellings", () => {
+    for (const n of ["ΣΤ_ΕΓ2_ΜΑΘ", "ΑΣΤ_Α_ΦΥΣ", "ΑΤ_Α_ΦΥΣ", "ΑΤΣΤ_Α_ΦΥΣ", "ΕΞΣΤ_Α_ΜΑΘ", "ΕΓ2", "ΑΤΜ1"]) {
+      expect(supportNameIssue(n)).toBeNull();
+    }
+  });
+  it("flags tolerated typos", () => {
+    expect(supportNameIssue("AΣT_ME2_ΦΥΣ")).toBe("typo");
+    expect(supportNameIssue("ΣΤ-ΕΓ2-ΜΑΘ")).toBe("typo");
+    expect(supportNameIssue("ΕΞΑΣΤ_Α_ΜΑΘ")).toBe("typo");
+  });
+  it("flags names that look like support but cannot be read", () => {
+    expect(supportNameIssue("ΑΣΤΕΛΛ")).toBe("unknown");
+    expect(supportNameIssue("ΣΤ/ΕΛΛ")).toBe("unknown");
+    expect(supportNameIssue("ΕΞΣΤΜΑΘ")).toBe("unknown");
+  });
+  it("collects and sorts the issues of a whole file", () => {
+    expect(supportNameIssues(["ΣΤ_Α", "ΣΤ-Β", "ΑΣΤΧ", "ΣΤ-Β", "ΕΓ2"])).toEqual({ typos: ["ΣΤ-Β"], unknown: ["ΑΣΤΧ"] });
+  });
+});
+
+describe("supportRoster", () => {
+  const base = { registryNo: "1", homegroup: "Α1", grade: 1, inRegister: true };
+  const e = (o: Partial<SupportEnrolment>): SupportEnrolment => ({
+    studentId: "s1", name: "Άννα", kind: "GROUP", subject: "Ελληνικά", ...base, ...o,
+  });
+  const rows = supportRoster([
+    e({}),
+    e({ subject: "Μαθηματικά" }),
+    e({ kind: "ATOMIC", subject: "Φυσική" }),
+    e({ subject: "Ελληνικά" }),
+    e({ studentId: "s2", name: "Βασίλης", kind: "INDIVIDUAL", subject: "Αγγλικά", homegroup: "Β1", grade: 2, registryNo: "22", inRegister: false }),
+  ]);
+
+  it("groups a student's subjects per kind, without duplicates", () => {
+    expect(rows).toHaveLength(2);
+    expect(rows[0]!.subjects).toEqual({ GROUP: ["Ελληνικά", "Μαθηματικά"], ATOMIC: ["Φυσική"], INDIVIDUAL: [] });
+    expect(rows[1]!.inRegister).toBe(false);
+  });
+
+  it("filters by kind, year and search", () => {
+    expect(filterSupportRoster(rows, { kind: "INDIVIDUAL" }).map((r) => r.studentId)).toEqual(["s2"]);
+    expect(filterSupportRoster(rows, { kind: "ATOMIC" }).map((r) => r.studentId)).toEqual(["s1"]);
+    expect(filterSupportRoster(rows, { grade: 2 }).map((r) => r.studentId)).toEqual(["s2"]);
+    expect(filterSupportRoster(rows, { q: "αννα" }).map((r) => r.studentId)).toEqual(["s1"]);
+    expect(filterSupportRoster(rows, { q: "22" }).map((r) => r.studentId)).toEqual(["s2"]);
+  });
+
+  it("parses the kind query", () => {
+    expect(parseSupportKind("INDIVIDUAL")).toBe("INDIVIDUAL");
+    expect(parseSupportKind("x")).toBeUndefined();
   });
 });
 
