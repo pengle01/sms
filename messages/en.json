@@ -132,7 +132,8 @@
     "staffDirectory": "Staff Directory",
     "maintenance": "Equipment faults",
     "breakDutyReports": "Duty reports",
-    "adminTests": "Tests"
+    "adminTests": "Tests",
+    "myActivities": "My Activities"
   },
   "appearance": {
     "title": "Appearance",
@@ -1572,7 +1573,8 @@
     "linkAttendance": "Attendance",
     "linkGrades": "Grades",
     "linkTests": "Tests",
-    "linkSchedule": "Timetable and today's changes"
+    "linkSchedule": "Timetable and today's changes",
+    "linkActivities": "Activities"
   },
   "adminUsers": {
     "title": "Staff",
@@ -2836,5 +2838,13 @@
   "lastInRoom": {
     "message": "Last lesson in this room: switch off the lights, air conditioning and electronic devices, and close the windows.",
     "room": "Room {room}"
+  },
+  "studentActivities": {
+    "title": "Activities",
+    "intro": "The activities you take part in this school year — upcoming and past.",
+    "upcoming": "Upcoming",
+    "past": "Held",
+    "none": "No activities this school year.",
+    "noneUpcoming": "No activities scheduled."
   }
 }

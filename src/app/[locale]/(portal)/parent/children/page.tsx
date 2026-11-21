@@ -43,6 +43,7 @@ export default async function ParentChildrenPage({
         basePath={`/${locale}/parent/children`}
         showSchedule
         showVisits
+        showActivities
       />
     </div>
   );

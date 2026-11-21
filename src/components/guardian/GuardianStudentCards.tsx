@@ -2,7 +2,7 @@ import { db } from "@/server/db";
 import { getTranslations } from "next-intl/server";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { GraduationCap, BookOpen, ClipboardList, FileText, LogOut, CalendarDays } from "lucide-react";
+import { GraduationCap, BookOpen, ClipboardList, FileText, LogOut, CalendarDays, Sparkles } from "lucide-react";
 import { utcMidnight, monthStart, localDateStr } from "@/lib/dates";
 import Link from "next/link";
 
@@ -19,6 +19,7 @@ export async function GuardianStudentCards({
   showSchedule = false,
   showVisits = false,
   showGrades = true,
+  showActivities = false,
 }: {
   locale: string;
   studentIds: string[];
@@ -29,6 +30,8 @@ export async function GuardianStudentCards({
   showVisits?: boolean;
   /** The «Βαθμοί» link — off for chaperones, who never see grades. */
   showGrades?: boolean;
+  /** The «Δραστηριότητες» link — parents only. */
+  showActivities?: boolean;
 }) {
   const t = await getTranslations({ locale, namespace: "parentChildren" });
   const tVisits = await getTranslations({ locale, namespace: "visitHours" });
@@ -108,6 +111,15 @@ export async function GuardianStudentCards({
                   >
                     <CalendarDays className="w-3.5 h-3.5" />
                     {t("linkSchedule")}
+                  </Link>
+                )}
+                {showActivities && (
+                  <Link
+                    href={`${basePath}/${s.id}/activities`}
+                    className="flex items-center justify-center gap-1.5 h-9 rounded-lg border border-slate-200 text-slate-600 text-xs font-medium hover:bg-slate-50"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    {t("linkActivities")}
                   </Link>
                 )}
                 {showVisits && (

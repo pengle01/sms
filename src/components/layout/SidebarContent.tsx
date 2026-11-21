@@ -12,6 +12,7 @@ import {
   GraduationCap, Home, Backpack, BookMarked, ShieldAlert,
   CircleUser, BellRing, LogOut, ArrowLeftRight, BarChart3, Award, MessageSquare,
   ScrollText, Send, Database, Megaphone, Wrench, MapPin, NotebookPen,
+  Sparkles,
 } from "lucide-react";
 import { MessagesNavBadge } from "./MessagesNavBadge";
 
@@ -79,6 +80,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "myAttendance", href: "attendance",        icon: ClipboardList,   roles: ["STUDENT"] },
   { key: "myGrades",     href: "grades",            icon: BookOpen,        roles: ["STUDENT"] },
   { key: "myTests",      href: "tests",             icon: FileText,        roles: ["STUDENT"] },
+  { key: "myActivities", href: "activities",        icon: Sparkles,        roles: ["STUDENT"] },
   { key: "noticeboard",  href: "noticeboard",       icon: Bell,            roles: ["STUDENT"] },
 
   // ── Parent portal ────────────────────────────────────────────────────
