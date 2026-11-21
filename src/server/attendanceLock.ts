@@ -1,5 +1,5 @@
 import { db } from "@/server/db";
-import { PREMARK_SELECT, isPermitPremark } from "@/lib/exitPermit";
+import { REGISTER_SELECT, isRegisterRow } from "@/lib/exitPermit";
 import { getNow, localDateStr, utcMidnight } from "@/lib/dates";
 import { getSchoolYear } from "@/lib/schoolConfig";
 import { termOf } from "@/lib/schoolYear";
@@ -121,7 +121,7 @@ export async function getPendingAttendance(
     slots.length > 0
       ? db.attendance.findMany({
           where: { timetableSlotId: { in: slots.map((s) => s.id) }, date: { gte: rangeStart, lte: rangeEnd } },
-          select: { timetableSlotId: true, date: true, ...PREMARK_SELECT },
+          select: { timetableSlotId: true, date: true, ...REGISTER_SELECT },
         })
       : Promise.resolve([]),
     homeroomGroupIds.length > 0
@@ -138,7 +138,7 @@ export async function getPendingAttendance(
 
   const markedSet = new Set<string>(); // slotId::dateIso
   // A permit's pre-marked absence doesn't take the register: the lesson stays owed.
-  for (const a of marked) if (a.timetableSlotId && !isPermitPremark(a)) markedSet.add(`${a.timetableSlotId}::${isoOf(a.date)}`);
+  for (const a of marked) if (a.timetableSlotId && isRegisterRow(a)) markedSet.add(`${a.timetableSlotId}::${isoOf(a.date)}`);
   const homeroomMarkedSet = new Set<string>(); // groupId::period::dateIso
   for (const a of intercalaryMarked)
     if (a.intercalaryGroupId && a.intercalaryPeriod != null)

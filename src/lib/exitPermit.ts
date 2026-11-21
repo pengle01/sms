@@ -102,6 +102,18 @@ export function isPermitPremark(row: {
   return !!row.permitPremarked || (!!row.exitPermit && row.exitPermit.issuerId === row.staffId);
 }
 
+/** The attendance fields isRegisterRow needs — spread into a Prisma select. */
+export const REGISTER_SELECT = { ...PREMARK_SELECT, transcriberMarked: true } as const;
+
+/**
+ * A row written by a teacher taking the lesson's register. Not one: a permit's
+ * pre-marked absence, and the row a transcriber saves for the one student they
+ * sit a test with. Only a register row makes a lesson «taken».
+ */
+export function isRegisterRow(row: Parameters<typeof isPermitPremark>[0] & { transcriberMarked?: boolean | null }): boolean {
+  return !isPermitPremark(row) && !row.transcriberMarked;
+}
+
 /**
  * One slot per period for pre-marking a permit's absences: where a homegroup
  * slot and a subject-group slot share a period, the subject-group slot wins

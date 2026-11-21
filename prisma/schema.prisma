@@ -160,25 +160,25 @@ model VerificationToken {
 // ─── Users ────────────────────────────────────────────────────────────────────
 
 model User {
-  id           String  @id @default(cuid())
-  email        String  @unique
+  id                  String    @id @default(cuid())
+  email               String    @unique
   // `name` stays the composed full name ("first last") used for display/search
   // across the app; firstName/lastName hold the split parts edited in the profile.
-  name         String?
-  firstName    String?
-  lastName     String?
-  nameEl       String?
-  passwordHash String? // Parents only — staff use Entra ID
-  image        String?
-  role         Role
+  name                String?
+  firstName           String?
+  lastName            String?
+  nameEl              String?
+  passwordHash        String? // Parents only — staff use Entra ID
+  image               String?
+  role                Role
   // Secondary roles granted on top of the primary one. Currently only
   // SUPER_ADMIN is ever assigned here (a teacher who also administers the
   // system keeps their teacher role and features). Authorization: the primary
   // role drives everything; an extra SUPER_ADMIN additionally unlocks the
   // admin portal + admin procedures (see authz.ts / trpc/init.ts).
-  extraRoles   Role[]  @default([])
-  entraId      String? @unique
-  isActive     Boolean @default(true)
+  extraRoles          Role[]    @default([])
+  entraId             String?   @unique
+  isActive            Boolean   @default(true)
   // Set when a student-file import deactivated this account (a student missing
   // from the new file, or a parent left with no active child). Only these are
   // brought back by a later import; a manual deactivation is never undone.
@@ -186,10 +186,10 @@ model User {
   // A staff member's own details (phone, specialty, ΠΜΠ — { phone, department,
   // pmp }) while they're not linked to any staff record, so an admin unlink →
   // link carries them over. Normally they live on the linked StaffProfile.
-  staffDetails Json?
+  staffDetails        Json?
   // Per-account appearance preferences
-  colorTheme   String  @default("emerald") // emerald | ocean | violet | rose | amber
-  fontSize     String  @default("small") // small | medium | large
+  colorTheme          String    @default("emerald") // emerald | ocean | violet | rose | amber
+  fontSize            String    @default("small") // small | medium | large
 
   accounts Account[]
   sessions Session[]
@@ -234,9 +234,9 @@ model User {
 }
 
 model StaffProfile {
-  id                      String  @id @default(cuid())
-  userId                  String? @unique
-  user                    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  id                      String    @id @default(cuid())
+  userId                  String?   @unique
+  user                    User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   phone                   String?
   department              String?
   pmp                     String? // ΠΜΠ — personnel/payroll number, asked at first sign-in
@@ -244,24 +244,29 @@ model StaffProfile {
   // Copied from the schedule's staffName when the profile is linked to slots.
   scheduleName            String?
   // Designation: deputy B responsible for special education (set by admin)
-  specialEducation        Boolean @default(false)
+  specialEducation        Boolean   @default(false)
   // Designation: the teacher who runs the daily substitution plan (set by admin)
-  substitutionCoordinator Boolean @default(false)
+  substitutionCoordinator Boolean   @default(false)
   // Designation: the headteacher responsible for ΔΔΚ (set by admin)
-  ddkCoordinator          Boolean @default(false)
+  ddkCoordinator          Boolean   @default(false)
   // Designation: the headteacher responsible for the «Πειθαρχικό Συμβούλιο» —
   // decides referrals the headmaster refers up (one at a time; set by admin)
-  disciplinaryCouncil     Boolean @default(false)
+  disciplinaryCouncil     Boolean   @default(false)
+  // On the list of «Μεταγραφείς»: may be picked to write a test at the dictation
+  // of a student entitled to one (διευκόλυνση 7). The list is uploaded by the
+  // deputy responsible for special education; «ΠΕΡΙΟΔΟΙ» is informational.
+  transcriber             Boolean   @default(false)
+  transcriberPeriods      Int?
   // Designation: IT maintenance — handles equipment faults in the rooms assigned
   // to them (RoomMaintainer), set by admin
-  itMaintenance           Boolean @default(false)
+  itMaintenance           Boolean   @default(false)
   // Designation: IT manager («Υπεύθυνος/η Πληροφορικής») — sees and handles every
   // IT maintenance request, like the admin, and hears about every new one. May
   // also maintain rooms of their own. Set by admin.
-  itManager               Boolean @default(false)
+  itManager               Boolean   @default(false)
   // Parents may message this staff member (set by admin, off by default). While
   // off, existing threads stay readable but nobody can reply or start one.
-  parentMessaging         Boolean @default(false)
+  parentMessaging         Boolean   @default(false)
   // Set when a timetable import no longer lists this name in the Καθηγητής
   // column (the teacher left); cleared when a later import lists it again. Such
   // profiles are no longer offered at sign-up or in the teacher search.
@@ -276,6 +281,7 @@ model StaffProfile {
   homeroomGroups          Group[]                 @relation("HomeroomTeacher")
   homeroomHeadGroups      Group[]                 @relation("HomeroomHeadteacher")
   homeroomCounselorGroups Group[]                 @relation("HomeroomCounselor")
+  transcriptions          TestTranscriber[]       @relation("TestTranscriberStaff")
   courseAssignments       CourseAssignment[]
   filedReferrals          Referral[]              @relation("ReferralFiler")
   attendanceRecords       Attendance[]            @relation("AttendanceTeacher")
@@ -296,8 +302,8 @@ model StaffProfile {
   visitHourMatches        VisitHourMatch[]
   addedLessons            AddedLesson[]
   breakDutyPosts          DutyPostAssignment[]
-  breakDutyChecked        DutyCheck[]          @relation("DutyCheckChecker")
-  breakDutyCheckedAt      DutyCheck[]          @relation("DutyCheckTeacher")
+  breakDutyChecked        DutyCheck[]             @relation("DutyCheckChecker")
+  breakDutyCheckedAt      DutyCheck[]             @relation("DutyCheckTeacher")
 }
 
 model StudentProfile {
@@ -314,6 +320,7 @@ model StudentProfile {
   address   String?
 
   parents                  ParentStudent[]
+  testTranscribers         TestTranscriber[]
   subjectGroups            StudentGroup[]
   smsContacts              SmsContact[]
   smsLogs                  SmsLog[]
@@ -525,31 +532,35 @@ model TimetableSlot {
 // ─── Attendance ───────────────────────────────────────────────────────────────
 
 model Attendance {
-  id                 String           @id @default(cuid())
+  id                 String                @id @default(cuid())
   studentId          String
-  student            StudentProfile   @relation(fields: [studentId], references: [id])
+  student            StudentProfile        @relation(fields: [studentId], references: [id])
   timetableSlotId    String?
-  timetableSlot      TimetableSlot?   @relation(fields: [timetableSlotId], references: [id])
+  timetableSlot      TimetableSlot?        @relation(fields: [timetableSlotId], references: [id])
   staffId            String
-  staff              StaffProfile     @relation("AttendanceTeacher", fields: [staffId], references: [id])
-  date               DateTime         @db.Date
+  staff              StaffProfile          @relation("AttendanceTeacher", fields: [staffId], references: [id])
+  date               DateTime              @db.Date
   status             AttendanceStatus
-  minutesDelayed     Int              @default(0)
-  isAutoAbsent       Boolean          @default(false)
-  smsSent            Boolean          @default(false)
+  minutesDelayed     Int                   @default(0)
+  isAutoAbsent       Boolean               @default(false)
+  smsSent            Boolean               @default(false)
   // Absence covered by an exit permit (Άδεια Εξόδου) — informs the office admin
   exitPermitId       String?
-  exitPermit         ExitPermit?      @relation(fields: [exitPermitId], references: [id], onDelete: SetNull)
+  exitPermit         ExitPermit?           @relation(fields: [exitPermitId], references: [id], onDelete: SetNull)
   // The row exists only because the permit pre-marked it (no teacher has taken
   // that register since). Cancelling the permit deletes these and merely
   // unlinks the rest; a teacher's register clears the flag.
-  permitPremarked    Boolean          @default(false)
+  permitPremarked    Boolean               @default(false)
+  // Marked by the student's transcriber («μεταγραφέας») for a test, in another
+  // room. It records the student only: the class register is still the
+  // teacher's to take, and this row never makes the lesson «taken».
+  transcriberMarked  Boolean               @default(false)
   // The record's own facts, saved with the register, so re-importing the timetable
   // cannot rewrite them: the subject held and how it was held. The teacher is
   // staffId, whoever marked it. Null on rows older than these columns until an
   // import is about to change their lesson (see attendanceFreeze.ts).
   courseId           String?
-  course             Course?          @relation(fields: [courseId], references: [id])
+  course             Course?               @relation(fields: [courseId], references: [id])
   lessonKind         AttendanceLessonKind?
   // Whose lesson it was, when someone else took the register («αντί για …»).
   lessonTeacherName  String?
@@ -558,10 +569,10 @@ model Attendance {
   intercalaryPeriod  Int?
   // Soft-erased (διαγραφή απουσίας): stays on record but does not count
   // towards any totals.
-  waived             Boolean          @default(false)
+  waived             Boolean               @default(false)
   waivedAt           DateTime?
   waivedById         String?
-  waivedBy           User?            @relation("AttendanceWaiver", fields: [waivedById], references: [id])
+  waivedBy           User?                 @relation("AttendanceWaiver", fields: [waivedById], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -820,20 +831,20 @@ model ChaperoneRequestStudent {
 // ─── Grades ───────────────────────────────────────────────────────────────────
 
 model Grade {
-  id        String         @id @default(cuid())
-  studentId String
-  student   StudentProfile @relation(fields: [studentId], references: [id])
-  courseId  String
-  course    Course         @relation(fields: [courseId], references: [id])
-  staffId   String
-  staff     StaffProfile   @relation(fields: [staffId], references: [id])
-  value     Decimal        @db.Decimal(4, 2)
-  period    String
+  id         String         @id @default(cuid())
+  studentId  String
+  student    StudentProfile @relation(fields: [studentId], references: [id])
+  courseId   String
+  course     Course         @relation(fields: [courseId], references: [id])
+  staffId    String
+  staff      StaffProfile   @relation(fields: [staffId], references: [id])
+  value      Decimal        @db.Decimal(4, 2)
+  period     String
   // "2025-2026" — a course repeats every year, so the term grade is keyed by
   // school year as well. The default only fills rows written before the column
   // existed (all from 2025-26); the app always sets it explicitly.
-  schoolYear String        @default("2025-2026")
-  notes     String?
+  schoolYear String         @default("2025-2026")
+  notes      String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -857,10 +868,31 @@ model TestSchedule {
   periodCount Int          @default(1) // 1 or 2 periods (BIG tests only)
   type        TestType     @default(BIG)
 
-  createdAt  DateTime    @default(now())
-  testGrades TestGrade[]
+  createdAt    DateTime          @default(now())
+  testGrades   TestGrade[]
+  transcribers TestTranscriber[]
 
   @@index([groupId, date])
+}
+
+// The teacher who writes a test at a student's dictation («μεταγραφέας»,
+// διευκόλυνση 7). One per student per test, picked by the deputy responsible
+// for special education from the teachers free in the test's period(s).
+model TestTranscriber {
+  id           String         @id @default(cuid())
+  testId       String
+  test         TestSchedule   @relation(fields: [testId], references: [id], onDelete: Cascade)
+  studentId    String
+  student      StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  staffId      String
+  staff        StaffProfile   @relation("TestTranscriberStaff", fields: [staffId], references: [id], onDelete: Cascade)
+  // Where the student sits the test with the transcriber.
+  room         String?
+  assignedById String?
+  createdAt    DateTime       @default(now())
+
+  @@unique([testId, studentId])
+  @@index([staffId])
 }
 
 model TestGrade {
@@ -891,29 +923,29 @@ model Referral {
   group      Group?              @relation("ReferralGroup", fields: [groupId], references: [id])
   resolution ReferralResolution?
 
-  filerId        String
-  filer          StaffProfile           @relation("ReferralFiler", fields: [filerId], references: [id])
+  filerId         String
+  filer           StaffProfile             @relation("ReferralFiler", fields: [filerId], references: [id])
   // Short title of the offence («Παράπτωμα» on the parent letter). Null on
   // referrals filed before it existed — the letter falls back to the description.
-  title          String?
-  description    String                 @db.Text
-  location       String?
-  incidentTime   String?
-  extraInfo      String?                @db.Text
+  title           String?
+  description     String                   @db.Text
+  location        String?
+  incidentTime    String?
+  extraInfo       String?                  @db.Text
   // Legacy single recommendation — referrals filed before several could be
   // ticked. New referrals leave it at the default and use `recommendations`.
   // Read both through referralRecommendations() in src/lib/referralLabels.ts.
-  recommendation ReferralRecommendation @default(NO_RECOMMENDATION)
+  recommendation  ReferralRecommendation   @default(NO_RECOMMENDATION)
   // The teacher's recommendations to management (any number; empty = none).
   recommendations ReferralRecommendation[] @default([])
-  date           DateTime
-  isDraft        Boolean                @default(false)
+  date            DateTime
+  isDraft         Boolean                  @default(false)
   // Set the first time a headteacher opens the referral to examine it.
   // Drives the at-a-glance colour: unopened+unresolved = red, opened/partial = yellow, all resolved = green.
-  openedAt       DateTime?
-  counselorNotes String?                @db.Text
+  openedAt        DateTime?
+  counselorNotes  String?                  @db.Text
 
-  students ReferralStudent[]
+  students     ReferralStudent[]
   editRequests ReferralEditRequest[]
 
   createdAt DateTime @default(now())
@@ -1501,7 +1533,7 @@ model DutyCheck {
   teacherName    String
   staffProfileId String?
   staffProfile   StaffProfile? @relation("DutyCheckTeacher", fields: [staffProfileId], references: [id], onDelete: SetNull)
-  present        Boolean?      // null = only a comment so far
+  present        Boolean? // null = only a comment so far
   comment        String?       @db.Text
   checkedById    String
   checkedBy      StaffProfile  @relation("DutyCheckChecker", fields: [checkedById], references: [id])
@@ -1610,19 +1642,19 @@ model MaintenanceRequest {
 
 // The request's timeline: its creation, every comment and every status change.
 model MaintenanceEvent {
-  id         String               @id @default(cuid())
-  requestId  String
-  request    MaintenanceRequest   @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  authorId   String?
-  author     User?                @relation("MaintenanceEvents", fields: [authorId], references: [id], onDelete: SetNull)
-  kind       MaintenanceEventKind
-  fromStatus MaintenanceStatus?
-  toStatus   MaintenanceStatus?
-  body       String?
+  id           String               @id @default(cuid())
+  requestId    String
+  request      MaintenanceRequest   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  authorId     String?
+  author       User?                @relation("MaintenanceEvents", fields: [authorId], references: [id], onDelete: SetNull)
+  kind         MaintenanceEventKind
+  fromStatus   MaintenanceStatus?
+  toStatus     MaintenanceStatus?
+  body         String?
   // Time the handler spent, in minutes — recorded with each resolution (null on
   // other events and on resolutions from before it was asked for).
   minutesSpent Int?
-  createdAt  DateTime             @default(now())
+  createdAt    DateTime             @default(now())
 
   @@index([requestId, createdAt])
   @@index([toStatus, createdAt])

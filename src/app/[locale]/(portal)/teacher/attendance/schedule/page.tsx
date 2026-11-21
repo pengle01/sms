@@ -7,7 +7,7 @@ import { getNow, utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { getSpecialDaysInRange, buildDayTypeMap, buildDayMeetingMap, isHolidayType } from "@/lib/calendar";
 import { groupByPeriod } from "@/lib/periods";
 import { coverMarkedKeys, type AdHocCover } from "@/lib/coverMarked";
-import { PREMARK_SELECT, isPermitPremark } from "@/lib/exitPermit";
+import { REGISTER_SELECT, isRegisterRow } from "@/lib/exitPermit";
 import { loadAdHocCovers } from "@/server/adHocCovers";
 import { rowsForDay, storedPeriodAt, isMeetingRow, isLessonCancelled } from "@/lib/homegroupPeriod";
 import { getHomegroupOptions, ownHomegroups } from "@/server/homegroupPeriod";
@@ -146,10 +146,10 @@ export default async function TeacherSchedulePage({
             date: { gte: weekStart, lte: weekEnd },
             timetableSlotId: { in: slots.map((s) => s.id) },
           },
-          select: { timetableSlotId: true, date: true, ...PREMARK_SELECT },
+          select: { timetableSlotId: true, date: true, ...REGISTER_SELECT },
         }).then((existing) => {
           for (const e of existing) {
-            if (isPermitPremark(e)) continue; // a permit's pre-mark is not the register
+            if (!isRegisterRow(e)) continue; // a permit's pre-mark is not the register
             markedSet.add(`${e.timetableSlotId}::${e.date.toISOString().slice(0, 10)}`);
           }
         })
@@ -229,9 +229,9 @@ export default async function TeacherSchedulePage({
         date: { gte: utcMidnight(weekStartStr), lte: utcMidnight(isCurrentWeek ? todayStr : weekEndStr) },
         timetableSlotId: { in: coverSlotIds },
       },
-      select: { timetableSlotId: true, date: true, ...PREMARK_SELECT },
+      select: { timetableSlotId: true, date: true, ...REGISTER_SELECT },
     });
-    for (const k of coverMarkedKeys(rows.filter((r) => !isPermitPremark(r)))) markedSet.add(k);
+    for (const k of coverMarkedKeys(rows.filter((r) => isRegisterRow(r)))) markedSet.add(k);
   }
 
   // Classes I covered ad hoc this week («Αναπλήρωση τμήματος»), up to today

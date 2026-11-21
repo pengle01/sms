@@ -327,7 +327,8 @@
     "saveAnnouncement": "Save",
     "cancelEdit": "Cancel",
     "removeFile": "Remove attachment",
-    "keepFile": "Keep attachment"
+    "keepFile": "Keep attachment",
+    "transcription": "Transcription"
   },
   "attendance": {
     "title": "Attendance",
@@ -953,7 +954,9 @@
     "filterAllMine": "All",
     "filterUngraded": "Not fully graded",
     "ungradedNone": "Every test held has its grades.",
-    "pastYear": "Held (this school year)"
+    "pastYear": "Held (this school year)",
+    "transcriberAssigned": "Transcriber: {teacher} ({student})",
+    "transcriberPending": "Transcriber pending ({student})"
   },
   "testGrades": {
     "title": "Test Grades",
@@ -1453,7 +1456,8 @@
     "supportColStudent": "Student",
     "supportColHomegroup": "Homegroup",
     "supportNotInRegister": "not in the SEN register",
-    "supportShowing": "{shown} of {total} students"
+    "supportShowing": "{shown} of {total} students",
+    "transcribersTitle": "Transcribers"
   },
   "studentFile": {
     "dow1": "Monday",
@@ -2846,5 +2850,68 @@
     "past": "Held",
     "none": "No activities this school year.",
     "noneUpcoming": "No activities scheduled."
+  },
+  "transcribers": {
+    "title": "Transcribers",
+    "back": "Special education",
+    "intro": "Tests of students entitled to a transcriber (accommodation 7). Only listed teachers who are free during the test can be picked.",
+    "pending": "Pending ({count})",
+    "nonePending": "No transcriber is waiting to be assigned.",
+    "assigned": "Assigned ({count})",
+    "colDate": "Date",
+    "colTest": "Test",
+    "colStudent": "Student",
+    "colTranscriber": "Transcriber",
+    "choose": "Choose a transcriber…",
+    "assign": "Assign",
+    "change": "Change",
+    "remove": "Remove",
+    "nobodyFree": "Nobody on the list is free at this time.",
+    "optionPeriods": "{count} per.",
+    "optionLessons": "lessons P{periods}",
+    "optionNoLessons": "no lessons",
+    "busy_away": "Now absent",
+    "busy_lesson": "Now has a lesson",
+    "busy_cover": "Now has a cover",
+    "busy_transcribing": "Has another transcription",
+    "assignErr_gone": "The test no longer exists.",
+    "assignErr_past": "The test has passed.",
+    "assignErr_notEntitled": "The student is not entitled to a transcriber for this test.",
+    "assignErr_notListed": "The teacher is not on the transcribers list.",
+    "assignErr_busy": "The teacher is no longer free at this time. Refresh the page.",
+    "listTitle": "Transcribers list ({count})",
+    "listEmpty": "No transcribers list has been uploaded.",
+    "upload": "Upload",
+    "uploadHint": "Excel with the columns «ΜΕΤΑΓΡΑΦΕΙΣ» (as in the timetable, e.g. Μ-ΑΡΝΟΣ Σ.) and «ΠΕΡΙΟΔΟΙ». Replaces the whole list.",
+    "uploaded": "List updated: {count} transcribers.",
+    "unmatchedNames": "Not found in the timetable: {names}",
+    "repeatedNames": "Listed twice: {names}",
+    "err_noFile": "No file selected.",
+    "err_noNameColumn": "No «ΜΕΤΑΓΡΑΦΕΙΣ» column found.",
+    "err_empty": "The file has no teachers.",
+    "err_noneMatched": "No name matches a teacher in the timetable. The list was not changed.",
+    "room": "Room",
+    "chooseRoom": "Room…",
+    "roomsFree": "Free",
+    "roomsTaken": "In use",
+    "inRoom": "Room {room}",
+    "roomTaken": "The room is now in use",
+    "assignErr_noRoom": "Choose a room."
+  },
+  "transcription": {
+    "title": "Test transcription",
+    "back": "Dashboard",
+    "room": "Room {room}",
+    "period": "Period {period}",
+    "present": "Present",
+    "absent": "Absent",
+    "late": "Late",
+    "minutes": "minutes",
+    "save": "Save",
+    "notYet": "The register opens on the day of the test.",
+    "err_notYours": "You are not the transcriber of this test.",
+    "err_future": "The test has not taken place yet.",
+    "err_outOfYear": "The date is outside the school year.",
+    "err_noLesson": "The lesson was not found in the timetable."
   }
 }

@@ -10,12 +10,13 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { AttendanceMarkForm } from "./AttendanceMarkForm";
-import { PREMARK_SELECT, isPermitPremark } from "@/lib/exitPermit";
+import { REGISTER_SELECT, isRegisterRow } from "@/lib/exitPermit";
 import { LastInRoomBanner } from "@/components/attendance/LastInRoomBanner";
 import { lastInRoomFor } from "@/server/lastInRoom";
 import { LessonNoteCard } from "../../lesson-notes/LessonNoteCard";
 import { ClaimPicker, LessonSwitcher, ScrollIntoViewOnMount, type ClaimOption } from "./ClaimPicker";
 import { myCoursesWithGroup, type TeachingSlot } from "@/lib/addedLesson";
+import { studentsWithTranscriber } from "@/server/transcribers";
 
 export default async function TeacherMarkAttendancePage({
   params,
@@ -50,6 +51,9 @@ export default async function TeacherMarkAttendancePage({
   const attendanceDateStr = dateParam ?? localDateStr();
   const attendanceDateObj = utcMidnight(attendanceDateStr);
   const isToday = attendanceDateStr === localDateStr();
+
+  const withTranscriber =
+    period && !isIntercalary && !isExcursion ? await studentsWithTranscriber(attendanceDateObj, period) : new Set<string>();
 
   if (groupId && period) {
     const attendanceDay = new Date(attendanceDateStr + "T12:00:00");
@@ -94,7 +98,9 @@ export default async function TeacherMarkAttendancePage({
         include: { course: true },
       }),
     ]);
-    students = fetchedStudents;
+    // A student sitting a test with a transcriber is on the transcriber's
+    // register for that period, not the class's.
+    students = fetchedStudents.filter((s) => !withTranscriber.has(s.id));
     slot = fetchedSlot;
 
     // Not my own slot? A finalized substitution plan may assign it to me for
@@ -126,9 +132,9 @@ export default async function TeacherMarkAttendancePage({
           date: todayMidnight,
           studentId: { in: studentIds },
         },
-        select: { studentId: true, status: true, minutesDelayed: true, ...PREMARK_SELECT },
+        select: { studentId: true, status: true, minutesDelayed: true, ...REGISTER_SELECT },
       });
-      registerTaken = marked.some((r) => !isPermitPremark(r));
+      registerTaken = marked.some((r) => isRegisterRow(r));
       for (const r of marked) {
         existingRecords[r.studentId] = {
           status: (r.status === "EXCUSED" ? "ABSENT" : r.status) as "PRESENT" | "ABSENT" | "LATE",
@@ -309,7 +315,7 @@ export default async function TeacherMarkAttendancePage({
         }),
         db.attendance.findMany({
           where: { timetableSlotId: claimedSlot.id, date: attendanceDateObj },
-          select: { studentId: true, status: true, minutesDelayed: true, ...PREMARK_SELECT },
+          select: { studentId: true, status: true, minutesDelayed: true, ...REGISTER_SELECT },
         }),
         db.addedLesson.findUnique({
           where: { timetableSlotId_date: { timetableSlotId: claimedSlot.id, date: attendanceDateObj } },
@@ -329,11 +335,11 @@ export default async function TeacherMarkAttendancePage({
         };
       }
       claimed = {
-        registerTaken: claimedMarked.some((r) => !isPermitPremark(r)),
+        registerTaken: claimedMarked.some((r) => isRegisterRow(r)),
         slot: claimedSlot,
         groupName: claimedSlot.group.name,
         teacherLabel: claimedSlot.staff?.scheduleName ?? claimedSlot.staffName ?? claimedSlot.staff?.user?.name ?? null,
-        students: claimedStudents,
+        students: claimedStudents.filter((s) => !withTranscriber.has(s.id)),
         existing,
         added,
         myCourses,

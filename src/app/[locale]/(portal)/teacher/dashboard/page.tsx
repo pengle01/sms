@@ -12,6 +12,8 @@ import { getHomegroupOptions, ownHomegroups } from "@/server/homegroupPeriod";
 import { getPeriodsPerDay } from "@/lib/schoolConfig";
 import { HomegroupPicker } from "@/components/attendance/HomegroupPicker";
 import { getDayOverrides } from "@/server/substitutions";
+import { myTranscriptions } from "@/server/transcribers";
+import { testPeriods } from "@/lib/transcribers";
 import { loadAdHocCovers } from "@/server/adHocCovers";
 import type { AdHocCover } from "@/lib/coverMarked";
 import { getAnnouncementsForDay } from "@/server/announcements";
@@ -23,7 +25,7 @@ import Link from "next/link";
 import { Fragment } from "react";
 import { groupByPeriod } from "@/lib/periods";
 import { coverMarkedKeys, markedKey } from "@/lib/coverMarked";
-import { PREMARK_SELECT, isPermitPremark } from "@/lib/exitPermit";
+import { REGISTER_SELECT, isRegisterRow } from "@/lib/exitPermit";
 import { getTranslations } from "next-intl/server";
 import { visitHourText } from "@/components/visits/VisitList";
 import { RefreshAfterAttendance } from "@/components/attendance/RefreshAfterAttendance";
@@ -102,7 +104,7 @@ export default async function TeacherDashboardPage({
     staff && !isWeekend && !isTodayExcursion
       ? db.attendance.findMany({
           where: { date: today, timetableSlot: { staffId: staff.id } },
-          select: { timetableSlotId: true, ...PREMARK_SELECT },
+          select: { timetableSlotId: true, ...REGISTER_SELECT },
         })
       : Promise.resolve([]),
     meeting && myHomegroups.length > 0
@@ -148,7 +150,7 @@ export default async function TeacherDashboardPage({
 
   const todaySlots = allSlots.filter((s) => s.dayOfWeek === todayDow);
   // A permit's pre-marked absence is not the register — only a real one ticks the lesson.
-  const markedSlotIds = new Set(markedRaw.filter((r) => !isPermitPremark(r)).map((r) => r.timetableSlotId));
+  const markedSlotIds = new Set(markedRaw.filter((r) => isRegisterRow(r)).map((r) => r.timetableSlotId));
 
   // Substitution overrides for today (finalized plan only): lessons I cover
   // and my own lessons that are covered/released. Study-hall groups are NOT
@@ -171,8 +173,8 @@ export default async function TeacherDashboardPage({
     coverSlotIds.length > 0
       ? await db.attendance.findMany({
           where: { date: today, timetableSlotId: { in: coverSlotIds } },
-          select: { timetableSlotId: true, date: true, ...PREMARK_SELECT },
-        }).then((rows) => rows.filter((r) => !isPermitPremark(r)))
+          select: { timetableSlotId: true, date: true, ...REGISTER_SELECT },
+        }).then((rows) => rows.filter((r) => isRegisterRow(r)))
       : [],
   );
   // Classes I covered ad hoc today («Αναπλήρωση τμήματος»)
@@ -212,9 +214,11 @@ export default async function TeacherDashboardPage({
 
   // On-duty deputies for today + active announcements (pushed by management;
   // composed under Ειδοποιήσεις, shown read-only here).
-  const [onDuty, announcements, dutyAssignments] = await Promise.all([
+  const [onDuty, announcements, upcomingTranscriptions, dutyAssignments] = await Promise.all([
     isWeekend ? Promise.resolve([]) : getOnDutyDeputies(today),
     getAnnouncementsForDay(today),
+    // Tests I write at a student's dictation («μεταγραφέας»), today onwards
+    staff && !isWeekend ? myTranscriptions(staff.id, today) : Promise.resolve([]),
     // «Η εφημερία μου» — this teacher's break-duty posts from the duty programme
     staff
       ? db.dutyPostAssignment.findMany({
@@ -222,6 +226,30 @@ export default async function TeacherDashboardPage({
         })
       : Promise.resolve([]),
   ]);
+  // Today's transcriptions sit in the day's schedule like a substitution, one
+  // row per period of the test; ticked once I saved that student's register.
+  const todayTranscriptions = upcomingTranscriptions.filter((a) => a.test.date.getTime() === today.getTime());
+  const transcriptionsByPeriod = new Map<number, typeof todayTranscriptions>();
+  for (const a of todayTranscriptions) {
+    for (const p of testPeriods(a.test.period, a.test.periodCount)) {
+      transcriptionsByPeriod.set(p, [...(transcriptionsByPeriod.get(p) ?? []), a]);
+    }
+  }
+  const transcriptionMarked = new Set(
+    staff && todayTranscriptions.length > 0
+      ? (
+          await db.attendance.findMany({
+            where: {
+              date: today,
+              staffId: staff.id,
+              transcriberMarked: true,
+              studentId: { in: todayTranscriptions.map((a) => a.studentId) },
+            },
+            select: { studentId: true, timetableSlot: { select: { period: true } } },
+          })
+        ).map((r) => `${r.studentId}:${r.timetableSlot?.period}`)
+      : [],
+  );
   const dutyDays = staff ? myDutyDays(dutyAssignments, { id: staff.id, scheduleName: staff.scheduleName }) : new Map<number, MyDutyPost[]>();
   // No break duty on a weekend or a day the school is closed.
   const dutyToday = !isWeekend && !isHolidayType(todaySpecialDay) ? dutyDays.get(todayDow) ?? [] : [];
@@ -541,6 +569,40 @@ export default async function TeacherDashboardPage({
                       </Link>
                     );
                   };
+                  // Tests I transcribe this period replace the free row
+                  const transcribing = transcriptionsByPeriod.get(dbPeriod) ?? [];
+                  if (transcribing.length > 0) {
+                    return (
+                      <Fragment key={period}>
+                        {periodSlots.map((s) => renderRow(s, `${period}-${s.id}`))}
+                        {covers.map(renderCover)}
+                        {transcribing.map((a) => {
+                          const done = transcriptionMarked.has(`${a.studentId}:${dbPeriod}`);
+                          return (
+                            <Link
+                              key={`transcription-${a.id}`}
+                              href={`/${locale}/teacher/attendance/transcription/${a.id}`}
+                              className={`flex items-center gap-4 px-5 py-3 transition-colors hover:bg-sky-50 ${done ? "bg-emerald-50/40" : "bg-sky-50/40"}`}
+                            >
+                              <span className="w-5 flex-shrink-0 text-center text-sm font-bold text-sky-400">{period}</span>
+                              <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-medium text-slate-900">{a.test.course.name}</span>
+                                <span className="text-sm text-slate-400">{a.test.group.name}</span>
+                                <span className="text-xs font-semibold text-sky-600">{t("transcription")}</span>
+                                <span className="text-sm text-slate-700">{a.student.user?.name}</span>
+                                {a.room && <span className="text-xs text-slate-400 font-mono">{t("room", { room: a.room })}</span>}
+                              </div>
+                              {done ? (
+                                <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-500" />
+                              ) : (
+                                <span className="text-xs font-medium text-emerald-600 flex-shrink-0">{t("markAttendance")}</span>
+                              )}
+                            </Link>
+                          );
+                        })}
+                      </Fragment>
+                    );
+                  }
                   if (periodSlots.length > 1 || covers.length > 0) {
                     return (
                       <Fragment key={period}>

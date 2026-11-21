@@ -223,6 +223,7 @@ export const attendanceRouter = createTRPCRouter({
               lessonTeacherName,
               // The teacher's register now owns this row, however it was created.
               permitPremarked: false,
+              transcriberMarked: false,
             },
           });
         }));

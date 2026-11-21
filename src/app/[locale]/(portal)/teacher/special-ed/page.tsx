@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ShieldAlert, Upload, Download, UserPlus, BookOpen, LifeBuoy } from "lucide-react";
+import { ShieldAlert, Upload, Download, UserPlus, BookOpen, LifeBuoy, PenLine } from "lucide-react";
 import {
   canViewSpecialEdFull,
   canManageSpecialEdRegister,
@@ -131,6 +131,15 @@ export default async function SpecialEdDeskPage({
             <LifeBuoy className="w-4 h-4" />
             {t("supportRosterTitle")}
           </Link>
+          {canManageRegister && (
+            <Link
+              href={`/${locale}/teacher/special-ed/transcribers`}
+              className="inline-flex items-center gap-2 h-9 px-4 rounded-lg border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50"
+            >
+              <PenLine className="w-4 h-4" />
+              {t("transcribersTitle")}
+            </Link>
+          )}
           <Link
             href={`/${locale}/teacher/special-ed/export`}
             prefetch={false}

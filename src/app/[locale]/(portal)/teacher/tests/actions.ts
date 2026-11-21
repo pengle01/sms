@@ -9,6 +9,10 @@ import { studentGroupIds } from "@/lib/studentTests";
 import { getActiveTermInfo, getMaxTestsPerWeek } from "@/lib/schoolConfig";
 import { isSchoolClosed } from "@/lib/calendar";
 import { TestType } from "@/generated/prisma/client";
+import { fmtDisplayDate } from "@/lib/dates";
+import { logger, errInfo } from "@/server/logger";
+import { transcriberTestLine } from "@/lib/transcribers";
+import { specialEdDeputyUserIds, transcriberStudentsForGroup } from "@/server/transcribers";
 
 export type TestConflict = {
   studentName: string;
@@ -196,7 +200,7 @@ export async function scheduleTest(data: {
 
   if (conflicts.length > 0) return { success: false, conflicts };
 
-  await db.testSchedule.create({
+  const created = await db.testSchedule.create({
     data: {
       groupId: data.groupId,
       courseId: data.courseId,
@@ -206,7 +210,37 @@ export async function scheduleTest(data: {
       periodCount: data.type === "BIG" ? data.periodCount : 1,
       type: data.type,
     },
+    include: { course: { select: { name: true } }, group: { select: { name: true } } },
   });
+
+  // Students entitled to a transcriber: the deputy responsible for special
+  // education must pick one. Best effort — never undoes the test.
+  try {
+    const entitled = await transcriberStudentsForGroup(created.groupId);
+    const deputies = entitled.length > 0 ? await specialEdDeputyUserIds() : [];
+    if (deputies.length > 0) {
+      const line = transcriberTestLine({
+        dateLabel: fmtDisplayDate(created.date),
+        period: created.period,
+        periodCount: created.periodCount,
+        courseName: created.course.name,
+        groupName: created.group.name,
+      });
+      await db.notification.createMany({
+        data: deputies.map((userId) => ({
+          userId,
+          senderId: session.user.id,
+          type: "TRANSCRIBER_NEEDED",
+          title: "Διαγώνισμα: χρειάζεται μεταγραφέας",
+          body: `${line} · ${entitled.map((s) => s.user?.name ?? "").join(", ")}`,
+          linkUrl: "/teacher/special-ed/transcribers",
+          read: false,
+        })),
+      });
+    }
+  } catch (e) {
+    logger.error({ event: "transcriber.notifyFailed", err: errInfo(e) }, "Transcriber notification failed");
+  }
 
   revalidatePath("/[locale]/teacher/tests", "page");
   return { success: true };
@@ -219,9 +253,53 @@ export async function deleteTest(testId: string): Promise<void> {
   const staff = await db.staffProfile.findUnique({ where: { userId: session.user.id } });
   if (!staff) throw new Error("No staff profile");
 
+  // Read the transcribers before the cascade removes them, to tell them.
+  const test = await db.testSchedule.findFirst({
+    where: { id: testId, staffId: staff.id },
+    select: {
+      date: true,
+      period: true,
+      periodCount: true,
+      course: { select: { name: true } },
+      group: { select: { name: true } },
+      transcribers: { select: { staff: { select: { userId: true } }, student: { select: { user: { select: { name: true } } } } } },
+    },
+  });
+
   await db.testSchedule.delete({
     where: { id: testId, staffId: staff.id },
   });
+
+  if (test && test.transcribers.length > 0) {
+    try {
+      const line = transcriberTestLine({
+        dateLabel: fmtDisplayDate(test.date),
+        period: test.period,
+        periodCount: test.periodCount,
+        courseName: test.course.name,
+        groupName: test.group.name,
+      });
+      await db.notification.createMany({
+        data: test.transcribers.flatMap((a) =>
+          a.staff.userId
+            ? [
+                {
+                  userId: a.staff.userId,
+                  senderId: session.user.id,
+                  type: "TRANSCRIBER_CANCELLED",
+                  title: "Το διαγώνισμα ακυρώθηκε: δεν χρειάζεται μεταγραφέας",
+                  body: `${line} · ${a.student.user?.name ?? ""}`,
+                  linkUrl: "/teacher/dashboard",
+                  read: false,
+                },
+              ]
+            : [],
+        ),
+      });
+    } catch (e) {
+      logger.error({ event: "transcriber.notifyFailed", err: errInfo(e) }, "Transcriber notification failed");
+    }
+  }
 
   revalidatePath("/[locale]/teacher/tests", "page");
 }

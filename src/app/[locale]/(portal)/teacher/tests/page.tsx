@@ -10,6 +10,7 @@ import { utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { getActiveTermInfo, getSchoolYear } from "@/lib/schoolConfig";
 import { gradingStatus } from "@/lib/testReport";
 import { studentGroupIds } from "@/lib/studentTests";
+import { TRANSCRIBER_ACCOMMODATION } from "@/lib/transcribers";
 import { HomegroupTestsTab } from "./HomegroupTestsTab";
 import { getTranslations } from "next-intl/server";
 import { DeleteTestButton } from "./DeleteTestButton";
@@ -60,6 +61,7 @@ export default async function TeacherTestsPage({
       course: { select: { name: true } },
       group: { select: { name: true, grade: true } },
       testGrades: { where: { value: { not: null } }, select: { studentId: true } },
+      transcribers: { select: { studentId: true, staff: { select: { scheduleName: true, user: { select: { name: true } } } } } },
     },
     orderBy: [{ date: "asc" }, { period: "asc" }],
   });
@@ -73,14 +75,27 @@ export default async function TeacherTestsPage({
           user: { isActive: true },
           OR: [{ groupId: { in: testGroupIds } }, { subjectGroups: { some: { groupId: { in: testGroupIds } } } }],
         },
-        select: { id: true, groupId: true, subjectGroups: { select: { groupId: true } } },
+        select: {
+          id: true,
+          groupId: true,
+          subjectGroups: { select: { groupId: true } },
+          user: { select: { name: true } },
+          specialEd: {
+            select: { accommodations: { where: { code: TRANSCRIBER_ACCOMMODATION }, select: { code: true } } },
+          },
+        },
       })
     : [];
   const sittersByGroup = new Map<string, Set<string>>();
+  // Students entitled to a transcriber («μεταγραφέας», διευκόλυνση 7), per group.
+  const transcribedByGroup = new Map<string, { id: string; name: string }[]>();
   for (const st of sitters) {
     for (const g of studentGroupIds(st.groupId, st.subjectGroups.map((x) => x.groupId))) {
       if (!sittersByGroup.has(g)) sittersByGroup.set(g, new Set());
       sittersByGroup.get(g)!.add(st.id);
+      if (st.specialEd?.accommodations.length) {
+        transcribedByGroup.set(g, [...(transcribedByGroup.get(g) ?? []), { id: st.id, name: st.user?.name ?? "" }]);
+      }
     }
   }
   const statusOf = (t: (typeof tests)[number]) => {
@@ -104,7 +119,21 @@ export default async function TeacherTestsPage({
       <td className="px-5 py-3 text-sm font-medium text-slate-900">
         {formatDate(t.date)}
       </td>
-      <td className="px-5 py-3 text-sm text-slate-600">{t.course.name}</td>
+      <td className="px-5 py-3 text-sm text-slate-600">
+        {t.course.name}
+        {t.date >= today &&
+          (transcribedByGroup.get(t.groupId) ?? []).map((st) => {
+            const a = t.transcribers.find((x) => x.studentId === st.id);
+            const who = a ? (a.staff.scheduleName ?? a.staff.user?.name ?? "") : null;
+            return (
+              <span key={st.id} className={`block text-xs ${who ? "text-slate-500" : "text-amber-700"}`}>
+                {who
+                  ? tTests("transcriberAssigned", { student: st.name, teacher: who })
+                  : tTests("transcriberPending", { student: st.name })}
+              </span>
+            );
+          })}
+      </td>
       <td className="px-5 py-3 text-sm text-slate-500">{t.group.name}</td>
       <td className="px-5 py-3 text-xs text-slate-400">
         {t.periodCount > 1 ? `P${t.period}–${t.period + t.periodCount - 1}` : `P${t.period}`}
