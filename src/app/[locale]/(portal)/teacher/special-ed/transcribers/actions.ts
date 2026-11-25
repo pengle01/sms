@@ -12,6 +12,7 @@ import { canManageSpecialEdRegister } from "@/lib/specialEd";
 import { matchTranscribers, parseTranscriberRows, transcriberTestLine } from "@/lib/transcribers";
 import { loadTranscriberDay, transcriberBusy, transcriberStudentsForGroup } from "@/server/transcribers";
 import { getRooms } from "@/server/rooms";
+import { dutyDowFor } from "@/lib/dutyRoster";
 
 /**
  * «Μεταγραφείς» belongs to the deputy responsible for special education, with
@@ -150,13 +151,22 @@ export async function assignTranscriber(
     groupName: test.group.name,
   });
   const name = student.user?.name ?? "";
+  // The room the class itself sits the test in — the transcriber collects the student there.
+  const dow = dutyDowFor(test.date);
+  const classSlot = dow
+    ? await db.timetableSlot.findFirst({
+        where: { groupId: test.groupId, dayOfWeek: dow, period: test.period },
+        select: { room: true },
+      })
+    : null;
+  const classRoom = classSlot?.room ? ` · Αίθουσα τμήματος ${classSlot.room}` : "";
   await notify(
     [
       {
         userId: staff.userId,
         type: "TRANSCRIBER_ASSIGNED",
         title: sameTeacher ? "Μεταγραφή: άλλαξε η αίθουσα" : "Ορίστηκες μεταγραφέας σε διαγώνισμα",
-        body: `${line} · ${name} · Αίθουσα ${room}`,
+        body: `${line} · ${name} · Αίθουσα μεταγραφής ${room}${classRoom}`,
         linkUrl: "/teacher/dashboard",
       },
       {

@@ -328,7 +328,8 @@
     "cancelEdit": "Άκυρο",
     "removeFile": "Αφαίρεση συνημμένου",
     "keepFile": "Επαναφορά συνημμένου",
-    "transcription": "Μεταγραφή"
+    "transcription": "Μεταγραφή",
+    "transcriptionClassRoom": "τμήμα: αίθ. {room}"
   },
   "attendance": {
     "title": "Απουσίες",
@@ -428,7 +429,10 @@
     "printSheet": "Εκτύπωση",
     "printTitle": "ΚΑΤΑΛΟΓΟΣ ΜΑΘΗΤΩΝ",
     "printColName": "Ονοματεπώνυμο",
-    "printColGroup": "Τμήμα"
+    "printColGroup": "Τμήμα",
+    "transcriptionOf": "Μεταγραφή διαγωνίσματος · διδάσκων/ουσα: {teacher}",
+    "transcriptionRoom": "Αίθουσα μεταγραφής: {room}",
+    "transcriptionClassRoom": "Αίθουσα τμήματος: {room}"
   },
   "homegroup": {
     "title": "Το Τμήμα Μου",
@@ -2897,21 +2901,5 @@
     "inRoom": "Αίθ. {room}",
     "roomTaken": "Η αίθουσα είναι πλέον σε χρήση",
     "assignErr_noRoom": "Επιλέξτε αίθουσα."
-  },
-  "transcription": {
-    "title": "Μεταγραφή διαγωνίσματος",
-    "back": "Πίνακας",
-    "room": "Αίθουσα {room}",
-    "period": "Περίοδος {period}",
-    "present": "Παρών/ούσα",
-    "absent": "Απών/ούσα",
-    "late": "Καθυστέρηση",
-    "minutes": "λεπτά",
-    "save": "Αποθήκευση",
-    "notYet": "Η καταχώρηση ανοίγει την ημέρα του διαγωνίσματος.",
-    "err_notYours": "Δεν είστε ο/η μεταγραφέας αυτού του διαγωνίσματος.",
-    "err_future": "Το διαγώνισμα δεν έχει γίνει ακόμη.",
-    "err_outOfYear": "Η ημερομηνία είναι εκτός των ορίων του σχολικού έτους.",
-    "err_noLesson": "Το μάθημα δεν βρέθηκε στο ωρολόγιο πρόγραμμα."
   }
 }

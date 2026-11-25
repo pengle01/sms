@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { utcMidnight, localDateStr, fmtDisplayDate } from "@/lib/dates";
 import { isDutyEligible } from "@/lib/dutyRoster";
 import type { Role } from "@/generated/prisma/client";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, PenLine } from "lucide-react";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { AttendanceMarkForm } from "./AttendanceMarkForm";
@@ -17,25 +17,55 @@ import { LessonNoteCard } from "../../lesson-notes/LessonNoteCard";
 import { ClaimPicker, LessonSwitcher, ScrollIntoViewOnMount, type ClaimOption } from "./ClaimPicker";
 import { myCoursesWithGroup, type TeachingSlot } from "@/lib/addedLesson";
 import { studentsWithTranscriber } from "@/server/transcribers";
+import { testPeriods } from "@/lib/transcribers";
 
 export default async function TeacherMarkAttendancePage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ groupId?: string; period?: string; date?: string; intercalary?: string; excursion?: string; claim?: string; claimGroupId?: string; courseId?: string }>;
+  searchParams: Promise<{ groupId?: string; period?: string; date?: string; intercalary?: string; excursion?: string; claim?: string; claimGroupId?: string; courseId?: string; transcription?: string }>;
 }) {
   const { locale } = await params;
   const session = await getServerSession(authOptions);
   if (!session) redirect(`/${locale}/login/staff`);
 
-  const { groupId, period: periodStr, date: dateParam, intercalary: intercalaryParam, excursion: excursionParam, claim, claimGroupId, courseId } = await searchParams;
-  const period = periodStr ? parseInt(periodStr) : 1;
-  const isIntercalary = intercalaryParam === "1";
-  const isExcursion = excursionParam === "1";
+  const sp = await searchParams;
+  const { period: periodStr, claim, courseId } = sp;
 
   const staff = await db.staffProfile.findUnique({ where: { userId: session.user.id } });
   if (!staff) redirect(`/${locale}/teacher/setup`);
+
+  // «Μεταγραφή»: the register of the one student I sit a test with — the
+  // class's own lesson, date and period, narrowed to that student.
+  const transcription = sp.transcription
+    ? await db.testTranscriber.findFirst({
+        where: { id: sp.transcription, staffId: staff.id },
+        select: {
+          room: true,
+          studentId: true,
+          test: {
+            select: {
+              groupId: true,
+              date: true,
+              period: true,
+              periodCount: true,
+              staff: { select: { scheduleName: true, user: { select: { name: true } } } },
+            },
+          },
+        },
+      })
+    : null;
+  if (sp.transcription && !transcription) redirect(`/${locale}/teacher/dashboard`);
+  const transcriptionPeriods = transcription ? testPeriods(transcription.test.period, transcription.test.periodCount) : [];
+
+  const groupId = transcription ? transcription.test.groupId : sp.groupId;
+  const dateParam = transcription ? transcription.test.date.toISOString().slice(0, 10) : sp.date;
+  const claimGroupId = transcription ? undefined : sp.claimGroupId;
+  const requestedPeriod = periodStr ? parseInt(periodStr) : 1;
+  const period = transcription && !transcriptionPeriods.includes(requestedPeriod) ? transcription.test.period : requestedPeriod;
+  const isIntercalary = !transcription && sp.intercalary === "1";
+  const isExcursion = !transcription && sp.excursion === "1";
 
   let students: { id: string; user: { name: string | null }; studentId: string }[] = [];
   let slot: { id: string; room: string | null; course: { name: string } } | null = null;
@@ -94,19 +124,22 @@ export default async function TeacherMarkAttendancePage({
         orderBy: { user: { name: "asc" } },
       }),
       db.timetableSlot.findFirst({
-        where: { groupId, period, dayOfWeek, staffId: staff.id },
+        // The transcriber marks on the class's lesson, whoever teaches it.
+        where: { groupId, period, dayOfWeek, ...(transcription ? {} : { staffId: staff.id }) },
         include: { course: true },
       }),
     ]);
     // A student sitting a test with a transcriber is on the transcriber's
     // register for that period, not the class's.
-    students = fetchedStudents.filter((s) => !withTranscriber.has(s.id));
+    students = transcription
+      ? fetchedStudents.filter((s) => s.id === transcription.studentId)
+      : fetchedStudents.filter((s) => !withTranscriber.has(s.id));
     slot = fetchedSlot;
 
     // Not my own slot? A finalized substitution plan may assign it to me for
     // this date — as the substitute (COVER/SWAP) or, for study halls, as a
     // headteacher (any headteacher may take the attendance of those groups).
-    if (!slot) {
+    if (!slot && !transcription) {
       const isHeadteacher = isDutyEligible(session.user.role as Role);
       const assignment = await db.substitutionPlanEntry.findFirst({
         where: {
@@ -134,7 +167,7 @@ export default async function TeacherMarkAttendancePage({
         },
         select: { studentId: true, status: true, minutesDelayed: true, ...REGISTER_SELECT },
       });
-      registerTaken = marked.some((r) => isRegisterRow(r));
+      registerTaken = transcription ? marked.some((r) => r.transcriberMarked) : marked.some((r) => isRegisterRow(r));
       for (const r of marked) {
         existingRecords[r.studentId] = {
           status: (r.status === "EXCUSED" ? "ABSENT" : r.status) as "PRESENT" | "ABSENT" | "LATE",
@@ -242,7 +275,7 @@ export default async function TeacherMarkAttendancePage({
   const claimDow = new Date(attendanceDateStr + "T12:00:00").getDay();
   // Offered on every lesson register — my own, a substitution, or a class I
   // already took over (from the dashboard or a previous pick).
-  const showPicker = !isIntercalary && !isExcursion && !!period && (isClaiming || (!!groupId && !!slot) || !!claimGroupId);
+  const showPicker = !transcription && !isIntercalary && !isExcursion && !!period && (isClaiming || (!!groupId && !!slot) || !!claimGroupId);
 
   // Every lesson of mine (any day): which groups are mine, and my subjects with each.
   const mySlots: TeachingSlot[] =
@@ -395,7 +428,7 @@ export default async function TeacherMarkAttendancePage({
 
   const t = await getTranslations("attendance");
   // «Τελευταίο μάθημα στην αίθουσα»: today's register of a room's last lesson.
-  const remind = isToday && !isIntercalary && !isExcursion;
+  const remind = isToday && !isIntercalary && !isExcursion && !transcription;
   const [lastRoomOwn, lastRoomClaimed] = await Promise.all([
     remind && slot ? lastInRoomFor(slot.id, attendanceDateObj) : Promise.resolve(null),
     remind && claimed ? lastInRoomFor(claimed.slot.id, attendanceDateObj) : Promise.resolve(null),
@@ -446,6 +479,22 @@ export default async function TeacherMarkAttendancePage({
         </p>
       </div>
 
+      {transcription && (
+        <div className="rounded-xl border border-sky-200 bg-sky-50 px-5 py-3 print:hidden">
+          <p className="text-sm font-semibold text-sky-900 flex items-center gap-2">
+            <PenLine className="w-4 h-4" />
+            {t("transcriptionOf", {
+              teacher: transcription.test.staff.user?.name ?? transcription.test.staff.scheduleName ?? "—",
+            })}
+          </p>
+          <p className="text-sm text-sky-800 mt-1">
+            {t("transcriptionRoom", { room: transcription.room ?? "—" })}
+            <span className="mx-2 text-sky-300">·</span>
+            {t("transcriptionClassRoom", { room: slot?.room ?? "—" })}
+          </p>
+        </div>
+      )}
+
       {/* Own lesson */}
       {groupId && lastRoomOwn && <LastInRoomBanner room={lastRoomOwn} />}
       {groupId && (
@@ -473,7 +522,7 @@ export default async function TeacherMarkAttendancePage({
       )}
 
       {/* Private lesson note — the teacher's own log for this lesson */}
-      {groupId && period && students.length > 0 && (
+      {groupId && period && students.length > 0 && !transcription && (
         <div className="print:hidden">
         <LessonNoteCard
           locale={locale}

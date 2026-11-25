@@ -11,6 +11,7 @@ import { getPendingAttendance, type PendingLesson } from "@/server/attendanceLoc
 import { sendAbsenceSms } from "@/server/absenceSms";
 import { getSpecialDayForDate, getHomegroupMeetingForDate } from "@/lib/calendar";
 import { canAddLesson } from "@/lib/addedLesson";
+import { coversPeriod } from "@/lib/transcribers";
 
 const OUT_OF_YEAR_MSG = "Η ημερομηνία είναι εκτός των ορίων του σχολικού έτους.";
 const NO_HOMEGROUP_PERIOD_MSG = "Δεν υπάρχει Υπευθυνότητα Τμήματος σε αυτή την ημέρα και περίοδο.";
@@ -118,10 +119,32 @@ export const attendanceRouter = createTRPCRouter({
         }
       }
 
+      // «Μεταγραφή»: I am the transcriber of every student on this register, for
+      // a test of this group covering this period. The rows record those
+      // students only — never the class register, a cover or an added lesson.
+      const transcribed = slot
+        ? new Set(
+            (
+              await ctx.db.testTranscriber.findMany({
+                where: {
+                  staffId: staff.id,
+                  studentId: { in: input.records.map((r) => r.studentId) },
+                  test: { groupId: slot.groupId, date: utcMidnight(input.records[0]!.date) },
+                },
+                select: { studentId: true, test: { select: { period: true, periodCount: true } } },
+              })
+            )
+              .filter((x) => coversPeriod(x.test, slot.period))
+              .map((x) => x.studentId),
+          )
+        : new Set<string>();
+      const isTranscription =
+        slotIds.length === 1 && input.records.length > 0 && input.records.every((r) => transcribed.has(r.studentId));
+
       // Ad-hoc claim visibility: marking a slot that is neither mine nor a
       // finalized-substitution assignment is an Αναπλήρωση (or my own lesson in its
       // place) — leave an audit trail so management can trace who took which class.
-      if (slot && slot.staffId !== staff.id) {
+      if (slot && slot.staffId !== staff.id && !isTranscription) {
         const assignment = await ctx.db.substitutionPlanEntry.findFirst({
           where: {
             plan: { date: utcMidnight(input.records[0]!.date), status: "FINAL" },
@@ -161,7 +184,7 @@ export const attendanceRouter = createTRPCRouter({
       const upserted = await ctx.db.$transaction(async (tx) => {
         // The subject taught on this slot and date: mine for «Δικό μου μάθημα»,
         // the timetable's otherwise (a later plain Αναπλήρωση undoes an earlier one).
-        if (slot && slot.staffId !== staff.id && input.records.length > 0) {
+        if (slot && slot.staffId !== staff.id && input.records.length > 0 && !isTranscription) {
           const lessonDate = utcMidnight(input.records[0]!.date);
           if (addedCourseId) {
             await tx.addedLesson.upsert({
@@ -179,11 +202,13 @@ export const attendanceRouter = createTRPCRouter({
           const exitPermitId = permitLinkFor(status, permitFor[r.studentId]);
           const lesson = lessonFacts.get(r.timetableSlotId);
           const courseId = addedCourseId ?? lesson?.courseId ?? null;
-          const lessonKind = lessonKindForSlot({
-            markerStaffId: staff.id,
-            slotStaffId: lesson?.staffId ?? null,
-            addedLesson: !!addedCourseId,
-          });
+          const lessonKind = isTranscription
+            ? "LESSON"
+            : lessonKindForSlot({
+                markerStaffId: staff.id,
+                slotStaffId: lesson?.staffId ?? null,
+                addedLesson: !!addedCourseId,
+              });
           const lessonTeacherName = lessonTeacherNameFor({
             markerStaffId: staff.id,
             slotStaffId: lesson?.staffId ?? null,
@@ -211,6 +236,7 @@ export const attendanceRouter = createTRPCRouter({
               courseId,
               lessonKind,
               lessonTeacherName,
+              transcriberMarked: isTranscription,
             },
             update: {
               status,
@@ -223,7 +249,7 @@ export const attendanceRouter = createTRPCRouter({
               lessonTeacherName,
               // The teacher's register now owns this row, however it was created.
               permitPremarked: false,
-              transcriberMarked: false,
+              transcriberMarked: isTranscription,
             },
           });
         }));

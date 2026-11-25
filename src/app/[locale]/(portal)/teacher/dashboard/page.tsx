@@ -235,6 +235,21 @@ export default async function TeacherDashboardPage({
       transcriptionsByPeriod.set(p, [...(transcriptionsByPeriod.get(p) ?? []), a]);
     }
   }
+  // The room the class itself sits the test in, per group and period.
+  const classRooms = new Map(
+    todayTranscriptions.length > 0
+      ? (
+          await db.timetableSlot.findMany({
+            where: {
+              dayOfWeek: todayDow,
+              groupId: { in: todayTranscriptions.map((a) => a.test.groupId) },
+              period: { in: [...transcriptionsByPeriod.keys()] },
+            },
+            select: { groupId: true, period: true, room: true },
+          })
+        ).map((r) => [`${r.groupId}:${r.period}`, r.room] as const)
+      : [],
+  );
   const transcriptionMarked = new Set(
     staff && todayTranscriptions.length > 0
       ? (
@@ -581,7 +596,7 @@ export default async function TeacherDashboardPage({
                           return (
                             <Link
                               key={`transcription-${a.id}`}
-                              href={`/${locale}/teacher/attendance/transcription/${a.id}`}
+                              href={`/${locale}/teacher/attendance/mark?transcription=${a.id}&period=${dbPeriod}`}
                               className={`flex items-center gap-4 px-5 py-3 transition-colors hover:bg-sky-50 ${done ? "bg-emerald-50/40" : "bg-sky-50/40"}`}
                             >
                               <span className="w-5 flex-shrink-0 text-center text-sm font-bold text-sky-400">{period}</span>
@@ -590,7 +605,12 @@ export default async function TeacherDashboardPage({
                                 <span className="text-sm text-slate-400">{a.test.group.name}</span>
                                 <span className="text-xs font-semibold text-sky-600">{t("transcription")}</span>
                                 <span className="text-sm text-slate-700">{a.student.user?.name}</span>
-                                {a.room && <span className="text-xs text-slate-400 font-mono">{t("room", { room: a.room })}</span>}
+                                {a.room && <span className="text-xs text-slate-600 font-mono">{t("room", { room: a.room })}</span>}
+                                {classRooms.get(`${a.test.groupId}:${dbPeriod}`) && (
+                                  <span className="text-xs text-slate-400">
+                                    {t("transcriptionClassRoom", { room: classRooms.get(`${a.test.groupId}:${dbPeriod}`)! })}
+                                  </span>
+                                )}
                               </div>
                               {done ? (
                                 <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-500" />

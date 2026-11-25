@@ -328,7 +328,8 @@
     "cancelEdit": "Cancel",
     "removeFile": "Remove attachment",
     "keepFile": "Keep attachment",
-    "transcription": "Transcription"
+    "transcription": "Transcription",
+    "transcriptionClassRoom": "class: room {room}"
   },
   "attendance": {
     "title": "Attendance",
@@ -428,7 +429,10 @@
     "printSheet": "Print",
     "printTitle": "CLASS ROSTER",
     "printColName": "Name",
-    "printColGroup": "Homegroup"
+    "printColGroup": "Homegroup",
+    "transcriptionOf": "Test transcription · teacher: {teacher}",
+    "transcriptionRoom": "Transcription room: {room}",
+    "transcriptionClassRoom": "Class room: {room}"
   },
   "homegroup": {
     "title": "My Homegroup",
@@ -2897,21 +2901,5 @@
     "inRoom": "Room {room}",
     "roomTaken": "The room is now in use",
     "assignErr_noRoom": "Choose a room."
-  },
-  "transcription": {
-    "title": "Test transcription",
-    "back": "Dashboard",
-    "room": "Room {room}",
-    "period": "Period {period}",
-    "present": "Present",
-    "absent": "Absent",
-    "late": "Late",
-    "minutes": "minutes",
-    "save": "Save",
-    "notYet": "The register opens on the day of the test.",
-    "err_notYours": "You are not the transcriber of this test.",
-    "err_future": "The test has not taken place yet.",
-    "err_outOfYear": "The date is outside the school year.",
-    "err_noLesson": "The lesson was not found in the timetable."
   }
 }
